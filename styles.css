@@ -692,7 +692,8 @@ button:hover {
   filter: brightness(0.92);
 }
 
-#startSimulationButton.is-loading {
+#startSimulationButton.is-loading,
+#closeSimulationButton.is-loading {
   position: relative;
   background: linear-gradient(90deg, rgba(31, 122, 140, 0.92), rgba(31, 122, 140, 0.78));
   color: #ffffff;
@@ -702,7 +703,13 @@ button:hover {
   overflow: hidden;
 }
 
-#startSimulationButton.is-loading::after {
+#closeSimulationButton.is-loading {
+  background: linear-gradient(90deg, rgba(214, 75, 75, 0.92), rgba(214, 75, 75, 0.78));
+  box-shadow: 0 0 0 3px rgba(214, 75, 75, 0.22), 0 10px 24px rgba(214, 75, 75, 0.28);
+}
+
+#startSimulationButton.is-loading::after,
+#closeSimulationButton.is-loading::after {
   content: "";
   position: absolute;
   inset: 0;

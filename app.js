@@ -1568,6 +1568,17 @@ async function closeOperationById(operationId) {
     return;
   }
 
+  // Immediate visual feedback so the user perceives the click while the
+  // backend round-trip happens (same shimmer pattern as #startSimulationButton).
+  const button = elements.closeSimulationButton;
+  const originalLabel = button ? button.textContent : null;
+  if (button) {
+    button.classList.add("is-loading");
+    button.disabled = true;
+    button.textContent = "Cerrando simulacion...";
+  }
+  elements.analysisDecision.textContent = "Cerrando simulacion...";
+
   try {
     const result = await requestJson(`/api/operations/${operationId}/close`, {
       method: "POST",
@@ -1584,6 +1595,14 @@ async function closeOperationById(operationId) {
     await loadContest();
   } catch (error) {
     elements.analysisDecision.textContent = error.message;
+  } finally {
+    if (button) {
+      button.classList.remove("is-loading");
+      if (originalLabel !== null) button.textContent = originalLabel;
+      // Re-enable only if there are still open operations; subsequent render
+      // passes will reconcile anyway.
+      button.disabled = !openOperations.length;
+    }
   }
 }
 

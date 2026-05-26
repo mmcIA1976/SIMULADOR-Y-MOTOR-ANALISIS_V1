@@ -1918,9 +1918,52 @@ canvas {
 }
 
 @media (max-width: 620px) {
+  /* Use the full lateral space of the phone — no side margins on the shell,
+     and trim internal padding of the big panels so the chart, evidence and
+     forms breathe to the edges. */
   .app-shell {
-    width: min(100% - 20px, 1440px);
-    padding-top: 16px;
+    width: 100%;
+    padding: 12px 0 24px;
+  }
+
+  .hero,
+  .workspace {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .hero-title {
+    padding: 18px 14px;
+    min-height: 0;
+  }
+
+  .auth-panel,
+  .control-panel,
+  .chart-panel,
+  .status-card,
+  .metric {
+    padding: 12px 10px;
+    border-radius: 6px;
+  }
+
+  .chart-panel {
+    padding: 10px 6px;
+  }
+
+  .chart-wrap {
+    margin: 0 -2px;
+  }
+
+  /* Hide the page scrollbar on touch — the user scrolls with the finger and
+     the gutter was eating ~14px of useful width. */
+  html {
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .metrics-grid {

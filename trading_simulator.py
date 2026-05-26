@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 
-BINANCE_TICKER_URL = "https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+BINANCE_TICKER_URL = "https://api.binance.us/api/v3/ticker/price?symbol={symbol}"
 MAX_LEVERAGE = 10
 
 

@@ -7,10 +7,10 @@ import urllib.request
 from trading_simulator import fetch_binance_price
 
 
-BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
-BINANCE_DEPTH_URL = "https://api.binance.com/api/v3/depth?symbol={symbol}&limit=20"
-BINANCE_TICKER_24H_URL = "https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
-BINANCE_AGG_TRADES_URL = "https://api.binance.com/api/v3/aggTrades?symbol={symbol}&limit={limit}"
+BINANCE_KLINES_URL = "https://api.binance.us/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+BINANCE_DEPTH_URL = "https://api.binance.us/api/v3/depth?symbol={symbol}&limit=20"
+BINANCE_TICKER_24H_URL = "https://api.binance.us/api/v3/ticker/24hr?symbol={symbol}"
+BINANCE_AGG_TRADES_URL = "https://api.binance.us/api/v3/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol={symbol}"
 BINANCE_OPEN_INTEREST_URL = "https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}"
 BINANCE_OPEN_INTEREST_HIST_URL = (

@@ -1643,6 +1643,17 @@ canvas {
   background: #fbfcf9;
 }
 
+@media (max-width: 620px) {
+  .chart-wrap {
+    min-height: 0;
+  }
+  canvas {
+    height: 56vh;
+    min-height: 280px;
+    max-height: 440px;
+  }
+}
+
 .positive {
   color: var(--target);
 }
@@ -1934,8 +1945,21 @@ canvas {
     grid-template-columns: 1fr;
   }
 
-  canvas,
-  .chart-wrap {
-    min-height: 430px;
+  .evidence-item {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-item b {
+    justify-self: start;
+    font-size: 1.18rem;
+  }
+
+  .evidence-item strong {
+    font-size: 1rem;
+    word-break: break-word;
+  }
+
+  .evidence-list > .label {
+    font-size: 0.85rem;
   }
 }

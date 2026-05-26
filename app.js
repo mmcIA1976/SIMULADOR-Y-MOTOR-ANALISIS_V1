@@ -1957,8 +1957,11 @@ function resetHistory() {
 function resizeCanvas() {
   const rect = elements.chart.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
-  elements.chart.width = Math.max(720, Math.floor(rect.width * scale));
-  elements.chart.height = Math.max(430, Math.floor(rect.height * scale));
+  // Backing-store size must match the actual CSS box (times DPR for crispness).
+  // Hard-coded minimums (was 720x430) caused stretching/distortion on phones
+  // where the rendered CSS width was ~340px.
+  elements.chart.width = Math.max(1, Math.floor(rect.width * scale));
+  elements.chart.height = Math.max(1, Math.floor(rect.height * scale));
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   drawChart();
 }
@@ -1969,7 +1972,12 @@ function drawChart() {
   const rect = elements.chart.getBoundingClientRect();
   const width = rect.width;
   const height = rect.height;
-  const pad = { top: 28, right: 124, bottom: 46, left: 58 };
+  // Responsive paddings: on narrow screens the side gutters were eating ~55%
+  // of the canvas width, squashing the curve and overlapping axis labels.
+  const isNarrow = width < 560;
+  const pad = isNarrow
+    ? { top: 22, right: 64, bottom: 38, left: 40 }
+    : { top: 28, right: 124, bottom: 46, left: 58 };
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;
   const historyPrices = chartHistory.map((point) => point.price);

@@ -2062,7 +2062,7 @@ function drawChart() {
     ctx.arc(lastX, lastY, 6, 0, Math.PI * 2);
     ctx.fill();
     if (!isClosedByPlan(operation) && !livePriceWillBeDrawn) {
-      drawTag(`Precio ${priceText(lastPrice)}`, lastX - 86, lastY - 34, getLivePriceTagColor(config, lastPrice), "#ffffff");
+      drawTag(`Precio ${priceText(lastPrice)}`, lastX - 130, lastY - 50, getLivePriceTagColor(config, lastPrice), "#ffffff");
     }
     drawSampleSummary(chartHistory, pad, chartHeight);
     drawCloseMarker(operation, chartHistory, xFor, yFor, pad, chartHeight);
@@ -2116,7 +2116,7 @@ function drawCloseMarker(operation, chartHistory, xFor, yFor, pad, chartHeight) 
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 3;
   ctx.stroke();
-  drawTag(`${label} ${priceText(closePrice)}`, x - 88, y - 42, color, "#ffffff");
+  drawTag(`${label} ${priceText(closePrice)}`, x - 132, y - 62, color, "#ffffff");
   ctx.restore();
 }
 
@@ -2138,14 +2138,14 @@ function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, cha
   ctx.lineTo(pad.left + chartWidth, y);
   ctx.stroke();
   ctx.setLineDash([]);
-  const tagX = pad.left + chartWidth - 116;
-  let tagY = y - 18;
+  const tagX = pad.left + chartWidth - 174;
+  let tagY = y - 26;
   const closePrice = Number(operation?.close_price);
   if (isClosedByPlan(operation) && Number.isFinite(closePrice) && isInScale(closePrice, yMin, yMax)) {
     const closeY = yFor(closePrice);
-    tagY = currentPrice >= closePrice ? closeY - 62 : closeY + 36;
+    tagY = currentPrice >= closePrice ? closeY - 78 : closeY + 48;
   }
-  tagY = Math.max(pad.top + 8, Math.min(tagY, pad.top + chartHeight - 34));
+  tagY = Math.max(pad.top + 8, Math.min(tagY, pad.top + chartHeight - 48));
   drawTag(`BTC/USDT ${priceText(currentPrice)}`, tagX, tagY, getLivePriceTagColor(getDisplayContext().config, currentPrice), "#ffffff");
   ctx.restore();
 }
@@ -2260,20 +2260,21 @@ function drawSampleSummary(chartHistory, pad, chartHeight) {
 }
 
 function drawTag(text, x, y, bg, fg) {
-  ctx.font = "800 12px Inter, sans-serif";
-  const paddingX = 9;
-  const paddingY = 6;
+  // 1.5x bigger price capsules for better readability.
+  ctx.font = "800 18px Inter, sans-serif";
+  const paddingX = 14;
+  const paddingY = 9;
   const metrics = ctx.measureText(text);
   const boxWidth = metrics.width + paddingX * 2;
-  const boxHeight = 26;
+  const boxHeight = 39;
   const safeX = Math.max(8, Math.min(x, elements.chart.getBoundingClientRect().width - boxWidth - 8));
   const safeY = Math.max(8, Math.min(y, elements.chart.getBoundingClientRect().height - boxHeight - 8));
 
   ctx.fillStyle = bg;
-  roundedRect(safeX, safeY, boxWidth, boxHeight, 6);
+  roundedRect(safeX, safeY, boxWidth, boxHeight, 9);
   ctx.fill();
   ctx.fillStyle = fg;
-  ctx.fillText(text, safeX + paddingX, safeY + paddingY + 11);
+  ctx.fillText(text, safeX + paddingX, safeY + paddingY + 16);
 }
 
 function roundedRect(x, y, width, height, radius) {

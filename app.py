@@ -545,18 +545,13 @@ def finalize_due_observations(existing_db=None) -> list[dict]:
 
 
 def finalize_due_observations_with_db(db) -> list[dict]:
-    due_filter = (
-        "observation_until::timestamptz <= CURRENT_TIMESTAMP"
-        if getattr(db, "engine", "sqlite") == "postgres"
-        else "datetime(observation_until) <= datetime('now')"
-    )
     rows = db.execute(
-        f"""
+        """
         SELECT * FROM operations
         WHERE status = 'CLOSED'
           AND observation_status = 'OBSERVING'
           AND observation_until IS NOT NULL
-          AND {due_filter}
+          AND observation_until::timestamptz <= CURRENT_TIMESTAMP
         ORDER BY closed_at ASC
         """
     ).fetchall()
@@ -1113,14 +1108,6 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
                 FROM recommendations
                 WHERE user_id = ? AND operation_id IN ({placeholders})
                 ORDER BY operation_id, created_at DESC
-                """ if db.engine == "postgres" else f"""
-                SELECT r.*
-                FROM recommendations r
-                WHERE r.user_id = ? AND r.operation_id IN ({placeholders})
-                  AND r.created_at = (
-                    SELECT MAX(created_at) FROM recommendations
-                    WHERE operation_id = r.operation_id AND user_id = r.user_id
-                  )
                 """,
                 (user["id"], *op_ids),
             ).fetchall()

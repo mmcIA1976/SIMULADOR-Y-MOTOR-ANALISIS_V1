@@ -2,35 +2,38 @@ from __future__ import annotations
 
 import os
 import re
-import sqlite3
-from dataclasses import dataclass
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Iterator
 
-try:
-    import psycopg
-    from psycopg.rows import dict_row
-except Exception:  # pragma: no cover - optional in local SQLite
-    psycopg = None
-    dict_row = None
-
-try:
-    from psycopg_pool import ConnectionPool
-except Exception:  # pragma: no cover
-    ConnectionPool = None
-
-_PG_POOL = None
+import psycopg
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 
-def _get_pg_pool(url: str):
+_PG_POOL: ConnectionPool | None = None
+
+
+def database_url() -> str:
+    url = os.environ.get("SUPABASE_DATABASE_URL", "").strip()
+    if not url:
+        url = os.environ.get("DATABASE_URL", "").strip()
+    if not url:
+        raise RuntimeError(
+            "Falta SUPABASE_DATABASE_URL. Esta version solo soporta PostgreSQL/Supabase."
+        )
+    if not (url.startswith("postgresql://") or url.startswith("postgres://")):
+        raise RuntimeError(
+            "SUPABASE_DATABASE_URL debe empezar por postgresql:// o postgres://"
+        )
+    return url
+
+
+def _get_pg_pool() -> ConnectionPool:
     """Lazy-init a process-wide connection pool to avoid per-request TCP+TLS setup."""
     global _PG_POOL
     if _PG_POOL is None:
-        if ConnectionPool is None:
-            raise RuntimeError("Falta dependencia psycopg_pool para usar PostgreSQL.")
         _PG_POOL = ConnectionPool(
-            conninfo=url,
+            conninfo=database_url(),
             min_size=1,
             max_size=10,
             kwargs={"row_factory": dict_row, "prepare_threshold": None},
@@ -40,37 +43,14 @@ def _get_pg_pool(url: str):
     return _PG_POOL
 
 
-APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = APP_DIR / "data"
-DEFAULT_DATABASE_URL = f"sqlite:///{DATA_DIR / 'trading_trainer.db'}"
-
-
-def database_url() -> str:
-    supabase_url = os.environ.get("SUPABASE_DATABASE_URL", "").strip()
-    if supabase_url:
-        return supabase_url
-    if os.environ.get("APP_ENV", "").lower() == "production":
-        raise RuntimeError("En produccion es obligatorio definir SUPABASE_DATABASE_URL.")
-    return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
-
-
-def is_postgres(url: str) -> bool:
-    return url.startswith("postgresql://") or url.startswith("postgres://")
-
-
-def sqlite_path() -> Path:
-    url = database_url()
-    if not url.startswith("sqlite:///"):
-        raise RuntimeError(
-            "Ruta SQLite invalida. Usa sqlite:///... o una URL postgresql://..."
-        )
-    return Path(url.replace("sqlite:///", "", 1))
-
-
-@dataclass
 class CursorProxy:
-    cursor: object
-    lastrowid: int | None = None
+    """Wraps a psycopg cursor and exposes a SQLite-style `lastrowid` attribute."""
+
+    __slots__ = ("cursor", "lastrowid")
+
+    def __init__(self, cursor, lastrowid: int | None = None):
+        self.cursor = cursor
+        self.lastrowid = lastrowid
 
     def fetchone(self):
         return self.cursor.fetchone()
@@ -83,39 +63,37 @@ class CursorProxy:
         return self.cursor.rowcount
 
 
-@dataclass
 class DbSession:
-    connection: object
-    engine: str
+    """Thin wrapper around a psycopg connection that translates legacy
+    SQLite-style placeholders (`?`) and a few SQLite-only functions to
+    PostgreSQL syntax, and emulates `cursor.lastrowid` via `RETURNING id`."""
+
+    __slots__ = ("connection",)
+
+    # Kept for backwards compatibility with callers that branched on engine.
+    engine: str = "postgres"
+
+    def __init__(self, connection):
+        self.connection = connection
 
     def execute(self, query: str, params: tuple | list | None = None):
-        if self.engine == "postgres":
-            pg_query = self._q(query)
+        pg_query = self._q(query)
+        if self._should_return_id(pg_query):
+            pg_query = f"{pg_query.rstrip().rstrip(';')} RETURNING id"
+            cursor = self.connection.execute(pg_query, self._p(params))
+            row = cursor.fetchone()
             lastrowid = None
-            if self._should_return_id(pg_query):
-                pg_query = f"{pg_query.rstrip().rstrip(';')} RETURNING id"
-                cursor = self.connection.execute(pg_query, self._p(params))
-                row = cursor.fetchone()
-                if row is not None:
-                    lastrowid = row["id"] if isinstance(row, dict) else row[0]
-                return CursorProxy(cursor=cursor, lastrowid=lastrowid)
-            return self.connection.execute(pg_query, self._p(params))
-        if params is None:
-            return self.connection.execute(query)
-        return self.connection.execute(query, params)
+            if row is not None:
+                lastrowid = row["id"] if isinstance(row, dict) else row[0]
+            return CursorProxy(cursor=cursor, lastrowid=lastrowid)
+        return self.connection.execute(pg_query, self._p(params))
 
     def executemany(self, query: str, seq_of_params):
-        if self.engine == "postgres":
-            return self.connection.executemany(self._q(query), seq_of_params)
-        return self.connection.executemany(query, seq_of_params)
+        return self.connection.executemany(self._q(query), seq_of_params)
 
     def executescript(self, script: str):
-        if self.engine == "postgres":
-            statements = [s.strip() for s in script.split(";") if s.strip()]
-            for statement in statements:
-                self.connection.execute(statement)
-            return None
-        return self.connection.executescript(script)
+        for statement in (s.strip() for s in script.split(";") if s.strip()):
+            self.connection.execute(statement)
 
     def commit(self) -> None:
         self.connection.commit()
@@ -123,12 +101,8 @@ class DbSession:
     def rollback(self) -> None:
         self.connection.rollback()
 
-    def close(self) -> None:
-        self.connection.close()
-
     @staticmethod
     def _q(query: str) -> str:
-        # Translate SQLite syntax to PostgreSQL where needed.
         translated = query.replace("?", "%s")
         translated = re.sub(r"\bGROUP_CONCAT\b", "string_agg", translated, flags=re.IGNORECASE)
         return translated
@@ -147,49 +121,31 @@ class DbSession:
 
 @contextmanager
 def connect() -> Iterator[DbSession]:
-    url = database_url()
-    if is_postgres(url):
-        if psycopg is None:
-            raise RuntimeError("Falta dependencia psycopg para usar PostgreSQL.")
-        # Use a process-wide pool so each request reuses an existing TCP+TLS
-        # connection (Supabase is on another continent: ~150ms RTT, ~400ms TLS handshake).
-        # `pool.connection()` already commits on clean exit, rolls back on exception,
-        # and returns the connection to the pool — do not commit/rollback manually here.
-        pool = _get_pg_pool(url)
-        with pool.connection() as connection:
-            yield DbSession(connection=connection, engine="postgres")
-        return
-    DATA_DIR.mkdir(exist_ok=True)
-    path = sqlite_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    session = DbSession(connection=connection, engine="sqlite")
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+    """Yield a DbSession backed by a pooled PostgreSQL connection.
+
+    `pool.connection()` commits on clean exit, rolls back on exception,
+    and returns the connection to the pool automatically.
+    """
+    pool = _get_pg_pool()
+    with pool.connection() as connection:
+        yield DbSession(connection=connection)
 
 
-def row_to_dict(row: sqlite3.Row | None) -> dict | None:
+def row_to_dict(row) -> dict | None:
     if row is None:
         return None
     if isinstance(row, dict):
         return row
-    return {key: row[key] for key in row.keys()}
+    return dict(row)
 
 
 def init_db() -> None:
+    id_type = "BIGSERIAL PRIMARY KEY"
+    fk_type = "BIGINT"
+    blob_type = "BYTEA"
+    text_timestamp = "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
+
     with connect() as db:
-        id_type = "INTEGER PRIMARY KEY AUTOINCREMENT" if db.engine == "sqlite" else "BIGSERIAL PRIMARY KEY"
-        fk_type = "INTEGER" if db.engine == "sqlite" else "BIGINT"
-        blob_type = "BLOB" if db.engine == "sqlite" else "BYTEA"
-        text_timestamp = "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" if db.engine == "sqlite" else "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
         db.executescript(
             f"""
             CREATE TABLE IF NOT EXISTS users (
@@ -324,7 +280,7 @@ def init_db() -> None:
         ensure_column(db, "operations", "exit_evidence_json", "TEXT")
         ensure_column(db, "operations", "time_horizon", "TEXT NOT NULL DEFAULT 'intraday_short'")
         ensure_column(db, "operations", "mode", "TEXT NOT NULL DEFAULT 'training'")
-        ensure_column(db, "operations", "contest_season_id", "INTEGER")
+        ensure_column(db, "operations", "contest_season_id", "BIGINT")
         ensure_column(db, "users", "starting_balance", "REAL NOT NULL DEFAULT 1000")
         ensure_column(db, "users", "cash_balance", "REAL NOT NULL DEFAULT 1000")
         ensure_column(db, "users", "avatar_path", "TEXT")
@@ -343,21 +299,16 @@ def init_db() -> None:
 
 
 def ensure_column(db: DbSession, table: str, column: str, definition: str) -> None:
-    if db.engine == "postgres":
-        exists = db.execute(
-            """
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_name = %s AND column_name = %s
-            LIMIT 1
-            """,
-            (table, column),
-        ).fetchone()
-        if not exists:
-            db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-        return
-    columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}
-    if column not in columns:
+    exists = db.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = %s AND column_name = %s
+        LIMIT 1
+        """,
+        (table, column),
+    ).fetchone()
+    if not exists:
         db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 

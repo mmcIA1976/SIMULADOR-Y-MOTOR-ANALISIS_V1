@@ -32,7 +32,7 @@ DATABASE_URL=sqlite:///data/trading_trainer.db
 TRADING_TRAINER_SECRET=change-me-before-production
 ```
 
-Para produccion, `TRADING_TRAINER_SECRET` debe ser una clave larga y privada. `DATABASE_URL` solo soporta SQLite en esta version; PostgreSQL queda como siguiente paso antes de alojar usuarios reales en Railway/Replit sin depender de disco local.
+Para produccion, `TRADING_TRAINER_SECRET` debe ser una clave larga y privada. `DATABASE_URL` soporta SQLite y PostgreSQL.
 
 ## Despliegue
 
@@ -48,6 +48,23 @@ Antes de publicar:
 - Configurar `TRADING_TRAINER_SECRET`.
 - Migrar persistencia a PostgreSQL o asegurar volumen persistente si se usa SQLite temporalmente.
 - Revisar politicas de backup para operaciones, recomendaciones, concursos y aprendizaje.
+
+## Migracion SQLite a PostgreSQL
+
+1. Arranca una vez la app con `DATABASE_URL=postgresql://...` para crear tablas.
+2. Ejecuta migracion:
+
+```powershell
+.\.venv\Scripts\python.exe .\migrate_sqlite_to_postgres.py --sqlite-path .\data\trading_trainer.db --postgres-url "postgresql://USER:PASS@HOST:PORT/DB"
+```
+
+3. Reinicia la app apuntando ya a PostgreSQL y verifica datos.
+
+Validacion de conteos:
+
+```powershell
+.\.venv\Scripts\python.exe .\validate_migration_counts.py --sqlite-path .\data\trading_trainer.db --postgres-url "postgresql://USER:PASS@HOST:PORT/DB"
+```
 
 ## Validacion rapida
 

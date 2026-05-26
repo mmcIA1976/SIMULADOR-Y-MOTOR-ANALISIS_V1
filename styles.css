@@ -1917,6 +1917,51 @@ canvas {
   }
 }
 
+.analyze-feedback {
+  display: none;
+  margin: 8px 0 0;
+  border: 1px solid #d64b4b;
+  border-left-width: 6px;
+  border-radius: 6px;
+  background: #fff3f3;
+  color: #8a1f1f;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.analyze-feedback.visible {
+  display: block;
+  animation: feedbackPulse 0.35s ease;
+}
+
+@keyframes feedbackPulse {
+  0% { transform: translateY(-3px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+label.field-error,
+.field-error {
+  position: relative;
+}
+
+label.field-error > input,
+label.field-error > select,
+input.field-error,
+select.field-error {
+  border-color: #d64b4b !important;
+  background: #fff7f7 !important;
+  box-shadow: 0 0 0 3px rgba(214, 75, 75, 0.18) !important;
+  animation: fieldShake 0.32s ease;
+}
+
+@keyframes fieldShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
 @media (max-width: 620px) {
   /* Use the full lateral space of the phone — no side margins on the shell,
      and trim internal padding of the big panels so the chart, evidence and

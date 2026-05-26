@@ -38,6 +38,7 @@ const elements = {
   shortButton: document.querySelector("#shortButton"),
   refreshButton: document.querySelector("#refreshButton"),
   analyzeButton: document.querySelector("#analyzeButton"),
+  analyzeFeedback: document.querySelector("#analyzeFeedback"),
   startSimulationButton: document.querySelector("#startSimulationButton"),
   closeSimulationButton: document.querySelector("#closeSimulationButton"),
   closeReason: document.querySelector("#closeReason"),
@@ -216,36 +217,73 @@ function getTradePayload() {
 function validateTradeForm() {
   const config = getConfig();
   if (!Number.isFinite(config.entry)) {
-    return "Todavia no hay precio de entrada actualizado.";
+    return { message: "Todavia no hay precio de entrada actualizado.", field: elements.entry };
   }
   if (!config.time_horizon) {
-    return "Selecciona un marco temporal antes de analizar.";
+    return { message: "Selecciona un marco temporal antes de analizar.", field: elements.timeHorizon };
   }
   if (!Number.isFinite(config.margin) || config.margin <= 0) {
-    return "Introduce un margen valido.";
+    return { message: "Introduce un margen valido.", field: elements.margin };
   }
   if (!Number.isFinite(config.leverage) || config.leverage <= 0 || config.leverage > 10) {
-    return "Introduce un apalancamiento valido entre x1 y x10.";
+    return { message: "Introduce un apalancamiento valido entre x1 y x10.", field: elements.leverage };
   }
   if (!Number.isFinite(config.stopLoss)) {
-    return "Define un Stop Loss antes de analizar.";
+    return { message: "Define un Stop Loss antes de analizar.", field: elements.stopLoss };
   }
   if (!Number.isFinite(config.takeProfit)) {
-    return "Define un Take Profit antes de analizar.";
+    return { message: "Define un Take Profit antes de analizar.", field: elements.takeProfit };
   }
   if (config.side === "long" && config.stopLoss >= config.entry) {
-    return "En una operacion long, el Stop Loss debe estar por debajo de la entrada.";
+    return { message: "En una operacion long, el Stop Loss debe estar por debajo de la entrada.", field: elements.stopLoss };
   }
   if (config.side === "long" && config.takeProfit <= config.entry) {
-    return "En una operacion long, el Take Profit debe estar por encima de la entrada.";
+    return { message: "En una operacion long, el Take Profit debe estar por encima de la entrada.", field: elements.takeProfit };
   }
   if (config.side === "short" && config.stopLoss <= config.entry) {
-    return "En una operacion short, el Stop Loss debe estar por encima de la entrada.";
+    return { message: "En una operacion short, el Stop Loss debe estar por encima de la entrada.", field: elements.stopLoss };
   }
   if (config.side === "short" && config.takeProfit >= config.entry) {
-    return "En una operacion short, el Take Profit debe estar por debajo de la entrada.";
+    return { message: "En una operacion short, el Take Profit debe estar por debajo de la entrada.", field: elements.takeProfit };
   }
   return null;
+}
+
+let formErrorClearTimer = null;
+
+function clearFormError() {
+  if (formErrorClearTimer) {
+    clearTimeout(formErrorClearTimer);
+    formErrorClearTimer = null;
+  }
+  if (elements.analyzeFeedback) {
+    elements.analyzeFeedback.textContent = "";
+    elements.analyzeFeedback.classList.remove("visible");
+  }
+  document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+}
+
+function showFormError(validationError) {
+  const { message, field } = validationError;
+  if (elements.analyzeFeedback) {
+    elements.analyzeFeedback.textContent = message;
+    elements.analyzeFeedback.classList.add("visible");
+  }
+  document.querySelectorAll(".field-error").forEach((el) => el.classList.remove("field-error"));
+  if (field) {
+    const label = field.closest("label") || field;
+    label.classList.add("field-error");
+    try {
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (_) {
+      field.scrollIntoView();
+    }
+    setTimeout(() => {
+      try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
+    }, 350);
+  }
+  if (formErrorClearTimer) clearTimeout(formErrorClearTimer);
+  formErrorClearTimer = setTimeout(clearFormError, 8000);
 }
 
 function getCreateOperationPayload() {
@@ -1047,15 +1085,18 @@ function appendOperationTicks(operationIds, price, capturedAt) {
 
 async function analyzeOperation() {
   if (!currentUser) {
+    showFormError({ message: "Inicia sesion antes de analizar la operacion.", field: null });
     elements.analysisDecision.textContent = "Inicia sesion antes de analizar la operacion.";
     return;
   }
   const validationError = validateTradeForm();
   if (validationError) {
     elements.analysisHeadline.textContent = "Pendiente";
-    elements.analysisDecision.textContent = validationError;
+    elements.analysisDecision.textContent = validationError.message;
+    showFormError(validationError);
     return;
   }
+  clearFormError();
 
   elements.analysisHeadline.textContent = "Analizando...";
   elements.analysisSummary.textContent = "";

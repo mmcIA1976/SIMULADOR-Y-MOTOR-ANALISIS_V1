@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Simulador Trading BTC</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260525-hero3">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div class="hero-title">
+          <div class="hero-meta">
+            <p class="eyebrow">Simulador educativo</p>
+            <span>Crypto training lab</span>
+          </div>
+          <div class="hero-title-row">
+            <span>Operacion</span>
+            <strong>BTC/USDT</strong>
+          </div>
+          <p class="subhead">
+            <span>Precio en vivo</span>
+            <span>Riesgo y objetivo</span>
+            <span>PnL en una sola vista</span>
+          </p>
+        </div>
+        <div class="status-card" id="stateCard">
+          <span class="label">Estado</span>
+          <strong id="stateText">Cargando</strong>
+          <small id="lastUpdate">Esperando primera consulta</small>
+        </div>
+      </section>
+
+      <section class="auth-panel" id="authPanel">
+        <div class="session-profile">
+          <label class="avatar-frame" id="avatarUploadLabel" aria-label="Cambiar avatar">
+            <img class="hidden" id="avatarImage" alt="Avatar de usuario">
+            <span id="avatarInitial">?</span>
+            <input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp">
+          </label>
+          <div>
+            <span class="label">Usuario</span>
+            <strong id="sessionLabel">Sin sesion</strong>
+            <small id="authMessage">Crea una cuenta o inicia sesion.</small>
+          </div>
+        </div>
+        <form class="auth-form" id="authForm">
+          <input id="username" type="text" placeholder="Nombre">
+          <input id="password" type="password" placeholder="Contrasena">
+          <button id="loginButton" type="button">Entrar</button>
+          <button id="registerButton" type="button">Crear</button>
+        </form>
+        <div class="session-actions">
+          <button class="hidden" id="logoutButton" type="button">Salir</button>
+        </div>
+      </section>
+
+      <section class="metrics-grid market-metrics" aria-label="Resumen de mercado">
+        <article class="metric market-price-card">
+          <span>BTC/USDT Binance Spot</span>
+          <strong id="currentPrice">--</strong>
+        </article>
+        <article class="metric operation-live-metric">
+          <span>Variacion</span>
+          <strong id="variation">--</strong>
+        </article>
+        <article class="metric operation-live-metric">
+          <span>PnL aprox.</span>
+          <strong id="pnl">--</strong>
+        </article>
+        <article class="metric operation-live-metric">
+          <span>Exposicion</span>
+          <strong id="exposure">--</strong>
+        </article>
+      </section>
+
+      <section class="wallet-grid" aria-label="Cartera ficticia">
+        <article class="metric">
+          <span>Equity estimado</span>
+          <strong id="walletTotal">--</strong>
+        </article>
+        <article class="metric">
+          <span>Disponible</span>
+          <strong id="walletCash">--</strong>
+        </article>
+        <article class="metric">
+          <span>Margen invertido</span>
+          <strong id="walletInvested">--</strong>
+        </article>
+        <article class="metric">
+          <span>PnL flotante</span>
+          <strong id="walletUnrealized">--</strong>
+        </article>
+        <article class="metric">
+          <span>Operaciones abiertas</span>
+          <strong id="walletOpenOps">--</strong>
+        </article>
+      </section>
+      <p class="wallet-note">
+        Equity estimado = disponible + margen invertido + PnL flotante de las operaciones abiertas al ultimo precio consultado.
+      </p>
+
+      <section class="mode-panel" aria-label="Modo de operacion">
+        <div>
+          <span class="label">Modo de uso</span>
+          <strong id="modeTitle">Entrenamiento</strong>
+          <small id="modeSubtitle">Cartera normal del usuario. Las recargas futuras quedaran registradas.</small>
+        </div>
+        <div class="segmented mode-segmented" aria-label="Modo">
+          <button class="active" id="trainingModeButton" type="button">Entrenamiento</button>
+          <button id="contestModeButton" type="button">Concurso mensual</button>
+        </div>
+      </section>
+
+      <section class="contest-panel hidden" id="contestPanel" aria-label="Concurso mensual">
+        <div class="contest-header">
+          <div>
+            <span class="label">Concurso activo</span>
+            <strong id="contestTitle">Concurso mensual</strong>
+            <small id="contestDates">Fechas pendientes</small>
+          </div>
+          <button id="joinContestButton" type="button">Iniciar concurso del mes</button>
+        </div>
+        <div class="contest-summary-grid">
+          <article>
+            <span>Capital mensual</span>
+            <strong id="contestStartingBalance">--</strong>
+          </article>
+          <article>
+            <span>Disponible concurso</span>
+            <strong id="contestCash">--</strong>
+          </article>
+          <article>
+            <span>PnL total estimado</span>
+            <strong id="contestPnl">--</strong>
+          </article>
+        </div>
+        <div>
+          <h2>Ranking mensual</h2>
+          <div id="contestLeaderboard" class="contest-leaderboard"></div>
+        </div>
+      </section>
+
+      <section class="operation-focus-panel" aria-label="Operacion visible">
+        <div class="focus-control">
+          <div>
+            <span class="label">Operacion visible</span>
+            <strong>La grafica y el analisis cambian con esta seleccion</strong>
+          </div>
+          <label>
+            Seleccionar operacion
+            <select id="operationSelector">
+              <option value="proposal">Nueva operación</option>
+            </select>
+          </label>
+          <button id="newOperationQuickButton" type="button" class="new-operation-capsule">Nueva operacion</button>
+        </div>
+        <div id="selectedOperationDetail" class="operation-detail"></div>
+      </section>
+
+      <section class="workspace">
+        <section class="chart-panel">
+          <div class="chart-header">
+            <div>
+              <h2>Mapa de la operacion</h2>
+              <p id="chartSubtitle">Historial de precio registrado cada 120 segundos.</p>
+              <a id="binanceChartLink" class="external-chart-link" href="https://www.binance.com/es/trade/BTC_USDT?type=spot" target="_blank" rel="noopener noreferrer">
+                Ver grafica completa en Binance Spot
+              </a>
+            </div>
+            <div class="auto-status">
+              <span id="autoStatus">Auto ON</span>
+              <strong id="nextUpdate">--</strong>
+            </div>
+            <div class="legend">
+              <span class="price-dot">Precio</span>
+              <span class="entry-dot">Entrada</span>
+              <span class="risk-dot">Stop</span>
+              <span class="target-dot">Objetivo</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="tradeChart" width="1200" height="640"></canvas>
+          </div>
+        </section>
+
+        <aside class="control-panel">
+          <div class="panel-title">
+            <h2>Parametros</h2>
+            <button id="refreshButton" type="button">Actualizar</button>
+          </div>
+
+          <div class="mode-chip" id="parameterModeChip">Modo entrenamiento</div>
+
+          <label>
+            Activo
+            <select id="symbol">
+              <option value="BTCUSDT">BTC/USDT</option>
+              <option value="ETHUSDT">ETH/USDT</option>
+              <option value="SOLUSDT">SOL/USDT</option>
+              <option value="BNBUSDT">BNB/USDT</option>
+              <option value="XRPUSDT">XRP/USDT</option>
+            </select>
+          </label>
+
+          <label>
+            Marco temporal
+            <select id="timeHorizon" required>
+              <option value="" selected>Selecciona horizonte</option>
+              <option value="intraday_short">Intradía corto · 30 min-4 h</option>
+              <option value="intraday_wide">Intradía amplio · 4-24 h</option>
+              <option value="short_swing">Swing corto · 1-7 días</option>
+            </select>
+            <small class="field-help">El motor cambia pesos, riesgos y confirmaciones segun el tiempo previsto.</small>
+          </label>
+
+          <div class="segmented" aria-label="Direccion">
+            <button class="active" id="longButton" type="button">Long</button>
+            <button id="shortButton" type="button">Short</button>
+          </div>
+
+          <label>
+            Entrada a mercado
+            <input id="entry" type="number" step="0.01" value="76766" readonly>
+            <small class="field-help">Se actualiza con el ultimo precio. Las entradas condicionadas se anadiran como ordenes.</small>
+          </label>
+          <label>
+            Margen
+            <input id="margin" type="number" step="0.01" value="200">
+          </label>
+          <label>
+            Apalancamiento
+            <input id="leverage" type="range" min="1" max="10" step="1" value="10">
+            <output id="leverageValue">x10</output>
+          </label>
+          <label>
+            Stop loss
+            <input id="stopLoss" type="number" step="0.01" placeholder="Define un stop loss">
+          </label>
+          <label>
+            Take profit
+            <input id="takeProfit" type="number" step="0.01" placeholder="Define un take profit">
+          </label>
+
+          <div class="plan-preview" aria-label="Resultado previsto">
+            <article>
+              <span>Si llega a TP</span>
+              <strong id="planTakeProfit">--</strong>
+            </article>
+            <article>
+              <span>Si toca SL</span>
+              <strong id="planStopLoss">--</strong>
+            </article>
+          </div>
+
+          <button id="analyzeButton" type="button">Analizar operacion</button>
+          <button id="startSimulationButton" type="button">Iniciar simulacion</button>
+          <button id="closeSimulationButton" type="button">Cerrar manualmente</button>
+
+          <label>
+            Motivo de cierre
+            <select id="closeReason">
+              <option value="manual">Cierre manual</option>
+              <option value="take_partial">Toma de ganancias</option>
+              <option value="cut_loss">Corte de perdida</option>
+              <option value="emotion">Decision emocional</option>
+              <option value="invalidated">Setup invalidado</option>
+            </select>
+          </label>
+
+          <label>
+            Nota de cierre
+            <input id="closingNote" type="text" maxlength="500" placeholder="Que te hizo cerrar">
+          </label>
+
+          <div class="history-info">
+            <span>Registros guardados</span>
+            <strong id="historyCount">0</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section class="analysis-result" id="analysisResult">
+        <div class="analysis-topline">
+          <div>
+            <span class="label">Analisis previo</span>
+            <strong id="analysisHeadline">Pendiente</strong>
+          </div>
+          <p id="analysisDecision">Inicia sesion y analiza la operacion antes de simular.</p>
+        </div>
+        <div class="analysis-body">
+          <div class="analysis-summary-main">
+            <p class="analysis-summary" id="analysisSummary"></p>
+            <div class="analysis-highlights" id="analysisHighlights"></div>
+            <div class="analysis-keypoints" id="analysisKeypoints"></div>
+          </div>
+          <div class="prob-grid">
+            <div><span>Probabilidad TP</span><b id="tpProbability">--</b></div>
+            <div><span>Probabilidad SL</span><b id="slProbability">--</b></div>
+            <div><span>Rango / sin resolver</span><b id="rangeProbability">--</b></div>
+          </div>
+          <button class="analysis-toggle hidden" id="analysisToggle" type="button">Ver analisis completo</button>
+          <div class="analysis-full hidden" id="analysisFull">
+            <div class="advice-list" id="parameterAdvice"></div>
+            <div class="analysis-interpretation" id="analysisInterpretation"></div>
+            <div class="metric-explain-grid" id="explainedMetrics"></div>
+            <div class="data-sources-box" id="dataSourcesBox"></div>
+            <div class="learning-box" id="learningBox"></div>
+            <div class="reasons-box">
+              <span class="label">Razones, alertas e invalidaciones</span>
+              <ul id="analysisReasons"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="operations-panel">
+        <div class="analysis-topline">
+          <div>
+            <span class="label">Operaciones</span>
+            <strong>Simulaciones y observacion</strong>
+          </div>
+          <p>Si cierras antes de TP/SL, la operacion queda 2 dias en observacion para comparar tu decision contra el plan original.</p>
+        </div>
+        <div id="operationsList" class="operations-list"></div>
+      </section>
+    </main>
+    <aside id="floatingNotice" class="floating-notice hidden" aria-live="polite" aria-atomic="true">
+      <span id="floatingNoticeTitle">Aviso</span>
+      <p id="floatingNoticeBody"></p>
+    </aside>
+
+    <script src="/static/app.js?v=20260526-floating-x4"></script>
+  </body>
+</html>

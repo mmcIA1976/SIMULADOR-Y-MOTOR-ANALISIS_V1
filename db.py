@@ -127,7 +127,10 @@ def connect() -> Iterator[DbSession]:
     if is_postgres(url):
         if psycopg is None:
             raise RuntimeError("Falta dependencia psycopg para usar PostgreSQL.")
-        connection = psycopg.connect(url, row_factory=dict_row)
+        # prepare_threshold=None disables server-side prepared statements,
+        # required for Supabase Transaction Pooler (pgbouncer in transaction mode)
+        # which shares connections across transactions and rejects prepared statements.
+        connection = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
         session = DbSession(connection=connection, engine="postgres")
     else:
         DATA_DIR.mkdir(exist_ok=True)

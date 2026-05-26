@@ -1463,6 +1463,15 @@ async function startSimulation() {
     return;
   }
 
+  // Immediate visual feedback so the user sees the click registered while the
+  // backend round-trip + UI refresh happen.
+  const button = elements.startSimulationButton;
+  const originalLabel = button.textContent;
+  button.classList.add("is-loading");
+  button.disabled = true;
+  button.textContent = "Iniciando simulacion...";
+  elements.analysisDecision.textContent = "Iniciando simulacion...";
+
   try {
     const preview = getCreateOperationPayload();
     const operation = await requestJson("/api/operations", {
@@ -1488,6 +1497,13 @@ async function startSimulation() {
     await loadContest();
   } catch (error) {
     elements.analysisDecision.textContent = error.message;
+  } finally {
+    button.classList.remove("is-loading");
+    button.textContent = originalLabel;
+    // Re-enable only if the simulation slot is still available; subsequent
+    // render passes (updateMetrics / renderOperations) will reconcile this.
+    const openNow = openOperations.filter((op) => (op.mode || "training") === operationMode);
+    button.disabled = openNow.length >= 2;
   }
 }
 

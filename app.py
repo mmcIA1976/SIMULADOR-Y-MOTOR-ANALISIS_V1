@@ -14,7 +14,7 @@ import market_data
 import data_engine
 from analysis_engine import ENGINE_VERSION, TradeProposal, analyze_trade, build_explained_metrics
 from analysis_engine import time_horizon_profile
-from db import connect, init_db, row_to_dict
+from db import connect, init_db, row_to_dict, test_connection
 from learning_engine import apply_learning_modifier
 from security import create_token, hash_password, read_token, verify_password
 
@@ -157,6 +157,7 @@ def set_session_cookie(response: Response, user_id: int) -> None:
 
 @app.on_event("startup")
 def startup() -> None:
+    test_connection()
     init_db()
     migrate_file_avatars_to_database()
     finalize_due_observations()

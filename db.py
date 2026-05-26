@@ -43,13 +43,38 @@ def sqlite_path() -> Path:
 
 
 @dataclass
+class CursorProxy:
+    cursor: object
+    lastrowid: int | None = None
+
+    def fetchone(self):
+        return self.cursor.fetchone()
+
+    def fetchall(self):
+        return self.cursor.fetchall()
+
+    @property
+    def rowcount(self) -> int:
+        return self.cursor.rowcount
+
+
+@dataclass
 class DbSession:
     connection: object
     engine: str
 
     def execute(self, query: str, params: tuple | list | None = None):
         if self.engine == "postgres":
-            return self.connection.execute(self._q(query), self._p(params))
+            pg_query = self._q(query)
+            lastrowid = None
+            if self._should_return_id(pg_query):
+                pg_query = f"{pg_query.rstrip().rstrip(';')} RETURNING id"
+                cursor = self.connection.execute(pg_query, self._p(params))
+                row = cursor.fetchone()
+                if row is not None:
+                    lastrowid = row["id"] if isinstance(row, dict) else row[0]
+                return CursorProxy(cursor=cursor, lastrowid=lastrowid)
+            return self.connection.execute(pg_query, self._p(params))
         if params is None:
             return self.connection.execute(query)
         return self.connection.execute(query, params)
@@ -86,6 +111,11 @@ class DbSession:
         if params is None:
             return ()
         return tuple(params)
+
+    @staticmethod
+    def _should_return_id(query: str) -> bool:
+        lowered = query.strip().lower()
+        return lowered.startswith("insert into ") and " returning " not in lowered
 
 
 @contextmanager

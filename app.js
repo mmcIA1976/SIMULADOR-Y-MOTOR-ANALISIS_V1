@@ -2260,21 +2260,27 @@ function drawSampleSummary(chartHistory, pad, chartHeight) {
 }
 
 function drawTag(text, x, y, bg, fg) {
-  // 1.5x bigger price capsules for better readability.
-  ctx.font = "800 18px Inter, sans-serif";
-  const paddingX = 14;
-  const paddingY = 9;
+  // 1.5x bigger price capsules on desktop; smaller on mobile to prevent overlap.
+  const rect = elements.chart.getBoundingClientRect();
+  const isMobile = rect.width < 560;
+  const fontSize = isMobile ? 13 : 18;
+  const paddingX = isMobile ? 8 : 14;
+  const paddingY = isMobile ? 5 : 9;
+  const boxHeight = isMobile ? 26 : 39;
+  const radius = isMobile ? 6 : 9;
+  const baselineOffset = isMobile ? 11 : 16;
+
+  ctx.font = `800 ${fontSize}px Inter, sans-serif`;
   const metrics = ctx.measureText(text);
   const boxWidth = metrics.width + paddingX * 2;
-  const boxHeight = 39;
-  const safeX = Math.max(8, Math.min(x, elements.chart.getBoundingClientRect().width - boxWidth - 8));
-  const safeY = Math.max(8, Math.min(y, elements.chart.getBoundingClientRect().height - boxHeight - 8));
+  const safeX = Math.max(4, Math.min(x, rect.width - boxWidth - 4));
+  const safeY = Math.max(4, Math.min(y, rect.height - boxHeight - 4));
 
   ctx.fillStyle = bg;
-  roundedRect(safeX, safeY, boxWidth, boxHeight, 9);
+  roundedRect(safeX, safeY, boxWidth, boxHeight, radius);
   ctx.fill();
   ctx.fillStyle = fg;
-  ctx.fillText(text, safeX + paddingX, safeY + paddingY + 16);
+  ctx.fillText(text, safeX + paddingX, safeY + paddingY + baselineOffset);
 }
 
 function roundedRect(x, y, width, height, radius) {

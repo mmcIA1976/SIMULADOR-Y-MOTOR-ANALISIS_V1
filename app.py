@@ -545,13 +545,18 @@ def finalize_due_observations(existing_db=None) -> list[dict]:
 
 
 def finalize_due_observations_with_db(db) -> list[dict]:
+    due_filter = (
+        "observation_until::timestamptz <= CURRENT_TIMESTAMP"
+        if getattr(db, "engine", "sqlite") == "postgres"
+        else "datetime(observation_until) <= datetime('now')"
+    )
     rows = db.execute(
-        """
+        f"""
         SELECT * FROM operations
         WHERE status = 'CLOSED'
           AND observation_status = 'OBSERVING'
           AND observation_until IS NOT NULL
-          AND datetime(observation_until) <= datetime('now')
+          AND {due_filter}
         ORDER BY closed_at ASC
         """
     ).fetchall()

@@ -59,7 +59,7 @@ def compare_counts(sqlite_path: Path, postgres_url: str) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Valida conteos SQLite vs PostgreSQL.")
     parser.add_argument("--sqlite-path", default=str(DEFAULT_SQLITE_PATH))
-    parser.add_argument("--postgres-url", default=os.environ.get("DATABASE_URL", ""))
+    parser.add_argument("--postgres-url", default=os.environ.get("SUPABASE_DATABASE_URL", "") or os.environ.get("DATABASE_URL", ""))
     return parser.parse_args()
 
 

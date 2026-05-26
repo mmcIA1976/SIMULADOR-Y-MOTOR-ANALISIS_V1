@@ -29,10 +29,11 @@ Copia `.env.example` como referencia:
 
 ```text
 DATABASE_URL=sqlite:///data/trading_trainer.db
+SUPABASE_DATABASE_URL=postgresql://USER:PASS@HOST:5432/postgres
 TRADING_TRAINER_SECRET=change-me-before-production
 ```
 
-Para produccion, `TRADING_TRAINER_SECRET` debe ser una clave larga y privada. `DATABASE_URL` soporta SQLite y PostgreSQL.
+Para produccion, `TRADING_TRAINER_SECRET` debe ser una clave larga y privada. La version online debe usar `SUPABASE_DATABASE_URL`; SQLite queda como entorno local o fuente temporal de migracion.
 
 ## Despliegue
 
@@ -51,19 +52,19 @@ Antes de publicar:
 
 ## Migracion SQLite a PostgreSQL
 
-1. Arranca una vez la app con `DATABASE_URL=postgresql://...` para crear tablas.
+1. Aplica `supabase/schema.sql` en el proyecto Supabase.
 2. Ejecuta migracion:
 
 ```powershell
-.\.venv\Scripts\python.exe .\migrate_sqlite_to_postgres.py --sqlite-path .\data\trading_trainer.db --postgres-url "postgresql://USER:PASS@HOST:PORT/DB"
+.\.venv\Scripts\python.exe .\migrate_sqlite_to_postgres.py --sqlite-path .\data\trading_trainer.db --postgres-url "postgresql://USER:PASS@HOST:PORT/postgres"
 ```
 
-3. Reinicia la app apuntando ya a PostgreSQL y verifica datos.
+3. Reinicia la app con `APP_ENV=production` y `SUPABASE_DATABASE_URL`.
 
 Validacion de conteos:
 
 ```powershell
-.\.venv\Scripts\python.exe .\validate_migration_counts.py --sqlite-path .\data\trading_trainer.db --postgres-url "postgresql://USER:PASS@HOST:PORT/DB"
+.\.venv\Scripts\python.exe .\validate_migration_counts.py --sqlite-path .\data\trading_trainer.db --postgres-url "postgresql://USER:PASS@HOST:PORT/postgres"
 ```
 
 ## Validacion rapida

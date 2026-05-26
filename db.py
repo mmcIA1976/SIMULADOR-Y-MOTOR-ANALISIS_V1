@@ -21,6 +21,11 @@ DEFAULT_DATABASE_URL = f"sqlite:///{DATA_DIR / 'trading_trainer.db'}"
 
 
 def database_url() -> str:
+    supabase_url = os.environ.get("SUPABASE_DATABASE_URL", "").strip()
+    if supabase_url:
+        return supabase_url
+    if os.environ.get("APP_ENV", "").lower() == "production":
+        raise RuntimeError("En produccion es obligatorio definir SUPABASE_DATABASE_URL.")
     return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 
@@ -120,6 +125,7 @@ def row_to_dict(row: sqlite3.Row | None) -> dict | None:
 def init_db() -> None:
     with connect() as db:
         id_type = "INTEGER PRIMARY KEY AUTOINCREMENT" if db.engine == "sqlite" else "BIGSERIAL PRIMARY KEY"
+        fk_type = "INTEGER" if db.engine == "sqlite" else "BIGINT"
         blob_type = "BLOB" if db.engine == "sqlite" else "BYTEA"
         text_timestamp = "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" if db.engine == "sqlite" else "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
         db.executescript(
@@ -139,7 +145,7 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS operations (
                 id {id_type},
-                user_id INTEGER NOT NULL,
+                user_id {fk_type} NOT NULL,
                 symbol TEXT NOT NULL,
                 side TEXT NOT NULL CHECK(side IN ('long', 'short')),
                 entry REAL NOT NULL,
@@ -166,14 +172,14 @@ def init_db() -> None:
                 learning_outcome TEXT,
                 learning_summary TEXT,
                 mode TEXT NOT NULL DEFAULT 'training',
-                contest_season_id INTEGER,
+                contest_season_id {fk_type},
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS recommendations (
                 id {id_type},
-                operation_id INTEGER,
-                user_id INTEGER NOT NULL,
+                operation_id {fk_type},
+                user_id {fk_type} NOT NULL,
                 analysis_type TEXT NOT NULL,
                 symbol TEXT NOT NULL,
                 side TEXT NOT NULL,
@@ -198,7 +204,7 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS price_ticks (
                 id {id_type},
-                operation_id INTEGER,
+                operation_id {fk_type},
                 symbol TEXT NOT NULL,
                 price REAL NOT NULL,
                 source TEXT NOT NULL,
@@ -219,8 +225,8 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS contest_entries (
                 id {id_type},
-                season_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
+                season_id {fk_type} NOT NULL,
+                user_id {fk_type} NOT NULL,
                 starting_balance REAL NOT NULL DEFAULT 1000,
                 cash_balance REAL NOT NULL DEFAULT 1000,
                 created_at {text_timestamp},
@@ -231,13 +237,13 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS wallet_events (
                 id {id_type},
-                user_id INTEGER NOT NULL,
+                user_id {fk_type} NOT NULL,
                 mode TEXT NOT NULL,
                 event_type TEXT NOT NULL,
                 amount REAL NOT NULL,
                 balance_after REAL,
-                operation_id INTEGER,
-                contest_season_id INTEGER,
+                operation_id {fk_type},
+                contest_season_id {fk_type},
                 note TEXT,
                 created_at {text_timestamp},
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -261,7 +267,7 @@ def init_db() -> None:
         ensure_column(db, "users", "cash_balance", "REAL NOT NULL DEFAULT 1000")
         ensure_column(db, "users", "avatar_path", "TEXT")
         ensure_column(db, "users", "avatar_mime_type", "TEXT")
-        ensure_column(db, "users", "avatar_data", "BLOB")
+        ensure_column(db, "users", "avatar_data", blob_type)
         ensure_column(db, "users", "avatar_updated_at", "TEXT")
         ensure_column(db, "recommendations", "analysis_json", "TEXT")
         ensure_column(db, "recommendations", "time_horizon", "TEXT NOT NULL DEFAULT 'intraday_short'")

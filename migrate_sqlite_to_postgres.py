@@ -105,8 +105,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--postgres-url",
-        default=os.environ.get("DATABASE_URL", ""),
-        help="URL PostgreSQL destino (postgresql://...).",
+        default=os.environ.get("SUPABASE_DATABASE_URL", "") or os.environ.get("DATABASE_URL", ""),
+        help="URL PostgreSQL/Supabase destino (postgresql://...).",
     )
     return parser.parse_args()
 

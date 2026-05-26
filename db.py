@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import logging
 import os
+import re
+import socket
 import sqlite3
 from dataclasses import dataclass
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
+
+logger = logging.getLogger(__name__)
 
 try:
     import psycopg
@@ -31,6 +36,26 @@ def database_url() -> str:
 
 def is_postgres(url: str) -> bool:
     return url.startswith("postgresql://") or url.startswith("postgres://")
+
+
+def _redact_url(url: str) -> str:
+    """Return the URL with the password replaced by '***' for safe logging."""
+    return re.sub(r"(://[^:]+:)[^@]+(@)", r"\1***\2", url)
+
+
+def _parse_pg_host_port(url: str) -> tuple[str, int]:
+    """Extract (host, port) from a postgresql:// URL."""
+    without_scheme = re.sub(r"^postgres(?:ql)?://", "", url)
+    if "@" in without_scheme:
+        without_scheme = without_scheme.split("@", 1)[1]
+    host_port = without_scheme.split("/")[0].split("?")[0]
+    if ":" in host_port:
+        host, port_str = host_port.rsplit(":", 1)
+        try:
+            return host, int(port_str)
+        except ValueError:
+            return host, 5432
+    return host_port, 5432
 
 
 def sqlite_path() -> Path:
@@ -124,7 +149,23 @@ def connect() -> Iterator[DbSession]:
     if is_postgres(url):
         if psycopg is None:
             raise RuntimeError("Falta dependencia psycopg para usar PostgreSQL.")
-        connection = psycopg.connect(url, row_factory=dict_row)
+        redacted = _redact_url(url)
+        host, port = _parse_pg_host_port(url)
+        logger.info("Conectando a PostgreSQL: %s (host=%s, port=%d)", redacted, host, port)
+        try:
+            connection = psycopg.connect(url, row_factory=dict_row, connect_timeout=10)
+        except Exception as exc:
+            exc_type = type(exc).__name__
+            logger.error(
+                "Error al conectar a PostgreSQL [%s]: %s — URL: %s (host=%s, port=%d)",
+                exc_type,
+                exc,
+                redacted,
+                host,
+                port,
+            )
+            raise
+        logger.info("Conexion a PostgreSQL establecida correctamente (host=%s, port=%d)", host, port)
         session = DbSession(connection=connection, engine="postgres")
     else:
         DATA_DIR.mkdir(exist_ok=True)
@@ -142,6 +183,78 @@ def connect() -> Iterator[DbSession]:
         raise
     finally:
         session.close()
+
+
+def test_connection() -> None:
+    """Validate the database connection at startup and emit detailed diagnostics.
+
+    Performs a DNS resolution check before attempting the full psycopg
+    connection so that network/DNS problems are reported with a clear message
+    rather than a raw ``OperationalError``.
+
+    Raises:
+        RuntimeError: with a descriptive message when the connection cannot be
+            established, so the caller (e.g. the FastAPI startup handler) can
+            surface the problem immediately.
+    """
+    url = database_url()
+    if not is_postgres(url):
+        logger.info("Base de datos SQLite — omitiendo test_connection.")
+        return
+
+    redacted = _redact_url(url)
+    host, port = _parse_pg_host_port(url)
+    logger.info(
+        "Iniciando validacion de conexion a Supabase PostgreSQL — URL: %s (host=%s, port=%d)",
+        redacted,
+        host,
+        port,
+    )
+
+    # Step 1: DNS resolution
+    try:
+        resolved = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+        ip = resolved[0][4][0] if resolved else "<desconocido>"
+        logger.info("DNS resuelto correctamente: %s -> %s", host, ip)
+    except socket.gaierror as exc:
+        msg = (
+            f"Fallo de DNS al resolver '{host}': {exc}. "
+            "Verifica que SUPABASE_DATABASE_URL tenga el hostname correcto y que "
+            "el servicio tenga acceso a internet / DNS externo."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg) from exc
+
+    # Step 2: TCP reachability
+    try:
+        with socket.create_connection((host, port), timeout=5):
+            logger.info("Puerto TCP %s:%d accesible.", host, port)
+    except OSError as exc:
+        msg = (
+            f"No se pudo establecer conexion TCP con '{host}:{port}': {exc}. "
+            "Verifica reglas de firewall, el puerto y que Supabase este activo."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg) from exc
+
+    # Step 3: Full psycopg connection
+    if psycopg is None:
+        raise RuntimeError("Falta dependencia psycopg para usar PostgreSQL.")
+    try:
+        conn = psycopg.connect(url, row_factory=dict_row, connect_timeout=10)
+        conn.close()
+        logger.info(
+            "test_connection exitoso: Supabase PostgreSQL accesible en %s:%d.", host, port
+        )
+    except Exception as exc:
+        exc_type = type(exc).__name__
+        msg = (
+            f"Conexion psycopg fallida [{exc_type}]: {exc} — "
+            f"URL: {redacted} (host={host}, port={port}). "
+            "Verifica las credenciales, el proyecto Supabase y la configuracion de red."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg) from exc
 
 
 def row_to_dict(row: sqlite3.Row | None) -> dict | None:

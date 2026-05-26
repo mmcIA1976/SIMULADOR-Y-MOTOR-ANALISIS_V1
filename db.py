@@ -15,6 +15,30 @@ except Exception:  # pragma: no cover - optional in local SQLite
     psycopg = None
     dict_row = None
 
+try:
+    from psycopg_pool import ConnectionPool
+except Exception:  # pragma: no cover
+    ConnectionPool = None
+
+_PG_POOL = None
+
+
+def _get_pg_pool(url: str):
+    """Lazy-init a process-wide connection pool to avoid per-request TCP+TLS setup."""
+    global _PG_POOL
+    if _PG_POOL is None:
+        if ConnectionPool is None:
+            raise RuntimeError("Falta dependencia psycopg_pool para usar PostgreSQL.")
+        _PG_POOL = ConnectionPool(
+            conninfo=url,
+            min_size=1,
+            max_size=10,
+            kwargs={"row_factory": dict_row, "prepare_threshold": None},
+            open=True,
+            timeout=30,
+        )
+    return _PG_POOL
+
 
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR / "data"
@@ -127,19 +151,21 @@ def connect() -> Iterator[DbSession]:
     if is_postgres(url):
         if psycopg is None:
             raise RuntimeError("Falta dependencia psycopg para usar PostgreSQL.")
-        # prepare_threshold=None disables server-side prepared statements,
-        # required for Supabase Transaction Pooler (pgbouncer in transaction mode)
-        # which shares connections across transactions and rejects prepared statements.
-        connection = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
-        session = DbSession(connection=connection, engine="postgres")
-    else:
-        DATA_DIR.mkdir(exist_ok=True)
-        path = sqlite_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(path)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        session = DbSession(connection=connection, engine="sqlite")
+        # Use a process-wide pool so each request reuses an existing TCP+TLS
+        # connection (Supabase is on another continent: ~150ms RTT, ~400ms TLS handshake).
+        # `pool.connection()` already commits on clean exit, rolls back on exception,
+        # and returns the connection to the pool — do not commit/rollback manually here.
+        pool = _get_pg_pool(url)
+        with pool.connection() as connection:
+            yield DbSession(connection=connection, engine="postgres")
+        return
+    DATA_DIR.mkdir(exist_ok=True)
+    path = sqlite_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    session = DbSession(connection=connection, engine="sqlite")
     try:
         yield session
         session.commit()

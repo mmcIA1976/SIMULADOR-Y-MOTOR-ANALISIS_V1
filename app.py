@@ -1068,14 +1068,16 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 "UPDATE recommendations SET operation_id = ? WHERE id = ? AND user_id = ?",
                 (operation_id, payload.recommendation_id, user["id"]),
             )
-        portfolio = sync_user_cash_balance(db, int(user["id"]))
+        # Compute balance-after locally without re-syncing the whole portfolio:
+        # we already validated cash_balance above and now reserve `payload.margin`.
+        balance_after = round(cash_balance - float(payload.margin), 4)
         record_wallet_event(
             db,
             user_id=int(user["id"]),
             mode=mode,
             event_type="margin_reserved",
             amount=-float(payload.margin),
-            balance_after=float(portfolio[mode]["cash_balance"]),
+            balance_after=balance_after,
             operation_id=operation_id,
             contest_season_id=season_id,
             note="Margen bloqueado al iniciar operacion simulada.",
@@ -1096,34 +1098,62 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
         operations = [row_to_dict(row) for row in rows]
         for operation in operations:
             ensure_closed_exit_window_ticks(db, operation)
-            recommendation = row_to_dict(
-                db.execute(
-                    """
-                    SELECT * FROM recommendations
-                    WHERE operation_id = ? AND user_id = ?
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                    """,
-                    (operation["id"], user["id"]),
-                ).fetchone()
-            )
-            operation["recommendation"] = format_recommendation(recommendation, operation)
             operation["exit_evidence"] = parse_exit_evidence(operation.get("exit_evidence_json"))
-            ticks = db.execute(
-                """
-                SELECT price, source, captured_at
-                FROM (
-                    SELECT price, source, captured_at
-                    FROM price_ticks
-                    WHERE operation_id = ?
-                    ORDER BY captured_at DESC
-                    LIMIT 240
-                )
-                ORDER BY captured_at ASC
+            operation["recommendation"] = None
+            operation["ticks"] = []
+
+        if operations:
+            op_ids = [op["id"] for op in operations]
+            placeholders = ",".join(["?"] * len(op_ids))
+
+            # Batch fetch latest recommendation per operation (1 query instead of N).
+            rec_rows = db.execute(
+                f"""
+                SELECT DISTINCT ON (operation_id) *
+                FROM recommendations
+                WHERE user_id = ? AND operation_id IN ({placeholders})
+                ORDER BY operation_id, created_at DESC
+                """ if db.engine == "postgres" else f"""
+                SELECT r.*
+                FROM recommendations r
+                WHERE r.user_id = ? AND r.operation_id IN ({placeholders})
+                  AND r.created_at = (
+                    SELECT MAX(created_at) FROM recommendations
+                    WHERE operation_id = r.operation_id AND user_id = r.user_id
+                  )
                 """,
-                (operation["id"],),
+                (user["id"], *op_ids),
             ).fetchall()
-            operation["ticks"] = [row_to_dict(tick) for tick in ticks]
+            rec_by_op = {row_to_dict(r)["operation_id"]: row_to_dict(r) for r in rec_rows}
+
+            # Batch fetch last 240 ticks per operation (1 query instead of N).
+            tick_rows = db.execute(
+                f"""
+                SELECT operation_id, price, source, captured_at
+                FROM (
+                    SELECT operation_id, price, source, captured_at,
+                           ROW_NUMBER() OVER (PARTITION BY operation_id ORDER BY captured_at DESC) AS rn
+                    FROM price_ticks
+                    WHERE operation_id IN ({placeholders})
+                ) ranked
+                WHERE rn <= 240
+                ORDER BY operation_id, captured_at ASC
+                """,
+                tuple(op_ids),
+            ).fetchall()
+            ticks_by_op: dict = {}
+            for t in tick_rows:
+                td = row_to_dict(t)
+                ticks_by_op.setdefault(td["operation_id"], []).append({
+                    "price": td["price"],
+                    "source": td["source"],
+                    "captured_at": td["captured_at"],
+                })
+
+            for op in operations:
+                rec = rec_by_op.get(op["id"])
+                op["recommendation"] = format_recommendation(rec, op) if rec else None
+                op["ticks"] = ticks_by_op.get(op["id"], [])
     return {"operations": operations}
 
 

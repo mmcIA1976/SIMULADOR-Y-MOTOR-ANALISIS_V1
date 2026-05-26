@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 from dataclasses import dataclass
 from contextlib import contextmanager
@@ -103,8 +104,10 @@ class DbSession:
 
     @staticmethod
     def _q(query: str) -> str:
-        # Keep app queries unchanged in this migration phase (? -> %s).
-        return query.replace("?", "%s")
+        # Translate SQLite syntax to PostgreSQL where needed.
+        translated = query.replace("?", "%s")
+        translated = re.sub(r"\bGROUP_CONCAT\b", "string_agg", translated, flags=re.IGNORECASE)
+        return translated
 
     @staticmethod
     def _p(params: tuple | list | None):

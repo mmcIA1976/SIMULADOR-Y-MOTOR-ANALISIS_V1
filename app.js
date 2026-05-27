@@ -77,6 +77,10 @@ const elements = {
   learningBox: document.querySelector("#learningBox"),
   analysisReasons: document.querySelector("#analysisReasons"),
   operationSelector: document.querySelector("#operationSelector"),
+  operationSelectorMobile: document.querySelector("#operationSelectorMobile"),
+  operationSelectorMobileLabel: document.querySelector("#operationSelectorMobile .op-select-mobile-label"),
+  operationSelectorSheet: document.querySelector("#operationSelectorSheet"),
+  operationSelectorSheetList: document.querySelector("#operationSelectorSheet .op-sheet-list"),
   newOperationQuickButton: document.querySelector("#newOperationQuickButton"),
   operationsList: document.querySelector("#operationsList"),
   selectedOperationDetail: document.querySelector("#selectedOperationDetail"),
@@ -1870,6 +1874,36 @@ function renderOperationSelector() {
   elements.operationSelector.value = selectedValue;
   elements.operationSelector.disabled = false;
   elements.newOperationQuickButton.disabled = false;
+  renderOperationSelectorMobile(selectedValue);
+}
+
+function renderOperationSelectorMobile(selectedValue) {
+  if (!elements.operationSelectorSheetList || !elements.operationSelectorMobileLabel) return;
+  const items = [
+    { value: "proposal", label: "Nueva operacion", isOpen: false, mode: null },
+    ...allOperations.map((operation) => {
+      const status = getOperationVisualStatus(operation).label.replace(`#${operation.id}`, "").trim().toLowerCase();
+      const mode = operation.mode || "training";
+      const modeLabel = mode === "contest" ? "concurso" : "entrenamiento";
+      const horizon = timeHorizonLabel(operation.time_horizon || operation.recommendation?.time_horizon || "intraday_short").split(" · ")[0].toLowerCase();
+      const isOpen = String(operation.status).toUpperCase() === "OPEN";
+      const label = `#${operation.id} · ${operation.symbol} · ${operation.side.toUpperCase()} · ${modeLabel} · ${horizon} · ${status}`;
+      return { value: String(operation.id), label, isOpen, mode };
+    }),
+  ];
+  elements.operationSelectorSheetList.innerHTML = items
+    .map((item) => {
+      const cls = ["op-sheet-item"];
+      if (item.isOpen) {
+        cls.push("is-open");
+        cls.push(item.mode === "contest" ? "is-contest" : "is-training");
+      }
+      const selected = item.value === selectedValue ? ' aria-selected="true"' : "";
+      return `<li class="${cls.join(" ")}" role="option" data-value="${item.value}"${selected}>${escapeHtml(item.label)}</li>`;
+    })
+    .join("");
+  const current = items.find((i) => i.value === selectedValue) || items[0];
+  elements.operationSelectorMobileLabel.textContent = current.label;
 }
 
 function renderSelectedOperationDetail(operation) {
@@ -2492,6 +2526,37 @@ elements.operationsList.addEventListener("click", (event) => {
     selectedOperationId = Number(closeButton.dataset.operationId);
     closeOperationById(selectedOperationId);
   }
+});
+function openOperationSheet() {
+  if (!elements.operationSelectorSheet) return;
+  elements.operationSelectorSheet.hidden = false;
+  elements.operationSelectorMobile?.setAttribute("aria-expanded", "true");
+  document.body.style.overflow = "hidden";
+}
+function closeOperationSheet() {
+  if (!elements.operationSelectorSheet) return;
+  elements.operationSelectorSheet.hidden = true;
+  elements.operationSelectorMobile?.setAttribute("aria-expanded", "false");
+  document.body.style.overflow = "";
+}
+elements.operationSelectorMobile?.addEventListener("click", () => {
+  if (elements.operationSelector.disabled) return;
+  openOperationSheet();
+});
+elements.operationSelectorSheet?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (target.closest(".op-sheet-backdrop") || target.closest(".op-sheet-close")) {
+    closeOperationSheet();
+    return;
+  }
+  const item = target.closest(".op-sheet-item");
+  if (!item) return;
+  const value = item.dataset.value;
+  if (elements.operationSelector.value !== value) {
+    elements.operationSelector.value = value;
+    elements.operationSelector.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  closeOperationSheet();
 });
 elements.operationSelector.addEventListener("change", () => {
   saveProposalDraft();

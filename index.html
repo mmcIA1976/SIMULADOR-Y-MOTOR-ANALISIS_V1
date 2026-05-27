@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador Trading BTC</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260527-opcolors2">
+    <link rel="stylesheet" href="/static/styles.css?v=20260527-opmobile">
   </head>
   <body>
     <main class="app-shell">
@@ -149,10 +149,26 @@
           </div>
           <label>
             Seleccionar operacion
-            <select id="operationSelector">
-              <option value="proposal">Nueva operación</option>
-            </select>
+            <div class="op-select-wrap">
+              <select id="operationSelector">
+                <option value="proposal">Nueva operación</option>
+              </select>
+              <button id="operationSelectorMobile" type="button" class="op-select-mobile" aria-haspopup="listbox" aria-expanded="false">
+                <span class="op-select-mobile-label">Nueva operación</span>
+                <span class="op-select-mobile-caret" aria-hidden="true">▾</span>
+              </button>
+            </div>
           </label>
+          <div id="operationSelectorSheet" class="op-sheet" hidden>
+            <div class="op-sheet-backdrop"></div>
+            <div class="op-sheet-panel" role="listbox" aria-label="Seleccionar operacion">
+              <header class="op-sheet-header">
+                <strong>Seleccionar operacion</strong>
+                <button type="button" class="op-sheet-close" aria-label="Cerrar">×</button>
+              </header>
+              <ul class="op-sheet-list"></ul>
+            </div>
+          </div>
           <button id="newOperationQuickButton" type="button" class="new-operation-capsule">Nueva operacion</button>
         </div>
         <div id="selectedOperationDetail" class="operation-detail"></div>
@@ -331,6 +347,6 @@
       <p id="floatingNoticeBody"></p>
     </aside>
 
-    <script src="/static/app.js?v=20260527-opcolors2"></script>
+    <script src="/static/app.js?v=20260527-opmobile"></script>
   </body>
 </html>

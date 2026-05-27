@@ -2337,14 +2337,131 @@ select.field-error {
     width: 100%;
   }
 
-  /* Focus control (operation selector area) — vertical, button full width */
+  /* Focus control (operation selector area) — vertical, clean, no nested
+     "card-in-card" look. Strip the gradient/border from the label that
+     wrapped the native select (the native select is hidden on mobile and
+     replaced by .op-select-mobile, so the framed label no longer makes
+     visual sense). Centered text, full-width controls, consistent rhythm. */
+  .operation-focus-panel {
+    padding: 14px 12px;
+  }
   .focus-control {
-    gap: 10px;
+    gap: 12px;
+    text-align: center;
+  }
+  .focus-control > div:first-child {
+    text-align: center;
+  }
+  .focus-control > div:first-child .label {
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+  .focus-control > div:first-child strong {
+    font-size: 0.98rem;
+    line-height: 1.35;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .focus-control label {
+    display: grid;
+    gap: 8px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+  }
+  .op-select-mobile {
+    width: 100%;
+    min-height: 52px;
+    border: 1px solid rgba(31, 122, 140, 0.38);
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px 14px;
+    color: var(--ink);
+    font-size: 1rem;
+    font-weight: 800;
   }
   .new-operation-capsule {
     width: 100%;
-    min-height: 56px;
-    font-size: 0.98rem;
+    min-height: 52px;
+    border-radius: 8px;
+    font-size: 1rem;
+    padding: 0 14px;
+    box-shadow: none;
+    background: linear-gradient(140deg, rgba(31, 122, 140, 0.18), rgba(246, 168, 35, 0.14)), #ffffff;
+  }
+  /* Hide the always-empty selectedOperationDetail gap when no operation */
+  .operation-detail:empty {
+    display: none;
+  }
+
+  /* Visual rhythm: every metric/article inside any grid centers its content */
+  .metrics-grid .metric,
+  .wallet-grid .metric,
+  .detail-grid article,
+  .contest-summary-grid article,
+  .exit-evidence-grid article {
+    text-align: left;
+    padding: 12px 14px;
+  }
+  .metrics-grid .metric span,
+  .wallet-grid .metric span,
+  .detail-grid article span {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* Hero status card: center the "Estado / SIN SESION / fecha" */
+  .status-card {
+    text-align: center;
+  }
+
+  /* Mode panel — center each block */
+  .mode-panel > div { text-align: center; }
+  .mode-panel small { font-size: 0.88rem; line-height: 1.35; }
+  .segmented {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: 6px;
+  }
+  .segmented button { min-height: 44px; }
+
+  /* Action buttons inside control-panel — primary visual hierarchy */
+  .control-panel button:not(.segmented button) {
+    width: 100%;
+    min-height: 46px;
+  }
+  .control-panel label { display: grid; gap: 6px; }
+  .control-panel input,
+  .control-panel select {
+    width: 100%;
+  }
+
+  /* Subhead capsules — let them flow naturally */
+  .subhead {
+    justify-content: center;
+  }
+
+  /* Hero meta — center on small screens */
+  .hero-meta { justify-content: center; }
+  .hero-title { text-align: center; }
+  .hero-title-row { justify-content: center; }
+
+  /* Panel title on the control aside — title left, refresh button below full */
+  .panel-title button { width: 100%; }
+
+  /* Wallet note */
+  .wallet-note {
+    padding: 0 4px;
+    font-size: 0.84rem;
+    text-align: center;
   }
 
   /* Metric cards — numbers must wrap instead of clipping */

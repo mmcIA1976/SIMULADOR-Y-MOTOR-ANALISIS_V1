@@ -2059,8 +2059,10 @@ function drawChart() {
   // Responsive paddings: on narrow screens the side gutters were eating ~55%
   // of the canvas width, squashing the curve and overlapping axis labels.
   const isNarrow = width < 560;
+  // On mobile the left gutter was pure empty space (Y-axis labels live on the
+  // right edge). Shrink it so the curve spans almost the full width.
   const pad = isNarrow
-    ? { top: 22, right: 64, bottom: 38, left: 40 }
+    ? { top: 20, right: 58, bottom: 30, left: 10 }
     : { top: 28, right: 124, bottom: 46, left: 58 };
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;

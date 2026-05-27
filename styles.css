@@ -1677,11 +1677,15 @@ canvas {
 @media (max-width: 620px) {
   .chart-wrap {
     min-height: 0;
+    margin: 0;
   }
   canvas {
-    height: 56vh;
-    min-height: 280px;
-    max-height: 440px;
+    height: 72vh;
+    min-height: 360px;
+    max-height: 620px;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
   }
 }
 
@@ -2023,11 +2027,14 @@ select.field-error {
   }
 
   .chart-panel {
-    padding: 10px 6px;
+    padding: 10px 0 6px;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
   }
 
-  .chart-wrap {
-    margin: 0 -2px;
+  .chart-panel > .chart-header {
+    padding: 0 10px;
   }
 
   /* Hide the page scrollbar on touch — the user scrolls with the finger and

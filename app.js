@@ -1860,9 +1860,10 @@ function renderOperationSelector() {
       // Native <option> only supports background-color and color (and only on
       // Chromium/Firefox desktop), so we encode the mode color as the row color.
       const isOpen = String(operation.status).toUpperCase() === "OPEN";
-      const modeClass = mode === "contest" ? "is-contest" : "is-training";
-      const openClass = isOpen ? " is-open" : "";
-      return `<option class="op-opt ${modeClass}${openClass}" value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(status)}</option>`;
+      const classes = isOpen
+        ? ` class="op-opt is-open ${mode === "contest" ? "is-contest" : "is-training"}"`
+        : "";
+      return `<option${classes} value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(status)}</option>`;
     }),
   ];
   elements.operationSelector.innerHTML = options.join("");

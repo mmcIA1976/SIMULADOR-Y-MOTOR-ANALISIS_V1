@@ -1952,25 +1952,17 @@ canvas {
   }
 }
 
-#operationSelector option.op-opt {
-  font-weight: 800;
-  padding: 4px 6px;
-}
-
-#operationSelector option.op-opt.is-contest {
-  color: #c58a2b;
-}
-
-#operationSelector option.op-opt.is-training {
-  color: #11324a;
-}
-
 #operationSelector option.op-opt.is-open {
   background-color: #d6f5e1;
+  font-weight: 800;
 }
 
 #operationSelector option.op-opt.is-open.is-contest {
-  background-color: #fff4d1;
+  color: #c58a2b;
+}
+
+#operationSelector option.op-opt.is-open.is-training {
+  color: #11324a;
 }
 
 .analyze-feedback {

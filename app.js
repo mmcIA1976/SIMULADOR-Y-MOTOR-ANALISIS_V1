@@ -1851,10 +1851,18 @@ function renderOperationSelector() {
     `<option value="proposal">Nueva operacion</option>`,
     ...allOperations.map((operation) => {
       const status = getOperationVisualStatus(operation).label.replace(`#${operation.id}`, "").trim().toLowerCase();
-      const modeLabel = (operation.mode || "training") === "contest" ? "concurso" : "entrenamiento";
+      const mode = operation.mode || "training";
+      const modeLabel = mode === "contest" ? "concurso" : "entrenamiento";
       const horizon = timeHorizonLabel(operation.time_horizon || operation.recommendation?.time_horizon || "intraday_short").split(" · ")[0].toLowerCase();
       const selected = String(operation.id) === selectedValue ? " selected" : "";
-      return `<option value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(status)}</option>`;
+      // Visual cues: light-green background for OPEN operations, yellow text
+      // for contest mode and dark blue for training mode — quick at-a-glance ID.
+      // Native <option> only supports background-color and color (and only on
+      // Chromium/Firefox desktop), so we encode the mode color as the row color.
+      const isOpen = String(operation.status).toUpperCase() === "OPEN";
+      const modeClass = mode === "contest" ? "is-contest" : "is-training";
+      const openClass = isOpen ? " is-open" : "";
+      return `<option class="op-opt ${modeClass}${openClass}" value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(status)}</option>`;
     }),
   ];
   elements.operationSelector.innerHTML = options.join("");

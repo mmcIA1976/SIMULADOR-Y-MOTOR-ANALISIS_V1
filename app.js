@@ -103,6 +103,7 @@ let liveTimerId = null;
 let countdownId = null;
 let nextUpdateAt = null;
 let isFetching = false;
+let pendingManualFetch = false;
 let currentPrice = null;
 let currentUser = null;
 let lastAnalysis = null;
@@ -784,8 +785,15 @@ function updateCountdown() {
     return;
   }
 
-  const remainingMs = Math.max(0, nextUpdateAt - Date.now());
-  elements.nextUpdate.textContent = `Proxima en ${formatSeconds(Math.ceil(remainingMs / 1000))}`;
+  const remainingMs = nextUpdateAt - Date.now();
+  // Self-heal: if the scheduled setTimeout was throttled (background tab) or
+  // never fired and we're > 2s past due with no fetch in flight, kick one now
+  // so the countdown never gets visually stuck at 0:00.
+  if (remainingMs <= -2000 && !isFetching) {
+    fetchPrice({ resetTimer: true, record: true });
+    return;
+  }
+  elements.nextUpdate.textContent = `Proxima en ${formatSeconds(Math.max(0, Math.ceil(remainingMs / 1000)))}`;
 }
 
 function scheduleNextFetch() {
@@ -1000,6 +1008,17 @@ function updatePlanPreview(config) {
 
 async function fetchPrice({ resetTimer = false, record = true } = {}) {
   if (isFetching) {
+    // Critical: don't drop the 120s schedule if an auto tick collides with an
+    // in-flight live fetch — otherwise the countdown stays frozen forever.
+    if (resetTimer) {
+      nextUpdateAt = Date.now() + UPDATE_INTERVAL_MS;
+      updateCountdown();
+    }
+    // Manual recording requests (refresh button) queue and run as soon as the
+    // current fetch finishes, so the user's click is never silently ignored.
+    if (record) {
+      pendingManualFetch = true;
+    }
     return;
   }
 
@@ -1059,6 +1078,11 @@ async function fetchPrice({ resetTimer = false, record = true } = {}) {
       scheduleNextFetch();
     } else if (!record) {
       scheduleLivePriceFetch();
+    }
+    // Drain a queued manual refresh that arrived while we were busy.
+    if (pendingManualFetch) {
+      pendingManualFetch = false;
+      setTimeout(() => fetchPrice({ resetTimer: true, record: true }), 50);
     }
   }
 }
@@ -2406,7 +2430,27 @@ elements.symbol.addEventListener("change", () => {
     loadRecentMarketHistory();
   }
 });
-elements.refreshButton.addEventListener("click", () => fetchPrice({ resetTimer: true, record: true }));
+elements.refreshButton.addEventListener("click", async () => {
+  const button = elements.refreshButton;
+  const originalLabel = button.textContent;
+  button.classList.add("is-loading");
+  button.disabled = true;
+  button.textContent = "Actualizando...";
+  try {
+    await fetchPrice({ resetTimer: true, record: true });
+    // If the call was queued because another fetch was in-flight, wait for the
+    // drained follow-up so the button stays in "loading" until fresh data lands.
+    let guard = 0;
+    while ((isFetching || pendingManualFetch) && guard < 80) {
+      await new Promise((r) => setTimeout(r, 100));
+      guard += 1;
+    }
+  } finally {
+    button.classList.remove("is-loading");
+    button.textContent = originalLabel;
+    button.disabled = false;
+  }
+});
 elements.loginButton.addEventListener("click", () => authenticate("login"));
 elements.registerButton.addEventListener("click", () => authenticate("register"));
 elements.authForm.addEventListener("submit", (event) => {

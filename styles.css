@@ -2201,13 +2201,34 @@ select.field-error {
   .focus-control,
   .analysis-topline,
   .analysis-body,
+  .analysis-highlights,
+  .advice-list,
+  .interpretation-summary-grid,
+  .learning-grid,
   .prob-grid,
   .metric-explain-grid,
   .contest-summary-grid,
   .exit-evidence-grid,
-  .market-metrics {
+  .market-metrics,
+  .detail-grid,
+  .detail-grid.compact,
+  .operation-row,
+  .evidence-item {
     grid-template-columns: 1fr !important;
     gap: 10px;
+  }
+  /* Segmented toggles (Entrenamiento/Concurso) keep 2 cols but stretch */
+  .segmented {
+    width: 100%;
+  }
+  /* Each metric/article inside any grid never narrower than parent */
+  .detail-grid article,
+  .metrics-grid .metric,
+  .wallet-grid .metric,
+  .contest-summary-grid article,
+  .exit-evidence-grid article {
+    min-width: 0;
+    width: 100%;
   }
 
   .hero {

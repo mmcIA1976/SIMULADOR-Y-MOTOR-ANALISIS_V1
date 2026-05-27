@@ -2147,10 +2147,11 @@ select.field-error {
 }
 
 @media (max-width: 620px) {
-  /* Hard cap the viewport so no descendant can spawn horizontal scroll.
-     Box-sizing is already border-box globally, so the universal max-width
-     on direct app-shell children is safe and prevents stray fixed widths
-     from leaking past the screen edge. */
+  /* === Anti-overflow nuclear option ===
+     Grid/flex items default to min-width: auto, which means an unbreakable
+     token (a price, a symbol, a long word) expands the track beyond the
+     container. We zero that out for EVERY element, force wrapping, and cap
+     widths so nothing can ever exceed the viewport. */
   html, body {
     max-width: 100vw;
     overflow-x: hidden;
@@ -2159,34 +2160,23 @@ select.field-error {
     width: 100%;
     max-width: 100vw;
     padding: 10px 8px 24px;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
-  .app-shell section,
-  .app-shell article,
-  .app-shell header,
-  .app-shell footer,
-  .app-shell div,
-  .app-shell form,
-  .app-shell label,
-  .app-shell p,
-  .app-shell strong,
-  .app-shell span,
-  .app-shell button,
-  .app-shell input,
-  .app-shell select,
-  .app-shell textarea {
-    max-width: 100%;
+  .app-shell, .app-shell *, .app-shell *::before, .app-shell *::after {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: normal !important;
   }
-  /* Long words / urls break instead of overflowing. */
-  .app-shell, .app-shell * {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
+  /* But keep tables/code scrollable inside their own wrapper */
+  .tick-table-wrap { overflow-x: auto !important; }
+  .tick-table { min-width: 720px !important; max-width: none !important; }
+  .tick-table th, .tick-table td { white-space: normal !important; }
   img, canvas, svg, video {
     max-width: 100% !important;
     height: auto;
   }
-  .tick-table-wrap,
   pre, code {
     max-width: 100%;
     overflow-x: auto;

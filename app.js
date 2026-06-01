@@ -402,6 +402,14 @@ function fetchVisibleOperationPrice(operation) {
   fetchPrice({ record: false, symbolOverride: operation.symbol });
 }
 
+function getActivePriceSymbol() {
+  const selectedOperation = getSelectedOperation();
+  if (selectedOperation?.symbol) {
+    return normalizeSymbol(selectedOperation.symbol);
+  }
+  return normalizeSymbol(elements.symbol.value);
+}
+
 function getDisplayContext() {
   if (!currentUser) {
     return {
@@ -1111,7 +1119,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
 
   try {
     const data = await requestJson(`/api/price?symbol=${encodeURIComponent(symbol)}&record=${record ? "true" : "false"}`);
-    if (normalizeSymbol(elements.symbol.value) !== symbol) {
+    if (getActivePriceSymbol() !== symbol) {
       return;
     }
 

@@ -30,7 +30,7 @@ COINGECKO_MARKETS_URL = (
 )
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
-_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[-1]
+_preferred_spot_base_by_symbol: dict[str, str] = {}
 
 
 def get_json(url: str) -> object:
@@ -46,11 +46,12 @@ def get_json_optional(url: str) -> object | None:
         return None
 
 
-def get_spot_json(path: str) -> object:
-    global _preferred_spot_base_url
+def get_spot_json(path: str, symbol: str | None = None) -> object:
+    safe_symbol = (symbol or "").upper()
+    preferred = _preferred_spot_base_by_symbol.get(safe_symbol, BINANCE_SPOT_BASE_URLS[-1])
     last_error: Exception | None = None
-    candidate_bases = (_preferred_spot_base_url,) + tuple(
-        base for base in BINANCE_SPOT_BASE_URLS if base != _preferred_spot_base_url
+    candidate_bases = (preferred,) + tuple(
+        base for base in BINANCE_SPOT_BASE_URLS if base != preferred
     )
     for base_url in candidate_bases:
         url = f"{base_url}{path}"
@@ -58,16 +59,17 @@ def get_spot_json(path: str) -> object:
         try:
             with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-            _preferred_spot_base_url = base_url
+            if safe_symbol:
+                _preferred_spot_base_by_symbol[safe_symbol] = base_url
             return payload
         except Exception as exc:
             last_error = exc
     raise RuntimeError(f"No se pudo consultar Binance Spot para {path}: {last_error}")
 
 
-def get_spot_json_optional(path: str) -> object | None:
+def get_spot_json_optional(path: str, symbol: str | None = None) -> object | None:
     try:
-        return get_spot_json(path)
+        return get_spot_json(path, symbol=symbol)
     except Exception:
         return None
 
@@ -89,19 +91,19 @@ def get_klines(
         path = f"{path}&startTime={start_time_ms}"
     if end_time_ms is not None:
         path = f"{path}&endTime={end_time_ms}"
-    payload = get_spot_json(path)
+    payload = get_spot_json(path, symbol=symbol)
     return payload if isinstance(payload, list) else []
 
 
 def get_depth(symbol: str) -> dict:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    payload = get_spot_json_optional(BINANCE_DEPTH_PATH.format(symbol=safe_symbol))
+    payload = get_spot_json_optional(BINANCE_DEPTH_PATH.format(symbol=safe_symbol), symbol=symbol)
     return payload if isinstance(payload, dict) else {"bids": [], "asks": []}
 
 
 def get_24h_ticker(symbol: str) -> dict:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    payload = get_spot_json_optional(BINANCE_TICKER_24H_PATH.format(symbol=safe_symbol))
+    payload = get_spot_json_optional(BINANCE_TICKER_24H_PATH.format(symbol=safe_symbol), symbol=symbol)
     return payload if isinstance(payload, dict) else {}
 
 
@@ -118,7 +120,7 @@ def get_agg_trades(
         path = f"{path}&startTime={start_time_ms}"
     if end_time_ms is not None:
         path = f"{path}&endTime={end_time_ms}"
-    data = get_spot_json_optional(path)
+    data = get_spot_json_optional(path, symbol=symbol)
     return data if isinstance(data, list) else []
 
 

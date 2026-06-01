@@ -19,10 +19,20 @@ from datetime import datetime
 BINANCE_SPOT_BASE_URLS = (
     "https://api.binance.com",
     "https://api1.binance.com",
-    "https://api.binance.us",
+    "https://api2.binance.com",
+    "https://api3.binance.com",
 )
 BINANCE_SPOT_TIMEOUT_SECONDS = 4.5
-_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[-1]
+_preferred_spot_base_by_symbol: dict[str, str] = {}
+
+
+def _candidate_spot_bases(symbol: str) -> tuple[str, ...]:
+    preferred = _preferred_spot_base_by_symbol.get(symbol.upper(), BINANCE_SPOT_BASE_URLS[-1])
+    return (preferred,) + tuple(base for base in BINANCE_SPOT_BASE_URLS if base != preferred)
+
+
+def _remember_spot_base(symbol: str, base_url: str) -> None:
+    _preferred_spot_base_by_symbol[symbol.upper()] = base_url
 MAX_LEVERAGE = 10
 
 
@@ -78,24 +88,36 @@ def parse_args() -> tuple[TradeConfig, bool]:
 
 
 def fetch_binance_price(symbol: str) -> float:
-    global _preferred_spot_base_url
     last_error: Exception | None = None
-    safe_symbol = urllib.parse.quote(symbol)
-    candidate_bases = (_preferred_spot_base_url,) + tuple(
-        base for base in BINANCE_SPOT_BASE_URLS if base != _preferred_spot_base_url
-    )
+    normalized_symbol = symbol.upper()
+    safe_symbol = urllib.parse.quote(normalized_symbol)
+    candidate_bases = _candidate_spot_bases(normalized_symbol)
     for base_url in candidate_bases:
-        url = f"{base_url}/api/v3/ticker/price?symbol={safe_symbol}"
-        request = urllib.request.Request(url, headers={"User-Agent": "trading-simulator/1.0"})
+        # Prefer bookTicker (bid/ask) for more reactive updates than last trade.
+        book_url = f"{base_url}/api/v3/ticker/bookTicker?symbol={safe_symbol}"
+        request = urllib.request.Request(book_url, headers={"User-Agent": "trading-simulator/1.0"})
         try:
             with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-            _preferred_spot_base_url = base_url
+            bid = float(payload.get("bidPrice", 0))
+            ask = float(payload.get("askPrice", 0))
+            if bid > 0 and ask > 0:
+                _remember_spot_base(normalized_symbol, base_url)
+                return (bid + ask) / 2
+        except Exception as exc:
+            last_error = exc
+
+        ticker_url = f"{base_url}/api/v3/ticker/price?symbol={safe_symbol}"
+        request = urllib.request.Request(ticker_url, headers={"User-Agent": "trading-simulator/1.0"})
+        try:
+            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            _remember_spot_base(normalized_symbol, base_url)
             return float(payload["price"])
         except Exception as exc:
             last_error = exc
 
-    raise RuntimeError(f"No se pudo consultar precio de {symbol}: {last_error}")
+    raise RuntimeError(f"No se pudo consultar precio de {normalized_symbol}: {last_error}")
 
 
 def calculate_trade_state(config: TradeConfig, current_price: float) -> tuple[float, float, str]:

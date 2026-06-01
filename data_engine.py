@@ -93,6 +93,28 @@ def summarize_timeframe(candles: CandleSet, current_price: float) -> dict:
     lows = candles.lows
     volumes = candles.volumes
     taker_buy_volumes = candles.taker_buy_volumes
+    if not closes or not highs or not lows or not volumes or not taker_buy_volumes:
+        return {
+            "interval": candles.interval,
+            "ema_9": current_price,
+            "ema_21": current_price,
+            "ema_50": current_price,
+            "ema_200": current_price,
+            "rsi_14": 50.0,
+            "atr_14": 0.0,
+            "atr_pct": 0.0,
+            "recent_high": current_price,
+            "recent_low": current_price,
+            "recent_range_pct": 0.0,
+            "volume_ratio": 1.0,
+            "taker_buy_ratio": 0.5,
+            "last_body_pct": 0.0,
+            "position_in_recent_range": 0.5,
+            "distance_to_recent_high_pct": 0.0,
+            "distance_to_recent_low_pct": 0.0,
+            "price_vs_ema_21_pct": 0.0,
+            "ema_stack": "mixed",
+        }
     ema_9 = ema(closes[-80:], 9)
     ema_21 = ema(closes[-100:], 21)
     ema_50 = ema(closes[-120:], 50)

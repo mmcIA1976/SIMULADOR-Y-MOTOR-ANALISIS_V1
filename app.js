@@ -112,6 +112,7 @@ let countdownId = null;
 let nextUpdateAt = null;
 let isFetching = false;
 let pendingManualFetch = false;
+let pendingLiveFetchSymbol = null;
 let currentPrice = null;
 let currentPriceSymbol = "BTCUSDT";
 let activeHistorySymbol = "BTCUSDT";
@@ -150,7 +151,7 @@ function getConfig() {
 }
 
 function syncMarketEntry() {
-  if (entryMode !== "market" || selectedOperationId !== null || !Number.isFinite(currentPrice)) {
+  if (entryMode !== "market" || selectedOperationId !== null || !hasCurrentPriceForSymbol(elements.symbol.value)) {
     return;
   }
   elements.entry.value = currentPrice.toFixed(2);
@@ -317,6 +318,11 @@ function isSameTradePayload(current, analyzed) {
     return false;
   }
 
+  const isMarketEntryAuto = Boolean(elements.entry?.readOnly);
+  if (isMarketEntryAuto) {
+    return true;
+  }
+
   const currentEntry = Number(current.entry);
   const analyzedEntry = Number(analyzed.entry);
   if (!Number.isFinite(currentEntry) || !Number.isFinite(analyzedEntry)) {
@@ -328,13 +334,6 @@ function isSameTradePayload(current, analyzed) {
     return true;
   }
 
-  const entryDriftPct = (entryDiffAbs / Math.max(Math.abs(analyzedEntry), 1)) * 100;
-  const isMarketEntryAuto = Boolean(elements.entry?.readOnly);
-
-  // Entry in market mode moves with live price; allow small automatic drift without forcing re-analysis.
-  if (isMarketEntryAuto && entryDriftPct <= 0.35) {
-    return true;
-  }
   return false;
 }
 
@@ -383,6 +382,24 @@ function operationToConfig(operation) {
 
 function getSelectedOperation() {
   return allOperations.find((operation) => operation.id === selectedOperationId) || null;
+}
+
+function clearPriceIfDifferentSymbol(symbol) {
+  const normalized = normalizeSymbol(symbol);
+  if (hasCurrentPriceForSymbol(normalized)) {
+    return;
+  }
+  currentPrice = null;
+  currentPriceSymbol = normalized;
+  elements.currentPrice.textContent = "--";
+}
+
+function fetchVisibleOperationPrice(operation) {
+  if (!operation?.symbol) {
+    return;
+  }
+  clearPriceIfDifferentSymbol(operation.symbol);
+  fetchPrice({ record: false, symbolOverride: operation.symbol });
 }
 
 function getDisplayContext() {
@@ -566,6 +583,10 @@ function symbolLabel(symbol) {
     return `${normalized.slice(0, -4)}/USDT`;
   }
   return normalized;
+}
+
+function hasCurrentPriceForSymbol(symbol) {
+  return Number.isFinite(currentPrice) && normalizeSymbol(currentPriceSymbol) === normalizeSymbol(symbol);
 }
 
 const adviceLabels = {
@@ -862,7 +883,16 @@ function priceText(value) {
   if (!Number.isFinite(value)) {
     return "--";
   }
-  return value.toLocaleString("es-ES", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  const abs = Math.abs(value);
+  let digits = 2;
+  if (abs < 0.01) digits = 8;
+  else if (abs < 1) digits = 6;
+  else if (abs < 10) digits = 4;
+  else if (abs < 100) digits = 3;
+  return value.toLocaleString("es-ES", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: Math.min(2, digits),
+  });
 }
 
 function signedPct(value) {
@@ -966,6 +996,8 @@ function updateMetrics() {
   const { config, operation } = getDisplayContext();
   const displaySymbol = config.symbol || elements.symbol.value;
   const displayLabel = symbolLabel(displaySymbol);
+  const hasDisplayPrice = hasCurrentPriceForSymbol(displaySymbol);
+  const displayPrice = hasDisplayPrice ? currentPrice : null;
   updateBinanceChartLink(config.symbol || elements.symbol.value);
   if (elements.heroSymbol) {
     elements.heroSymbol.textContent = displayLabel;
@@ -985,7 +1017,7 @@ function updateMetrics() {
   updateHistoryCount();
 
   if (!currentUser) {
-    elements.currentPrice.textContent = Number.isFinite(currentPrice) ? `${priceText(currentPrice)} USDT` : "--";
+    elements.currentPrice.textContent = hasDisplayPrice ? `${priceText(displayPrice)} USDT` : "--";
     elements.variation.textContent = "--";
     elements.pnl.textContent = "--";
     elements.stateText.textContent = "SIN SESION";
@@ -995,14 +1027,19 @@ function updateMetrics() {
     return;
   }
 
-  if (!Number.isFinite(currentPrice)) {
+  if (!hasDisplayPrice) {
+    elements.currentPrice.textContent = "--";
+    elements.variation.textContent = "--";
+    elements.pnl.textContent = operation && operation.status === "CLOSED" && Number.isFinite(Number(operation.final_pnl))
+      ? money(Number(operation.final_pnl))
+      : "--";
     elements.stateText.textContent = operation ? getOperationStateLabel(operation, { state: "ABIERTA" }) : "PROPUESTA";
     drawChart();
     return;
   }
 
-  const result = calculate(config, currentPrice);
-  elements.currentPrice.textContent = `${priceText(currentPrice)} USDT`;
+  const result = calculate(config, displayPrice);
+  elements.currentPrice.textContent = `${priceText(displayPrice)} USDT`;
   elements.variation.textContent = signedPct(result.rawVariation);
   elements.pnl.textContent = operation && operation.status === "CLOSED" && Number.isFinite(Number(operation.final_pnl))
     ? money(Number(operation.final_pnl))
@@ -1049,6 +1086,7 @@ function updatePlanPreview(config) {
 }
 
 async function fetchPrice({ resetTimer = false, record = true, symbolOverride = null } = {}) {
+  const requestedSymbol = normalizeSymbol(symbolOverride || elements.symbol.value);
   if (isFetching) {
     // Critical: don't drop the 120s schedule if an auto tick collides with an
     // in-flight live fetch — otherwise the countdown stays frozen forever.
@@ -1060,12 +1098,14 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
     // current fetch finishes, so the user's click is never silently ignored.
     if (record) {
       pendingManualFetch = true;
+    } else {
+      pendingLiveFetchSymbol = requestedSymbol;
     }
     return;
   }
 
   isFetching = true;
-  const symbol = normalizeSymbol(symbolOverride || elements.symbol.value);
+  const symbol = requestedSymbol;
   elements.autoStatus.textContent = record ? "Consultando" : "Precio vivo";
   elements.lastUpdate.textContent = record ? "Consultando precio..." : "Actualizando precio vivo...";
 
@@ -1134,6 +1174,10 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
     if (pendingManualFetch) {
       pendingManualFetch = false;
       setTimeout(() => fetchPrice({ resetTimer: true, record: true, symbolOverride: elements.symbol.value }), 50);
+    } else if (pendingLiveFetchSymbol) {
+      const queuedSymbol = pendingLiveFetchSymbol;
+      pendingLiveFetchSymbol = null;
+      setTimeout(() => fetchPrice({ record: false, symbolOverride: queuedSymbol }), 50);
     }
   }
 }
@@ -1638,8 +1682,11 @@ async function closeSimulation() {
 }
 
 async function closeOperationById(operationId) {
-  if (!Number.isFinite(currentPrice)) {
+  const operation = allOperations.find((item) => Number(item.id) === Number(operationId));
+  const closeSymbol = operation?.symbol || elements.symbol.value;
+  if (!hasCurrentPriceForSymbol(closeSymbol)) {
     elements.analysisDecision.textContent = "No hay precio actual para cerrar.";
+    fetchPrice({ record: false, symbolOverride: closeSymbol });
     return;
   }
 
@@ -1870,7 +1917,7 @@ function renderPortfolio(portfolio) {
 }
 
 function calculateFloatingPnl(mode = operationMode) {
-  if (!Number.isFinite(currentPrice)) {
+  if (!hasCurrentPriceForSymbol(elements.symbol.value)) {
     return 0;
   }
   return openOperations.reduce((total, operation) => {
@@ -1907,6 +1954,7 @@ function renderOperations(operations) {
       newOperationViewActive = false;
     }
   }
+  syncModeWithSelectedOperation(getSelectedOperation());
   const openInMode = openOperations.filter((operation) => (operation.mode || "training") === operationMode);
   elements.startSimulationButton.disabled = openInMode.length >= 2;
   elements.closeSimulationButton.disabled = !openOperations.length;
@@ -2030,7 +2078,7 @@ function renderSelectedOperationDetail(operation) {
 
   applyOperationToForm(operation);
   const config = operationToConfig(operation);
-  const liveResult = Number.isFinite(currentPrice) ? calculate(config, currentPrice) : null;
+  const liveResult = hasCurrentPriceForSymbol(config.symbol) ? calculate(config, currentPrice) : null;
   const finalPnl = operation.final_pnl === null || operation.final_pnl === undefined ? null : Number(operation.final_pnl);
   const displayPnl = operation.status === "CLOSED" && Number.isFinite(finalPnl) ? finalPnl : liveResult?.pnl;
   const displayVariation = liveResult ? liveResult.rawVariation : null;
@@ -2203,6 +2251,7 @@ function resizeCanvas() {
 function drawChart() {
   const { config, operation } = getDisplayContext();
   const chartHistory = getChartHistory();
+  const livePrice = hasCurrentPriceForSymbol(config.symbol) ? currentPrice : null;
   const rect = elements.chart.getBoundingClientRect();
   const width = rect.width;
   const height = rect.height;
@@ -2219,21 +2268,31 @@ function drawChart() {
   const historyPrices = chartHistory.map((point) => point.price);
   const prices = historyPrices.length ? [...historyPrices] : [];
 
-  if (Number.isFinite(currentPrice)) {
-    prices.push(currentPrice);
+  if (Number.isFinite(livePrice)) {
+    prices.push(livePrice);
   }
   if (Number.isFinite(config.entry)) {
-    const anchorPrice = Number.isFinite(currentPrice) ? currentPrice : config.entry;
+    const anchorPrice = Number.isFinite(livePrice) ? livePrice : config.entry;
     const entryDistancePct = Math.abs((config.entry - anchorPrice) / anchorPrice);
     if (entryDistancePct < 0.015) {
       prices.push(config.entry);
     }
   }
+  if (isValidTradeConfig(config)) {
+    const anchorPrice = Number.isFinite(livePrice) ? livePrice : config.entry;
+    for (const level of [config.stopLoss, config.takeProfit]) {
+      const levelDistancePct = Math.abs((level - anchorPrice) / Math.max(Math.abs(anchorPrice), 0.000001));
+      if (levelDistancePct <= 0.35) {
+        prices.push(level);
+      }
+    }
+  }
 
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
-  const padding = Math.max((maxPrice - minPrice) * 0.65, maxPrice * 0.0006, 25);
-  const yMin = minPrice - padding;
+  const visibleRange = Math.max(maxPrice - minPrice, maxPrice * 0.0015, 0.000001);
+  const padding = Math.max(visibleRange * 0.28, maxPrice * 0.0012);
+  const yMin = Math.max(0, minPrice - padding);
   const yMax = maxPrice + padding;
   const yFor = (price) => pad.top + ((yMax - price) / (yMax - yMin)) * chartHeight;
   const xFor = (index) => {
@@ -2290,9 +2349,9 @@ function drawChart() {
     const lastY = yFor(chartHistory[chartHistory.length - 1].price);
     const lastPrice = Number(chartHistory[chartHistory.length - 1].price);
     const livePriceWillBeDrawn =
-      Number.isFinite(currentPrice) &&
-      isInScale(currentPrice, yMin, yMax) &&
-      (!Number.isFinite(lastPrice) || Math.abs(lastPrice - currentPrice) >= 0.01);
+      Number.isFinite(livePrice) &&
+      isInScale(livePrice, yMin, yMax) &&
+      (!Number.isFinite(lastPrice) || Math.abs(lastPrice - livePrice) >= 0.01);
     ctx.fillStyle = "#1f7a8c";
     ctx.beginPath();
     ctx.arc(lastX, lastY, 6, 0, Math.PI * 2);
@@ -2357,7 +2416,8 @@ function drawCloseMarker(operation, chartHistory, xFor, yFor, pad, chartHeight) 
 }
 
 function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, chartHeight, yMin, yMax) {
-  if (!Number.isFinite(currentPrice) || !isInScale(currentPrice, yMin, yMax)) {
+  const { config } = getDisplayContext();
+  if (!hasCurrentPriceForSymbol(config.symbol) || !isInScale(currentPrice, yMin, yMax)) {
     return;
   }
   const lastPoint = chartHistory[chartHistory.length - 1];
@@ -2382,7 +2442,7 @@ function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, cha
     tagY = currentPrice >= closePrice ? closeY - 78 : closeY + 48;
   }
   tagY = Math.max(pad.top + 8, Math.min(tagY, pad.top + chartHeight - 48));
-  drawTag(`${symbolLabel(getDisplayContext().config.symbol)} ${priceText(currentPrice)}`, tagX, tagY, getLivePriceTagColor(getDisplayContext().config, currentPrice), "#ffffff");
+  drawTag(`${symbolLabel(config.symbol)} ${priceText(currentPrice)}`, tagX, tagY, getLivePriceTagColor(config, currentPrice), "#ffffff");
   ctx.restore();
 }
 
@@ -2564,6 +2624,17 @@ function setOperationMode(nextMode) {
   elements.startSimulationButton.disabled = selectedOperationId !== null || openInMode.length >= 2;
 }
 
+function syncModeWithSelectedOperation(operation) {
+  if (!operation) {
+    return;
+  }
+  const modeFromOperation = (operation.mode || "training") === "contest" ? "contest" : "training";
+  if (operationMode !== modeFromOperation) {
+    // Keep mode-of-use strictly aligned with the selected operation.
+    setOperationMode(modeFromOperation);
+  }
+}
+
 for (const input of [elements.timeHorizon, elements.margin, elements.leverage, elements.stopLoss, elements.takeProfit]) {
   input.addEventListener("input", () => {
     if (selectedOperationId === null && !newOperationViewActive) {
@@ -2631,7 +2702,13 @@ elements.operationsList.addEventListener("click", (event) => {
     saveProposalDraft();
     selectedOperationId = Number(selectButton.dataset.operationId);
     newOperationViewActive = false;
+    const operation = getSelectedOperation();
+    syncModeWithSelectedOperation(operation);
+    if (operation?.symbol) {
+      elements.operationSelector.value = String(operation.id);
+    }
     renderOperations(allOperations);
+    fetchVisibleOperationPrice(operation);
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
@@ -2676,16 +2753,18 @@ elements.operationSelector.addEventListener("change", () => {
   selectedOperationId = elements.operationSelector.value === "proposal" ? null : Number(elements.operationSelector.value);
   if (selectedOperationId === null) {
     prepareNewOperationForm();
+    setOperationMode(operationMode);
     return;
   }
   newOperationViewActive = false;
   const operation = getSelectedOperation();
+  const modeFromOperation = (operation?.mode || "training") === "contest" ? "contest" : "training";
+  setOperationMode(modeFromOperation);
+  syncModeWithSelectedOperation(operation);
   renderOperationSelector();
   renderSelectedOperationDetail(operation);
   updateMetrics();
-  if (operation?.symbol) {
-    fetchPrice({ record: false, symbolOverride: operation.symbol });
-  }
+  fetchVisibleOperationPrice(operation);
 });
 elements.newOperationQuickButton.addEventListener("click", () => {
   if (!currentUser) {

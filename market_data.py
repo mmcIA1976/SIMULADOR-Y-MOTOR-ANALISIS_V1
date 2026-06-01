@@ -4,13 +4,13 @@ import json
 import urllib.parse
 import urllib.request
 
-from trading_simulator import fetch_binance_price
+from trading_simulator import BINANCE_SPOT_BASE_URLS, BINANCE_SPOT_TIMEOUT_SECONDS, fetch_binance_price
 
 
-BINANCE_KLINES_URL = "https://api.binance.us/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
-BINANCE_DEPTH_URL = "https://api.binance.us/api/v3/depth?symbol={symbol}&limit=20"
-BINANCE_TICKER_24H_URL = "https://api.binance.us/api/v3/ticker/24hr?symbol={symbol}"
-BINANCE_AGG_TRADES_URL = "https://api.binance.us/api/v3/aggTrades?symbol={symbol}&limit={limit}"
+BINANCE_KLINES_PATH = "/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+BINANCE_DEPTH_PATH = "/api/v3/depth?symbol={symbol}&limit=20"
+BINANCE_TICKER_24H_PATH = "/api/v3/ticker/24hr?symbol={symbol}"
+BINANCE_AGG_TRADES_PATH = "/api/v3/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol={symbol}"
 BINANCE_OPEN_INTEREST_URL = "https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}"
 BINANCE_OPEN_INTEREST_HIST_URL = (
@@ -30,6 +30,7 @@ COINGECKO_MARKETS_URL = (
 )
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
+_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[-1]
 
 
 def get_json(url: str) -> object:
@@ -41,6 +42,32 @@ def get_json(url: str) -> object:
 def get_json_optional(url: str) -> object | None:
     try:
         return get_json(url)
+    except Exception:
+        return None
+
+
+def get_spot_json(path: str) -> object:
+    global _preferred_spot_base_url
+    last_error: Exception | None = None
+    candidate_bases = (_preferred_spot_base_url,) + tuple(
+        base for base in BINANCE_SPOT_BASE_URLS if base != _preferred_spot_base_url
+    )
+    for base_url in candidate_bases:
+        url = f"{base_url}{path}"
+        request = urllib.request.Request(url, headers={"User-Agent": "trading-trainer/0.1"})
+        try:
+            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            _preferred_spot_base_url = base_url
+            return payload
+        except Exception as exc:
+            last_error = exc
+    raise RuntimeError(f"No se pudo consultar Binance Spot para {path}: {last_error}")
+
+
+def get_spot_json_optional(path: str) -> object | None:
+    try:
+        return get_spot_json(path)
     except Exception:
         return None
 
@@ -57,22 +84,25 @@ def get_klines(
     end_time_ms: int | None = None,
 ) -> list[list]:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    url = BINANCE_KLINES_URL.format(symbol=safe_symbol, interval=interval, limit=limit)
+    path = BINANCE_KLINES_PATH.format(symbol=safe_symbol, interval=interval, limit=limit)
     if start_time_ms is not None:
-        url = f"{url}&startTime={start_time_ms}"
+        path = f"{path}&startTime={start_time_ms}"
     if end_time_ms is not None:
-        url = f"{url}&endTime={end_time_ms}"
-    return get_json(url)  # type: ignore[return-value]
+        path = f"{path}&endTime={end_time_ms}"
+    payload = get_spot_json(path)
+    return payload if isinstance(payload, list) else []
 
 
 def get_depth(symbol: str) -> dict:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    return get_json(BINANCE_DEPTH_URL.format(symbol=safe_symbol))  # type: ignore[return-value]
+    payload = get_spot_json_optional(BINANCE_DEPTH_PATH.format(symbol=safe_symbol))
+    return payload if isinstance(payload, dict) else {"bids": [], "asks": []}
 
 
 def get_24h_ticker(symbol: str) -> dict:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    return get_json(BINANCE_TICKER_24H_URL.format(symbol=safe_symbol))  # type: ignore[return-value]
+    payload = get_spot_json_optional(BINANCE_TICKER_24H_PATH.format(symbol=safe_symbol))
+    return payload if isinstance(payload, dict) else {}
 
 
 def get_agg_trades(
@@ -83,12 +113,12 @@ def get_agg_trades(
 ) -> list[dict]:
     safe_symbol = urllib.parse.quote(symbol.upper())
     capped_limit = min(max(limit, 50), 1000)
-    url = BINANCE_AGG_TRADES_URL.format(symbol=safe_symbol, limit=capped_limit)
+    path = BINANCE_AGG_TRADES_PATH.format(symbol=safe_symbol, limit=capped_limit)
     if start_time_ms is not None:
-        url = f"{url}&startTime={start_time_ms}"
+        path = f"{path}&startTime={start_time_ms}"
     if end_time_ms is not None:
-        url = f"{url}&endTime={end_time_ms}"
-    data = get_json_optional(url)
+        path = f"{path}&endTime={end_time_ms}"
+    data = get_spot_json_optional(path)
     return data if isinstance(data, list) else []
 
 
@@ -135,9 +165,11 @@ def get_taker_long_short_ratio(symbol: str, period: str = "5m") -> dict | None:
 
 
 def get_top_crypto_assets(limit: int = 100) -> list[dict]:
-    data = get_json(COINGECKO_MARKETS_URL.format(limit=limit))
+    data = get_json_optional(COINGECKO_MARKETS_URL.format(limit=limit))
+    if not isinstance(data, list):
+        return []
     assets = []
-    for item in data:  # type: ignore[union-attr]
+    for item in data:
         symbol = str(item.get("symbol", "")).upper()
         assets.append(
             {

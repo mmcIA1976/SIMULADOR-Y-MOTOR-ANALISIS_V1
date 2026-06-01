@@ -14,7 +14,7 @@ import market_data
 import data_engine
 from analysis_engine import ENGINE_VERSION, TradeProposal, analyze_trade, build_explained_metrics
 from analysis_engine import time_horizon_profile
-from db import connect, init_db, row_to_dict
+from db import close_pool, connect, init_db, row_to_dict
 from learning_engine import apply_learning_modifier
 from security import create_token, hash_password, read_token, verify_password
 
@@ -161,7 +161,13 @@ def startup() -> None:
     migrate_file_avatars_to_database()
     finalize_due_observations()
     refresh_learning_conclusions()
+    refresh_learning_evaluations()
     reconcile_all_user_cash_balances()
+
+
+@app.on_event("shutdown")
+def shutdown() -> None:
+    close_pool()
 
 
 @app.get("/")
@@ -292,6 +298,7 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
         entry = get_contest_entry(db, int(user["id"]), int(season["id"]))
         portfolio = calculate_portfolio_from_db(db, int(user["id"]))
         leaderboard = contest_leaderboard(db, int(season["id"]))
+        history = contest_history(db)
         if entry:
             apply_contest_unrealized_to_portfolio(db, portfolio["contest"], int(user["id"]), int(season["id"]))
     return {
@@ -300,6 +307,7 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
         "participating": entry is not None,
         "portfolio": portfolio["contest"],
         "leaderboard": leaderboard,
+        "history": history,
     }
 
 
@@ -311,6 +319,7 @@ def contest_join(session_token: str | None = Cookie(default=None, alias=SESSION_
         entry = ensure_contest_entry(db, int(user["id"]), int(season["id"]))
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         leaderboard = contest_leaderboard(db, int(season["id"]))
+        history = contest_history(db)
         apply_contest_unrealized_to_portfolio(db, portfolio["contest"], int(user["id"]), int(season["id"]))
     return {
         "season": season,
@@ -318,6 +327,7 @@ def contest_join(session_token: str | None = Cookie(default=None, alias=SESSION_
         "participating": True,
         "portfolio": portfolio["contest"],
         "leaderboard": leaderboard,
+        "history": history,
     }
 
 
@@ -340,6 +350,7 @@ def price(
     with connect() as db:
         finalize_due_observations(db)
         refresh_learning_conclusions(db)
+        refresh_learning_evaluations(db)
         if record:
             db.execute(
                 "INSERT INTO price_ticks (operation_id, symbol, price, source) VALUES (?, ?, ?, ?)",
@@ -620,6 +631,444 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
         )
         conclusions.append({"id": int(operation["id"]), **conclusion})
     return conclusions
+
+
+def refresh_learning_evaluations(existing_db=None) -> list[dict]:
+    if existing_db is not None:
+        return refresh_learning_evaluations_with_db(existing_db)
+    with connect() as db:
+        return refresh_learning_evaluations_with_db(db)
+
+
+def refresh_learning_evaluations_with_db(db) -> list[dict]:
+    rows = db.execute(
+        """
+        SELECT
+            o.*,
+            r.id AS recommendation_id,
+            r.setup_grade AS recommendation_setup_grade,
+            r.risk_level AS recommendation_risk_level,
+            r.confidence AS recommendation_confidence,
+            r.training_decision AS recommendation_training_decision,
+            r.tp_probability AS recommendation_tp_probability,
+            r.sl_probability AS recommendation_sl_probability,
+            r.range_probability AS recommendation_range_probability,
+            r.snapshot_json AS recommendation_snapshot_json
+        FROM operations o
+        LEFT JOIN recommendations r ON r.id = (
+            SELECT r2.id
+            FROM recommendations r2
+            WHERE r2.operation_id = o.id
+            ORDER BY r2.created_at DESC, r2.id DESC
+            LIMIT 1
+        )
+        WHERE o.status = 'CLOSED'
+        ORDER BY o.closed_at ASC, o.id ASC
+        """
+    ).fetchall()
+    evaluations = []
+    for row in rows:
+        operation = row_to_dict(row)
+        ticks = [
+            row_to_dict(tick)
+            for tick in db.execute(
+                """
+                SELECT price, captured_at
+                FROM price_ticks
+                WHERE operation_id = ?
+                ORDER BY captured_at ASC
+                """,
+                (operation["id"],),
+            ).fetchall()
+        ]
+        evaluation = build_structured_learning_evaluation(operation, ticks)
+        save_learning_evaluation(db, evaluation)
+        evaluations.append(evaluation)
+    return evaluations
+
+
+def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> dict:
+    snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
+    technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
+    regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
+    scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
+    rr_ratio = safe_float(snapshot.get("risk_reward_ratio"))
+    risk_margin_pct = safe_float(snapshot.get("risk_margin_pct"))
+    reward_margin_pct = safe_float(snapshot.get("reward_margin_pct"))
+    close_reason = operation.get("close_reason")
+    plan_result = plan_result_from_operation(operation)
+    manual_trigger = first_plan_trigger_after_close(operation, ticks_after_close(operation, ticks))
+    would_hit_sl_after_manual = bool(manual_trigger and manual_trigger[0] == "stop_loss")
+    would_hit_tp_after_manual = bool(manual_trigger and manual_trigger[0] == "take_profit")
+    mfe_mae = excursion_metrics(operation, ticks)
+    time_to_close = minutes_between(operation.get("started_at"), operation.get("closed_at"))
+    tp_probability = safe_float(operation.get("recommendation_tp_probability"))
+    sl_probability = safe_float(operation.get("recommendation_sl_probability"))
+    setup_grade = operation.get("recommendation_setup_grade")
+    confidence = operation.get("recommendation_confidence")
+    analysis_verdict = classify_analysis_verdict(
+        plan_result=plan_result,
+        tp_probability=tp_probability,
+        sl_probability=sl_probability,
+        setup_grade=setup_grade,
+        confidence=confidence,
+    )
+    user_decision_quality = classify_user_decision_quality(operation, manual_trigger)
+    failure_type = classify_failure_type(operation, snapshot, mfe_mae, plan_result)
+    primary_lesson = build_primary_lesson(
+        operation=operation,
+        plan_result=plan_result,
+        analysis_verdict=analysis_verdict,
+        failure_type=failure_type,
+        user_decision_quality=user_decision_quality,
+        technical_label=technical.get("label"),
+        market_regime=regime.get("name"),
+    )
+    structured = {
+        "operation_id": int(operation["id"]),
+        "plan_result": plan_result,
+        "analysis_verdict": analysis_verdict,
+        "primary_lesson": primary_lesson,
+        "failure_type": failure_type,
+        "user_decision_quality": user_decision_quality,
+        "excursion": mfe_mae,
+        "manual_counterfactual": {
+            "would_hit_tp_after_manual": would_hit_tp_after_manual,
+            "would_hit_sl_after_manual": would_hit_sl_after_manual,
+            "first_plan_trigger_after_close": {
+                "reason": manual_trigger[0],
+                "price": manual_trigger[1],
+                "captured_at": manual_trigger[2],
+            } if manual_trigger else None,
+        },
+        "analysis_context": {
+            "setup_grade": setup_grade,
+            "risk_level": operation.get("recommendation_risk_level"),
+            "confidence": confidence,
+            "training_decision": operation.get("recommendation_training_decision"),
+            "tp_probability": tp_probability,
+            "sl_probability": sl_probability,
+            "range_probability": safe_float(operation.get("recommendation_range_probability")),
+            "technical_label": technical.get("label"),
+            "technical_score": safe_float(technical.get("score")),
+            "market_regime": regime.get("name"),
+            "direction_score": safe_float(scores.get("direction_score")),
+            "confidence_score": safe_float(scores.get("confidence_score")),
+            "risk_reward_ratio": rr_ratio,
+            "risk_margin_pct": risk_margin_pct,
+            "reward_margin_pct": reward_margin_pct,
+        },
+    }
+    return {
+        "operation_id": int(operation["id"]),
+        "user_id": int(operation["user_id"]),
+        "recommendation_id": operation.get("recommendation_id"),
+        "symbol": operation["symbol"],
+        "side": operation["side"],
+        "time_horizon": operation.get("time_horizon") or "intraday_short",
+        "mode": operation.get("mode") or "training",
+        "close_reason": close_reason,
+        "final_pnl": round(float(operation.get("final_pnl") or 0), 4),
+        "plan_result": plan_result,
+        "analysis_verdict": analysis_verdict,
+        "primary_lesson": primary_lesson,
+        "failure_type": failure_type,
+        "user_decision_quality": user_decision_quality,
+        "max_favorable_pct": mfe_mae["max_favorable_pct"],
+        "max_adverse_pct": mfe_mae["max_adverse_pct"],
+        "max_favorable_pnl": mfe_mae["max_favorable_pnl"],
+        "max_adverse_pnl": mfe_mae["max_adverse_pnl"],
+        "time_to_close_minutes": time_to_close,
+        "would_hit_tp_after_manual": int(would_hit_tp_after_manual),
+        "would_hit_sl_after_manual": int(would_hit_sl_after_manual),
+        "setup_grade": setup_grade,
+        "risk_level": operation.get("recommendation_risk_level"),
+        "confidence": confidence,
+        "training_decision": operation.get("recommendation_training_decision"),
+        "tp_probability": tp_probability,
+        "sl_probability": sl_probability,
+        "range_probability": safe_float(operation.get("recommendation_range_probability")),
+        "technical_label": technical.get("label"),
+        "technical_score": safe_float(technical.get("score")),
+        "market_regime": regime.get("name"),
+        "direction_score": safe_float(scores.get("direction_score")),
+        "confidence_score": safe_float(scores.get("confidence_score")),
+        "risk_reward_ratio": rr_ratio,
+        "risk_margin_pct": risk_margin_pct,
+        "reward_margin_pct": reward_margin_pct,
+        "leverage_bucket": leverage_bucket(float(operation.get("leverage") or 0)),
+        "structured_json": json.dumps(structured, ensure_ascii=True),
+    }
+
+
+def save_learning_evaluation(db, evaluation: dict) -> None:
+    db.execute(
+        """
+        INSERT INTO learning_evaluations (
+            operation_id, user_id, recommendation_id, symbol, side, time_horizon, mode,
+            close_reason, final_pnl, plan_result, analysis_verdict, primary_lesson,
+            failure_type, user_decision_quality, max_favorable_pct, max_adverse_pct,
+            max_favorable_pnl, max_adverse_pnl, time_to_close_minutes,
+            would_hit_tp_after_manual, would_hit_sl_after_manual, setup_grade, risk_level,
+            confidence, training_decision, tp_probability, sl_probability, range_probability,
+            technical_label, technical_score, market_regime, direction_score, confidence_score,
+            risk_reward_ratio, risk_margin_pct, reward_margin_pct, leverage_bucket, structured_json,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT (operation_id) DO UPDATE SET
+            recommendation_id = EXCLUDED.recommendation_id,
+            close_reason = EXCLUDED.close_reason,
+            final_pnl = EXCLUDED.final_pnl,
+            plan_result = EXCLUDED.plan_result,
+            analysis_verdict = EXCLUDED.analysis_verdict,
+            primary_lesson = EXCLUDED.primary_lesson,
+            failure_type = EXCLUDED.failure_type,
+            user_decision_quality = EXCLUDED.user_decision_quality,
+            max_favorable_pct = EXCLUDED.max_favorable_pct,
+            max_adverse_pct = EXCLUDED.max_adverse_pct,
+            max_favorable_pnl = EXCLUDED.max_favorable_pnl,
+            max_adverse_pnl = EXCLUDED.max_adverse_pnl,
+            time_to_close_minutes = EXCLUDED.time_to_close_minutes,
+            would_hit_tp_after_manual = EXCLUDED.would_hit_tp_after_manual,
+            would_hit_sl_after_manual = EXCLUDED.would_hit_sl_after_manual,
+            setup_grade = EXCLUDED.setup_grade,
+            risk_level = EXCLUDED.risk_level,
+            confidence = EXCLUDED.confidence,
+            training_decision = EXCLUDED.training_decision,
+            tp_probability = EXCLUDED.tp_probability,
+            sl_probability = EXCLUDED.sl_probability,
+            range_probability = EXCLUDED.range_probability,
+            technical_label = EXCLUDED.technical_label,
+            technical_score = EXCLUDED.technical_score,
+            market_regime = EXCLUDED.market_regime,
+            direction_score = EXCLUDED.direction_score,
+            confidence_score = EXCLUDED.confidence_score,
+            risk_reward_ratio = EXCLUDED.risk_reward_ratio,
+            risk_margin_pct = EXCLUDED.risk_margin_pct,
+            reward_margin_pct = EXCLUDED.reward_margin_pct,
+            leverage_bucket = EXCLUDED.leverage_bucket,
+            structured_json = EXCLUDED.structured_json,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            evaluation["operation_id"],
+            evaluation["user_id"],
+            evaluation["recommendation_id"],
+            evaluation["symbol"],
+            evaluation["side"],
+            evaluation["time_horizon"],
+            evaluation["mode"],
+            evaluation["close_reason"],
+            evaluation["final_pnl"],
+            evaluation["plan_result"],
+            evaluation["analysis_verdict"],
+            evaluation["primary_lesson"],
+            evaluation["failure_type"],
+            evaluation["user_decision_quality"],
+            evaluation["max_favorable_pct"],
+            evaluation["max_adverse_pct"],
+            evaluation["max_favorable_pnl"],
+            evaluation["max_adverse_pnl"],
+            evaluation["time_to_close_minutes"],
+            evaluation["would_hit_tp_after_manual"],
+            evaluation["would_hit_sl_after_manual"],
+            evaluation["setup_grade"],
+            evaluation["risk_level"],
+            evaluation["confidence"],
+            evaluation["training_decision"],
+            evaluation["tp_probability"],
+            evaluation["sl_probability"],
+            evaluation["range_probability"],
+            evaluation["technical_label"],
+            evaluation["technical_score"],
+            evaluation["market_regime"],
+            evaluation["direction_score"],
+            evaluation["confidence_score"],
+            evaluation["risk_reward_ratio"],
+            evaluation["risk_margin_pct"],
+            evaluation["reward_margin_pct"],
+            evaluation["leverage_bucket"],
+            evaluation["structured_json"],
+        ),
+    )
+
+
+def parse_snapshot_json(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def safe_float(value) -> float | None:
+    try:
+        if value is None:
+            return None
+        return round(float(value), 6)
+    except (TypeError, ValueError):
+        return None
+
+
+def plan_result_from_operation(operation: dict) -> str:
+    close_reason = operation.get("close_reason")
+    if close_reason == "take_profit":
+        return "plan_success"
+    if close_reason == "stop_loss":
+        return "plan_failure"
+    if operation.get("observation_result") == "manual_protected":
+        return "plan_would_fail"
+    if operation.get("observation_result") in {"manual_left_profit", "manual_better_than_plan"}:
+        return "plan_would_succeed"
+    if operation.get("observation_result") == "plan_unresolved":
+        return "plan_unresolved"
+    if close_reason == "contest_expired":
+        return "contest_expiry_mark_to_market"
+    return "manual_pending_or_unclassified"
+
+
+def ticks_after_close(operation: dict, ticks: list[dict]) -> list[dict]:
+    closed_at = parse_timestamp(operation.get("closed_at"))
+    if closed_at is None:
+        return ticks
+    result = []
+    for tick in ticks:
+        captured_at = parse_timestamp(str(tick.get("captured_at")) if tick.get("captured_at") is not None else None)
+        if captured_at is None or captured_at >= closed_at:
+            result.append(tick)
+    return result
+
+
+def excursion_metrics(operation: dict, ticks: list[dict]) -> dict:
+    entry = float(operation["entry"])
+    margin = float(operation["margin"])
+    leverage = float(operation["leverage"])
+    side_multiplier = -1 if operation["side"] == "short" else 1
+    variations = []
+    for tick in ticks:
+        try:
+            price = float(tick["price"])
+        except (TypeError, ValueError):
+            continue
+        variations.append(((price - entry) / entry) * side_multiplier)
+    if not variations and operation.get("close_price") is not None:
+        variations.append(((float(operation["close_price"]) - entry) / entry) * side_multiplier)
+    if not variations:
+        return {
+            "max_favorable_pct": None,
+            "max_adverse_pct": None,
+            "max_favorable_pnl": None,
+            "max_adverse_pnl": None,
+        }
+    max_favorable = max(variations)
+    max_adverse = min(variations)
+    return {
+        "max_favorable_pct": round(max_favorable * 100, 4),
+        "max_adverse_pct": round(max_adverse * 100, 4),
+        "max_favorable_pnl": round(margin * leverage * max_favorable, 4),
+        "max_adverse_pnl": round(margin * leverage * max_adverse, 4),
+    }
+
+
+def minutes_between(start_value: str | None, end_value: str | None) -> float | None:
+    start = parse_timestamp(start_value)
+    end = parse_timestamp(end_value)
+    if start is None or end is None:
+        return None
+    return round((end - start).total_seconds() / 60, 2)
+
+
+def classify_analysis_verdict(
+    plan_result: str,
+    tp_probability: float | None,
+    sl_probability: float | None,
+    setup_grade: str | None,
+    confidence: str | None,
+) -> str:
+    tp = tp_probability if tp_probability is not None else 0
+    sl = sl_probability if sl_probability is not None else 0
+    weak_setup = setup_grade in {"D", "E"} or confidence in {"baja", "media-baja"}
+    if plan_result in {"plan_success", "plan_would_succeed"}:
+        if tp >= sl or setup_grade in {"A", "B", "C"}:
+            return "analysis_supported_success"
+        return "success_against_analysis"
+    if plan_result in {"plan_failure", "plan_would_fail"}:
+        if sl >= tp or weak_setup:
+            return "analysis_warned_risk"
+        return "analysis_missed_risk"
+    return "analysis_unresolved"
+
+
+def classify_user_decision_quality(operation: dict, manual_trigger) -> str | None:
+    close_reason = operation.get("close_reason")
+    if close_reason not in {"manual", "cut_loss", "take_partial", "emotion", "invalidated"}:
+        return None
+    observation_result = operation.get("observation_result")
+    if observation_result == "manual_protected":
+        return "protected_capital"
+    if observation_result in {"manual_left_profit", "manual_worse_than_plan"}:
+        return "premature_or_worse_exit"
+    if observation_result == "manual_better_than_plan":
+        return "better_than_plan"
+    if manual_trigger is None:
+        return "inconclusive"
+    return "pending_classification"
+
+
+def classify_failure_type(operation: dict, snapshot: dict, mfe_mae: dict, plan_result: str) -> str | None:
+    if plan_result not in {"plan_failure", "plan_would_fail"}:
+        return None
+    technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
+    scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
+    rr = safe_float(snapshot.get("risk_reward_ratio"))
+    direction_score = safe_float(scores.get("direction_score"))
+    max_favorable_pct = mfe_mae.get("max_favorable_pct")
+    if technical.get("label") == "desfavorable" or (direction_score is not None and direction_score <= 40):
+        return "direction_against_structure"
+    if float(operation.get("leverage") or 0) >= 8:
+        return "excessive_leverage"
+    if rr is not None and rr < 1.15:
+        return "weak_reward_for_risk"
+    if max_favorable_pct is not None and max_favorable_pct > 0.6:
+        return "management_or_target_issue"
+    return "unclassified_risk"
+
+
+def leverage_bucket(leverage: float) -> str:
+    if leverage >= 8:
+        return "alto"
+    if leverage >= 4:
+        return "medio"
+    return "bajo"
+
+
+def build_primary_lesson(
+    operation: dict,
+    plan_result: str,
+    analysis_verdict: str,
+    failure_type: str | None,
+    user_decision_quality: str | None,
+    technical_label: str | None,
+    market_regime: str | None,
+) -> str:
+    side = str(operation["side"]).upper()
+    horizon = operation.get("time_horizon") or "sin temporalidad"
+    if plan_result in {"plan_success", "plan_would_succeed"}:
+        return (
+            f"El plan {side} en {horizon} quedo respaldado por el resultado. "
+            f"Contexto tecnico: {technical_label or 'n/d'}, regimen {market_regime or 'n/d'}."
+        )
+    if plan_result in {"plan_failure", "plan_would_fail"}:
+        return (
+            f"El plan {side} en {horizon} fallo o habria fallado. "
+            f"Lectura: {analysis_verdict}; causa candidata: {failure_type or 'sin clasificar'}."
+        )
+    if user_decision_quality:
+        return f"La decision manual queda clasificada como {user_decision_quality}; requiere mas casos comparables."
+    return "Resultado no concluyente para aprendizaje; conservar como caso de contexto."
 
 
 def build_learning_conclusion(operation: dict) -> dict:
@@ -1403,6 +1852,8 @@ def reconcile_all_user_cash_balances() -> None:
         user_ids = [int(row["id"]) for row in db.execute("SELECT id FROM users").fetchall()]
         for user_id in user_ids:
             sync_user_cash_balance(db, user_id)
+        reconcile_all_contest_entry_balances(db)
+        refresh_closed_contest_results(db)
 
 
 def sync_user_cash_balance(db, user_id: int) -> dict:
@@ -1418,6 +1869,49 @@ def sync_user_cash_balance(db, user_id: int) -> dict:
             (contest["cash_balance"], contest["entry_id"]),
         )
     return portfolio
+
+
+def reconcile_all_contest_entry_balances(db) -> None:
+    entries = db.execute("SELECT id, season_id, user_id, starting_balance FROM contest_entries").fetchall()
+    for entry in entries:
+        portfolio = calculate_mode_portfolio(
+            db,
+            int(entry["user_id"]),
+            "contest",
+            float(entry["starting_balance"]),
+            int(entry["season_id"]),
+        )
+        db.execute(
+            "UPDATE contest_entries SET cash_balance = ? WHERE id = ?",
+            (portfolio["cash_balance"], entry["id"]),
+        )
+
+
+def refresh_closed_contest_results(db) -> None:
+    rows = db.execute("SELECT * FROM contest_seasons WHERE status = 'CLOSED' ORDER BY ends_at ASC").fetchall()
+    for row in rows:
+        season = row_to_dict(row)
+        leaderboard = contest_leaderboard(db, int(season["id"]))
+        winner = leaderboard[0] if leaderboard else {}
+        db.execute(
+            """
+            UPDATE contest_seasons
+            SET winner_user_id = ?,
+                winner_username = ?,
+                winner_equity = ?,
+                winner_pnl = ?,
+                final_leaderboard_json = ?
+            WHERE id = ?
+            """,
+            (
+                winner.get("user_id"),
+                winner.get("username"),
+                winner.get("estimated_equity"),
+                winner.get("pnl_accumulated"),
+                json.dumps(leaderboard, ensure_ascii=True),
+                season["id"],
+            ),
+        )
 
 
 def calculate_portfolio_from_db(db, user_id: int) -> dict:
@@ -1479,8 +1973,25 @@ def calculate_mode_portfolio(db, user_id: int, mode: str, starting_balance: floa
     }
 
 
+def parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def timestamp_ms(value: datetime) -> int:
+    return int(value.timestamp() * 1000)
+
+
 def ensure_current_contest_season(db) -> dict:
     now = datetime.now(timezone.utc)
+    finalize_expired_contest_seasons(db, now)
     code = now.strftime("%Y-%m")
     row = db.execute("SELECT * FROM contest_seasons WHERE code = ?", (code,)).fetchone()
     if row is None:
@@ -1498,6 +2009,170 @@ def ensure_current_contest_season(db) -> dict:
         )
         row = db.execute("SELECT * FROM contest_seasons WHERE id = ?", (int(cursor.lastrowid),)).fetchone()
     return row_to_dict(row)
+
+
+def finalize_expired_contest_seasons(db, now: datetime | None = None) -> list[dict]:
+    now = now or datetime.now(timezone.utc)
+    rows = db.execute(
+        """
+        SELECT *
+        FROM contest_seasons
+        WHERE status = 'ACTIVE'
+        ORDER BY starts_at ASC
+        """
+    ).fetchall()
+    finalized: list[dict] = []
+    for row in rows:
+        season = row_to_dict(row)
+        ends_at = parse_timestamp(season.get("ends_at"))
+        if ends_at is None or ends_at > now:
+            continue
+        finalized.append(finalize_contest_season(db, season, ends_at))
+    return finalized
+
+
+def finalize_contest_season(db, season: dict, ends_at: datetime) -> dict:
+    season_id = int(season["id"])
+    open_rows = db.execute(
+        """
+        SELECT *
+        FROM operations
+        WHERE mode = 'contest'
+          AND contest_season_id = ?
+          AND status = 'OPEN'
+        ORDER BY id ASC
+        """,
+        (season_id,),
+    ).fetchall()
+    operations = [row_to_dict(row) for row in open_rows]
+    for operation in operations:
+        close_price, close_source = contest_expiry_price(db, operation, ends_at)
+        pnl = approximate_pnl(operation, close_price)
+        db.execute(
+            """
+            UPDATE operations
+            SET status = 'CLOSED',
+                closed_at = ?,
+                close_price = ?,
+                close_reason = 'contest_expired',
+                final_pnl = ?,
+                observation_until = NULL,
+                observation_status = 'CONTEST_FINALIZED',
+                closing_note = ?,
+                learning_outcome = NULL,
+                learning_summary = NULL
+            WHERE id = ?
+            """,
+            (
+                ends_at.isoformat(),
+                close_price,
+                pnl,
+                "Cierre automatico por finalizacion del concurso mensual.",
+                operation["id"],
+            ),
+        )
+        db.execute(
+            "INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at) VALUES (?, ?, ?, ?, ?)",
+            (operation["id"], operation["symbol"], close_price, close_source, ends_at.isoformat()),
+        )
+        entry = get_contest_entry(db, int(operation["user_id"]), season_id)
+        starting_balance = float(entry["starting_balance"] if entry else season.get("starting_balance") or 1000)
+        portfolio = calculate_mode_portfolio(db, int(operation["user_id"]), "contest", starting_balance, season_id)
+        db.execute(
+            "UPDATE contest_entries SET cash_balance = ? WHERE season_id = ? AND user_id = ?",
+            (portfolio["cash_balance"], season_id, operation["user_id"]),
+        )
+        record_wallet_event(
+            db,
+            user_id=int(operation["user_id"]),
+            mode="contest",
+            event_type="contest_monthly_close",
+            amount=float(pnl),
+            balance_after=float(portfolio["cash_balance"]),
+            operation_id=int(operation["id"]),
+            contest_season_id=season_id,
+            note="Cierre por fin de concurso mensual.",
+        )
+
+    leaderboard = contest_leaderboard(db, season_id)
+    winner = leaderboard[0] if leaderboard else {}
+    db.execute(
+        """
+        UPDATE contest_seasons
+        SET status = 'CLOSED',
+            finalized_at = CURRENT_TIMESTAMP,
+            winner_user_id = ?,
+            winner_username = ?,
+            winner_equity = ?,
+            winner_pnl = ?,
+            final_leaderboard_json = ?
+        WHERE id = ?
+        """,
+        (
+            winner.get("user_id"),
+            winner.get("username"),
+            winner.get("estimated_equity"),
+            winner.get("pnl_accumulated"),
+            json.dumps(leaderboard, ensure_ascii=True),
+            season_id,
+        ),
+    )
+    refreshed = db.execute("SELECT * FROM contest_seasons WHERE id = ?", (season_id,)).fetchone()
+    return row_to_dict(refreshed)
+
+
+def contest_expiry_price(db, operation: dict, ends_at: datetime) -> tuple[float, str]:
+    symbol = str(operation["symbol"]).upper()
+    try:
+        klines = market_data.get_klines(
+            symbol,
+            interval="1m",
+            limit=1,
+            start_time_ms=timestamp_ms(ends_at - timedelta(minutes=1)),
+            end_time_ms=timestamp_ms(ends_at + timedelta(minutes=1)),
+        )
+        if klines:
+            return round(float(klines[0][4]), 8), "contest_expiry_binance_1m"
+    except Exception:
+        pass
+
+    tick = db.execute(
+        """
+        SELECT price
+        FROM price_ticks
+        WHERE symbol = ?
+          AND captured_at <= ?
+        ORDER BY captured_at DESC
+        LIMIT 1
+        """,
+        (symbol, ends_at.isoformat()),
+    ).fetchone()
+    if tick:
+        return round(float(tick["price"]), 8), "contest_expiry_last_tick"
+
+    return round(float(market_data.get_price(symbol)), 8), "contest_expiry_live_fallback"
+
+
+def contest_history(db, limit: int = 12) -> list[dict]:
+    rows = db.execute(
+        """
+        SELECT *
+        FROM contest_seasons
+        WHERE status = 'CLOSED'
+        ORDER BY ends_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    history = []
+    for row in rows:
+        item = row_to_dict(row)
+        try:
+            item["final_leaderboard"] = json.loads(item.get("final_leaderboard_json") or "[]")
+        except json.JSONDecodeError:
+            item["final_leaderboard"] = []
+        history.append(item)
+    return history
 
 
 def ensure_contest_entry(db, user_id: int, season_id: int) -> dict:
@@ -1624,17 +2299,27 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
     for row in rows:
         item = row_to_dict(row)
         unrealized_pnl = round(unrealized_by_user.get(int(item["user_id"]), 0), 4)
-        item["equity_without_unrealized"] = round(float(item["cash_balance"]) + float(item["invested_margin"]), 4)
+        starting_balance = float(item["starting_balance"])
+        closed_pnl = float(item["closed_pnl"])
+        invested_margin = float(item["invested_margin"])
+        computed_cash_balance = round(starting_balance + closed_pnl - invested_margin, 4)
+        item["cash_balance"] = computed_cash_balance
+        item["invested_margin"] = round(invested_margin, 4)
+        item["equity_without_unrealized"] = round(computed_cash_balance + invested_margin, 4)
         item["unrealized_pnl"] = unrealized_pnl
         item["estimated_equity"] = round(float(item["equity_without_unrealized"]) + unrealized_pnl, 4)
-        item["pnl_accumulated"] = round(float(item["closed_pnl"]) + unrealized_pnl, 4)
-        item["closed_pnl"] = round(float(item["closed_pnl"]), 4)
+        item["pnl_accumulated"] = round(closed_pnl + unrealized_pnl, 4)
+        item["closed_pnl"] = round(closed_pnl, 4)
         item["avatar_url"] = avatar_url(
             {
                 "id": item["user_id"],
                 "avatar_mime_type": item.get("avatar_mime_type"),
                 "avatar_updated_at": item.get("avatar_updated_at"),
             }
+        )
+        db.execute(
+            "UPDATE contest_entries SET cash_balance = ? WHERE season_id = ? AND user_id = ?",
+            (computed_cash_balance, season_id, item["user_id"]),
         )
         leaderboard.append(item)
     leaderboard.sort(key=lambda item: item["estimated_equity"], reverse=True)

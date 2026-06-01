@@ -34,6 +34,8 @@ const elements = {
   contestCash: document.querySelector("#contestCash"),
   contestPnl: document.querySelector("#contestPnl"),
   contestLeaderboard: document.querySelector("#contestLeaderboard"),
+  contestHistory: document.querySelector("#contestHistory"),
+  contestHistoryToggle: document.querySelector("#contestHistoryToggle"),
   longButton: document.querySelector("#longButton"),
   shortButton: document.querySelector("#shortButton"),
   refreshButton: document.querySelector("#refreshButton"),
@@ -44,6 +46,8 @@ const elements = {
   closeReason: document.querySelector("#closeReason"),
   closingNote: document.querySelector("#closingNote"),
   currentPrice: document.querySelector("#currentPrice"),
+  heroSymbol: document.querySelector("#heroSymbol"),
+  marketPairLabel: document.querySelector("#marketPairLabel"),
   variation: document.querySelector("#variation"),
   pnl: document.querySelector("#pnl"),
   exposure: document.querySelector("#exposure"),
@@ -109,6 +113,8 @@ let nextUpdateAt = null;
 let isFetching = false;
 let pendingManualFetch = false;
 let currentPrice = null;
+let currentPriceSymbol = "BTCUSDT";
+let activeHistorySymbol = "BTCUSDT";
 let currentUser = null;
 let lastAnalysis = null;
 let lastAnalysisPayload = null;
@@ -123,6 +129,7 @@ let contestState = null;
 let proposalDraft = null;
 let newOperationViewActive = false;
 let floatingNoticeTimer = null;
+let contestHistoryOpen = false;
 
 function numberValue(input) {
   return Number.parseFloat(input.value);
@@ -410,14 +417,16 @@ function getDisplayContext() {
   };
 }
 
-function historyKey(symbol = elements.symbol.value) {
-  return `trading-simulator-history-${symbol}`;
+function historyKey(symbol = activeHistorySymbol || elements.symbol.value) {
+  return `trading-simulator-history-${normalizeSymbol(symbol)}`;
 }
 
-function loadHistory() {
+function loadHistory(symbol = elements.symbol.value) {
+  const normalized = normalizeSymbol(symbol);
+  activeHistorySymbol = normalized;
   history.length = 0;
   try {
-    const stored = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const stored = JSON.parse(localStorage.getItem(historyKey(normalized)) || "[]");
     for (const point of stored) {
       const price = Number(point.price);
       const time = new Date(point.time);
@@ -426,18 +435,20 @@ function loadHistory() {
       }
     }
   } catch {
-    localStorage.removeItem(historyKey());
+    localStorage.removeItem(historyKey(normalized));
   }
 
   currentPrice = null;
+  currentPriceSymbol = normalized;
 }
 
-function saveHistory() {
+function saveHistory(symbol = activeHistorySymbol || elements.symbol.value) {
+  const normalized = normalizeSymbol(symbol);
   const compactHistory = history.map((point) => ({
     price: point.price,
     time: point.time.toISOString(),
   }));
-  localStorage.setItem(historyKey(), JSON.stringify(compactHistory));
+  localStorage.setItem(historyKey(normalized), JSON.stringify(compactHistory));
 }
 
 function getChartHistory() {
@@ -543,6 +554,18 @@ function probabilityLabel(recommendation, key, fallbackKey) {
 
 function timeHorizonLabel(value) {
   return TIME_HORIZON_LABELS[value] || "Sin marco temporal";
+}
+
+function normalizeSymbol(symbol) {
+  return String(symbol || "BTCUSDT").toUpperCase();
+}
+
+function symbolLabel(symbol) {
+  const normalized = normalizeSymbol(symbol);
+  if (normalized.endsWith("USDT")) {
+    return `${normalized.slice(0, -4)}/USDT`;
+  }
+  return normalized;
 }
 
 const adviceLabels = {
@@ -687,33 +710,39 @@ function prepareNewOperationForm() {
 }
 
 function resetProposalChartToCurrentPrice() {
-  if (Number.isFinite(currentPrice) && (!history.length || Math.abs(history[history.length - 1].price - currentPrice) >= 0.01)) {
+  const symbol = normalizeSymbol(elements.symbol.value);
+  activeHistorySymbol = symbol;
+  if (Number.isFinite(currentPrice) && currentPriceSymbol === symbol && (!history.length || Math.abs(history[history.length - 1].price - currentPrice) >= 0.01)) {
     history.push({ price: currentPrice, time: new Date() });
     if (history.length > MAX_HISTORY_POINTS) {
       history.shift();
     }
-    saveHistory();
+    saveHistory(symbol);
   }
-  loadRecentMarketHistory();
+  loadRecentMarketHistory(symbol);
 }
 
-async function loadRecentMarketHistory() {
-  const symbol = elements.symbol.value || "BTCUSDT";
+async function loadRecentMarketHistory(symbol = elements.symbol.value) {
+  const requestedSymbol = normalizeSymbol(symbol);
+  activeHistorySymbol = requestedSymbol;
   try {
-    const data = await requestJson(`/api/market-history?symbol=${encodeURIComponent(symbol)}&minutes=${PROPOSAL_HISTORY_MINUTES}`);
+    const data = await requestJson(`/api/market-history?symbol=${encodeURIComponent(requestedSymbol)}&minutes=${PROPOSAL_HISTORY_MINUTES}`);
+    if (normalizeSymbol(elements.symbol.value) !== requestedSymbol || selectedOperationId !== null) {
+      return;
+    }
     const points = Array.isArray(data.points) ? data.points : [];
     const parsed = points
       .map((point) => ({ price: Number(point.price), time: new Date(point.time) }))
       .filter((point) => Number.isFinite(point.price) && !Number.isNaN(point.time.getTime()));
-    if (!parsed.length || selectedOperationId !== null) {
+    if (!parsed.length) {
       return;
     }
     history.length = 0;
     history.push(...parsed.slice(-MAX_HISTORY_POINTS));
-    if (Number.isFinite(currentPrice) && Math.abs(history[history.length - 1].price - currentPrice) >= 0.01) {
+    if (Number.isFinite(currentPrice) && currentPriceSymbol === requestedSymbol && Math.abs(history[history.length - 1].price - currentPrice) >= 0.01) {
       history.push({ price: currentPrice, time: new Date() });
     }
-    saveHistory();
+    saveHistory(requestedSymbol);
     updateMetrics();
   } catch {
     updateMetrics();
@@ -935,15 +964,24 @@ function getOperationVisualStatus(operation) {
 function updateMetrics() {
   const formConfig = getConfig();
   const { config, operation } = getDisplayContext();
+  const displaySymbol = config.symbol || elements.symbol.value;
+  const displayLabel = symbolLabel(displaySymbol);
   updateBinanceChartLink(config.symbol || elements.symbol.value);
+  if (elements.heroSymbol) {
+    elements.heroSymbol.textContent = displayLabel;
+  }
+  if (elements.marketPairLabel) {
+    elements.marketPairLabel.textContent = `${displayLabel} Binance Spot`;
+  }
+  document.title = `Simulador Trading ${displayLabel}`;
   elements.leverageValue.textContent = `x${formConfig.leverage}`;
   updatePlanPreview(formConfig);
   elements.exposure.textContent = currentUser ? money(config.margin * config.leverage) : "--";
   elements.chartSubtitle.textContent = !currentUser
     ? "Inicia sesion para ver operaciones, analisis y niveles de riesgo."
     : operation
-      ? `Viendo operacion #${operation.id}. Historial registrado cada 120 segundos.`
-      : "Viendo nueva operacion. Grafica BTC/USDT con velas de Binance Spot 1m de los ultimos 60 minutos.";
+      ? `Viendo operacion #${operation.id} en ${symbolLabel(operation.symbol)}. Historial registrado cada 120 segundos.`
+      : `Viendo nueva operacion. Grafica ${symbolLabel(config.symbol)} con velas de Binance Spot 1m de los ultimos 60 minutos.`;
   updateHistoryCount();
 
   if (!currentUser) {
@@ -994,7 +1032,7 @@ function updateBinanceChartLink(symbol) {
   if (!elements.binanceChartLink) {
     return;
   }
-  const normalized = String(symbol || "BTCUSDT").toUpperCase();
+  const normalized = normalizeSymbol(symbol);
   const pair = normalized.endsWith("USDT")
     ? `${normalized.slice(0, -4)}_USDT`
     : normalized;
@@ -1010,7 +1048,7 @@ function updatePlanPreview(config) {
   setTone(elements.planStopLoss, Number.isFinite(outcome.slPnl) ? outcome.slPnl : 0);
 }
 
-async function fetchPrice({ resetTimer = false, record = true } = {}) {
+async function fetchPrice({ resetTimer = false, record = true, symbolOverride = null } = {}) {
   if (isFetching) {
     // Critical: don't drop the 120s schedule if an auto tick collides with an
     // in-flight live fetch — otherwise the countdown stays frozen forever.
@@ -1027,23 +1065,32 @@ async function fetchPrice({ resetTimer = false, record = true } = {}) {
   }
 
   isFetching = true;
-  const symbol = elements.symbol.value;
+  const symbol = normalizeSymbol(symbolOverride || elements.symbol.value);
   elements.autoStatus.textContent = record ? "Consultando" : "Precio vivo";
   elements.lastUpdate.textContent = record ? "Consultando precio..." : "Actualizando precio vivo...";
 
   try {
     const data = await requestJson(`/api/price?symbol=${encodeURIComponent(symbol)}&record=${record ? "true" : "false"}`);
+    if (normalizeSymbol(elements.symbol.value) !== symbol) {
+      return;
+    }
 
     currentPrice = Number(data.price);
+    currentPriceSymbol = symbol;
+    if (selectedOperationId === null) {
+      activeHistorySymbol = symbol;
+    }
     syncMarketEntry();
     const capturedAt = new Date();
     if (record) {
-      history.push({ price: currentPrice, time: new Date() });
-      appendOperationTicks(data.operation_ids || [], currentPrice, capturedAt);
-      if (history.length > MAX_HISTORY_POINTS) {
-        history.shift();
+      if (selectedOperationId === null && activeHistorySymbol === symbol) {
+        history.push({ price: currentPrice, time: new Date() });
+        if (history.length > MAX_HISTORY_POINTS) {
+          history.shift();
+        }
+        saveHistory(symbol);
       }
-      saveHistory();
+      appendOperationTicks(data.operation_ids || [], currentPrice, capturedAt);
     }
 
     elements.lastUpdate.textContent = new Date().toLocaleString("es-ES");
@@ -1086,7 +1133,7 @@ async function fetchPrice({ resetTimer = false, record = true } = {}) {
     // Drain a queued manual refresh that arrived while we were busy.
     if (pendingManualFetch) {
       pendingManualFetch = false;
-      setTimeout(() => fetchPrice({ resetTimer: true, record: true }), 50);
+      setTimeout(() => fetchPrice({ resetTimer: true, record: true, symbolOverride: elements.symbol.value }), 50);
     }
   }
 }
@@ -1694,6 +1741,9 @@ function renderContest(state) {
     elements.contestCash.textContent = "--";
     elements.contestPnl.textContent = "--";
     elements.contestLeaderboard.innerHTML = "<div class=\"contest-empty\">Sin datos de concurso.</div>";
+    if (elements.contestHistory) {
+      elements.contestHistory.innerHTML = "<div class=\"contest-empty\">Sin historial cerrado.</div>";
+    }
     return;
   }
   const season = state.season || {};
@@ -1710,6 +1760,7 @@ function renderContest(state) {
   elements.contestPnl.textContent = state.participating ? money(contestPnl) : "--";
   setTone(elements.contestPnl, contestPnl);
   renderContestLeaderboard(state.leaderboard || []);
+  renderContestHistory(state.history || []);
 }
 
 function renderContestLeaderboard(rows) {
@@ -1744,6 +1795,57 @@ function renderContestAvatar(row) {
     return `<span class="contest-avatar"><img src="${escapeHtml(row.avatar_url)}" alt="" loading="lazy"></span>`;
   }
   return `<span class="contest-avatar empty">${initial}</span>`;
+}
+
+function renderContestHistory(rows) {
+  if (!elements.contestHistory) {
+    return;
+  }
+  updateContestHistoryVisibility(rows.length);
+  if (!rows.length) {
+    elements.contestHistory.innerHTML = "<div class=\"contest-empty\">Todavia no hay concursos mensuales cerrados.</div>";
+    return;
+  }
+  elements.contestHistory.innerHTML = rows.map((season) => {
+    const starts = season.starts_at ? new Date(season.starts_at).toLocaleDateString("es-ES") : "--";
+    const ends = season.ends_at ? new Date(season.ends_at).toLocaleDateString("es-ES") : "--";
+    const winner = season.winner_username || "Sin ganador";
+    const pnl = Number(season.winner_pnl || 0);
+    const leaderboard = Array.isArray(season.final_leaderboard) ? season.final_leaderboard.slice(0, 5) : [];
+    return `
+      <article class="contest-history-card">
+        <div class="contest-history-head">
+          <div>
+            <span>${escapeHtml(season.name || season.code || "Concurso mensual")}</span>
+            <strong>Ganador: ${escapeHtml(winner)}</strong>
+            <small>${starts} - ${ends}</small>
+          </div>
+          <b class="${pnl >= 0 ? "positive" : "negative"}">${money(pnl)}</b>
+        </div>
+        <div class="contest-history-ranking">
+          ${leaderboard.map((row) => `
+            <div>
+              <span>#${escapeHtml(row.rank || "")} ${escapeHtml(row.username || "")}</span>
+              <b>${money(Number(row.estimated_equity ?? 0))}</b>
+            </div>
+          `).join("") || "<small>Ranking final no disponible.</small>"}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function updateContestHistoryVisibility(count = 0) {
+  if (!elements.contestHistory || !elements.contestHistoryToggle) {
+    return;
+  }
+  elements.contestHistory.classList.toggle("hidden", !contestHistoryOpen);
+  elements.contestHistoryToggle.setAttribute("aria-expanded", String(contestHistoryOpen));
+  elements.contestHistoryToggle.textContent = contestHistoryOpen
+    ? "Ocultar historial"
+    : count > 0
+      ? `Ver historial (${count})`
+      : "Ver historial";
 }
 
 function renderPortfolio(portfolio) {
@@ -1939,7 +2041,7 @@ function renderSelectedOperationDetail(operation) {
   const lastTick = ticks[ticks.length - 1];
   const recommendation = operation.recommendation;
   const visualStatus = getOperationVisualStatus(operation);
-  const operationIdentity = `Operacion ${String(operation.symbol).replace("USDT", "/USDT")} en ${String(operation.side).toUpperCase()}`;
+  const operationIdentity = `Operacion ${symbolLabel(operation.symbol)} en ${String(operation.side).toUpperCase()}`;
   const modeLabel = (operation.mode || "training") === "contest" ? "Concurso mensual" : "Entrenamiento";
   const horizonLabel = timeHorizonLabel(operation.time_horizon || recommendation?.time_horizon || "intraday_short");
   const closePrice = Number(operation.close_price);
@@ -2068,17 +2170,22 @@ function formatEvidenceTime(value) {
   return date.toLocaleString("es-ES");
 }
 
-function resetHistory() {
+function resetHistory({ fetchLatest = true } = {}) {
+  const symbol = normalizeSymbol(elements.symbol.value);
+  activeHistorySymbol = symbol;
   history.length = 0;
   currentPrice = null;
-  loadHistory();
+  currentPriceSymbol = symbol;
+  loadHistory(symbol);
   elements.currentPrice.textContent = "--";
   elements.variation.textContent = "--";
   elements.pnl.textContent = "--";
   if (Number.isFinite(currentPrice)) {
     updateMetrics();
   }
-  fetchPrice({ resetTimer: true });
+  if (fetchLatest) {
+    fetchPrice({ resetTimer: true, symbolOverride: symbol });
+  }
 }
 
 function resizeCanvas() {
@@ -2275,7 +2382,7 @@ function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, cha
     tagY = currentPrice >= closePrice ? closeY - 78 : closeY + 48;
   }
   tagY = Math.max(pad.top + 8, Math.min(tagY, pad.top + chartHeight - 48));
-  drawTag(`BTC/USDT ${priceText(currentPrice)}`, tagX, tagY, getLivePriceTagColor(getDisplayContext().config, currentPrice), "#ffffff");
+  drawTag(`${symbolLabel(getDisplayContext().config.symbol)} ${priceText(currentPrice)}`, tagX, tagY, getLivePriceTagColor(getDisplayContext().config, currentPrice), "#ffffff");
   ctx.restore();
 }
 
@@ -2470,9 +2577,15 @@ elements.symbol.addEventListener("change", () => {
   if (selectedOperationId === null && !newOperationViewActive) {
     proposalDraft = readFormDraft();
   }
-  resetHistory();
+  const symbol = normalizeSymbol(elements.symbol.value);
+  activeHistorySymbol = symbol;
+  currentPrice = null;
+  currentPriceSymbol = symbol;
+  resetHistory({ fetchLatest: false });
+  updateMetrics();
   if (selectedOperationId === null) {
-    loadRecentMarketHistory();
+    loadRecentMarketHistory(symbol);
+    fetchPrice({ resetTimer: true, record: true, symbolOverride: symbol });
   }
 });
 elements.refreshButton.addEventListener("click", async () => {
@@ -2566,9 +2679,13 @@ elements.operationSelector.addEventListener("change", () => {
     return;
   }
   newOperationViewActive = false;
+  const operation = getSelectedOperation();
   renderOperationSelector();
-  renderSelectedOperationDetail(getSelectedOperation());
+  renderSelectedOperationDetail(operation);
   updateMetrics();
+  if (operation?.symbol) {
+    fetchPrice({ record: false, symbolOverride: operation.symbol });
+  }
 });
 elements.newOperationQuickButton.addEventListener("click", () => {
   if (!currentUser) {
@@ -2586,6 +2703,11 @@ elements.shortButton.addEventListener("click", () => setSide("short"));
 elements.trainingModeButton.addEventListener("click", () => setOperationMode("training"));
 elements.contestModeButton.addEventListener("click", () => setOperationMode("contest"));
 elements.joinContestButton.addEventListener("click", joinContest);
+elements.contestHistoryToggle?.addEventListener("click", () => {
+  const historyCount = Array.isArray(contestState?.history) ? contestState.history.length : 0;
+  contestHistoryOpen = !contestHistoryOpen;
+  updateContestHistoryVisibility(historyCount);
+});
 window.addEventListener("resize", resizeCanvas);
 
 loadSession();

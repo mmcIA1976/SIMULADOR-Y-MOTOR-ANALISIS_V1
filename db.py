@@ -34,13 +34,20 @@ def _get_pg_pool() -> ConnectionPool:
     if _PG_POOL is None:
         _PG_POOL = ConnectionPool(
             conninfo=database_url(),
-            min_size=1,
-            max_size=10,
+            min_size=int(os.environ.get("DB_POOL_MIN_SIZE", "0")),
+            max_size=int(os.environ.get("DB_POOL_MAX_SIZE", "5")),
             kwargs={"row_factory": dict_row, "prepare_threshold": None},
             open=True,
             timeout=30,
         )
     return _PG_POOL
+
+
+def close_pool() -> None:
+    global _PG_POOL
+    if _PG_POOL is not None:
+        _PG_POOL.close(timeout=5)
+        _PG_POOL = None
 
 
 class CursorProxy:
@@ -238,6 +245,12 @@ def init_db() -> None:
                 ends_at TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'ACTIVE',
                 starting_balance REAL NOT NULL DEFAULT 1000,
+                finalized_at TEXT,
+                winner_user_id {fk_type},
+                winner_username TEXT,
+                winner_equity REAL,
+                winner_pnl REAL,
+                final_leaderboard_json TEXT,
                 created_at {text_timestamp}
             );
 
@@ -268,6 +281,53 @@ def init_db() -> None:
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE SET NULL,
                 FOREIGN KEY(contest_season_id) REFERENCES contest_seasons(id) ON DELETE SET NULL
             );
+
+            CREATE TABLE IF NOT EXISTS learning_evaluations (
+                id {id_type},
+                operation_id {fk_type} NOT NULL UNIQUE,
+                user_id {fk_type} NOT NULL,
+                recommendation_id {fk_type},
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL,
+                time_horizon TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                close_reason TEXT,
+                final_pnl REAL NOT NULL DEFAULT 0,
+                plan_result TEXT NOT NULL,
+                analysis_verdict TEXT NOT NULL,
+                primary_lesson TEXT NOT NULL,
+                failure_type TEXT,
+                user_decision_quality TEXT,
+                max_favorable_pct REAL,
+                max_adverse_pct REAL,
+                max_favorable_pnl REAL,
+                max_adverse_pnl REAL,
+                time_to_close_minutes REAL,
+                would_hit_tp_after_manual INTEGER NOT NULL DEFAULT 0,
+                would_hit_sl_after_manual INTEGER NOT NULL DEFAULT 0,
+                setup_grade TEXT,
+                risk_level TEXT,
+                confidence TEXT,
+                training_decision TEXT,
+                tp_probability REAL,
+                sl_probability REAL,
+                range_probability REAL,
+                technical_label TEXT,
+                technical_score REAL,
+                market_regime TEXT,
+                direction_score REAL,
+                confidence_score REAL,
+                risk_reward_ratio REAL,
+                risk_margin_pct REAL,
+                reward_margin_pct REAL,
+                leverage_bucket TEXT,
+                structured_json TEXT NOT NULL,
+                created_at {text_timestamp},
+                updated_at {text_timestamp},
+                FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(recommendation_id) REFERENCES recommendations(id) ON DELETE SET NULL
+            );
             """
         )
         ensure_column(db, "operations", "observation_until", "TEXT")
@@ -287,8 +347,15 @@ def init_db() -> None:
         ensure_column(db, "users", "avatar_mime_type", "TEXT")
         ensure_column(db, "users", "avatar_data", blob_type)
         ensure_column(db, "users", "avatar_updated_at", "TEXT")
+        ensure_column(db, "contest_seasons", "finalized_at", "TEXT")
+        ensure_column(db, "contest_seasons", "winner_user_id", "BIGINT")
+        ensure_column(db, "contest_seasons", "winner_username", "TEXT")
+        ensure_column(db, "contest_seasons", "winner_equity", "REAL")
+        ensure_column(db, "contest_seasons", "winner_pnl", "REAL")
+        ensure_column(db, "contest_seasons", "final_leaderboard_json", "TEXT")
         ensure_column(db, "recommendations", "analysis_json", "TEXT")
         ensure_column(db, "recommendations", "time_horizon", "TEXT NOT NULL DEFAULT 'intraday_short'")
+        ensure_column(db, "learning_evaluations", "updated_at", text_timestamp)
         db.execute("UPDATE users SET starting_balance = 1000 WHERE starting_balance IS NULL")
         db.execute("UPDATE users SET cash_balance = 1000 WHERE cash_balance IS NULL")
         db.execute("UPDATE operations SET mode = 'training' WHERE mode IS NULL OR mode = ''")
@@ -321,6 +388,8 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_recommendations_user_operation ON recommendations(user_id, operation_id);
         CREATE INDEX IF NOT EXISTS idx_wallet_events_user_mode ON wallet_events(user_id, mode, created_at);
         CREATE INDEX IF NOT EXISTS idx_contest_entries_season ON contest_entries(season_id, user_id);
+        CREATE INDEX IF NOT EXISTS idx_learning_evaluations_user_horizon ON learning_evaluations(user_id, time_horizon, side);
+        CREATE INDEX IF NOT EXISTS idx_learning_evaluations_pattern ON learning_evaluations(symbol, side, time_horizon, plan_result);
         """
     )
 

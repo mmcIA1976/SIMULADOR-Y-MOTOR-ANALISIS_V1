@@ -448,6 +448,104 @@ label {
   gap: 10px;
 }
 
+.contest-history-section {
+  border: 1px solid rgba(246, 168, 35, 0.22);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(246, 168, 35, 0.08), rgba(31, 122, 140, 0.06));
+  padding: 12px;
+}
+
+.contest-history-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contest-history-header h2 {
+  margin: 0 0 3px;
+}
+
+.contest-history-header small {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.contest-history-header button {
+  min-height: 42px;
+  border: 1px solid rgba(246, 168, 35, 0.45);
+  border-radius: 8px;
+  background: #fff6e7;
+  color: #8a5600;
+  padding: 0 16px;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.contest-history-header button:hover {
+  border-color: rgba(246, 168, 35, 0.75);
+  background: #ffefd1;
+}
+
+.contest-history {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.contest-history.hidden {
+  display: none;
+}
+
+.contest-history-card {
+  border: 1px solid rgba(246, 168, 35, 0.28);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fffdf8 0%, #fff7e8 100%);
+  padding: 14px;
+}
+
+.contest-history-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.contest-history-head span,
+.contest-history-head small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.contest-history-head strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.18rem;
+}
+
+.contest-history-head > b {
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.contest-history-ranking {
+  display: grid;
+  gap: 6px;
+}
+
+.contest-history-ranking div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(18, 35, 30, 0.08);
+  padding-top: 6px;
+  font-weight: 800;
+}
+
 .contest-row {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);

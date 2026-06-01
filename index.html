@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador Trading BTC</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260527-mobsafe">
+    <link rel="stylesheet" href="/static/styles.css?v=20260601-contest-history-toggle">
   </head>
   <body>
     <main class="app-shell">
@@ -16,7 +16,7 @@
           </div>
           <div class="hero-title-row">
             <span>Operacion</span>
-            <strong>BTC/USDT</strong>
+            <strong id="heroSymbol">BTC/USDT</strong>
           </div>
           <p class="subhead">
             <span>Precio en vivo</span>
@@ -57,7 +57,7 @@
 
       <section class="metrics-grid market-metrics" aria-label="Resumen de mercado">
         <article class="metric market-price-card">
-          <span>BTC/USDT Binance Spot</span>
+          <span id="marketPairLabel">BTC/USDT Binance Spot</span>
           <strong id="currentPrice">--</strong>
         </article>
         <article class="metric operation-live-metric">
@@ -139,6 +139,16 @@
           <h2>Ranking mensual</h2>
           <div id="contestLeaderboard" class="contest-leaderboard"></div>
         </div>
+        <div class="contest-history-section">
+          <div class="contest-history-header">
+            <div>
+              <h2>Historial de concursos</h2>
+              <small>Ranking final de meses cerrados.</small>
+            </div>
+            <button id="contestHistoryToggle" type="button" aria-expanded="false">Ver historial</button>
+          </div>
+          <div id="contestHistory" class="contest-history"></div>
+        </div>
       </section>
 
       <section class="operation-focus-panel" aria-label="Operacion visible">
@@ -216,6 +226,7 @@
               <option value="SOLUSDT">SOL/USDT</option>
               <option value="BNBUSDT">BNB/USDT</option>
               <option value="XRPUSDT">XRP/USDT</option>
+              <option value="INJUSDT">INJ/USDT</option>
             </select>
           </label>
 
@@ -347,6 +358,6 @@
       <p id="floatingNoticeBody"></p>
     </aside>
 
-    <script src="/static/app.js?v=20260527-mobsafe"></script>
+    <script src="/static/app.js?v=20260601-contest-history-toggle"></script>
   </body>
 </html>

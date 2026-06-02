@@ -339,6 +339,7 @@ def price(
 ) -> dict:
     symbol = symbol.upper()
     value = market_data.get_price(symbol)
+    source = market_data.get_price_source(symbol) or "unknown"
     operation_ids: list[int] = []
     closed_operations: list[dict] = []
     user = None
@@ -384,6 +385,7 @@ def price(
     return {
         "symbol": symbol,
         "price": value,
+        "source": source,
         "operation_ids": operation_ids,
         "closed_operations": closed_operations,
     }

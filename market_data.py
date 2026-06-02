@@ -4,7 +4,12 @@ import json
 import urllib.parse
 import urllib.request
 
-from trading_simulator import BINANCE_SPOT_BASE_URLS, BINANCE_SPOT_TIMEOUT_SECONDS, fetch_binance_price
+from trading_simulator import (
+    BINANCE_SPOT_BASE_URLS,
+    BINANCE_SPOT_TIMEOUT_SECONDS,
+    fetch_binance_price,
+    get_last_price_source,
+)
 
 
 BINANCE_KLINES_PATH = "/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
@@ -48,7 +53,7 @@ def get_json_optional(url: str) -> object | None:
 
 def get_spot_json(path: str, symbol: str | None = None) -> object:
     safe_symbol = (symbol or "").upper()
-    preferred = _preferred_spot_base_by_symbol.get(safe_symbol, BINANCE_SPOT_BASE_URLS[-1])
+    preferred = _preferred_spot_base_by_symbol.get(safe_symbol, BINANCE_SPOT_BASE_URLS[0])
     last_error: Exception | None = None
     candidate_bases = (preferred,) + tuple(
         base for base in BINANCE_SPOT_BASE_URLS if base != preferred
@@ -76,6 +81,10 @@ def get_spot_json_optional(path: str, symbol: str | None = None) -> object | Non
 
 def get_price(symbol: str) -> float:
     return fetch_binance_price(symbol.upper())
+
+
+def get_price_source(symbol: str) -> str | None:
+    return get_last_price_source(symbol.upper())
 
 
 def get_klines(

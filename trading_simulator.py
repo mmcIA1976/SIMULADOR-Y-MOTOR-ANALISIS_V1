@@ -18,6 +18,7 @@ from datetime import datetime
 
 
 BINANCE_SPOT_BASE_URLS = (
+    "https://data-api.binance.vision",
     "https://api.binance.com",
     "https://api1.binance.com",
     "https://api2.binance.com",
@@ -25,6 +26,7 @@ BINANCE_SPOT_BASE_URLS = (
 )
 BINANCE_SPOT_TIMEOUT_SECONDS = 4.5
 _preferred_spot_base_by_symbol: dict[str, str] = {}
+_last_price_source_by_symbol: dict[str, str] = {}
 COINGECKO_TIMEOUT_SECONDS = 6.0
 COINGECKO_SYMBOL_TO_ID = {
     "BTCUSDT": "bitcoin",
@@ -34,15 +36,42 @@ COINGECKO_SYMBOL_TO_ID = {
     "XRPUSDT": "ripple",
     "INJUSDT": "injective-protocol",
 }
+COINCAP_SYMBOL_TO_ID = {
+    "BTCUSDT": "bitcoin",
+    "ETHUSDT": "ethereum",
+    "SOLUSDT": "solana",
+    "BNBUSDT": "binance-coin",
+    "XRPUSDT": "xrp",
+    "INJUSDT": "injective-protocol",
+}
 
 
 def _candidate_spot_bases(symbol: str) -> tuple[str, ...]:
-    preferred = _preferred_spot_base_by_symbol.get(symbol.upper(), BINANCE_SPOT_BASE_URLS[-1])
+    preferred = _preferred_spot_base_by_symbol.get(symbol.upper(), BINANCE_SPOT_BASE_URLS[0])
     return (preferred,) + tuple(base for base in BINANCE_SPOT_BASE_URLS if base != preferred)
 
 
 def _remember_spot_base(symbol: str, base_url: str) -> None:
     _preferred_spot_base_by_symbol[symbol.upper()] = base_url
+
+
+def _remember_price_source(symbol: str, source: str) -> None:
+    _last_price_source_by_symbol[symbol.upper()] = source
+
+
+def get_last_price_source(symbol: str) -> str | None:
+    return _last_price_source_by_symbol.get(symbol.upper())
+
+
+def _asset_symbol(symbol: str) -> str:
+    normalized = symbol.upper()
+    return normalized[:-4] if normalized.endswith("USDT") else normalized
+
+
+def _load_json(url: str, timeout: float = 6.0) -> object:
+    request = urllib.request.Request(url, headers={"User-Agent": "trading-simulator/1.0"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 def _fetch_coingecko_price(symbol: str) -> float | None:
@@ -53,11 +82,33 @@ def _fetch_coingecko_price(symbol: str) -> float | None:
         "https://api.coingecko.com/api/v3/simple/price"
         f"?ids={urllib.parse.quote(coin_id)}&vs_currencies=usd"
     )
-    request = urllib.request.Request(url, headers={"User-Agent": "trading-simulator/1.0"})
     try:
-        with urllib.request.urlopen(request, timeout=COINGECKO_TIMEOUT_SECONDS) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        payload = _load_json(url, timeout=COINGECKO_TIMEOUT_SECONDS)
         value = float(payload.get(coin_id, {}).get("usd", 0))
+        return value if value > 0 else None
+    except Exception:
+        return None
+
+
+def _fetch_cryptocompare_price(symbol: str) -> float | None:
+    asset = urllib.parse.quote(_asset_symbol(symbol))
+    url = f"https://min-api.cryptocompare.com/data/price?fsym={asset}&tsyms=USD"
+    try:
+        payload = _load_json(url)
+        value = float(payload.get("USD", 0))
+        return value if value > 0 else None
+    except Exception:
+        return None
+
+
+def _fetch_coincap_price(symbol: str) -> float | None:
+    asset_id = COINCAP_SYMBOL_TO_ID.get(symbol.upper())
+    if not asset_id:
+        return None
+    url = f"https://api.coincap.io/v2/assets/{urllib.parse.quote(asset_id)}"
+    try:
+        payload = _load_json(url)
+        value = float(payload.get("data", {}).get("priceUsd", 0))
         return value if value > 0 else None
     except Exception:
         return None
@@ -133,6 +184,7 @@ def fetch_binance_price(symbol: str) -> float:
             ask = float(payload.get("askPrice", 0))
             if bid > 0 and ask > 0:
                 _remember_spot_base(normalized_symbol, base_url)
+                _remember_price_source(normalized_symbol, f"{base_url}/bookTicker")
                 return (bid + ask) / 2
         except Exception as exc:
             last_error = exc
@@ -140,16 +192,23 @@ def fetch_binance_price(symbol: str) -> float:
         ticker_url = f"{base_url}/api/v3/ticker/price?symbol={safe_symbol}"
         request = urllib.request.Request(ticker_url, headers={"User-Agent": "trading-simulator/1.0"})
         try:
-            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+            payload = _load_json(ticker_url, timeout=BINANCE_SPOT_TIMEOUT_SECONDS)
             _remember_spot_base(normalized_symbol, base_url)
+            _remember_price_source(normalized_symbol, f"{base_url}/ticker")
             return float(payload["price"])
         except Exception as exc:
             last_error = exc
 
-    fallback = _fetch_coingecko_price(normalized_symbol)
-    if fallback is not None:
-        return fallback
+    fallback_sources = (
+        ("cryptocompare", _fetch_cryptocompare_price),
+        ("coingecko", _fetch_coingecko_price),
+        ("coincap", _fetch_coincap_price),
+    )
+    for source_name, fetcher in fallback_sources:
+        fallback = fetcher(normalized_symbol)
+        if fallback is not None:
+            _remember_price_source(normalized_symbol, source_name)
+            return fallback
 
     raise RuntimeError(f"No se pudo consultar precio de {normalized_symbol}: {last_error}")
 

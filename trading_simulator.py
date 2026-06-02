@@ -22,7 +22,7 @@ BINANCE_SPOT_BASE_URLS = (
     "https://api.binance.us",
 )
 BINANCE_SPOT_TIMEOUT_SECONDS = 4.5
-_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[-1]
+_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[0]
 
 
 MAX_LEVERAGE = 10

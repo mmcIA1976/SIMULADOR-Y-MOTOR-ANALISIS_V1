@@ -180,7 +180,7 @@ def static_asset(asset_name: str) -> FileResponse:
     allowed_assets = {"app.js", "styles.css"}
     if asset_name not in allowed_assets:
         raise HTTPException(status_code=404, detail="Asset no encontrado")
-    return FileResponse(APP_DIR / asset_name)
+    return FileResponse(APP_DIR / asset_name, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/avatars/{file_name}")
@@ -339,6 +339,13 @@ def price(
 ) -> dict:
     symbol = symbol.upper()
     value = market_data.get_price(symbol)
+    if not record:
+        return {
+            "symbol": symbol,
+            "price": value,
+            "operation_ids": [],
+            "closed_operations": [],
+        }
     operation_ids: list[int] = []
     closed_operations: list[dict] = []
     user = None

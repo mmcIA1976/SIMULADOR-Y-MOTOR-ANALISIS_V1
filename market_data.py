@@ -30,7 +30,7 @@ COINGECKO_MARKETS_URL = (
 )
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
-_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[-1]
+_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[0]
 
 
 def get_json(url: str) -> object:

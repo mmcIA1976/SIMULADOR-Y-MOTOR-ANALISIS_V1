@@ -1143,7 +1143,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
 
     elements.lastUpdate.textContent = new Date().toLocaleString("es-ES");
     elements.autoStatus.textContent = record ? "Auto ON" : "Live ON";
-    if (currentUser && Array.isArray(data.closed_operations) && data.closed_operations.length) {
+    if (record && currentUser && Array.isArray(data.closed_operations) && data.closed_operations.length) {
       const closedText = data.closed_operations
         .map((operation) => `#${operation.id} ${operation.reason === "stop_loss" ? "cerrada por stop loss" : "cerrada por take profit"}`)
         .join(" · ");
@@ -1153,7 +1153,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
       if (operationMode === "contest") {
         await loadContest();
       }
-    } else if (currentUser && selectedOperationId !== null) {
+    } else if (record && currentUser && selectedOperationId !== null) {
       await loadOperations();
       await loadPortfolio();
       if (operationMode === "contest") {
@@ -1162,7 +1162,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
     } else {
       updateMetrics();
       renderSelectedOperationDetail(getSelectedOperation());
-      if (currentUser && operationMode === "contest") {
+      if (record && currentUser && operationMode === "contest") {
         await loadContest();
       }
     }
@@ -2663,8 +2663,9 @@ elements.symbol.addEventListener("change", () => {
   resetHistory({ fetchLatest: false });
   updateMetrics();
   if (selectedOperationId === null) {
-    loadRecentMarketHistory(symbol);
-    fetchPrice({ resetTimer: true, record: true, symbolOverride: symbol });
+    fetchPrice({ record: false, symbolOverride: symbol });
+    scheduleNextFetch();
+    window.setTimeout(() => loadRecentMarketHistory(symbol), 150);
   }
 });
 elements.refreshButton.addEventListener("click", async () => {
@@ -2674,14 +2675,8 @@ elements.refreshButton.addEventListener("click", async () => {
   button.disabled = true;
   button.textContent = "Actualizando...";
   try {
-    await fetchPrice({ resetTimer: true, record: true });
-    // If the call was queued because another fetch was in-flight, wait for the
-    // drained follow-up so the button stays in "loading" until fresh data lands.
-    let guard = 0;
-    while ((isFetching || pendingManualFetch) && guard < 80) {
-      await new Promise((r) => setTimeout(r, 100));
-      guard += 1;
-    }
+    await fetchPrice({ record: false });
+    window.setTimeout(() => fetchPrice({ resetTimer: true, record: true }), 100);
   } finally {
     button.classList.remove("is-loading");
     button.textContent = originalLabel;
@@ -2797,10 +2792,11 @@ elements.contestHistoryToggle?.addEventListener("click", () => {
 });
 window.addEventListener("resize", resizeCanvas);
 
-loadSession();
 loadHistory();
 resizeCanvas();
 setOperationMode("training");
 updateMetrics();
-loadRecentMarketHistory();
-fetchPrice({ resetTimer: true, record: true });
+fetchPrice({ record: false });
+scheduleNextFetch();
+window.setTimeout(loadSession, 50);
+window.setTimeout(() => loadRecentMarketHistory(), 250);

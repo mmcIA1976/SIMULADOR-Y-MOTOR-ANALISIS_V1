@@ -11,6 +11,7 @@ import argparse
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,6 +25,15 @@ BINANCE_SPOT_BASE_URLS = (
 )
 BINANCE_SPOT_TIMEOUT_SECONDS = 4.5
 _preferred_spot_base_by_symbol: dict[str, str] = {}
+COINGECKO_TIMEOUT_SECONDS = 6.0
+COINGECKO_SYMBOL_TO_ID = {
+    "BTCUSDT": "bitcoin",
+    "ETHUSDT": "ethereum",
+    "SOLUSDT": "solana",
+    "BNBUSDT": "binancecoin",
+    "XRPUSDT": "ripple",
+    "INJUSDT": "injective-protocol",
+}
 
 
 def _candidate_spot_bases(symbol: str) -> tuple[str, ...]:
@@ -33,6 +43,26 @@ def _candidate_spot_bases(symbol: str) -> tuple[str, ...]:
 
 def _remember_spot_base(symbol: str, base_url: str) -> None:
     _preferred_spot_base_by_symbol[symbol.upper()] = base_url
+
+
+def _fetch_coingecko_price(symbol: str) -> float | None:
+    coin_id = COINGECKO_SYMBOL_TO_ID.get(symbol.upper())
+    if not coin_id:
+        return None
+    url = (
+        "https://api.coingecko.com/api/v3/simple/price"
+        f"?ids={urllib.parse.quote(coin_id)}&vs_currencies=usd"
+    )
+    request = urllib.request.Request(url, headers={"User-Agent": "trading-simulator/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=COINGECKO_TIMEOUT_SECONDS) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        value = float(payload.get(coin_id, {}).get("usd", 0))
+        return value if value > 0 else None
+    except Exception:
+        return None
+
+
 MAX_LEVERAGE = 10
 
 
@@ -116,6 +146,10 @@ def fetch_binance_price(symbol: str) -> float:
             return float(payload["price"])
         except Exception as exc:
             last_error = exc
+
+    fallback = _fetch_coingecko_price(normalized_symbol)
+    if fallback is not None:
+        return fallback
 
     raise RuntimeError(f"No se pudo consultar precio de {normalized_symbol}: {last_error}")
 

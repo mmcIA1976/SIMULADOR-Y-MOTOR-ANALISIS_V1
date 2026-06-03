@@ -618,6 +618,81 @@ label {
   font-weight: 750;
 }
 
+.contest-ops {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.contest-ops-group {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.contest-ops-label {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(31, 122, 140, 0.10);
+  color: var(--price);
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.contest-ops-group.closed .contest-ops-label {
+  background: rgba(18, 35, 30, 0.08);
+  color: var(--muted);
+}
+
+.contest-ops-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.contest-op-pill {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(18, 35, 30, 0.10);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 5px 9px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.contest-op-pill.is-open {
+  border-color: rgba(31, 122, 140, 0.28);
+  background: rgba(31, 122, 140, 0.08);
+}
+
+.contest-op-pill em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 850;
+}
+
+.contest-op-pill b {
+  font-weight: 950;
+}
+
+.contest-ops-empty {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 .contest-row small,
 .contest-empty {
   color: var(--muted);
@@ -633,6 +708,10 @@ label {
   .contest-avatar {
     width: 58px;
     height: 58px;
+  }
+
+  .contest-ops-group {
+    grid-template-columns: 1fr;
   }
 }
 

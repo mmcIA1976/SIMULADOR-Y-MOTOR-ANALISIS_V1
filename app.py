@@ -421,6 +421,23 @@ def market_history(symbol: str = "BTCUSDT", minutes: int = 60) -> dict:
     }
 
 
+@app.post("/api/operations/check-exits")
+def check_operation_exits(
+    symbol: str = "BTCUSDT",
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    symbol = symbol.upper()
+    current_price = market_data.get_price(symbol)
+    with connect() as db:
+        closed_by_trigger = close_triggered_open_operations(db, symbol, current_price, int(user["id"]))
+    return {
+        "symbol": symbol,
+        "price": current_price,
+        "closed_operations": list(closed_by_trigger.values()),
+    }
+
+
 def close_triggered_open_operations(
     db,
     symbol: str,
@@ -2293,6 +2310,28 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
         (season_id,),
     ).fetchall()
     open_operations = [row_to_dict(row) for row in open_rows]
+    operation_rows = db.execute(
+        """
+        SELECT
+            id,
+            user_id,
+            symbol,
+            side,
+            status,
+            final_pnl
+        FROM operations
+        WHERE mode = 'contest'
+          AND contest_season_id = ?
+        ORDER BY
+            CASE WHEN status = 'OPEN' THEN 0 ELSE 1 END,
+            id DESC
+        """,
+        (season_id,),
+    ).fetchall()
+    operations_by_user: dict[int, list[dict]] = {}
+    for operation_row in operation_rows:
+        operation = row_to_dict(operation_row)
+        operations_by_user.setdefault(int(operation["user_id"]), []).append(operation)
     prices = live_prices_for_operations(open_operations)
     unrealized_by_user: dict[int, float] = {}
     for operation in open_operations:
@@ -2317,6 +2356,7 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
         item["estimated_equity"] = round(float(item["equity_without_unrealized"]) + unrealized_pnl, 4)
         item["pnl_accumulated"] = round(closed_pnl + unrealized_pnl, 4)
         item["closed_pnl"] = round(closed_pnl, 4)
+        item["contest_operations"] = operations_by_user.get(int(item["user_id"]), [])
         item["avatar_url"] = avatar_url(
             {
                 "id": item["user_id"],

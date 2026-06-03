@@ -113,6 +113,8 @@ let nextUpdateAt = null;
 let isFetching = false;
 let pendingManualFetch = false;
 let pendingLiveFetchSymbol = null;
+let exitCheckInFlight = false;
+const pendingExitCheckOperationIds = new Set();
 let currentPrice = null;
 let currentPriceSymbol = "BTCUSDT";
 let activeHistorySymbol = "BTCUSDT";
@@ -928,6 +930,50 @@ function calculate(config, price) {
   return { rawVariation, directionVariation, pnl, state };
 }
 
+function liveExitCandidateForSymbol(symbol) {
+  if (!currentUser || !hasCurrentPriceForSymbol(symbol)) {
+    return null;
+  }
+  const normalizedSymbol = normalizeSymbol(symbol);
+  return openOperations.find((operation) => {
+    if (normalizeSymbol(operation.symbol) !== normalizedSymbol || operation.status !== "OPEN") {
+      return false;
+    }
+    const result = calculate(operationToConfig(operation), currentPrice);
+    return result.state === "STOP LOSS" || result.state === "TAKE PROFIT";
+  }) || null;
+}
+
+async function checkLiveExits(symbol) {
+  const operation = liveExitCandidateForSymbol(symbol);
+  if (!operation || exitCheckInFlight || pendingExitCheckOperationIds.has(Number(operation.id))) {
+    return;
+  }
+  exitCheckInFlight = true;
+  pendingExitCheckOperationIds.add(Number(operation.id));
+  try {
+    const data = await requestJson(`/api/operations/check-exits?symbol=${encodeURIComponent(normalizeSymbol(symbol))}`, {
+      method: "POST",
+    });
+    if (Array.isArray(data.closed_operations) && data.closed_operations.length) {
+      const closedText = data.closed_operations
+        .map((closed) => `#${closed.id} ${closed.reason === "stop_loss" ? "cerrada por stop loss" : "cerrada por take profit"}`)
+        .join(" · ");
+      elements.analysisDecision.textContent = closedText;
+      await loadOperations();
+      await loadPortfolio();
+      if (operationMode === "contest") {
+        await loadContest();
+      }
+    }
+  } catch (error) {
+    elements.lastUpdate.textContent = error.message;
+  } finally {
+    exitCheckInFlight = false;
+    pendingExitCheckOperationIds.delete(Number(operation.id));
+  }
+}
+
 function plannedOutcome(config) {
   if (!isValidTradeConfig(config) || !Number.isFinite(config.margin) || !Number.isFinite(config.leverage)) {
     return { tpPnl: NaN, slPnl: NaN };
@@ -1139,6 +1185,9 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
         saveHistory(symbol);
       }
       appendOperationTicks(data.operation_ids || [], currentPrice, capturedAt);
+    }
+    if (!record) {
+      checkLiveExits(symbol);
     }
 
     elements.lastUpdate.textContent = new Date().toLocaleString("es-ES");
@@ -1837,10 +1886,57 @@ function renderContestLeaderboard(rows) {
           <span>Flotante: <b class="${Number(row.unrealized_pnl || 0) >= 0 ? "positive" : "negative"}">${money(Number(row.unrealized_pnl || 0))}</b></span>
           <span>Capital estimado: <b>${money(Number(row.estimated_equity ?? row.equity_without_unrealized ?? 0))}</b></span>
         </div>
-        <small>${escapeHtml(row.operations_description || "Sin operaciones de concurso todavia.")}</small>
+        ${renderContestOperationGroups(row)}
       </div>
     </article>
   `).join("");
+}
+
+function renderContestOperationGroups(row) {
+  const operations = Array.isArray(row.contest_operations) ? row.contest_operations : [];
+  if (!operations.length) {
+    return `<div class="contest-ops-empty">Sin operaciones de concurso todavia.</div>`;
+  }
+  const openOperations = operations.filter((operation) => operation.status === "OPEN");
+  const closedOperations = operations.filter((operation) => operation.status !== "OPEN");
+  const groups = [];
+  if (openOperations.length) {
+    groups.push(renderContestOperationGroup("Abiertas", "open", openOperations));
+  }
+  if (closedOperations.length) {
+    groups.push(renderContestOperationGroup("Cerradas", "closed", closedOperations));
+  }
+  return `<div class="contest-ops">${groups.join("")}</div>`;
+}
+
+function renderContestOperationGroup(label, type, operations) {
+  return `
+    <div class="contest-ops-group ${type}">
+      <span class="contest-ops-label">${label}</span>
+      <div class="contest-ops-pills">
+        ${operations.map(renderContestOperationPill).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderContestOperationPill(operation) {
+  const status = String(operation.status || "").toUpperCase();
+  const isOpen = status === "OPEN";
+  const side = String(operation.side || "").toUpperCase();
+  const symbol = symbolLabel(operation.symbol || "");
+  const finalPnl = Number(operation.final_pnl || 0);
+  const pnlClass = finalPnl >= 0 ? "positive" : "negative";
+  const result = !isOpen && Number.isFinite(finalPnl)
+    ? `<b class="${pnlClass}">${money(finalPnl)}</b>`
+    : "";
+  return `
+    <span class="contest-op-pill ${isOpen ? "is-open" : "is-closed"}">
+      <strong>#${escapeHtml(operation.id)} ${escapeHtml(symbol)} ${escapeHtml(side)}</strong>
+      <em>${isOpen ? "Abierta" : "Cerrada"}</em>
+      ${result}
+    </span>
+  `;
 }
 
 function renderContestAvatar(row) {

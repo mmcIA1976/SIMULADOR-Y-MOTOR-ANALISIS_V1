@@ -8,7 +8,7 @@ from trading_simulator import BINANCE_SPOT_BASE_URLS, BINANCE_SPOT_TIMEOUT_SECON
 
 
 BINANCE_KLINES_PATH = "/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
-BINANCE_DEPTH_PATH = "/api/v3/depth?symbol={symbol}&limit={limit}"
+BINANCE_DEPTH_PATH = "/api/v3/depth?symbol={symbol}&limit=20"
 BINANCE_TICKER_24H_PATH = "/api/v3/ticker/24hr?symbol={symbol}"
 BINANCE_AGG_TRADES_PATH = "/api/v3/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol={symbol}"
@@ -93,10 +93,9 @@ def get_klines(
     return payload if isinstance(payload, list) else []
 
 
-def get_depth(symbol: str, limit: int = 100) -> dict:
+def get_depth(symbol: str) -> dict:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    capped_limit = min(max(limit, 20), 1000)
-    payload = get_spot_json_optional(BINANCE_DEPTH_PATH.format(symbol=safe_symbol, limit=capped_limit))
+    payload = get_spot_json_optional(BINANCE_DEPTH_PATH.format(symbol=safe_symbol))
     return payload if isinstance(payload, dict) else {"bids": [], "asks": []}
 
 

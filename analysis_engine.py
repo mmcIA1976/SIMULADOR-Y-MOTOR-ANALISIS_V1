@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.6-timeframe-weighted"
+ENGINE_VERSION = "rules-v0.5-technical-ratings"
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
         "label": "Intradia corto",
         "duration": "30 min-4 h",
-        "max_minutes": 240,
         "primary_timeframes": ["5m", "15m"],
         "confirmation_timeframe": "1h",
         "momentum_timeframe": "5m",
@@ -26,12 +24,10 @@ TIME_HORIZON_PROFILES = {
         "htf_penalty_weight": 0.6,
         "funding_weight": 0.35,
         "atr_timeframe": "5m/15m",
-        "focus": "flujo inmediato, CVD, order book, RSI corto y zonas intradia",
     },
     "intraday_wide": {
         "label": "Intradia amplio",
         "duration": "4-24 h",
-        "max_minutes": 1440,
         "primary_timeframes": ["15m", "1h"],
         "confirmation_timeframe": "4h",
         "momentum_timeframe": "1h",
@@ -46,12 +42,10 @@ TIME_HORIZON_PROFILES = {
         "htf_penalty_weight": 1.0,
         "funding_weight": 0.75,
         "atr_timeframe": "15m/1h",
-        "focus": "estructura 1h/4h, derivados por 1h, OI/funding y maximos/minimos diarios",
     },
     "short_swing": {
         "label": "Swing corto",
         "duration": "1-7 dias",
-        "max_minutes": 10080,
         "primary_timeframes": ["4h", "1d"],
         "confirmation_timeframe": "1w",
         "momentum_timeframe": "4h",
@@ -66,7 +60,6 @@ TIME_HORIZON_PROFILES = {
         "htf_penalty_weight": 1.35,
         "funding_weight": 1.25,
         "atr_timeframe": "4h/1d",
-        "focus": "estructura 4h/1d, amplitud crypto, sentimiento, funding acumulado y contexto macro",
     },
 }
 
@@ -140,8 +133,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     atr_pct = tf_volatility["atr_pct"]
     order_book_imbalance = order_book["imbalance"]
     spread_pct = order_book["spread_pct"]
-    microprice_bias_pct = order_book.get("microprice_bias_pct", 0)
-    slope_imbalance = (order_book.get("book_slope") or {}).get("slope_imbalance", 0)
     rsi_signal = tf_momentum["rsi_14"]
     funding_rate_pct = derivatives.get("funding_rate_pct")
     taker_buy_sell_ratio = derivatives_horizon.get("taker_buy_sell_ratio")
@@ -169,12 +160,10 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     if proposal.side == "long":
         price_vs_entry_bias = 0.03 if current_price <= proposal.entry else -0.02
         order_book_bias = (0.025 if order_book_imbalance > 0.12 else -0.025 if order_book_imbalance < -0.12 else 0) * micro_weight
-        microstructure_bias = microstructure_score(proposal.side, microprice_bias_pct, slope_imbalance) * micro_weight
         momentum_bias = (-0.025 if rsi_signal > 72 else 0.02 if 45 <= rsi_signal <= 62 else 0) * micro_weight
     else:
         price_vs_entry_bias = 0.03 if current_price >= proposal.entry else -0.02
         order_book_bias = (0.025 if order_book_imbalance < -0.12 else -0.025 if order_book_imbalance > 0.12 else 0) * micro_weight
-        microstructure_bias = microstructure_score(proposal.side, microprice_bias_pct, slope_imbalance) * micro_weight
         momentum_bias = (-0.025 if rsi_signal < 28 else 0.02 if 38 <= rsi_signal <= 55 else 0) * micro_weight
 
     volatility_penalty = 0.07 if risk_distance < max(recent_range_pct, atr_pct) * 0.35 else 0
@@ -183,10 +172,10 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     overextension_penalty = 0.025 if abs(tf_momentum["price_vs_ema_21_pct"]) > max(0.5, atr_pct * 1.8) else 0
     funding_penalty = funding_context_penalty(proposal.side, funding_rate_pct) * funding_weight
     taker_flow_bias = taker_flow_score(proposal.side, taker_buy_sell_ratio) * derivatives_weight
-    crowding_penalty = crowding_penalty_score(proposal.side, global_long_short_ratio) * derivatives_weight
+    crowding_penalty = crowding_penalty_score(proposal.side, global_long_short_ratio)
     cvd_bias = cvd_flow_score(proposal.side, trade_flow.get("cvd_ratio")) * micro_weight
     level_penalty = level_risk_penalty(proposal, levels_for_horizon)
-    sentiment_penalty = sentiment_extreme_penalty(proposal.side, sentiment.get("fear_greed_value")) * max(0.25, macro_weight)
+    sentiment_penalty = sentiment_extreme_penalty(proposal.side, sentiment.get("fear_greed_value"))
     oi_trend_bias = open_interest_trend_score(proposal.side, ticker_24h["price_change_pct"], open_interest_change_pct) * derivatives_weight
     breadth_bias = market_breadth_score(proposal.side, market_breadth.get("advancers_24h_pct"), market_breadth.get("median_change_24h_pct")) * max(0.5, macro_weight)
     funding_relative_penalty = funding_relative_context_penalty(proposal.side, funding_rate_pct, derivatives.get("funding_avg_recent_pct")) * funding_weight
@@ -209,7 +198,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + price_vs_entry_bias
         + volume_bias
         + order_book_bias
-        + microstructure_bias
         + momentum_bias
         + taker_flow_bias
         + cvd_bias
@@ -245,7 +233,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         risk_distance=risk_distance,
         spread_pct=spread_pct,
         funding_rate_pct=funding_rate_pct,
-        time_horizon=proposal.time_horizon,
     )
     break_even_probability = 1 / (1 + rr_ratio) if rr_ratio > 0 else 1
     layered_scores = build_layered_scores(
@@ -292,7 +279,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
 
     setup_grade = grade_from_scores(tp_probability, risk_score, layered_scores["expected_value_score"])
     confidence = confidence_from_score(layered_scores["confidence_score"])
-    expected_value = annotate_expected_value_threshold(expected_value, risk_level, confidence)
 
     reasons: list[str] = []
     alerts: list[str] = []
@@ -320,10 +306,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         reasons.append("El order book cercano favorece ligeramente la direccion propuesta.")
     elif order_book_bias < 0:
         alerts.append("El order book cercano va contra la direccion propuesta.")
-    if microstructure_bias > 0:
-        reasons.append("Microestructura: microprice/book slope acompanan ligeramente la direccion.")
-    elif microstructure_bias < 0:
-        alerts.append("Microestructura: microprice/book slope contradicen ligeramente la direccion.")
     if liquidity_penalty:
         alerts.append("El spread es elevado para una entrada limpia.")
     if overextension_penalty:
@@ -366,8 +348,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         alerts.append("El objetivo queda condicionado por una barrera tecnica cercana antes del TP.")
     if contradiction_penalty:
         alerts.append("Hay contradiccion combinada entre capas: el motor reduce confianza antes de aumentar probabilidad.")
-    if expected_value["expected_value_pct_margin"] < expected_value["minimum_required_pct_margin"]:
-        alerts.append("La EV neta positiva no alcanza el umbral minimo exigido para este riesgo/confianza.")
 
     suggested_leverage = min(proposal.leverage, 5) if risk_score >= 0.24 else proposal.leverage
     parameter_advice = {
@@ -379,87 +359,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
 
     decision = decision_from_context(setup_grade, risk_level, confidence, expected_value)
     invalidation_rules = build_invalidation_rules(proposal, market_regime, levels_for_horizon, taker_flow_bias, cvd_bias)
-    plan_liquidity = build_plan_liquidity_profile(proposal, order_book)
-    cvd_price_profile = build_cvd_price_profile(proposal.side, trade_flow)
-    derivatives_profile = build_derivatives_profile(
-        side=proposal.side,
-        price_change_24h_pct=ticker_24h["price_change_pct"],
-        derivatives=derivatives,
-        derivatives_horizon=derivatives_horizon,
-        taker_flow_bias=taker_flow_bias,
-        oi_trend_bias=oi_trend_bias,
-        funding_penalty=funding_penalty,
-        funding_relative_penalty=funding_relative_penalty,
-        crowding_penalty=crowding_penalty,
-        oi_context_penalty=oi_context_penalty,
-    )
-    pattern_tags = build_pattern_tags(
-        proposal=proposal,
-        market_regime=market_regime,
-        technical_rating=technical_rating,
-        risk_distance=risk_distance,
-        reward_distance=reward_distance,
-        atr_pct=atr_pct,
-        recent_range_pct=recent_range_pct,
-        order_book_imbalance=order_book_imbalance,
-        microprice_bias_pct=microprice_bias_pct,
-        slope_imbalance=slope_imbalance,
-        microstructure_bias=microstructure_bias,
-        cvd_bias=cvd_bias,
-        taker_flow_bias=taker_flow_bias,
-        funding_penalty=funding_penalty,
-        funding_relative_penalty=funding_relative_penalty,
-        level_penalty=level_penalty,
-        htf_penalty=htf_penalty,
-        oi_context_penalty=oi_context_penalty,
-        contradiction_penalty=contradiction_penalty,
-        plan_liquidity=plan_liquidity,
-        cvd_price_profile=cvd_price_profile,
-        derivatives_profile=derivatives_profile,
-    )
-    feature_audit = build_feature_audit(
-        proposal=proposal,
-        market_snapshot=market_snapshot,
-        horizon_profile=horizon_profile,
-        derivatives_horizon=derivatives_horizon,
-        tf_momentum=tf_momentum,
-        tf_volatility=tf_volatility,
-        tf_volume=tf_volume,
-        levels_for_horizon=levels_for_horizon,
-        technical_rating=technical_rating,
-        market_regime=market_regime,
-        layered_scores=layered_scores,
-        expected_value=expected_value,
-        pattern_tags=pattern_tags,
-        plan_liquidity=plan_liquidity,
-        cvd_price_profile=cvd_price_profile,
-        derivatives_profile=derivatives_profile,
-        score_components={
-            "trend_bias": trend_bias,
-            "technical_direction_bias": technical_rating["direction_bias"],
-            "price_vs_entry_bias": price_vs_entry_bias,
-            "volume_bias": volume_bias,
-            "order_book_bias": order_book_bias,
-            "microstructure_bias": microstructure_bias,
-            "momentum_bias": momentum_bias,
-            "taker_flow_bias": taker_flow_bias,
-            "cvd_bias": cvd_bias,
-            "oi_trend_bias": oi_trend_bias,
-            "breadth_bias": breadth_bias,
-            "volatility_penalty": volatility_penalty,
-            "leverage_penalty": leverage_penalty,
-            "liquidity_penalty": liquidity_penalty,
-            "overextension_penalty": overextension_penalty,
-            "funding_penalty": funding_penalty,
-            "funding_relative_penalty": funding_relative_penalty,
-            "crowding_penalty": crowding_penalty,
-            "level_penalty": level_penalty,
-            "sentiment_penalty": sentiment_penalty,
-            "higher_timeframe_penalty": htf_penalty,
-            "oi_context_penalty": oi_context_penalty,
-            "contradiction_penalty": contradiction_penalty,
-        },
-    )
     plain_summary = build_plain_summary(
         proposal=proposal,
         tp_probability=tp_probability,
@@ -529,8 +428,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "layered_scores": layered_scores,
         "market_regime": market_regime,
         "technical_rating": technical_rating,
-        "feature_audit": feature_audit,
-        "pattern_tags": pattern_tags,
         "invalidation_rules": invalidation_rules,
         "plain_summary": plain_summary,
         "explained_metrics": explained_metrics,
@@ -553,7 +450,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             },
             "risk_distance_pct": risk_distance,
             "reward_distance_pct": reward_distance,
-            "risk_score": risk_score,
             "margin_risk_pct": margin_risk_pct,
             "margin_reward_pct": margin_reward_pct,
             "risk_reward_ratio": rr_ratio,
@@ -563,11 +459,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             "layered_scores": layered_scores,
             "market_regime": market_regime,
             "technical_rating": technical_rating,
-            "feature_audit": feature_audit,
-            "pattern_tags": pattern_tags,
-            "plan_liquidity": plan_liquidity,
-            "cvd_price_profile": cvd_price_profile,
-            "derivatives_profile": derivatives_profile,
             "invalidation_rules": invalidation_rules,
             "score_components": {
                 "trend_bias": trend_bias,
@@ -583,7 +474,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "rr_bias": 0,
                 "volume_bias": volume_bias,
                 "order_book_bias": order_book_bias,
-                "microstructure_bias": microstructure_bias,
                 "momentum_bias": momentum_bias,
                 "taker_flow_bias": taker_flow_bias,
                 "cvd_bias": cvd_bias,
@@ -603,407 +493,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "contradiction_penalty": contradiction_penalty,
             },
         },
-    }
-
-
-def build_pattern_tags(
-    proposal: TradeProposal,
-    market_regime: dict,
-    technical_rating: dict,
-    risk_distance: float,
-    reward_distance: float,
-    atr_pct: float,
-    recent_range_pct: float,
-    order_book_imbalance: float,
-    microprice_bias_pct: float | None,
-    slope_imbalance: float | None,
-    microstructure_bias: float,
-    cvd_bias: float,
-    taker_flow_bias: float,
-    funding_penalty: float,
-    funding_relative_penalty: float,
-    level_penalty: float,
-    htf_penalty: float,
-    oi_context_penalty: float,
-    contradiction_penalty: float,
-    plan_liquidity: dict,
-    cvd_price_profile: dict,
-    derivatives_profile: dict,
-) -> list[str]:
-    tags: list[str] = []
-    if market_regime.get("name"):
-        tags.append(f"regime:{market_regime['name']}")
-    if technical_rating.get("label"):
-        tags.append(f"technical:{technical_rating['label']}")
-    if cvd_bias > 0 and taker_flow_bias < 0:
-        tags.append("spot_favorable_futures_against")
-    if cvd_bias < 0 and taker_flow_bias > 0:
-        tags.append("spot_against_futures_favorable")
-    if cvd_bias > 0:
-        tags.append("cvd_supports_plan")
-    elif cvd_bias < 0:
-        tags.append("cvd_against_plan")
-    if taker_flow_bias > 0:
-        tags.append("futures_taker_supports_plan")
-    elif taker_flow_bias < 0:
-        tags.append("futures_taker_against_plan")
-    if htf_penalty:
-        tags.append("higher_timeframe_against")
-    if level_penalty:
-        tags.append("technical_barrier_near")
-    if oi_context_penalty:
-        tags.append("open_interest_price_warning")
-    if funding_penalty or funding_relative_penalty:
-        tags.append("funding_saturation_warning")
-    if contradiction_penalty:
-        tags.append("mixed_signals_contradiction")
-    if risk_distance < max(recent_range_pct, atr_pct) * 0.35:
-        tags.append("stop_inside_recent_noise")
-    if reward_distance > 0 and risk_distance > 0 and reward_distance / risk_distance >= 2:
-        tags.append("asymmetric_reward_plan")
-    if proposal.leverage >= 8:
-        tags.append("high_leverage")
-    elif proposal.leverage >= 5:
-        tags.append("medium_leverage")
-    if proposal.side == "long" and order_book_imbalance > 0.12:
-        tags.append("order_book_supports_long")
-    elif proposal.side == "short" and order_book_imbalance < -0.12:
-        tags.append("order_book_supports_short")
-    elif abs(order_book_imbalance) > 0.12:
-        tags.append("order_book_against_plan")
-    if microprice_bias_pct is not None:
-        if microprice_bias_pct > 0.005:
-            tags.append("microprice_bid_pressure")
-        elif microprice_bias_pct < -0.005:
-            tags.append("microprice_ask_pressure")
-    if slope_imbalance is not None:
-        if slope_imbalance > 0.12:
-            tags.append("book_slope_bid_dense")
-        elif slope_imbalance < -0.12:
-            tags.append("book_slope_ask_dense")
-    if microstructure_bias > 0:
-        tags.append("microstructure_supports_plan")
-    elif microstructure_bias < 0:
-        tags.append("microstructure_against_plan")
-    if plan_liquidity.get("target_path_notional", 0) > plan_liquidity.get("stop_path_notional", 0) * 1.8:
-        tags.append("liquidity_heavier_toward_target")
-    if plan_liquidity.get("stop_path_notional", 0) > plan_liquidity.get("target_path_notional", 0) * 1.8:
-        tags.append("liquidity_heavier_toward_stop")
-    cvd_pattern = cvd_price_profile.get("pattern")
-    if cvd_pattern:
-        tags.append(cvd_pattern)
-    derivatives_pattern = derivatives_profile.get("pattern")
-    if derivatives_pattern:
-        tags.append(derivatives_pattern)
-    for warning in derivatives_profile.get("warnings", []):
-        tags.append(warning)
-    return tags
-
-
-def build_derivatives_profile(
-    side: str,
-    price_change_24h_pct: float,
-    derivatives: dict,
-    derivatives_horizon: dict,
-    taker_flow_bias: float,
-    oi_trend_bias: float,
-    funding_penalty: float,
-    funding_relative_penalty: float,
-    crowding_penalty: float,
-    oi_context_penalty: float,
-) -> dict:
-    desired_direction = 1 if side == "long" else -1
-    price_direction = 1 if price_change_24h_pct > 0.5 else -1 if price_change_24h_pct < -0.5 else 0
-    taker_direction = 1 if taker_flow_bias > 0 else -1 if taker_flow_bias < 0 else 0
-    oi_direction = 1 if oi_trend_bias > 0 else -1 if oi_trend_bias < 0 else 0
-    open_interest_change_pct = derivatives_horizon.get("open_interest_change_pct")
-    oi_change_direction = (
-        1 if open_interest_change_pct is not None and open_interest_change_pct > 0.2
-        else -1 if open_interest_change_pct is not None and open_interest_change_pct < -0.2
-        else 0
-    )
-    warnings = []
-    if funding_penalty or funding_relative_penalty:
-        warnings.append("derivatives_funding_saturation")
-    if crowding_penalty:
-        warnings.append("derivatives_crowding_risk")
-    if oi_context_penalty:
-        warnings.append("derivatives_oi_price_warning")
-
-    pattern = None
-    reason = "Derivados sin lectura compuesta fuerte."
-    if taker_direction == 1 and oi_direction == 1:
-        pattern = "futures_oi_confirmation"
-        reason = "El flujo taker de futuros y el OI acompanan la direccion propuesta."
-    elif taker_direction == -1 and oi_change_direction == 1:
-        pattern = "futures_oi_contradiction"
-        reason = "El flujo taker de futuros contradice la operacion con OI creciente; posible presion nueva contra el plan."
-    elif taker_direction == 1 and oi_change_direction <= 0:
-        pattern = "futures_flow_without_oi_confirmation"
-        reason = "El flujo taker acompana, pero el OI no confirma nueva exposicion."
-    elif taker_direction == -1:
-        pattern = "futures_taker_against_without_oi_confirmation"
-        reason = "El flujo taker de futuros va contra el plan, aunque el OI no confirma presion fuerte."
-    elif oi_context_penalty:
-        pattern = "oi_price_divergence_warning"
-        reason = "Precio y OI sugieren posible movimiento por cierre de posiciones, no conviccion nueva."
-
-    return {
-        "schema_version": "derivatives-composite-v0.1",
-        "pattern": pattern,
-        "reason": reason,
-        "warnings": warnings,
-        "period": derivatives_horizon.get("period"),
-        "desired_direction": desired_direction,
-        "price_change_24h_pct": price_change_24h_pct,
-        "price_direction": price_direction,
-        "taker_buy_sell_ratio": derivatives_horizon.get("taker_buy_sell_ratio"),
-        "taker_direction": taker_direction,
-        "open_interest": derivatives.get("open_interest"),
-        "open_interest_change_pct": open_interest_change_pct,
-        "oi_change_direction": oi_change_direction,
-        "oi_direction_from_score": oi_direction,
-        "funding_rate_pct": derivatives.get("funding_rate_pct"),
-        "funding_avg_recent_pct": derivatives.get("funding_avg_recent_pct"),
-        "global_long_short_ratio": derivatives_horizon.get("global_long_short_ratio"),
-    }
-
-
-def build_cvd_price_profile(side: str, trade_flow: dict) -> dict:
-    cvd_ratio = trade_flow.get("cvd_ratio")
-    price_change_pct = trade_flow.get("price_change_pct")
-    sample_trades = trade_flow.get("sample_trades", 0)
-    if cvd_ratio is None or price_change_pct is None:
-        return {
-            "schema_version": "cvd-price-v0.1",
-            "pattern": None,
-            "reason": "Datos insuficientes para comparar CVD y reaccion del precio.",
-            "sample_trades": sample_trades,
-        }
-    flow_direction = 1 if cvd_ratio > 0.12 else -1 if cvd_ratio < -0.12 else 0
-    price_direction = 1 if price_change_pct > 0.03 else -1 if price_change_pct < -0.03 else 0
-    desired_direction = 1 if side == "long" else -1
-    pattern = None
-    reason = "CVD y precio no ofrecen una lectura fuerte."
-    if flow_direction == desired_direction and price_direction == desired_direction:
-        pattern = "cvd_price_confirmation"
-        reason = "El flujo agresivo spot y el precio acompanan la direccion propuesta."
-    elif flow_direction == desired_direction and price_direction == 0:
-        pattern = "cvd_price_absorption_warning"
-        reason = "El flujo agresivo acompana, pero el precio no avanza; posible absorcion."
-    elif flow_direction == desired_direction and price_direction == -desired_direction:
-        pattern = "cvd_price_absorption_warning"
-        reason = "El flujo agresivo acompana, pero el precio reacciona en contra; posible absorcion fuerte."
-    elif flow_direction == -desired_direction:
-        pattern = "cvd_price_against_plan"
-        reason = "El flujo agresivo spot va contra la direccion propuesta."
-    elif price_direction == desired_direction:
-        pattern = "price_moves_without_cvd_confirmation"
-        reason = "El precio acompana, pero el CVD no confirma con claridad."
-    return {
-        "schema_version": "cvd-price-v0.1",
-        "pattern": pattern,
-        "reason": reason,
-        "sample_trades": sample_trades,
-        "cvd_ratio": cvd_ratio,
-        "price_change_pct": price_change_pct,
-        "flow_direction": flow_direction,
-        "price_direction": price_direction,
-        "desired_direction": desired_direction,
-        "first_price": trade_flow.get("first_price"),
-        "last_price": trade_flow.get("last_price"),
-        "first_trade_time": trade_flow.get("first_trade_time"),
-        "last_trade_time": trade_flow.get("last_trade_time"),
-    }
-
-
-def build_plan_liquidity_profile(proposal: TradeProposal, order_book: dict) -> dict:
-    bids = order_book.get("bids") if isinstance(order_book.get("bids"), list) else []
-    asks = order_book.get("asks") if isinstance(order_book.get("asks"), list) else []
-    if proposal.side == "long":
-        stop_levels = levels_between(bids, proposal.stop_loss, proposal.entry)
-        target_levels = levels_between(asks, proposal.entry, proposal.take_profit)
-    else:
-        stop_levels = levels_between(asks, proposal.entry, proposal.stop_loss)
-        target_levels = levels_between(bids, proposal.take_profit, proposal.entry)
-    stop_notional = sum(float(level.get("notional") or 0) for level in stop_levels)
-    target_notional = sum(float(level.get("notional") or 0) for level in target_levels)
-    total = stop_notional + target_notional
-    return {
-        "schema_version": "plan-liquidity-v0.1",
-        "side": proposal.side,
-        "stop_path_notional": stop_notional,
-        "target_path_notional": target_notional,
-        "stop_path_levels": len(stop_levels),
-        "target_path_levels": len(target_levels),
-        "target_vs_stop_liquidity_ratio": target_notional / max(stop_notional, 0.000001),
-        "stop_vs_target_liquidity_ratio": stop_notional / max(target_notional, 0.000001),
-        "dominant_path": "target" if target_notional > stop_notional else "stop" if stop_notional > target_notional else "balanced",
-        "coverage_notional": total,
-    }
-
-
-def levels_between(levels: list[dict], low: float, high: float) -> list[dict]:
-    lower = min(low, high)
-    upper = max(low, high)
-    return [
-        level for level in levels
-        if lower <= float(level.get("price") or 0) <= upper
-    ]
-
-
-def build_feature_audit(
-    proposal: TradeProposal,
-    market_snapshot: dict,
-    horizon_profile: dict,
-    derivatives_horizon: dict,
-    tf_momentum: dict,
-    tf_volatility: dict,
-    tf_volume: dict,
-    levels_for_horizon: dict,
-    technical_rating: dict,
-    market_regime: dict,
-    layered_scores: dict,
-    expected_value: dict,
-    pattern_tags: list[str],
-    plan_liquidity: dict,
-    cvd_price_profile: dict,
-    derivatives_profile: dict,
-    score_components: dict,
-) -> dict:
-    availability = market_snapshot.get("availability", {})
-    usable = [key for key, value in availability.items() if value]
-    missing = [key for key, value in availability.items() if not value]
-    total = len(availability) or 1
-    data_quality = {
-        "usable_features": usable,
-        "missing_features": missing,
-        "coverage_pct": round((len(usable) / total) * 100, 2),
-        "source_map": market_snapshot.get("source", {}),
-    }
-    order_book = market_snapshot.get("order_book", {})
-    trade_flow = market_snapshot.get("trade_flow", {})
-    derivatives = market_snapshot.get("derivatives", {})
-    ticker_24h = market_snapshot.get("ticker_24h", {})
-    market_breadth = market_snapshot.get("market_breadth", {})
-    sentiment = market_snapshot.get("sentiment", {})
-    global_market = market_snapshot.get("global_market", {})
-    return {
-        "schema_version": "feature-capture-v0.1",
-        "captured_at_utc": datetime.now(timezone.utc).isoformat(),
-        "proposal": {
-            "symbol": proposal.symbol,
-            "side": proposal.side,
-            "time_horizon": proposal.time_horizon,
-            "entry": proposal.entry,
-            "margin": proposal.margin,
-            "leverage": proposal.leverage,
-            "stop_loss": proposal.stop_loss,
-            "take_profit": proposal.take_profit,
-        },
-        "time_horizon_profile": {
-            "label": horizon_profile.get("label"),
-            "duration": horizon_profile.get("duration"),
-            "max_minutes": horizon_profile.get("max_minutes"),
-            "focus": horizon_profile.get("focus"),
-            "primary_timeframes": horizon_profile.get("primary_timeframes"),
-            "confirmation_timeframe": horizon_profile.get("confirmation_timeframe"),
-            "momentum_timeframe": horizon_profile.get("momentum_timeframe"),
-            "volatility_timeframe": horizon_profile.get("volatility_timeframe"),
-            "levels_timeframe": horizon_profile.get("levels_timeframe"),
-            "derivatives_period": derivatives_horizon.get("period"),
-            "trend_weights": horizon_profile.get("trend_weights"),
-            "micro_weight": horizon_profile.get("micro_weight"),
-            "derivatives_weight": horizon_profile.get("derivatives_weight"),
-            "macro_weight": horizon_profile.get("macro_weight"),
-            "funding_weight": horizon_profile.get("funding_weight"),
-        },
-        "data_quality": data_quality,
-        "selected_market_state": {
-            "current_price": market_snapshot.get("current_price"),
-            "ticker_24h": {
-                "price_change_pct": ticker_24h.get("price_change_pct"),
-                "quote_volume": ticker_24h.get("quote_volume"),
-                "high": ticker_24h.get("high"),
-                "low": ticker_24h.get("low"),
-            },
-            "momentum": {
-                "interval": tf_momentum.get("interval"),
-                "rsi_14": tf_momentum.get("rsi_14"),
-                "price_vs_ema_21_pct": tf_momentum.get("price_vs_ema_21_pct"),
-                "ema_stack": tf_momentum.get("ema_stack"),
-            },
-            "volatility": {
-                "interval": tf_volatility.get("interval"),
-                "atr_pct": tf_volatility.get("atr_pct"),
-                "recent_range_pct": tf_volatility.get("recent_range_pct"),
-                "position_in_recent_range": tf_volatility.get("position_in_recent_range"),
-            },
-            "volume": {
-                "interval": tf_volume.get("interval"),
-                "volume_ratio": tf_volume.get("volume_ratio"),
-                "taker_buy_ratio": tf_volume.get("taker_buy_ratio"),
-            },
-            "levels": {
-                "nearest_support": levels_for_horizon.get("nearest_support"),
-                "nearest_resistance": levels_for_horizon.get("nearest_resistance"),
-                "distance_to_support_pct": levels_for_horizon.get("distance_to_support_pct"),
-                "distance_to_resistance_pct": levels_for_horizon.get("distance_to_resistance_pct"),
-            },
-            "order_book": {
-                "imbalance": order_book.get("imbalance"),
-                "microprice": order_book.get("microprice"),
-                "microprice_bias_pct": order_book.get("microprice_bias_pct"),
-                "book_slope": order_book.get("book_slope"),
-                "spread_pct": order_book.get("spread_pct"),
-                "bid_notional_top20": order_book.get("bid_notional_top20"),
-                "ask_notional_top20": order_book.get("ask_notional_top20"),
-                "levels_count": order_book.get("levels_count"),
-                "depth_bands": order_book.get("depth_bands"),
-                "plan_liquidity": plan_liquidity,
-            },
-            "spot_flow": {
-                "sample_trades": trade_flow.get("sample_trades"),
-                "first_trade_time": trade_flow.get("first_trade_time"),
-                "last_trade_time": trade_flow.get("last_trade_time"),
-                "first_price": trade_flow.get("first_price"),
-                "last_price": trade_flow.get("last_price"),
-                "price_change_pct": trade_flow.get("price_change_pct"),
-                "buy_ratio": trade_flow.get("buy_ratio"),
-                "sell_ratio": trade_flow.get("sell_ratio"),
-                "cvd_notional": trade_flow.get("cvd_notional"),
-                "cvd_ratio": trade_flow.get("cvd_ratio"),
-                "cvd_price_profile": cvd_price_profile,
-            },
-            "derivatives": {
-                "period": derivatives_horizon.get("period"),
-                "funding_rate_pct": derivatives.get("funding_rate_pct"),
-                "funding_avg_recent_pct": derivatives.get("funding_avg_recent_pct"),
-                "open_interest": derivatives.get("open_interest"),
-                "open_interest_change_pct": derivatives_horizon.get("open_interest_change_pct"),
-                "global_long_short_ratio": derivatives_horizon.get("global_long_short_ratio"),
-                "taker_buy_sell_ratio": derivatives_horizon.get("taker_buy_sell_ratio"),
-                "taker_buy_volume": derivatives_horizon.get("taker_buy_volume"),
-                "taker_sell_volume": derivatives_horizon.get("taker_sell_volume"),
-                "derivatives_profile": derivatives_profile,
-            },
-            "context": {
-                "fear_greed_value": sentiment.get("fear_greed_value"),
-                "fear_greed_classification": sentiment.get("fear_greed_classification"),
-                "btc_dominance_pct": global_market.get("btc_dominance_pct"),
-                "advancers_24h_pct": market_breadth.get("advancers_24h_pct"),
-                "median_change_24h_pct": market_breadth.get("median_change_24h_pct"),
-            },
-        },
-        "analysis_outputs": {
-            "market_regime": market_regime.get("name"),
-            "technical_label": technical_rating.get("label"),
-            "technical_score": technical_rating.get("score"),
-            "layered_scores": layered_scores,
-            "expected_value": expected_value,
-            "pattern_tags": pattern_tags,
-        },
-        "score_components": score_components,
     }
 
 
@@ -1133,92 +622,28 @@ def calculate_expected_value(
     risk_distance: float,
     spread_pct: float,
     funding_rate_pct: float | None,
-    time_horizon: str | None = None,
 ) -> dict:
     notional = proposal.margin * proposal.leverage
     gross_win = notional * (reward_distance / 100)
     gross_loss = notional * (risk_distance / 100)
-    cost_model = estimate_trade_costs(
-        notional=notional,
-        spread_pct=spread_pct,
-        funding_rate_pct=funding_rate_pct,
-        time_horizon=time_horizon or proposal.time_horizon,
-    )
-    estimated_cost = cost_model["total_cost_usdt"]
+    fee_rate_round_trip = 0.0008
+    slippage_rate_round_trip = max(spread_pct / 100, 0.0002)
+    funding_cost = notional * abs(funding_rate_pct or 0) / 100
+    estimated_cost = notional * (fee_rate_round_trip + slippage_rate_round_trip) + funding_cost
     net_win = gross_win - estimated_cost
     net_loss = gross_loss + estimated_cost
     expected_value_usdt = tp_probability * net_win - sl_probability * net_loss - range_probability * estimated_cost
     return {
-        "schema_version": "ev-net-costs-v0.2",
         "notional": round(notional, 4),
         "gross_win_usdt": round(gross_win, 4),
         "gross_loss_usdt": round(gross_loss, 4),
         "estimated_cost_usdt": round(estimated_cost, 4),
-        "cost_model": cost_model,
         "net_win_usdt": round(net_win, 4),
         "net_loss_usdt": round(net_loss, 4),
         "expected_value_usdt": round(expected_value_usdt, 4),
         "expected_value_pct_margin": round((expected_value_usdt / proposal.margin) * 100, 4) if proposal.margin else 0,
         "label": "positiva" if expected_value_usdt > 0 else "negativa" if expected_value_usdt < 0 else "neutral",
     }
-
-
-def estimate_trade_costs(
-    notional: float,
-    spread_pct: float,
-    funding_rate_pct: float | None,
-    time_horizon: str | None,
-) -> dict:
-    profile = time_horizon_profile(time_horizon or "intraday_short")
-    expected_minutes = expected_holding_minutes(time_horizon or "intraday_short", int(profile.get("max_minutes") or 240))
-    fee_rate_entry = 0.0004
-    fee_rate_exit = 0.0004
-    spread_cross_rate = max(spread_pct / 100, 0)
-    slippage_rate = estimate_slippage_rate(spread_pct=spread_pct, time_horizon=time_horizon or "intraday_short")
-    funding_periods = expected_minutes / 480
-    funding_rate = abs(funding_rate_pct or 0) / 100
-    fee_cost = notional * (fee_rate_entry + fee_rate_exit)
-    spread_cost = notional * spread_cross_rate
-    slippage_cost = notional * slippage_rate
-    funding_cost = notional * funding_rate * funding_periods
-    total = fee_cost + spread_cost + slippage_cost + funding_cost
-    return {
-        "schema_version": "trade-costs-v0.2",
-        "time_horizon": time_horizon or "intraday_short",
-        "expected_minutes": round(expected_minutes, 2),
-        "funding_periods_8h": round(funding_periods, 4),
-        "fee_rate_round_trip": round(fee_rate_entry + fee_rate_exit, 6),
-        "spread_pct": round(spread_pct, 6),
-        "spread_cross_rate": round(spread_cross_rate, 6),
-        "slippage_rate_round_trip": round(slippage_rate, 6),
-        "funding_rate_pct": funding_rate_pct,
-        "fee_cost_usdt": round(fee_cost, 4),
-        "spread_cost_usdt": round(spread_cost, 4),
-        "slippage_cost_usdt": round(slippage_cost, 4),
-        "funding_cost_usdt": round(funding_cost, 4),
-        "total_cost_usdt": round(total, 4),
-    }
-
-
-def expected_holding_minutes(time_horizon: str, max_minutes: int) -> float:
-    if time_horizon == "intraday_short":
-        return min(max_minutes, 120)
-    if time_horizon == "intraday_wide":
-        return min(max_minutes, 720)
-    if time_horizon == "short_swing":
-        return min(max_minutes, 4320)
-    return max_minutes * 0.5
-
-
-def estimate_slippage_rate(spread_pct: float, time_horizon: str) -> float:
-    base = max(spread_pct / 100, 0.00015)
-    if time_horizon == "intraday_short":
-        multiplier = 1.15
-    elif time_horizon == "intraday_wide":
-        multiplier = 0.9
-    else:
-        multiplier = 0.75
-    return min(0.004, max(0.00015, base * multiplier))
 
 
 def build_layered_scores(
@@ -1285,46 +710,11 @@ def confidence_from_score(score: int) -> str:
 def decision_from_context(setup_grade: str, risk_level: str, confidence: str, expected_value: dict) -> str:
     if expected_value["expected_value_usdt"] < 0:
         return "observar"
-    minimum_ev = expected_value.get("minimum_required_pct_margin")
-    if minimum_ev is None:
-        minimum_ev = minimum_ev_pct_margin(risk_level, confidence)
-    if expected_value["expected_value_pct_margin"] < minimum_ev:
-        return "observar"
     if setup_grade in {"A", "B"} and risk_level != "alto" and confidence in {"alta", "media"}:
         return "simular"
     if setup_grade in {"B", "C"} and risk_level != "alto":
         return "simular con tamano prudente"
     return "observar"
-
-
-def annotate_expected_value_threshold(expected_value: dict, risk_level: str, confidence: str) -> dict:
-    annotated = dict(expected_value)
-    minimum = minimum_ev_pct_margin(risk_level, confidence)
-    ev_pct = float(annotated.get("expected_value_pct_margin") or 0)
-    annotated["minimum_required_pct_margin"] = minimum
-    annotated["passes_minimum_threshold"] = ev_pct >= minimum
-    annotated["threshold_reason"] = (
-        "EV suficiente para el riesgo/confianza del setup."
-        if ev_pct >= minimum
-        else "EV insuficiente para compensar riesgo, costes e incertidumbre."
-    )
-    return annotated
-
-
-def minimum_ev_pct_margin(risk_level: str | None, confidence: str | None) -> float:
-    if risk_level == "alto":
-        base = 3.0
-    elif risk_level == "medio-alto":
-        base = 2.0
-    elif risk_level == "medio":
-        base = 1.0
-    else:
-        base = 0.5
-    if confidence in {"baja", "media-baja"}:
-        base += 0.5
-    elif confidence == "alta":
-        base -= 0.25
-    return round(max(0.25, base), 2)
 
 
 def build_invalidation_rules(proposal: TradeProposal, market_regime: dict, levels_1h: dict, taker_flow_bias: float, cvd_bias: float) -> list[str]:
@@ -1358,11 +748,11 @@ def build_score_metrics(layered_scores: dict, expected_value: dict, market_regim
         {
             "key": "expected_value",
             "label": "Esperanza matematica",
-            "value": f"{expected_value['label']} · {expected_value['expected_value_usdt']:+.2f} USDT · umbral {expected_value.get('minimum_required_pct_margin', 0):.2f}%",
+            "value": f"{expected_value['label']} · {expected_value['expected_value_usdt']:+.2f} USDT",
             "score": layered_scores["expected_value_score"],
-            "bias": "favorable" if expected_value.get("passes_minimum_threshold") else "desfavorable",
+            "bias": "favorable" if expected_value["expected_value_usdt"] > 0 else "desfavorable",
             "source": "Probabilidad, R/R, comisiones, spread, slippage y funding estimados",
-            "explanation": "Calcula si la operacion compensa economicamente despues de costes aproximados y exige una EV minima segun riesgo y confianza.",
+            "explanation": "Calcula si la operacion compensa economicamente despues de costes aproximados. Puede ser positiva aunque la probabilidad no sea alta.",
         },
         {
             "key": "market_regime",
@@ -1410,23 +800,6 @@ def cvd_flow_score(side: str, cvd_ratio: float | None) -> float:
     if side == "long":
         return 0.025 if cvd_ratio > 0.12 else -0.025 if cvd_ratio < -0.12 else 0
     return 0.025 if cvd_ratio < -0.12 else -0.025 if cvd_ratio > 0.12 else 0
-
-
-def microstructure_score(side: str, microprice_bias_pct: float | None, slope_imbalance: float | None) -> float:
-    microprice_bias = float(microprice_bias_pct or 0)
-    slope_bias = float(slope_imbalance or 0)
-    raw = 0.0
-    if microprice_bias > 0.005:
-        raw += 0.01
-    elif microprice_bias < -0.005:
-        raw -= 0.01
-    if slope_bias > 0.12:
-        raw += 0.01
-    elif slope_bias < -0.12:
-        raw -= 0.01
-    if side == "short":
-        raw *= -1
-    return max(-0.018, min(0.018, raw))
 
 
 def level_risk_penalty(proposal: TradeProposal, levels_for_horizon: dict) -> float:
@@ -1760,7 +1133,7 @@ def build_explained_metrics(
             "score": 60,
             "bias": "contexto",
             "source": "Seleccion del usuario",
-            "explanation": f"Define que datos pesan mas en este analisis. Foco: {horizon_profile.get('focus')}. Principales: {', '.join(horizon_profile['primary_timeframes'])}; confirmacion: {horizon_profile['confirmation_timeframe']}.",
+            "explanation": f"Define que datos pesan mas en este analisis. Principales: {', '.join(horizon_profile['primary_timeframes'])}; confirmacion: {horizon_profile['confirmation_timeframe']}.",
         },
         {
             "key": "technical_rating",
@@ -1804,7 +1177,7 @@ def build_explained_metrics(
             "value": f"{order_book['imbalance']:+.2f}",
             "score": min(100, max(0, imbalance_score)),
             "bias": "favorable" if (proposal.side == "long" and order_book["imbalance"] > 0.12) or (proposal.side == "short" and order_book["imbalance"] < -0.12) else "desfavorable" if abs(order_book["imbalance"]) > 0.12 else "neutral",
-            "source": "Binance order book spot top 20 y bandas top 100",
+            "source": "Binance order book spot top 20 niveles",
             "explanation": "Compara liquidez cercana en compras y ventas. No predice por si solo, pero muestra si la presion inmediata acompana o dificulta la entrada.",
         },
         {

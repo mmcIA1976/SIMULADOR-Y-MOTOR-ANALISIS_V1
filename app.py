@@ -716,18 +716,11 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
-    feature_audit = snapshot.get("feature_audit") if isinstance(snapshot.get("feature_audit"), dict) else {}
-    data_quality = feature_audit.get("data_quality") if isinstance(feature_audit.get("data_quality"), dict) else {}
-    pattern_tags = snapshot.get("pattern_tags") if isinstance(snapshot.get("pattern_tags"), list) else []
     rr_ratio = safe_float(snapshot.get("risk_reward_ratio"))
     risk_margin_pct = safe_float(snapshot.get("risk_margin_pct"))
     reward_margin_pct = safe_float(snapshot.get("reward_margin_pct"))
     close_reason = operation.get("close_reason")
-    legacy_plan_result = plan_result_from_operation(operation)
-    triple_barrier = triple_barrier_label(operation, ticks)
-    post_horizon = post_horizon_outcome(operation, ticks, triple_barrier)
-    plan_result = plan_result_from_triple_barrier(triple_barrier, legacy_plan_result)
-    timing_lesson = build_timing_lesson(triple_barrier, post_horizon, plan_result)
+    plan_result = plan_result_from_operation(operation)
     manual_trigger = first_plan_trigger_after_close(operation, ticks_after_close(operation, ticks))
     would_hit_sl_after_manual = bool(manual_trigger and manual_trigger[0] == "stop_loss")
     would_hit_tp_after_manual = bool(manual_trigger and manual_trigger[0] == "take_profit")
@@ -746,14 +739,6 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
     )
     user_decision_quality = classify_user_decision_quality(operation, manual_trigger)
     failure_type = classify_failure_type(operation, snapshot, mfe_mae, plan_result)
-    engine_diagnostics = build_engine_diagnostics(
-        operation=operation,
-        snapshot=snapshot,
-        plan_result=plan_result,
-        triple_barrier=triple_barrier,
-        post_horizon=post_horizon,
-        mfe_mae=mfe_mae,
-    )
     primary_lesson = build_primary_lesson(
         operation=operation,
         plan_result=plan_result,
@@ -766,14 +751,9 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
     structured = {
         "operation_id": int(operation["id"]),
         "plan_result": plan_result,
-        "legacy_plan_result": legacy_plan_result,
-        "triple_barrier": triple_barrier,
-        "post_horizon_outcome": post_horizon,
-        "timing_lesson": timing_lesson,
         "analysis_verdict": analysis_verdict,
         "primary_lesson": primary_lesson,
         "failure_type": failure_type,
-        "engine_diagnostics": engine_diagnostics,
         "user_decision_quality": user_decision_quality,
         "excursion": mfe_mae,
         "manual_counterfactual": {
@@ -801,15 +781,6 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
             "risk_reward_ratio": rr_ratio,
             "risk_margin_pct": risk_margin_pct,
             "reward_margin_pct": reward_margin_pct,
-        },
-        "feature_capture": {
-            "schema_version": feature_audit.get("schema_version"),
-            "captured_at_utc": feature_audit.get("captured_at_utc"),
-            "data_coverage_pct": data_quality.get("coverage_pct"),
-            "missing_features": data_quality.get("missing_features", []),
-            "pattern_tags": pattern_tags,
-            "selected_market_state": feature_audit.get("selected_market_state", {}),
-            "score_components": feature_audit.get("score_components", {}),
         },
     }
     return {
@@ -983,99 +954,6 @@ def plan_result_from_operation(operation: dict) -> str:
     return "manual_pending_or_unclassified"
 
 
-def plan_result_from_triple_barrier(triple_barrier: dict, fallback: str) -> str:
-    label = triple_barrier.get("label")
-    if label == "tp_first":
-        return "plan_success"
-    if label == "sl_first":
-        return "plan_failure"
-    if label == "expired":
-        return "plan_expired"
-    if label == "manual_before_resolution":
-        return fallback if fallback not in {"manual_pending_or_unclassified", "plan_unresolved"} else "manual_before_resolution"
-    if label == "unresolved":
-        return "plan_unresolved"
-    return fallback
-
-
-def triple_barrier_label(operation: dict, ticks: list[dict]) -> dict:
-    started_at = parse_timestamp(operation.get("started_at") or operation.get("created_at"))
-    horizon = operation.get("time_horizon") or "intraday_short"
-    horizon_profile = time_horizon_profile(horizon)
-    max_minutes = int(horizon_profile.get("max_minutes") or 240)
-    expires_at = started_at + timedelta(minutes=max_minutes) if started_at else None
-
-    trigger = first_plan_trigger_between(operation, ticks, started_at, expires_at)
-    if trigger:
-        reason, observed_price, triggered_at = trigger
-        return triple_barrier_payload(
-            operation=operation,
-            label="tp_first" if reason == "take_profit" else "sl_first",
-            first_barrier=reason,
-            observed_price=observed_price,
-            triggered_at=triggered_at,
-            horizon=horizon,
-            horizon_label=horizon_profile.get("label"),
-            max_minutes=max_minutes,
-            expires_at=expires_at,
-        )
-
-    close_reason = operation.get("close_reason")
-    if close_reason in {"take_profit", "stop_loss"}:
-        return {
-            "schema_version": "triple-barrier-v0.1",
-            "label": "tp_first" if close_reason == "take_profit" else "sl_first",
-            "first_barrier": close_reason,
-            "barrier_price": triggered_exit_price(operation, close_reason),
-            "observed_price": safe_float(operation.get("close_price")),
-            "triggered_at": str(operation.get("closed_at")) if operation.get("closed_at") else None,
-            "horizon": horizon,
-            "horizon_label": horizon_profile.get("label"),
-            "max_minutes": max_minutes,
-            "expires_at": expires_at.isoformat() if expires_at else None,
-            "fallback_from_close_reason": True,
-        }
-
-    closed_at = parse_timestamp(operation.get("closed_at"))
-    last_tick_at = max(
-        (
-            parsed
-            for parsed in (
-                parse_timestamp(str(tick.get("captured_at")) if tick.get("captured_at") is not None else None)
-                for tick in ticks
-            )
-            if parsed is not None
-        ),
-        default=None,
-    )
-    if expires_at and ((last_tick_at and last_tick_at >= expires_at) or (closed_at and closed_at >= expires_at)):
-        return {
-            "schema_version": "triple-barrier-v0.1",
-            "label": "expired",
-            "first_barrier": "time_expiration",
-            "barrier_price": None,
-            "observed_price": safe_float(operation.get("close_price")),
-            "triggered_at": expires_at.isoformat(),
-            "horizon": horizon,
-            "horizon_label": horizon_profile.get("label"),
-            "max_minutes": max_minutes,
-            "expires_at": expires_at.isoformat(),
-        }
-
-    return {
-        "schema_version": "triple-barrier-v0.1",
-        "label": "manual_before_resolution" if close_reason else "unresolved",
-        "first_barrier": None,
-        "barrier_price": None,
-        "observed_price": safe_float(operation.get("close_price")),
-        "triggered_at": str(operation.get("closed_at")) if operation.get("closed_at") else None,
-        "horizon": horizon,
-        "horizon_label": horizon_profile.get("label"),
-        "max_minutes": max_minutes,
-        "expires_at": expires_at.isoformat() if expires_at else None,
-    }
-
-
 def ticks_after_close(operation: dict, ticks: list[dict]) -> list[dict]:
     closed_at = parse_timestamp(operation.get("closed_at"))
     if closed_at is None:
@@ -1086,118 +964,6 @@ def ticks_after_close(operation: dict, ticks: list[dict]) -> list[dict]:
         if captured_at is None or captured_at >= closed_at:
             result.append(tick)
     return result
-
-
-def post_horizon_outcome(operation: dict, ticks: list[dict], within_horizon: dict) -> dict:
-    expires_at = parse_timestamp(within_horizon.get("expires_at"))
-    if expires_at is None:
-        return {
-            "schema_version": "post-horizon-v0.1",
-            "label": "not_available",
-            "reason": "No hay expiracion temporal calculable.",
-        }
-    trigger = first_plan_trigger_between(operation, ticks, expires_at, None, include_start=False)
-    if trigger:
-        reason, observed_price, triggered_at = trigger
-        return {
-            "schema_version": "post-horizon-v0.1",
-            "label": "tp_after_horizon" if reason == "take_profit" else "sl_after_horizon",
-            "first_post_horizon_barrier": reason,
-            "barrier_price": triggered_exit_price(operation, reason),
-            "observed_price": observed_price,
-            "triggered_at": triggered_at.isoformat() if triggered_at else None,
-            "minutes_after_expiration": minutes_between(
-                expires_at.isoformat(),
-                triggered_at.isoformat() if triggered_at else None,
-            ),
-        }
-    return {
-        "schema_version": "post-horizon-v0.1",
-        "label": "no_barrier_after_horizon",
-        "first_post_horizon_barrier": None,
-        "barrier_price": None,
-        "observed_price": safe_float(operation.get("close_price")),
-        "triggered_at": str(operation.get("closed_at")) if operation.get("closed_at") else None,
-    }
-
-
-def build_timing_lesson(within_horizon: dict, post_horizon: dict, plan_result: str) -> str:
-    within_label = within_horizon.get("label")
-    post_label = post_horizon.get("label")
-    if within_label in {"tp_first", "sl_first"}:
-        return "El plan se resolvio dentro del horizonte previsto; el timing operativo queda validado para este caso."
-    if plan_result == "manual_before_resolution":
-        if post_label == "tp_after_horizon":
-            return "El usuario cerro antes de resolver, pero despues el precio alcanzo TP; revisar posible salida prematura frente al plan."
-        if post_label == "sl_after_horizon":
-            return "El usuario cerro antes de resolver y despues el precio alcanzo SL; revisar si la salida protegió capital."
-        return "El usuario cerro antes de que el plan resolviera; conservar como caso de gestion manual pendiente."
-    if within_label == "expired":
-        if post_label == "tp_after_horizon":
-            return "No alcanzo TP dentro del horizonte elegido, pero lo alcanzo despues; la direccion pudo ser correcta y el error principal puede ser de timing u objetivo temporal."
-        if post_label == "sl_after_horizon":
-            return "No alcanzo TP ni SL dentro del horizonte y despues alcanzo SL; revisar debilidad posterior y duracion excesiva del plan."
-        return "El plan expiro sin tocar TP ni SL y tampoco resolvio despues con los datos disponibles; conservar como rango/indecision."
-    if post_label == "tp_after_horizon":
-        return "El precio alcanzo TP despues del horizonte, dato util para separar lectura direccional y ventana temporal."
-    if post_label == "sl_after_horizon":
-        return "El precio alcanzo SL despues del horizonte, dato util para medir riesgo tardio del plan."
-    return "No hay senal temporal concluyente adicional."
-
-
-def first_plan_trigger_between(
-    operation: dict,
-    ticks: list[dict],
-    start_at: datetime | None,
-    end_at: datetime | None,
-    include_start: bool = True,
-) -> tuple[str, float, datetime | None] | None:
-    for tick in ticks:
-        captured_at = parse_timestamp(str(tick.get("captured_at")) if tick.get("captured_at") is not None else None)
-        if start_at and captured_at:
-            if include_start and captured_at < start_at:
-                continue
-            if not include_start and captured_at <= start_at:
-                continue
-        if end_at and captured_at and captured_at > end_at:
-            break
-        try:
-            price = float(tick["price"])
-        except (TypeError, ValueError):
-            continue
-        reason = triggered_exit_reason(operation, price)
-        if reason:
-            return reason, price, captured_at
-    return None
-
-
-def triple_barrier_payload(
-    operation: dict,
-    label: str,
-    first_barrier: str | None,
-    observed_price: float | None,
-    triggered_at: datetime | str | None,
-    horizon: str,
-    horizon_label: str | None,
-    max_minutes: int,
-    expires_at: datetime | None,
-) -> dict:
-    if isinstance(triggered_at, datetime):
-        triggered_at_value = triggered_at.isoformat()
-    else:
-        triggered_at_value = str(triggered_at) if triggered_at else None
-    return {
-        "schema_version": "triple-barrier-v0.1",
-        "label": label,
-        "first_barrier": first_barrier,
-        "barrier_price": triggered_exit_price(operation, first_barrier) if first_barrier else None,
-        "observed_price": observed_price,
-        "triggered_at": triggered_at_value,
-        "horizon": horizon,
-        "horizon_label": horizon_label,
-        "max_minutes": max_minutes,
-        "expires_at": expires_at.isoformat() if expires_at else None,
-    }
 
 
 def excursion_metrics(operation: dict, ticks: list[dict]) -> dict:
@@ -1257,8 +1023,6 @@ def classify_analysis_verdict(
         if sl >= tp or weak_setup:
             return "analysis_warned_risk"
         return "analysis_missed_risk"
-    if plan_result == "plan_expired":
-        return "analysis_expired_without_resolution"
     return "analysis_unresolved"
 
 
@@ -1297,188 +1061,6 @@ def classify_failure_type(operation: dict, snapshot: dict, mfe_mae: dict, plan_r
     return "unclassified_risk"
 
 
-def build_engine_diagnostics(
-    operation: dict,
-    snapshot: dict,
-    plan_result: str,
-    triple_barrier: dict,
-    post_horizon: dict,
-    mfe_mae: dict,
-) -> dict:
-    risk_distance = safe_float(snapshot.get("risk_distance_pct"))
-    reward_distance = safe_float(snapshot.get("reward_distance_pct"))
-    pattern_tags = snapshot.get("pattern_tags") if isinstance(snapshot.get("pattern_tags"), list) else []
-    expected_value = snapshot.get("expected_value") if isinstance(snapshot.get("expected_value"), dict) else {}
-    feature_audit = snapshot.get("feature_audit") if isinstance(snapshot.get("feature_audit"), dict) else {}
-    score_components = feature_audit.get("score_components") if isinstance(feature_audit.get("score_components"), dict) else {}
-    max_favorable_pct = safe_float(mfe_mae.get("max_favorable_pct"))
-    max_adverse_pct = abs(safe_float(mfe_mae.get("max_adverse_pct")))
-
-    direction = diagnose_direction(plan_result, post_horizon, reward_distance, max_favorable_pct)
-    timing = diagnose_timing(plan_result, triple_barrier, post_horizon)
-    tp_design = diagnose_tp_design(plan_result, reward_distance, max_favorable_pct)
-    sl_design = diagnose_sl_design(plan_result, risk_distance, max_adverse_pct, pattern_tags)
-    ev = diagnose_ev(plan_result, expected_value)
-    microstructure = diagnose_signal_axis(
-        axis_name="microstructure",
-        bias=safe_float(score_components.get("microstructure_bias")),
-        plan_result=plan_result,
-    )
-    derivatives = diagnose_derivatives_axis(score_components, pattern_tags, plan_result)
-    flags = build_diagnostic_flags(direction, timing, tp_design, sl_design, ev, microstructure, derivatives)
-    main_axis = choose_main_failure_axis(plan_result, timing, tp_design, sl_design, ev, microstructure, derivatives)
-
-    return {
-        "schema_version": "engine-diagnostics-v0.1",
-        "direction_diagnosis": direction,
-        "timing_diagnosis": timing,
-        "tp_design_diagnosis": tp_design,
-        "sl_design_diagnosis": sl_design,
-        "ev_diagnosis": ev,
-        "microstructure_diagnosis": microstructure,
-        "derivatives_diagnosis": derivatives,
-        "main_failure_axis": main_axis,
-        "diagnostic_flags": flags,
-    }
-
-
-def diagnose_direction(plan_result: str, post_horizon: dict, reward_distance: float | None, max_favorable_pct: float | None) -> str:
-    if plan_result in {"plan_success", "plan_would_succeed"}:
-        return "direction_supported_within_plan"
-    if post_horizon.get("label") == "tp_after_horizon":
-        return "direction_supported_late"
-    if plan_result in {"plan_failure", "plan_would_fail"}:
-        if reward_distance and max_favorable_pct is not None and max_favorable_pct >= reward_distance * 0.45:
-            return "direction_partially_supported_before_failure"
-        return "direction_not_supported"
-    if plan_result == "plan_expired":
-        return "direction_unresolved"
-    return "direction_inconclusive"
-
-
-def diagnose_timing(plan_result: str, triple_barrier: dict, post_horizon: dict) -> str:
-    if plan_result in {"plan_success", "plan_failure"}:
-        return "resolved_inside_horizon"
-    if triple_barrier.get("label") == "expired" and post_horizon.get("label") == "tp_after_horizon":
-        return "horizon_too_short_for_target"
-    if triple_barrier.get("label") == "expired" and post_horizon.get("label") == "sl_after_horizon":
-        return "risk_materialized_after_horizon"
-    if triple_barrier.get("label") == "expired":
-        return "expired_without_resolution"
-    if triple_barrier.get("label") == "manual_before_resolution":
-        return "manual_before_timing_resolution"
-    return "timing_inconclusive"
-
-
-def diagnose_tp_design(plan_result: str, reward_distance: float | None, max_favorable_pct: float | None) -> str:
-    if plan_result in {"plan_success", "plan_would_succeed"}:
-        return "tp_reached"
-    if not reward_distance or max_favorable_pct is None:
-        return "tp_design_unknown"
-    capture_ratio = max_favorable_pct / max(reward_distance, 0.000001)
-    if capture_ratio >= 0.75:
-        return "tp_slightly_ambitious_or_management_issue"
-    if capture_ratio >= 0.45:
-        return "tp_ambitious_but_direction_partly_worked"
-    return "tp_too_ambitious_for_realized_move"
-
-
-def diagnose_sl_design(plan_result: str, risk_distance: float | None, max_adverse_pct: float | None, pattern_tags: list[str]) -> str:
-    if "stop_inside_recent_noise" in pattern_tags:
-        return "sl_inside_recent_noise"
-    if plan_result not in {"plan_failure", "plan_would_fail"}:
-        return "sl_not_stressed" if max_adverse_pct is not None and risk_distance and max_adverse_pct < risk_distance * 0.65 else "sl_design_inconclusive"
-    if not risk_distance or max_adverse_pct is None:
-        return "sl_hit_unknown_quality"
-    if max_adverse_pct <= risk_distance * 1.05:
-        return "sl_hit_as_planned"
-    return "sl_exceeded_or_gap_risk"
-
-
-def diagnose_ev(plan_result: str, expected_value: dict) -> str:
-    passes = bool(expected_value.get("passes_minimum_threshold"))
-    ev_value = safe_float(expected_value.get("expected_value_usdt"))
-    if plan_result in {"plan_success", "plan_would_succeed"}:
-        return "ev_supported_success" if passes else "ev_filter_too_conservative"
-    if plan_result in {"plan_failure", "plan_would_fail"}:
-        if passes:
-            return "ev_overestimated_edge"
-        if ev_value < 0:
-            return "ev_warned_negative"
-        return "ev_warned_insufficient_threshold"
-    if plan_result == "plan_expired":
-        return "ev_unresolved_due_to_timing"
-    return "ev_inconclusive"
-
-
-def diagnose_signal_axis(axis_name: str, bias: float | None, plan_result: str) -> str:
-    if bias is None or abs(bias) < 0.0001:
-        return f"{axis_name}_neutral"
-    supported = bias > 0
-    succeeded = plan_result in {"plan_success", "plan_would_succeed"}
-    failed = plan_result in {"plan_failure", "plan_would_fail"}
-    if supported and succeeded:
-        return f"{axis_name}_supported_and_success"
-    if supported and failed:
-        return f"{axis_name}_supported_but_failed"
-    if not supported and succeeded:
-        return f"{axis_name}_against_but_success"
-    if not supported and failed:
-        return f"{axis_name}_against_and_failed"
-    return f"{axis_name}_signal_unresolved"
-
-
-def diagnose_derivatives_axis(score_components: dict, pattern_tags: list[str], plan_result: str) -> str:
-    derivative_bias = (
-        safe_float(score_components.get("taker_flow_bias"))
-        + safe_float(score_components.get("oi_trend_bias"))
-        - safe_float(score_components.get("funding_penalty"))
-        - safe_float(score_components.get("funding_relative_penalty"))
-        - safe_float(score_components.get("oi_context_penalty"))
-    )
-    if any(tag in pattern_tags for tag in {"futures_oi_contradiction", "derivatives_oi_price_warning", "funding_saturation_warning"}):
-        derivative_bias -= 0.01
-    return diagnose_signal_axis("derivatives", derivative_bias, plan_result)
-
-
-def build_diagnostic_flags(*diagnostics: str) -> list[str]:
-    flags = []
-    for diagnostic in diagnostics:
-        if not diagnostic:
-            continue
-        if any(token in diagnostic for token in ("failed", "overestimated", "too_", "inside_recent_noise", "against_and_failed", "supported_but_failed")):
-            flags.append(diagnostic)
-    return flags
-
-
-def choose_main_failure_axis(
-    plan_result: str,
-    timing: str,
-    tp_design: str,
-    sl_design: str,
-    ev: str,
-    microstructure: str,
-    derivatives: str,
-) -> str | None:
-    if plan_result not in {"plan_failure", "plan_would_fail", "plan_expired"}:
-        return None
-    if timing == "horizon_too_short_for_target":
-        return "timing"
-    if sl_design == "sl_inside_recent_noise":
-        return "stop_loss_design"
-    if tp_design in {"tp_too_ambitious_for_realized_move", "tp_slightly_ambitious_or_management_issue"}:
-        return "take_profit_design"
-    if ev == "ev_overestimated_edge":
-        return "expected_value"
-    if derivatives in {"derivatives_supported_but_failed", "derivatives_against_and_failed"}:
-        return "derivatives"
-    if microstructure in {"microstructure_supported_but_failed", "microstructure_against_and_failed"}:
-        return "microstructure"
-    if timing in {"expired_without_resolution", "risk_materialized_after_horizon"}:
-        return "timing"
-    return "direction_or_unclassified"
-
-
 def leverage_bucket(leverage: float) -> str:
     if leverage >= 8:
         return "alto"
@@ -1507,11 +1089,6 @@ def build_primary_lesson(
         return (
             f"El plan {side} en {horizon} fallo o habria fallado. "
             f"Lectura: {analysis_verdict}; causa candidata: {failure_type or 'sin clasificar'}."
-        )
-    if plan_result == "plan_expired":
-        return (
-            f"El plan {side} en {horizon} expiro sin tocar TP ni SL. "
-            "El aprendizaje debe revisar si el objetivo, el stop o el horizonte estaban mal dimensionados."
         )
     if user_decision_quality:
         return f"La decision manual queda clasificada como {user_decision_quality}; requiere mas casos comparables."

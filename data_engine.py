@@ -191,122 +191,32 @@ def classify_ema_stack(ema_9: float, ema_21: float, ema_50: float) -> str:
 def summarize_order_book(depth: dict) -> dict:
     bids = [(float(price), float(qty)) for price, qty in depth.get("bids", [])]
     asks = [(float(price), float(qty)) for price, qty in depth.get("asks", [])]
-    top20_bids = bids[:20]
-    top20_asks = asks[:20]
-    bid_notional = sum(price * qty for price, qty in top20_bids)
-    ask_notional = sum(price * qty for price, qty in top20_asks)
+    bid_notional = sum(price * qty for price, qty in bids)
+    ask_notional = sum(price * qty for price, qty in asks)
     total = bid_notional + ask_notional
     imbalance = ((bid_notional - ask_notional) / total) if total else 0.0
     best_bid = bids[0][0] if bids else 0.0
     best_ask = asks[0][0] if asks else 0.0
     mid = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
     spread_pct = pct(best_ask - best_bid, mid) if mid else 0.0
-    depth_bands = summarize_depth_bands(bids, asks, mid)
-    microprice = calculate_microprice(bids, asks, best_bid, best_ask)
-    microprice_bias_pct = distance_pct(microprice, mid) if microprice and mid else 0.0
-    book_slope = calculate_book_slope(bids, asks, mid)
     return {
         "bid_notional_top20": bid_notional,
         "ask_notional_top20": ask_notional,
         "imbalance": imbalance,
         "best_bid": best_bid,
         "best_ask": best_ask,
-        "mid_price": mid,
-        "microprice": microprice,
-        "microprice_bias_pct": microprice_bias_pct,
-        "book_slope": book_slope,
         "spread_pct": spread_pct,
-        "levels_count": {"bids": len(bids), "asks": len(asks)},
-        "depth_bands": depth_bands,
-        "bids": [{"price": price, "qty": qty, "notional": price * qty} for price, qty in bids],
-        "asks": [{"price": price, "qty": qty, "notional": price * qty} for price, qty in asks],
     }
-
-
-def calculate_microprice(
-    bids: list[tuple[float, float]],
-    asks: list[tuple[float, float]],
-    best_bid: float,
-    best_ask: float,
-) -> float:
-    if not bids or not asks or not best_bid or not best_ask:
-        return 0.0
-    bid_qty = bids[0][1]
-    ask_qty = asks[0][1]
-    total_qty = bid_qty + ask_qty
-    if total_qty <= 0:
-        return (best_bid + best_ask) / 2
-    return ((best_ask * bid_qty) + (best_bid * ask_qty)) / total_qty
-
-
-def calculate_book_slope(bids: list[tuple[float, float]], asks: list[tuple[float, float]], mid: float) -> dict:
-    if not mid:
-        return {
-            "bid_slope": 0.0,
-            "ask_slope": 0.0,
-            "slope_imbalance": 0.0,
-        }
-    bid_slope = side_slope(bids[:20], mid, "bid")
-    ask_slope = side_slope(asks[:20], mid, "ask")
-    total = bid_slope + ask_slope
-    return {
-        "bid_slope": bid_slope,
-        "ask_slope": ask_slope,
-        "slope_imbalance": ((bid_slope - ask_slope) / total) if total else 0.0,
-    }
-
-
-def side_slope(levels: list[tuple[float, float]], mid: float, side: str) -> float:
-    weighted = 0.0
-    for price, qty in levels:
-        distance = abs(distance_pct(price, mid))
-        if distance <= 0:
-            distance = 0.0001
-        if side == "bid" and price > mid:
-            continue
-        if side == "ask" and price < mid:
-            continue
-        weighted += (price * qty) / distance
-    return weighted
-
-
-def summarize_depth_bands(bids: list[tuple[float, float]], asks: list[tuple[float, float]], mid: float) -> dict:
-    if not mid:
-        return {}
-    bands = {}
-    for band_pct in (0.1, 0.25, 0.5):
-        bid_floor = mid * (1 - band_pct / 100)
-        ask_ceiling = mid * (1 + band_pct / 100)
-        bid_notional = sum(price * qty for price, qty in bids if price >= bid_floor)
-        ask_notional = sum(price * qty for price, qty in asks if price <= ask_ceiling)
-        total = bid_notional + ask_notional
-        bands[f"{band_pct:.2f}pct"] = {
-            "band_pct": band_pct,
-            "bid_notional": bid_notional,
-            "ask_notional": ask_notional,
-            "imbalance": ((bid_notional - ask_notional) / total) if total else 0.0,
-            "bid_levels": sum(1 for price, _qty in bids if price >= bid_floor),
-            "ask_levels": sum(1 for price, _qty in asks if price <= ask_ceiling),
-        }
-    return bands
 
 
 def summarize_trade_flow(trades: list[dict]) -> dict:
     buy_notional = 0.0
     sell_notional = 0.0
     cvd = 0.0
-    prices: list[float] = []
-    first_trade_time = None
-    last_trade_time = None
     for trade in trades:
         price = float(trade.get("p", 0))
         quantity = float(trade.get("q", 0))
         notional = price * quantity
-        prices.append(price)
-        trade_time = trade.get("T")
-        if first_trade_time is None:
-            first_trade_time = trade_time
-        last_trade_time = trade_time
         is_buyer_maker = bool(trade.get("m", False))
         if is_buyer_maker:
             sell_notional += notional
@@ -315,15 +225,8 @@ def summarize_trade_flow(trades: list[dict]) -> dict:
             buy_notional += notional
             cvd += notional
     total = buy_notional + sell_notional
-    first_price = prices[0] if prices else None
-    last_price = prices[-1] if prices else None
     return {
         "sample_trades": len(trades),
-        "first_trade_time": first_trade_time,
-        "last_trade_time": last_trade_time,
-        "first_price": first_price,
-        "last_price": last_price,
-        "price_change_pct": distance_pct(last_price, first_price) if first_price and last_price else None,
         "buy_notional": buy_notional,
         "sell_notional": sell_notional,
         "buy_ratio": buy_notional / total if total else None,
@@ -487,7 +390,7 @@ def build_market_snapshot(symbol: str) -> dict:
         "source": {
             "price": "binance_spot_ticker",
             "klines": "binance_spot_klines",
-            "order_book": "binance_spot_depth_100",
+            "order_book": "binance_spot_depth",
             "trade_flow": "binance_spot_agg_trades",
             "ticker_24h": "binance_spot_24hr",
             "derivatives": "binance_usdm_futures_public",

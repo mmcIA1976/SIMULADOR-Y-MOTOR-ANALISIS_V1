@@ -1312,7 +1312,7 @@ def build_engine_diagnostics(
     feature_audit = snapshot.get("feature_audit") if isinstance(snapshot.get("feature_audit"), dict) else {}
     score_components = feature_audit.get("score_components") if isinstance(feature_audit.get("score_components"), dict) else {}
     max_favorable_pct = safe_float(mfe_mae.get("max_favorable_pct"))
-    max_adverse_pct = abs(safe_float(mfe_mae.get("max_adverse_pct")))
+    max_adverse_pct = abs(safe_float(mfe_mae.get("max_adverse_pct")) or 0)
 
     direction = diagnose_direction(plan_result, post_horizon, reward_distance, max_favorable_pct)
     timing = diagnose_timing(plan_result, triple_barrier, post_horizon)
@@ -1403,7 +1403,7 @@ def diagnose_ev(plan_result: str, expected_value: dict) -> str:
     if plan_result in {"plan_failure", "plan_would_fail"}:
         if passes:
             return "ev_overestimated_edge"
-        if ev_value < 0:
+        if ev_value is not None and ev_value < 0:
             return "ev_warned_negative"
         return "ev_warned_insufficient_threshold"
     if plan_result == "plan_expired":

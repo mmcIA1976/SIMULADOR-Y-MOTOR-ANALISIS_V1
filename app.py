@@ -2266,8 +2266,22 @@ def apply_contest_unrealized_to_portfolio(db, portfolio: dict, user_id: int, sea
 
 
 def contest_leaderboard(db, season_id: int) -> list[dict]:
+    if db.engine == "postgres":
+        agg_expr = (
+            "STRING_AGG("
+            "CASE WHEN o.id IS NOT NULL THEN '#' || o.id || ' ' || o.symbol || ' ' || UPPER(o.side) || ' ' || o.status ELSE NULL END,"
+            " ' | '"
+            ")"
+        )
+    else:
+        agg_expr = (
+            "GROUP_CONCAT("
+            "CASE WHEN o.id IS NOT NULL THEN '#' || o.id || ' ' || o.symbol || ' ' || UPPER(o.side) || ' ' || o.status ELSE NULL END,"
+            " ' | '"
+            ")"
+        )
     rows = db.execute(
-        """
+        f"""
         SELECT
             ce.user_id,
             u.username,
@@ -2279,13 +2293,7 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             COALESCE(SUM(CASE WHEN o.status = 'CLOSED' THEN o.final_pnl ELSE 0 END), 0) AS closed_pnl,
             COUNT(o.id) AS operation_count,
             COALESCE(
-                GROUP_CONCAT(
-                    CASE
-                        WHEN o.id IS NOT NULL THEN '#' || o.id || ' ' || o.symbol || ' ' || UPPER(o.side) || ' ' || o.status
-                        ELSE NULL
-                    END,
-                    ' | '
-                ),
+                {agg_expr},
                 ''
             ) AS operations_description
         FROM contest_entries ce

@@ -1880,7 +1880,7 @@ function renderContestLeaderboard(rows) {
         </div>
         <div class="contest-row-stats">
           <span>Operaciones: ${row.operation_count || 0}</span>
-          <span>PnL total: <b class="${Number(row.pnl_accumulated || 0) >= 0 ? "positive" : "negative"}">${money(Number(row.pnl_accumulated || 0))}</b></span>
+          <span>PnL cerrado: <b class="${Number(row.pnl_accumulated || 0) >= 0 ? "positive" : "negative"}">${money(Number(row.pnl_accumulated || 0))}</b></span>
           <span>Flotante: <b class="${Number(row.unrealized_pnl || 0) >= 0 ? "positive" : "negative"}">${money(Number(row.unrealized_pnl || 0))}</b></span>
           <span>Capital estimado: <b>${money(Number(row.estimated_equity ?? row.equity_without_unrealized ?? 0))}</b></span>
         </div>
@@ -1924,9 +1924,12 @@ function renderContestOperationPill(operation) {
   const side = String(operation.side || "").toUpperCase();
   const symbol = symbolLabel(operation.symbol || "");
   const finalPnl = Number(operation.final_pnl || 0);
-  const pnlClass = finalPnl >= 0 ? "positive" : "negative";
-  const result = !isOpen && Number.isFinite(finalPnl)
-    ? `<b class="${pnlClass}">${money(finalPnl)}</b>`
+  const floatingPnl = Number(operation.unrealized_pnl);
+  const displayPnl = isOpen ? floatingPnl : finalPnl;
+  const hasDisplayPnl = Number.isFinite(displayPnl);
+  const pnlClass = displayPnl >= 0 ? "positive" : "negative";
+  const result = hasDisplayPnl
+    ? `<b class="${pnlClass}">${isOpen ? "Flotante " : ""}${money(displayPnl)}</b>`
     : "";
   return `
     <span class="contest-op-pill ${isOpen ? "is-open" : "is-closed"}">

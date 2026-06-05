@@ -2277,7 +2277,8 @@ def apply_contest_unrealized_to_portfolio(db, portfolio: dict, user_id: int, sea
         if operation["symbol"] in prices
     )
     portfolio["unrealized_pnl"] = round(unrealized_pnl, 4)
-    portfolio["total_pnl"] = round(float(portfolio.get("closed_pnl") or 0) + unrealized_pnl, 4)
+    portfolio["total_pnl"] = round(float(portfolio.get("closed_pnl") or 0), 4)
+    portfolio["estimated_total_pnl"] = round(float(portfolio.get("closed_pnl") or 0) + unrealized_pnl, 4)
     portfolio["estimated_equity"] = round(float(portfolio.get("total_equity_without_unrealized") or 0) + unrealized_pnl, 4)
 
 
@@ -2350,12 +2351,20 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
         operations_by_user.setdefault(int(operation["user_id"]), []).append(operation)
     prices = live_prices_for_operations(open_operations)
     unrealized_by_user: dict[int, float] = {}
+    unrealized_by_operation: dict[int, float] = {}
     for operation in open_operations:
         symbol = operation["symbol"]
         if symbol not in prices:
             continue
         user_id = int(operation["user_id"])
-        unrealized_by_user[user_id] = unrealized_by_user.get(user_id, 0) + approximate_pnl(operation, prices[symbol])
+        operation_pnl = approximate_pnl(operation, prices[symbol])
+        unrealized_by_operation[int(operation["id"])] = round(operation_pnl, 4)
+        unrealized_by_user[user_id] = unrealized_by_user.get(user_id, 0) + operation_pnl
+
+    for operations in operations_by_user.values():
+        for operation in operations:
+            if str(operation.get("status") or "").upper() == "OPEN":
+                operation["unrealized_pnl"] = unrealized_by_operation.get(int(operation["id"]))
 
     leaderboard = []
     for row in rows:
@@ -2370,7 +2379,8 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
         item["equity_without_unrealized"] = round(computed_cash_balance + invested_margin, 4)
         item["unrealized_pnl"] = unrealized_pnl
         item["estimated_equity"] = round(float(item["equity_without_unrealized"]) + unrealized_pnl, 4)
-        item["pnl_accumulated"] = round(closed_pnl + unrealized_pnl, 4)
+        item["estimated_total_pnl"] = round(closed_pnl + unrealized_pnl, 4)
+        item["pnl_accumulated"] = round(closed_pnl, 4)
         item["closed_pnl"] = round(closed_pnl, 4)
         item["contest_operations"] = operations_by_user.get(int(item["user_id"]), [])
         item["avatar_url"] = avatar_url(

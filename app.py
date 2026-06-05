@@ -356,14 +356,10 @@ def price(
             user = None
     with connect() as db:
         finalize_due_observations(db)
-        refresh_learning_conclusions(db)
-        refresh_learning_evaluations(db)
-        if record:
-            db.execute(
-                "INSERT INTO price_ticks (operation_id, symbol, price, source) VALUES (?, ?, ?, ?)",
-                (None, symbol, value, "binance"),
-            )
         closed_by_trigger = close_triggered_open_operations(db, symbol, value, int(user["id"])) if user else {}
+        if closed_by_trigger:
+            refresh_learning_conclusions(db)
+            refresh_learning_evaluations(db)
         if user:
             closed_operations.extend(
                 operation for operation in closed_by_trigger.values() if operation.get("user_id") == user["id"]
@@ -1586,35 +1582,55 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
             ).fetchall()
             rec_by_op = {row_to_dict(r)["operation_id"]: row_to_dict(r) for r in rec_rows}
 
-            # Batch fetch last 240 ticks per operation (1 query instead of N).
-            tick_rows = db.execute(
-                f"""
-                SELECT operation_id, price, source, captured_at
-                FROM (
-                    SELECT operation_id, price, source, captured_at,
-                           ROW_NUMBER() OVER (PARTITION BY operation_id ORDER BY captured_at DESC) AS rn
-                    FROM price_ticks
-                    WHERE operation_id IN ({placeholders})
-                ) ranked
-                WHERE rn <= 240
-                ORDER BY operation_id, captured_at ASC
-                """,
-                tuple(op_ids),
-            ).fetchall()
-            ticks_by_op: dict = {}
-            for t in tick_rows:
-                td = row_to_dict(t)
-                ticks_by_op.setdefault(td["operation_id"], []).append({
-                    "price": td["price"],
-                    "source": td["source"],
-                    "captured_at": td["captured_at"],
-                })
-
             for op in operations:
                 rec = rec_by_op.get(op["id"])
                 op["recommendation"] = format_recommendation(rec, op) if rec else None
-                op["ticks"] = ticks_by_op.get(op["id"], [])
     return {"operations": operations}
+
+
+@app.get("/api/operations/{operation_id}/ticks")
+def operation_ticks(
+    operation_id: int,
+    limit: int = 240,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    safe_limit = min(max(int(limit or 120), 20), 240)
+    with connect() as db:
+        operation = db.execute(
+            "SELECT * FROM operations WHERE id = ? AND user_id = ?",
+            (operation_id, user["id"]),
+        ).fetchone()
+        if operation is None:
+            raise HTTPException(status_code=404, detail="Operacion no encontrada")
+        operation_dict = row_to_dict(operation)
+        ensure_closed_exit_window_ticks(db, operation_dict)
+        rows = db.execute(
+            """
+            SELECT price, source, captured_at
+            FROM (
+                SELECT price, source, captured_at,
+                       ROW_NUMBER() OVER (ORDER BY captured_at DESC) AS rn
+                FROM price_ticks
+                WHERE operation_id = ?
+            ) ranked
+            WHERE rn <= ?
+            ORDER BY captured_at ASC
+            """,
+            (operation_id, safe_limit),
+        ).fetchall()
+    return {
+        "operation_id": operation_id,
+        "limit": safe_limit,
+        "ticks": [
+            {
+                "price": row["price"],
+                "source": row["source"],
+                "captured_at": row["captured_at"],
+            }
+            for row in rows
+        ],
+    }
 
 
 def parse_exit_evidence(raw: str | None) -> dict | None:

@@ -1203,11 +1203,9 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
         await loadContest();
       }
     } else if (record && currentUser && selectedOperationId !== null) {
-      await loadOperations();
-      await loadPortfolio();
-      if (operationMode === "contest") {
-        await loadContest();
-      }
+      updateMetrics();
+      renderSelectedOperationDetail(getSelectedOperation());
+      renderPortfolio(lastPortfolio);
     } else {
       updateMetrics();
       renderSelectedOperationDetail(getSelectedOperation());
@@ -2048,6 +2046,40 @@ async function loadOperations() {
   }
 }
 
+async function loadOperationTicks(operation, { force = false } = {}) {
+  if (!currentUser || !operation) {
+    return;
+  }
+  if (!force && operation._ticksLoaded) {
+    return;
+  }
+  if (operation._ticksLoading) {
+    return;
+  }
+  operation._ticksLoading = true;
+  try {
+    const data = await requestJson(`/api/operations/${operation.id}/ticks?limit=${MAX_HISTORY_POINTS}`);
+    operation.ticks = Array.isArray(data.ticks) ? data.ticks : [];
+    operation._ticksLoaded = true;
+    if (getSelectedOperation()?.id === operation.id) {
+      renderSelectedOperationDetail(operation);
+      updateMetrics();
+      drawChart();
+    }
+  } catch {
+    operation.ticks = Array.isArray(operation.ticks) ? operation.ticks : [];
+  } finally {
+    operation._ticksLoading = false;
+  }
+}
+
+function loadSelectedOperationTicks() {
+  const operation = getSelectedOperation();
+  if (operation) {
+    loadOperationTicks(operation);
+  }
+}
+
 function renderOperations(operations) {
   allOperations = operations;
   openOperations = operations.filter((operation) => operation.status === "OPEN");
@@ -2094,6 +2126,7 @@ function renderOperations(operations) {
   }
   renderSelectedOperationDetail(getSelectedOperation());
   updateMetrics();
+  loadSelectedOperationTicks();
 }
 
 function renderOperationSelector() {
@@ -2808,6 +2841,7 @@ elements.operationsList.addEventListener("click", (event) => {
     }
     renderOperations(allOperations);
     fetchVisibleOperationPrice(operation);
+    loadOperationTicks(operation);
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
@@ -2864,6 +2898,7 @@ elements.operationSelector.addEventListener("change", () => {
   renderSelectedOperationDetail(operation);
   updateMetrics();
   fetchVisibleOperationPrice(operation);
+  loadOperationTicks(operation);
 });
 elements.newOperationQuickButton.addEventListener("click", () => {
   if (!currentUser) {

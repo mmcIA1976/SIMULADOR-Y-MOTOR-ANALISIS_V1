@@ -1186,6 +1186,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
       }
       appendOperationTicks(data.operation_ids || [], currentPrice, capturedAt);
     }
+    updateContestFloatingFromLivePrice(symbol, currentPrice);
     if (!record) {
       checkLiveExits(symbol);
     }
@@ -1888,6 +1889,68 @@ function renderContestLeaderboard(rows) {
       </div>
     </article>
   `).join("");
+}
+
+function updateContestFloatingFromLivePrice(symbol, price) {
+  if (!contestState || !Array.isArray(contestState.leaderboard) || !Number.isFinite(Number(price))) {
+    return;
+  }
+  const normalizedSymbol = normalizeSymbol(symbol);
+  let changed = false;
+  for (const row of contestState.leaderboard) {
+    const operations = Array.isArray(row.contest_operations) ? row.contest_operations : [];
+    for (const operation of operations) {
+      if (String(operation.status || "").toUpperCase() !== "OPEN" || normalizeSymbol(operation.symbol) !== normalizedSymbol) {
+        continue;
+      }
+      const config = contestOperationToConfig(operation);
+      if (!config) {
+        continue;
+      }
+      operation.unrealized_pnl = Number(calculate(config, Number(price)).pnl.toFixed(4));
+      changed = true;
+    }
+    refreshContestRowTotals(row);
+  }
+  if (changed && operationMode === "contest") {
+    contestState.leaderboard.sort((a, b) => Number(b.estimated_equity || 0) - Number(a.estimated_equity || 0));
+    contestState.leaderboard.forEach((row, index) => {
+      row.rank = index + 1;
+    });
+    renderContest(contestState);
+  }
+}
+
+function contestOperationToConfig(operation) {
+  const config = {
+    symbol: normalizeSymbol(operation.symbol || ""),
+    side: String(operation.side || "").toLowerCase(),
+    entry: Number(operation.entry),
+    margin: Number(operation.margin),
+    leverage: Number(operation.leverage),
+    stopLoss: Number(operation.stop_loss),
+    takeProfit: Number(operation.take_profit),
+  };
+  if (!config.symbol || !["long", "short"].includes(config.side)) {
+    return null;
+  }
+  if (![config.entry, config.margin, config.leverage, config.stopLoss, config.takeProfit].every(Number.isFinite)) {
+    return null;
+  }
+  return config;
+}
+
+function refreshContestRowTotals(row) {
+  const operations = Array.isArray(row.contest_operations) ? row.contest_operations : [];
+  const floating = operations
+    .filter((operation) => String(operation.status || "").toUpperCase() === "OPEN")
+    .reduce((total, operation) => total + (Number(operation.unrealized_pnl) || 0), 0);
+  const closed = Number(row.closed_pnl ?? row.pnl_accumulated ?? 0) || 0;
+  const equityBase = Number(row.equity_without_unrealized ?? (Number(row.estimated_equity || 0) - Number(row.unrealized_pnl || 0))) || 0;
+  row.unrealized_pnl = Number(floating.toFixed(4));
+  row.pnl_accumulated = Number(closed.toFixed(4));
+  row.estimated_total_pnl = Number((closed + floating).toFixed(4));
+  row.estimated_equity = Number((equityBase + floating).toFixed(4));
 }
 
 function renderContestOperationGroups(row) {

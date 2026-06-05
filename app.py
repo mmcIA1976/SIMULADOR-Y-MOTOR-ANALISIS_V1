@@ -2335,6 +2335,11 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             symbol,
             side,
             status,
+            entry,
+            stop_loss,
+            take_profit,
+            margin,
+            leverage,
             final_pnl
         FROM operations
         WHERE mode = 'contest'

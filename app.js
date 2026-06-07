@@ -117,6 +117,7 @@ let exitCheckInFlight = false;
 const pendingExitCheckOperationIds = new Set();
 let currentPrice = null;
 let currentPriceSymbol = "BTCUSDT";
+const livePricesBySymbol = new Map();
 let activeHistorySymbol = "BTCUSDT";
 let currentUser = null;
 let lastAnalysis = null;
@@ -1165,11 +1166,18 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
 
   try {
     const data = await requestJson(`/api/price?symbol=${encodeURIComponent(symbol)}&record=${record ? "true" : "false"}`);
+    const fetchedPrice = Number(data.price);
+    if (!Number.isFinite(fetchedPrice)) {
+      throw new Error("Precio no valido.");
+    }
+    livePricesBySymbol.set(symbol, fetchedPrice);
     if (getActivePriceSymbol() !== symbol) {
+      updateContestFloatingFromLivePrice(symbol, fetchedPrice);
+      renderPortfolio(lastPortfolio);
       return;
     }
 
-    currentPrice = Number(data.price);
+    currentPrice = fetchedPrice;
     currentPriceSymbol = symbol;
     if (selectedOperationId === null) {
       activeHistorySymbol = symbol;
@@ -1862,6 +1870,7 @@ function renderContest(state) {
   const contestPnl = Number(portfolio.total_pnl ?? portfolio.closed_pnl ?? 0);
   elements.contestPnl.textContent = state.participating ? money(contestPnl) : "--";
   setTone(elements.contestPnl, contestPnl);
+  syncContestLeaderboardWithLivePrices(state.leaderboard || []);
   renderContestLeaderboard(state.leaderboard || []);
   renderContestHistory(state.history || []);
 }
@@ -1918,6 +1927,38 @@ function updateContestFloatingFromLivePrice(symbol, price) {
       row.rank = index + 1;
     });
     renderContest(contestState);
+  }
+}
+
+function syncContestLeaderboardWithLivePrices(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return;
+  }
+  let changed = false;
+  for (const row of rows) {
+    const operations = Array.isArray(row.contest_operations) ? row.contest_operations : [];
+    for (const operation of operations) {
+      if (String(operation.status || "").toUpperCase() !== "OPEN") {
+        continue;
+      }
+      const price = getLivePriceForOperation(operation);
+      const config = contestOperationToConfig(operation);
+      if (!config || !Number.isFinite(price)) {
+        continue;
+      }
+      const nextPnl = Number(calculate(config, price).pnl.toFixed(4));
+      if (Number(operation.unrealized_pnl) !== nextPnl) {
+        operation.unrealized_pnl = nextPnl;
+        changed = true;
+      }
+    }
+    refreshContestRowTotals(row);
+  }
+  if (changed) {
+    rows.sort((a, b) => Number(b.estimated_equity || 0) - Number(a.estimated_equity || 0));
+    rows.forEach((row, index) => {
+      row.rank = index + 1;
+    });
   }
 }
 
@@ -2074,6 +2115,7 @@ function renderPortfolio(portfolio) {
     return;
   }
   const modePortfolio = portfolio[operationMode] || portfolio;
+  refreshMissingFloatingPrices(operationMode);
   const floatingPnl = calculateFloatingPnl(operationMode);
   const equity = Number(modePortfolio.total_equity_without_unrealized) + floatingPnl;
   elements.walletTotal.textContent = money(equity);
@@ -2085,18 +2127,37 @@ function renderPortfolio(portfolio) {
 }
 
 function calculateFloatingPnl(mode = operationMode) {
-  if (!hasCurrentPriceForSymbol(elements.symbol.value)) {
-    return 0;
-  }
   return openOperations.reduce((total, operation) => {
     if ((operation.mode || "training") !== mode) {
       return total;
     }
-    if (operation.symbol !== elements.symbol.value) {
+    const price = getLivePriceForOperation(operation);
+    if (!Number.isFinite(price)) {
       return total;
     }
-    return total + calculate(operationToConfig(operation), currentPrice).pnl;
+    return total + calculate(operationToConfig(operation), price).pnl;
   }, 0);
+}
+
+function getLivePriceForOperation(operation) {
+  const symbol = normalizeSymbol(operation?.symbol);
+  if (hasCurrentPriceForSymbol(symbol)) {
+    return currentPrice;
+  }
+  return livePricesBySymbol.get(symbol);
+}
+
+function refreshMissingFloatingPrices(mode = operationMode) {
+  const missingSymbols = [...new Set(
+    openOperations
+      .filter((operation) => (operation.mode || "training") === mode)
+      .map((operation) => normalizeSymbol(operation.symbol))
+      .filter((symbol) => !hasCurrentPriceForSymbol(symbol) && !Number.isFinite(livePricesBySymbol.get(symbol)))
+  )];
+  if (!missingSymbols.length) {
+    return;
+  }
+  fetchPrice({ record: false, symbolOverride: missingSymbols[0] });
 }
 
 async function loadOperations() {

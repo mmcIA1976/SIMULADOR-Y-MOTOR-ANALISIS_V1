@@ -5,7 +5,21 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.5-technical-ratings"
+ENGINE_VERSION = "rules-v0.6-audit-calibrated"
+ENGINE_AUDIT_REFERENCE = {
+    "date": "2026-06-07",
+    "sample_size": 68,
+    "baseline": {
+        "technical_score": "85.7%",
+        "market_regime": "80.0%",
+        "asset_24h_move": "78.8%",
+        "direction_score": "76.7%",
+        "risk_reward_ratio": "32.7%",
+        "cvd_spot": "52.1%",
+        "order_book_imbalance": "57.9%",
+    },
+    "intent": "Recalibracion prudente basada en auditoria: reforzar estructura/regimen y reducir autoridad direccional de senales ruidosas aisladas.",
+}
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
         "label": "Intradia corto",
@@ -159,11 +173,11 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     )
     if proposal.side == "long":
         price_vs_entry_bias = 0.03 if current_price <= proposal.entry else -0.02
-        order_book_bias = (0.025 if order_book_imbalance > 0.12 else -0.025 if order_book_imbalance < -0.12 else 0) * micro_weight
+        order_book_bias = (0.016 if order_book_imbalance > 0.12 else -0.016 if order_book_imbalance < -0.12 else 0) * micro_weight
         momentum_bias = (-0.025 if rsi_signal > 72 else 0.02 if 45 <= rsi_signal <= 62 else 0) * micro_weight
     else:
         price_vs_entry_bias = 0.03 if current_price >= proposal.entry else -0.02
-        order_book_bias = (0.025 if order_book_imbalance < -0.12 else -0.025 if order_book_imbalance > 0.12 else 0) * micro_weight
+        order_book_bias = (0.016 if order_book_imbalance < -0.12 else -0.016 if order_book_imbalance > 0.12 else 0) * micro_weight
         momentum_bias = (-0.025 if rsi_signal < 28 else 0.02 if 38 <= rsi_signal <= 55 else 0) * micro_weight
 
     volatility_penalty = 0.07 if risk_distance < max(recent_range_pct, atr_pct) * 0.35 else 0
@@ -190,6 +204,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         htf_penalty,
     )
     market_regime = classify_market_regime(market_snapshot["timeframes"], recent_range_pct, atr_pct, proposal.side)
+    regime_bias = market_regime_direction_bias(proposal.side, market_regime, proposal.time_horizon)
 
     tp_probability = (
         0.5
@@ -199,6 +214,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + volume_bias
         + order_book_bias
         + momentum_bias
+        + regime_bias
         + taker_flow_bias
         + cvd_bias
         + oi_trend_bias
@@ -245,6 +261,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         spread_pct=spread_pct,
         contradiction_penalty=contradiction_penalty,
         htf_penalty=htf_penalty,
+        regime_bias=regime_bias,
         taker_flow_bias=taker_flow_bias,
         cvd_bias=cvd_bias,
         technical_rating=technical_rating,
@@ -423,6 +440,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "setup_grade": setup_grade,
         "confidence": confidence,
         "training_decision": decision,
+        "audit_reference": ENGINE_AUDIT_REFERENCE,
         "probability_ranges": probability_ranges,
         "expected_value": expected_value,
         "layered_scores": layered_scores,
@@ -460,6 +478,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             "market_regime": market_regime,
             "technical_rating": technical_rating,
             "invalidation_rules": invalidation_rules,
+            "engine_version": ENGINE_VERSION,
+            "audit_reference": ENGINE_AUDIT_REFERENCE,
             "score_components": {
                 "trend_bias": trend_bias,
                 "technical_direction_bias": technical_rating["direction_bias"],
@@ -475,6 +495,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "volume_bias": volume_bias,
                 "order_book_bias": order_book_bias,
                 "momentum_bias": momentum_bias,
+                "market_regime_bias": regime_bias,
                 "taker_flow_bias": taker_flow_bias,
                 "cvd_bias": cvd_bias,
                 "oi_trend_bias": oi_trend_bias,
@@ -586,6 +607,25 @@ def classify_market_regime(timeframes: dict, recent_range_pct: float, atr_pct: f
     }
 
 
+def market_regime_direction_bias(side: str, market_regime: dict, time_horizon: str) -> float:
+    """Small directional adjustment from the audited regime layer.
+
+    The 2026-06-07 audit showed market regime was one of the most reliable
+    predictors. Keep the adjustment modest so it confirms structure without
+    overwhelming live flow or invalidation risks.
+    """
+    name = market_regime.get("name")
+    profile = time_horizon_profile(time_horizon)
+    weight = 0.85 if time_horizon == "intraday_short" else 1.0 if time_horizon == "intraday_wide" else 1.15
+    if name == "tendencia_alcista":
+        return (0.024 if side == "long" else -0.028) * weight
+    if name == "tendencia_bajista":
+        return (0.024 if side == "short" else -0.028) * weight
+    if name == "rebote_contra_tendencia":
+        return -0.018 * profile["htf_penalty_weight"]
+    return 0
+
+
 def range_probability_for_context(recent_range_pct: float, contradiction_penalty: float, market_regime: dict) -> float:
     if market_regime["name"] in {"compresion", "mixto"}:
         return 0.12
@@ -656,14 +696,26 @@ def build_layered_scores(
     spread_pct: float,
     contradiction_penalty: float,
     htf_penalty: float,
+    regime_bias: float,
     taker_flow_bias: float,
     cvd_bias: float,
     technical_rating: dict,
     expected_value: dict,
 ) -> dict:
     direction_score = round(tp_probability * 100)
+    risk_design_penalty = min(22, margin_risk_pct * 0.9)
+    ev_design_score = score_to_percent(expected_value["expected_value_pct_margin"], -5, 10)
     quality_score = round(
-        min(100, max(0, 50 + score_to_percent(rr_ratio, 0.8, 3.2) * 0.35 - min(25, margin_risk_pct * 1.2)))
+        min(
+            100,
+            max(
+                0,
+                42
+                + score_to_percent(rr_ratio, 0.8, 3.2) * 0.16
+                + ev_design_score * 0.22
+                - risk_design_penalty,
+            ),
+        )
     )
     execution_risk_score = round(
         min(100, max(0, 30 + volatility_penalty * 220 + level_penalty * 300 + liquidity_penalty * 250 + score_to_percent(spread_pct, 0, 0.08) * 0.35))
@@ -673,6 +725,7 @@ def build_layered_scores(
         alignment -= round(contradiction_penalty * 700)
     if htf_penalty:
         alignment -= 12
+    alignment += round(regime_bias * 420)
     if taker_flow_bias * cvd_bias < 0:
         alignment -= 12
     alignment += round(technical_rating.get("confidence_adjustment", 0))
@@ -742,7 +795,7 @@ def build_score_metrics(layered_scores: dict, expected_value: dict, market_regim
             "value": f"{probability_ranges['tp']['label']} TP",
             "score": layered_scores["direction_score"],
             "bias": "favorable" if layered_scores["direction_score"] >= 55 else "desfavorable" if layered_scores["direction_score"] <= 45 else "neutral",
-            "source": "Motor v0.5 por capas",
+            "source": "Motor v0.6 calibrado por auditoria",
             "explanation": "Estima direccion sin premiar el ratio riesgo/beneficio. El R/R se usa en esperanza matematica, no para inflar probabilidad.",
         },
         {
@@ -798,8 +851,8 @@ def cvd_flow_score(side: str, cvd_ratio: float | None) -> float:
     if cvd_ratio is None:
         return 0
     if side == "long":
-        return 0.025 if cvd_ratio > 0.12 else -0.025 if cvd_ratio < -0.12 else 0
-    return 0.025 if cvd_ratio < -0.12 else -0.025 if cvd_ratio > 0.12 else 0
+        return 0.018 if cvd_ratio > 0.12 else -0.018 if cvd_ratio < -0.12 else 0
+    return 0.018 if cvd_ratio < -0.12 else -0.018 if cvd_ratio > 0.12 else 0
 
 
 def level_risk_penalty(proposal: TradeProposal, levels_for_horizon: dict) -> float:
@@ -1024,7 +1077,7 @@ def build_plain_summary(
     )
     return (
         f"Lectura {direction} para {horizon_profile['label']} ({horizon_profile['duration']}): setup {setup_grade} con riesgo {risk_level}. "
-        f"El motor v0.5 estima TP en rango {probability_ranges['tp']['label']}, SL {probability_ranges['sl']['label']} y rango/sin resolver {probability_ranges['range']['label']}; "
+        f"El motor v0.6 estima TP en rango {probability_ranges['tp']['label']}, SL {probability_ranges['sl']['label']} y rango/sin resolver {probability_ranges['range']['label']}; "
         f"los decimales internos se guardan solo para entrenamiento. "
         f"La probabilidad direccional se separa de la esperanza matematica, que ahora sale {expected_value['label']} ({expected_value['expected_value_usdt']:+.2f} USDT estimados). "
         f"La clave es que {trend_text}, mientras la relacion beneficio/riesgo es {rr_ratio:.2f} y el break-even aproximado es {break_even_probability:.0%}. "

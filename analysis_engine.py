@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.6-audit-calibrated"
+ENGINE_VERSION = "rules-v0.7-fibonacci-confluence"
 ENGINE_AUDIT_REFERENCE = {
-    "date": "2026-06-07",
+    "date": "2026-06-09",
     "sample_size": 68,
     "baseline": {
         "technical_score": "85.7%",
@@ -18,7 +18,7 @@ ENGINE_AUDIT_REFERENCE = {
         "cvd_spot": "52.1%",
         "order_book_imbalance": "57.9%",
     },
-    "intent": "Recalibracion prudente basada en auditoria: reforzar estructura/regimen y reducir autoridad direccional de senales ruidosas aisladas.",
+    "intent": "v0.7 anade Fibonacci como confluencia auditable de zonas, calidad de entrada y riesgo de ejecucion con impacto probabilistico limitado.",
 }
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
@@ -129,6 +129,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     ticker_24h = market_snapshot["ticker_24h"]
     derivatives = market_snapshot["derivatives"]
     levels = market_snapshot["levels"]
+    fibonacci = market_snapshot.get("fibonacci", {})
     sentiment = market_snapshot["sentiment"]
     global_market = market_snapshot["global_market"]
     market_breadth = market_snapshot["market_breadth"]
@@ -140,6 +141,11 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     tf_volatility = timeframe_for(market_snapshot["timeframes"], volatility_tf_key)
     tf_volume = timeframe_for(market_snapshot["timeframes"], volume_tf_key)
     levels_for_horizon = levels.get(levels_tf_key, levels.get("1h", {}))
+    fibonacci_for_horizon = (
+        fibonacci.get(levels_tf_key)
+        or fibonacci.get(horizon_profile["primary_timeframes"][0])
+        or fibonacci.get("1h", {})
+    )
     derivatives_horizon = derivatives_for_horizon(derivatives, horizon_profile)
 
     recent_range_pct = tf_volatility["recent_range_pct"]
@@ -189,6 +195,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     crowding_penalty = crowding_penalty_score(proposal.side, global_long_short_ratio)
     cvd_bias = cvd_flow_score(proposal.side, trade_flow.get("cvd_ratio")) * micro_weight
     level_penalty = level_risk_penalty(proposal, levels_for_horizon)
+    fibonacci_context = build_fibonacci_trade_context(proposal, fibonacci_for_horizon, levels_for_horizon, atr_pct)
     sentiment_penalty = sentiment_extreme_penalty(proposal.side, sentiment.get("fear_greed_value"))
     oi_trend_bias = open_interest_trend_score(proposal.side, ticker_24h["price_change_pct"], open_interest_change_pct) * derivatives_weight
     breadth_bias = market_breadth_score(proposal.side, market_breadth.get("advancers_24h_pct"), market_breadth.get("median_change_24h_pct")) * max(0.5, macro_weight)
@@ -215,6 +222,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + order_book_bias
         + momentum_bias
         + regime_bias
+        + fibonacci_context["probability_adjustment"]
         + taker_flow_bias
         + cvd_bias
         + oi_trend_bias
@@ -266,6 +274,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         cvd_bias=cvd_bias,
         technical_rating=technical_rating,
         expected_value=expected_value,
+        fibonacci_context=fibonacci_context,
     )
 
     risk_score = (
@@ -283,6 +292,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + (0.07 if htf_penalty else 0)
         + (0.05 if technical_rating["entry_timing_penalty"] else 0)
         + (0.05 if technical_rating["barrier_penalty"] else 0)
+        + fibonacci_context["risk_score_addition"]
         + (0.08 if contradiction_penalty >= 0.03 else 0)
     )
     if risk_score >= 0.42:
@@ -341,6 +351,10 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         alerts.append("El CVD spot reciente va contra la direccion propuesta.")
     if level_penalty:
         alerts.append("La operacion esta cerca de una zona tecnica que puede limitar el recorrido o barrer el stop.")
+    if fibonacci_context["bias"] == "favorable":
+        reasons.append(f"Fibonacci aporta confluencia: {fibonacci_context['summary']}")
+    elif fibonacci_context["bias"] in {"desfavorable", "alerta"}:
+        alerts.append(f"Fibonacci advierte riesgo de diseno: {fibonacci_context['summary']}")
     if sentiment_penalty:
         alerts.append("El sentimiento de mercado esta extremo y aumenta el riesgo de entrada tardia.")
     if oi_trend_bias > 0:
@@ -427,7 +441,9 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         tf_momentum=tf_momentum,
         tf_volatility=tf_volatility,
     )
-    explained_metrics = build_score_metrics(layered_scores, expected_value, market_regime, probability_ranges) + explained_metrics
+    explained_metrics = build_score_metrics(layered_scores, expected_value, market_regime, probability_ranges) + [
+        build_fibonacci_metric(fibonacci_context)
+    ] + explained_metrics
 
     return {
         "analysis_type": "pre_trade",
@@ -446,6 +462,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "layered_scores": layered_scores,
         "market_regime": market_regime,
         "technical_rating": technical_rating,
+        "fibonacci_context": fibonacci_context,
         "invalidation_rules": invalidation_rules,
         "plain_summary": plain_summary,
         "explained_metrics": explained_metrics,
@@ -477,6 +494,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             "layered_scores": layered_scores,
             "market_regime": market_regime,
             "technical_rating": technical_rating,
+            "fibonacci_context": fibonacci_context,
             "invalidation_rules": invalidation_rules,
             "engine_version": ENGINE_VERSION,
             "audit_reference": ENGINE_AUDIT_REFERENCE,
@@ -496,6 +514,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "order_book_bias": order_book_bias,
                 "momentum_bias": momentum_bias,
                 "market_regime_bias": regime_bias,
+                "fibonacci_probability_adjustment": fibonacci_context["probability_adjustment"],
+                "fibonacci_confluence_score": fibonacci_context["score"],
                 "taker_flow_bias": taker_flow_bias,
                 "cvd_bias": cvd_bias,
                 "oi_trend_bias": oi_trend_bias,
@@ -514,6 +534,176 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "contradiction_penalty": contradiction_penalty,
             },
         },
+    }
+
+
+def build_fibonacci_trade_context(proposal: TradeProposal, fibonacci_data: dict, levels_for_horizon: dict, atr_pct: float) -> dict:
+    if not fibonacci_data or not fibonacci_data.get("available"):
+        return {
+            "available": False,
+            "bias": "neutral",
+            "score": 50,
+            "probability_adjustment": 0,
+            "risk_score_addition": 0,
+            "execution_risk_addition": 0,
+            "entry_zone": "sin_datos",
+            "target_zone": "sin_datos",
+            "stop_zone": "sin_datos",
+            "summary": "sin swing Fibonacci valido para este horizonte",
+            "source": fibonacci_data,
+        }
+
+    swing = fibonacci_data.get("swing") or {}
+    swing_direction = swing.get("direction")
+    continuation_direction = "up" if proposal.side == "long" else "down"
+    aligned = swing_direction == continuation_direction
+    retracements = fibonacci_data.get("retracements") or {}
+    extensions = fibonacci_data.get("extensions") or {}
+    tolerance_pct = max(0.18, min(0.7, atr_pct * 0.65))
+    entry_level = nearest_named_price(proposal.entry, retracements)
+    target_level = nearest_named_price(proposal.take_profit, extensions)
+    stop_level = nearest_named_price(proposal.stop_loss, retracements)
+    entry_zone = classify_trade_price_against_fibs(proposal.entry, fibonacci_data)
+    target_zone = classify_trade_price_against_fibs(proposal.take_profit, fibonacci_data)
+    stop_zone = classify_trade_price_against_fibs(proposal.stop_loss, fibonacci_data)
+    score = 50
+    notes = []
+
+    if aligned:
+        score += 10
+        notes.append("impulso del horizonte acompana la direccion")
+    else:
+        score -= 14
+        notes.append("impulso Fibonacci contradice la direccion")
+
+    if entry_zone == "golden_zone":
+        score += 14
+        notes.append("entrada en zona 0.5-0.618")
+    elif entry_zone == "retroceso_superficial":
+        score += 6
+        notes.append("entrada en retroceso superficial")
+    elif entry_zone in {"extension", "ruptura_o_retroceso_muy_superficial"}:
+        score -= 8
+        notes.append("entrada tardia o muy extendida")
+    elif entry_zone in {"retroceso_extremo", "estructura_rota"}:
+        score -= 12
+        notes.append("retroceso profundo que amenaza estructura")
+
+    if entry_level and entry_level["distance_pct"] <= tolerance_pct:
+        score += 4
+    if target_level and target_level["distance_pct"] <= max(tolerance_pct, 0.35):
+        score += 5
+        notes.append(f"TP cerca de extension {target_level['ratio']}")
+    elif target_zone == "extension":
+        score -= 5
+        notes.append("TP exige extension sin nivel cercano")
+
+    if stop_level and stop_level["distance_pct"] <= tolerance_pct:
+        score -= 4
+        notes.append("SL demasiado cerca de nivel Fib activo")
+
+    if fibonacci_level_confluence(proposal, levels_for_horizon, tolerance_pct):
+        score += 6
+        notes.append("confluencia con soporte/resistencia ya detectado")
+
+    score = min(88, max(18, round(score)))
+    if score >= 68:
+        bias = "favorable"
+        probability_adjustment = 0.02 if aligned and entry_zone == "golden_zone" else 0.01
+        risk_score_addition = 0
+        execution_risk_addition = -4
+    elif score <= 38:
+        bias = "desfavorable"
+        probability_adjustment = -0.02 if not aligned else -0.01
+        risk_score_addition = 0.04
+        execution_risk_addition = 8
+    elif score <= 46:
+        bias = "alerta"
+        probability_adjustment = -0.01
+        risk_score_addition = 0.02
+        execution_risk_addition = 5
+    else:
+        bias = "neutral"
+        probability_adjustment = 0
+        risk_score_addition = 0
+        execution_risk_addition = 0
+
+    return {
+        "available": True,
+        "bias": bias,
+        "score": score,
+        "probability_adjustment": probability_adjustment,
+        "risk_score_addition": risk_score_addition,
+        "execution_risk_addition": execution_risk_addition,
+        "entry_zone": entry_zone,
+        "target_zone": target_zone,
+        "stop_zone": stop_zone,
+        "nearest_entry_level": entry_level,
+        "nearest_target_extension": target_level,
+        "nearest_stop_level": stop_level,
+        "tolerance_pct": round(tolerance_pct, 4),
+        "summary": "; ".join(notes[:4]) if notes else "Fibonacci sin confluencia decisiva",
+        "source": fibonacci_data,
+    }
+
+
+def nearest_named_price(price: float, levels: dict[str, float]) -> dict | None:
+    if not levels:
+        return None
+    ratio, level_price = min(levels.items(), key=lambda item: abs(float(item[1]) - price))
+    return {
+        "ratio": ratio,
+        "price": level_price,
+        "distance_pct": round(abs((price - float(level_price)) / max(abs(float(level_price)), 0.000001)) * 100, 4),
+    }
+
+
+def classify_trade_price_against_fibs(price: float, fibonacci_data: dict) -> str:
+    swing = fibonacci_data.get("swing") or {}
+    start_price = float(swing.get("start_price") or 0)
+    end_price = float(swing.get("end_price") or 0)
+    direction = swing.get("direction")
+    move = abs(end_price - start_price)
+    if move <= 0:
+        return "sin_rango"
+    retracement = (end_price - price) / move if direction == "up" else (price - end_price) / move
+    if retracement < -0.03:
+        return "extension"
+    if retracement < 0.236:
+        return "ruptura_o_retroceso_muy_superficial"
+    if retracement < 0.382:
+        return "retroceso_superficial"
+    if retracement <= 0.618:
+        return "golden_zone"
+    if retracement <= 0.786:
+        return "retroceso_profundo"
+    if retracement <= 1.0:
+        return "retroceso_extremo"
+    return "estructura_rota"
+
+
+def fibonacci_level_confluence(proposal: TradeProposal, levels_for_horizon: dict, tolerance_pct: float) -> bool:
+    if proposal.side == "long":
+        support = levels_for_horizon.get("nearest_support")
+        if not support:
+            return False
+        return abs((proposal.entry - float(support)) / max(abs(float(support)), 0.000001)) * 100 <= tolerance_pct
+    resistance = levels_for_horizon.get("nearest_resistance")
+    if not resistance:
+        return False
+    return abs((proposal.entry - float(resistance)) / max(abs(float(resistance)), 0.000001)) * 100 <= tolerance_pct
+
+
+def build_fibonacci_metric(fibonacci_context: dict) -> dict:
+    bias = fibonacci_context.get("bias", "neutral")
+    return {
+        "key": "fibonacci_confluence",
+        "label": "Fibonacci confluencia",
+        "value": f"{fibonacci_context.get('score', 50)}/100",
+        "score": fibonacci_context.get("score", 50),
+        "bias": "favorable" if bias == "favorable" else "desfavorable" if bias in {"desfavorable", "alerta"} else "contexto",
+        "source": "Binance Spot klines · swings automaticos",
+        "explanation": fibonacci_context.get("summary") or "Evalua retrocesos/extensiones como zonas de entrada, objetivo e invalidacion; no funciona como senal aislada.",
     }
 
 
@@ -701,6 +891,7 @@ def build_layered_scores(
     cvd_bias: float,
     technical_rating: dict,
     expected_value: dict,
+    fibonacci_context: dict,
 ) -> dict:
     direction_score = round(tp_probability * 100)
     risk_design_penalty = min(22, margin_risk_pct * 0.9)
@@ -713,12 +904,24 @@ def build_layered_scores(
                 42
                 + score_to_percent(rr_ratio, 0.8, 3.2) * 0.16
                 + ev_design_score * 0.22
+                + (fibonacci_context.get("score", 50) - 50) * 0.12
                 - risk_design_penalty,
             ),
         )
     )
     execution_risk_score = round(
-        min(100, max(0, 30 + volatility_penalty * 220 + level_penalty * 300 + liquidity_penalty * 250 + score_to_percent(spread_pct, 0, 0.08) * 0.35))
+        min(
+            100,
+            max(
+                0,
+                30
+                + volatility_penalty * 220
+                + level_penalty * 300
+                + fibonacci_context.get("execution_risk_addition", 0)
+                + liquidity_penalty * 250
+                + score_to_percent(spread_pct, 0, 0.08) * 0.35,
+            ),
+        )
     )
     alignment = 70
     if contradiction_penalty:

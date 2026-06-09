@@ -30,6 +30,9 @@ class LearnedCase:
     technical_score_bucket: str | None
     direction_score_bucket: str | None
     confidence_score_bucket: str | None
+    fibonacci_bias: str | None
+    fibonacci_entry_zone: str | None
+    fibonacci_score_bucket: str | None
     derivatives_period: str | None
     levels_timeframe: str | None
 
@@ -164,6 +167,9 @@ def build_case(operation: dict, ticks: list[dict], scope: str) -> LearnedCase:
         technical_score_bucket=pattern["technical_score_bucket"],
         direction_score_bucket=pattern["direction_score_bucket"],
         confidence_score_bucket=pattern["confidence_score_bucket"],
+        fibonacci_bias=pattern["fibonacci_bias"],
+        fibonacci_entry_zone=pattern["fibonacci_entry_zone"],
+        fibonacci_score_bucket=pattern["fibonacci_score_bucket"],
         derivatives_period=pattern["derivatives_period"],
         levels_timeframe=pattern["levels_timeframe"],
     )
@@ -183,6 +189,7 @@ def pattern_from_snapshot(snapshot: dict) -> dict:
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
+    fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
     timeframes = snapshot.get("analysis_timeframes") if isinstance(snapshot.get("analysis_timeframes"), dict) else {}
     return {
         "market_regime": regime.get("name"),
@@ -190,6 +197,9 @@ def pattern_from_snapshot(snapshot: dict) -> dict:
         "technical_score_bucket": score_bucket(technical.get("score")),
         "direction_score_bucket": score_bucket(scores.get("direction_score")),
         "confidence_score_bucket": score_bucket(scores.get("confidence_score")),
+        "fibonacci_bias": fibonacci.get("bias"),
+        "fibonacci_entry_zone": fibonacci.get("entry_zone"),
+        "fibonacci_score_bucket": score_bucket(fibonacci.get("score")),
         "derivatives_period": timeframes.get("derivatives_period"),
         "levels_timeframe": timeframes.get("levels"),
     }
@@ -242,6 +252,10 @@ def filter_similar_cases(cases: Iterable[LearnedCase], proposal: TradeProposal, 
         if pattern["levels_timeframe"] and case.levels_timeframe and pattern["levels_timeframe"] != case.levels_timeframe:
             continue
         if pattern["market_regime"] and case.market_regime and pattern["market_regime"] != case.market_regime:
+            continue
+        if pattern["fibonacci_bias"] and case.fibonacci_bias and pattern["fibonacci_bias"] != case.fibonacci_bias:
+            continue
+        if pattern["fibonacci_entry_zone"] and case.fibonacci_entry_zone and pattern["fibonacci_entry_zone"] != case.fibonacci_entry_zone:
             continue
         similar.append(case)
     return similar
@@ -343,6 +357,8 @@ def build_pattern_breakdown(cases: list[LearnedCase]) -> dict:
         "success_rate": round(successes / len(resolved), 4),
         "technical_labels": frequency([case.technical_label for case in resolved]),
         "market_regimes": frequency([case.market_regime for case in resolved]),
+        "fibonacci_biases": frequency([case.fibonacci_bias for case in resolved]),
+        "fibonacci_entry_zones": frequency([case.fibonacci_entry_zone for case in resolved]),
         "derivatives_periods": frequency([case.derivatives_period for case in resolved]),
         "levels_timeframes": frequency([case.levels_timeframe for case in resolved]),
     }

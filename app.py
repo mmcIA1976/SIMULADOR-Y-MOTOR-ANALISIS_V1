@@ -74,6 +74,21 @@ class CloseOperationPayload(BaseModel):
     closing_note: str | None = Field(default=None, max_length=500)
 
 
+def validate_trade_plan(side: str, entry: float, stop_loss: float, take_profit: float) -> None:
+    if side == "long":
+        if stop_loss >= entry:
+            raise HTTPException(status_code=400, detail="En una operacion long, el Stop Loss debe estar por debajo de la entrada")
+        if take_profit <= entry:
+            raise HTTPException(status_code=400, detail="En una operacion long, el Take Profit debe estar por encima de la entrada")
+    elif side == "short":
+        if stop_loss <= entry:
+            raise HTTPException(status_code=400, detail="En una operacion short, el Stop Loss debe estar por encima de la entrada")
+        if take_profit >= entry:
+            raise HTTPException(status_code=400, detail="En una operacion short, el Take Profit debe estar por debajo de la entrada")
+    else:
+        raise HTTPException(status_code=400, detail="Direccion no valida")
+
+
 def current_user(session_token: str | None) -> dict:
     if not session_token:
         raise HTTPException(status_code=401, detail="No autenticado")
@@ -683,6 +698,12 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
             LIMIT 1
         )
         WHERE o.status = 'CLOSED'
+          AND COALESCE(o.observation_status, '') != 'OBSERVING'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM learning_evaluations le
+              WHERE le.operation_id = o.id
+          )
         ORDER BY o.closed_at ASC, o.id ASC
         """
     ).fetchall()
@@ -707,11 +728,152 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
     return evaluations
 
 
+@app.get("/api/learning/fibonacci-audit")
+def fibonacci_audit(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_fibonacci_audit_report(db, int(user["id"]))
+
+
+def build_fibonacci_audit_report(db, user_id: int) -> dict:
+    recommendation_stats = row_to_dict(db.execute(
+        """
+        SELECT
+            COUNT(*) AS total_v07,
+            COUNT(CASE WHEN operation_id IS NULL THEN 1 END) AS pending_operations,
+            COUNT(CASE WHEN operation_id IS NOT NULL THEN 1 END) AS linked_operations
+        FROM recommendations
+        WHERE user_id = ?
+          AND engine_version = 'rules-v0.7-fibonacci-confluence'
+        """,
+        (user_id,),
+    ).fetchone()) or {}
+    rows = db.execute(
+        """
+        SELECT
+            le.operation_id,
+            le.symbol,
+            le.side,
+            le.time_horizon,
+            le.final_pnl,
+            le.plan_result,
+            le.analysis_verdict,
+            le.structured_json,
+            r.engine_version
+        FROM learning_evaluations le
+        LEFT JOIN recommendations r ON r.id = le.recommendation_id
+        WHERE le.user_id = ?
+          AND r.engine_version = 'rules-v0.7-fibonacci-confluence'
+        ORDER BY le.updated_at DESC, le.operation_id DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    cases = [fibonacci_case_from_evaluation(row_to_dict(row)) for row in rows]
+    cases = [case for case in cases if case is not None]
+    resolved_cases = [case for case in cases if case["plan_result"] in {"plan_success", "plan_failure", "plan_would_succeed", "plan_would_fail"}]
+    return {
+        "engine_version": "rules-v0.7-fibonacci-confluence",
+        "user_id": user_id,
+        "recommendations": {
+            "total_v07": int(recommendation_stats.get("total_v07") or 0),
+            "pending_operations": int(recommendation_stats.get("pending_operations") or 0),
+            "linked_operations": int(recommendation_stats.get("linked_operations") or 0),
+        },
+        "sample": {
+            "evaluated_cases": len(cases),
+            "resolved_cases": len(resolved_cases),
+            "minimum_for_review": 30,
+            "ready_for_weight_review": len(resolved_cases) >= 30,
+        },
+        "summary": summarize_fibonacci_cases(resolved_cases),
+        "by_bias": group_fibonacci_cases(resolved_cases, "bias"),
+        "by_entry_zone": group_fibonacci_cases(resolved_cases, "entry_zone"),
+        "by_time_horizon": group_fibonacci_cases(resolved_cases, "time_horizon"),
+        "by_side": group_fibonacci_cases(resolved_cases, "side"),
+        "recent_cases": cases[:12],
+    }
+
+
+def fibonacci_case_from_evaluation(row: dict) -> dict | None:
+    try:
+        structured = json.loads(row.get("structured_json") or "{}")
+    except json.JSONDecodeError:
+        structured = {}
+    context = structured.get("analysis_context") if isinstance(structured.get("analysis_context"), dict) else {}
+    fibonacci = context.get("fibonacci") if isinstance(context.get("fibonacci"), dict) else {}
+    if not fibonacci or fibonacci.get("bias") is None:
+        return None
+    plan_result = row.get("plan_result")
+    success = plan_result in {"plan_success", "plan_would_succeed"}
+    failure = plan_result in {"plan_failure", "plan_would_fail"}
+    return {
+        "operation_id": int(row["operation_id"]),
+        "symbol": row.get("symbol"),
+        "side": row.get("side"),
+        "time_horizon": row.get("time_horizon"),
+        "final_pnl": round(float(row.get("final_pnl") or 0), 4),
+        "plan_result": plan_result,
+        "analysis_verdict": row.get("analysis_verdict"),
+        "resolved": success or failure,
+        "success": success,
+        "failure": failure,
+        "bias": fibonacci.get("bias") or "sin_bias",
+        "score": safe_float(fibonacci.get("score")),
+        "entry_zone": fibonacci.get("entry_zone") or "sin_zona",
+        "target_zone": fibonacci.get("target_zone") or "sin_zona",
+        "stop_zone": fibonacci.get("stop_zone") or "sin_zona",
+        "probability_adjustment": safe_float(fibonacci.get("probability_adjustment")),
+    }
+
+
+def summarize_fibonacci_cases(cases: list[dict]) -> dict:
+    if not cases:
+        return {
+            "available": False,
+            "message": "Aun no hay operaciones cerradas evaluables con Fibonacci v0.7.",
+        }
+    successes = sum(1 for case in cases if case["success"])
+    failures = sum(1 for case in cases if case["failure"])
+    total_pnl = sum(float(case["final_pnl"]) for case in cases)
+    return {
+        "available": True,
+        "cases": len(cases),
+        "successes": successes,
+        "failures": failures,
+        "success_rate": round(successes / len(cases), 4),
+        "total_pnl": round(total_pnl, 4),
+        "avg_pnl": round(total_pnl / len(cases), 4),
+    }
+
+
+def group_fibonacci_cases(cases: list[dict], key: str) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    for case in cases:
+        groups.setdefault(str(case.get(key) or "sin_dato"), []).append(case)
+    result = []
+    for name, items in groups.items():
+        successes = sum(1 for item in items if item["success"])
+        total_pnl = sum(float(item["final_pnl"]) for item in items)
+        scores = [float(item["score"]) for item in items if item.get("score") is not None]
+        result.append({
+            "name": name,
+            "cases": len(items),
+            "successes": successes,
+            "failures": sum(1 for item in items if item["failure"]),
+            "success_rate": round(successes / len(items), 4) if items else 0,
+            "total_pnl": round(total_pnl, 4),
+            "avg_pnl": round(total_pnl / len(items), 4) if items else 0,
+            "avg_fibonacci_score": round(sum(scores) / len(scores), 4) if scores else None,
+        })
+    return sorted(result, key=lambda item: (-item["cases"], item["name"]))
+
+
 def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> dict:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
+    fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
     rr_ratio = safe_float(snapshot.get("risk_reward_ratio"))
     risk_margin_pct = safe_float(snapshot.get("risk_margin_pct"))
     reward_margin_pct = safe_float(snapshot.get("reward_margin_pct"))
@@ -777,6 +939,14 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
             "risk_reward_ratio": rr_ratio,
             "risk_margin_pct": risk_margin_pct,
             "reward_margin_pct": reward_margin_pct,
+            "fibonacci": {
+                "bias": fibonacci.get("bias"),
+                "score": safe_float(fibonacci.get("score")),
+                "entry_zone": fibonacci.get("entry_zone"),
+                "target_zone": fibonacci.get("target_zone"),
+                "stop_zone": fibonacci.get("stop_zone"),
+                "probability_adjustment": safe_float(fibonacci.get("probability_adjustment")),
+            },
         },
     }
     return {
@@ -1156,12 +1326,14 @@ def build_learning_pattern_text(operation: dict) -> str:
     technical = snapshot.get("technical_rating") or {}
     regime = snapshot.get("market_regime") or {}
     scores = snapshot.get("layered_scores") or {}
+    fibonacci = snapshot.get("fibonacci_context") or {}
     pieces = [
         f"horizonte {operation.get('time_horizon') or snapshot.get('time_horizon') or 'sin definir'}",
         f"rating tecnico {technical.get('label', 'no disponible')} {technical.get('score', '--')}/100",
         f"regimen {str(regime.get('name', 'no disponible')).replace('_', ' ')}",
         f"direccion {scores.get('direction_score', '--')}/100",
         f"confianza {scores.get('confidence_score', '--')}/100",
+        f"fibonacci {fibonacci.get('bias', 'n/d')} {fibonacci.get('score', '--')}/100 zona {fibonacci.get('entry_zone', 'n/d')}",
         f"derivados {timeframes.get('derivatives_period', 'n/d')}",
         f"niveles {timeframes.get('levels', 'n/d')}",
     ]
@@ -1428,6 +1600,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
         raise HTTPException(status_code=400, detail="Direccion no valida")
     if proposal.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
+    validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
     result = apply_learning_modifier(user["id"], proposal, analyze_trade(proposal))
     with connect() as db:
         cursor = db.execute(
@@ -1475,6 +1648,7 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
         raise HTTPException(status_code=400, detail="Direccion no valida")
     if payload.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
+    validate_trade_plan(side, payload.entry, payload.stop_loss, payload.take_profit)
     if mode not in VALID_OPERATION_MODES:
         raise HTTPException(status_code=400, detail="Modo de operacion no valido")
     with connect() as db:

@@ -79,6 +79,7 @@ const elements = {
   explainedMetrics: document.querySelector("#explainedMetrics"),
   dataSourcesBox: document.querySelector("#dataSourcesBox"),
   learningBox: document.querySelector("#learningBox"),
+  fibonacciAuditBox: document.querySelector("#fibonacciAuditBox"),
   analysisReasons: document.querySelector("#analysisReasons"),
   operationSelector: document.querySelector("#operationSelector"),
   operationSelectorMobile: document.querySelector("#operationSelectorMobile"),
@@ -715,6 +716,7 @@ function clearPrivateSessionView() {
   elements.explainedMetrics.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
   elements.learningBox.innerHTML = "";
+  renderFibonacciAudit(null);
   elements.analysisReasons.innerHTML = "";
   drawChart();
 }
@@ -788,6 +790,7 @@ async function loadSession() {
     renderPortfolio(user.portfolio);
     await loadContest();
     await loadOperations();
+    await loadFibonacciAudit();
   } catch {
     setSession(null);
     clearPrivateSessionView();
@@ -821,6 +824,7 @@ async function authenticate(mode) {
     await loadContest();
     await loadOperations();
     await loadPortfolio();
+    await loadFibonacciAudit();
     if (!getSelectedOperation()) {
       elements.analysisDecision.textContent = "Sesion iniciada. Ya puedes analizar operaciones.";
     }
@@ -835,6 +839,7 @@ async function logout() {
   setSession(null);
   clearPrivateSessionView();
   renderContest(null);
+  renderFibonacciAudit(null);
   elements.authMessage.textContent = "Sesion cerrada.";
 }
 
@@ -1515,7 +1520,12 @@ function renderEvidenceItem(metric, tone) {
 }
 
 function renderAnalysisKeypoints(analysis) {
+  const fibonacci = analysis.fibonacci_context || analysis.snapshot?.fibonacci_context || null;
+  const fibPoint = fibonacci?.available
+    ? `Fibonacci: ${fibBiasLabel(fibonacci.bias)} (${Number(fibonacci.score ?? 50).toFixed(0)}/100); zona entrada ${String(fibonacci.entry_zone || "n/d").replaceAll("_", " ")}.`
+    : "";
   const combined = [
+    fibPoint,
     ...(analysis.alerts || []),
     ...(analysis.reasons || []),
     ...(analysis.invalidation_rules || []).map((rule) => `Invalidacion: ${rule}`),
@@ -1537,6 +1547,7 @@ function renderAnalysisHighlights(analysis) {
   const scores = analysis.layered_scores || analysis.snapshot?.layered_scores || {};
   const expectedValue = analysis.expected_value || analysis.snapshot?.expected_value;
   const regime = analysis.market_regime || analysis.snapshot?.market_regime;
+  const fibonacci = analysis.fibonacci_context || analysis.snapshot?.fibonacci_context || null;
   const snapshot = analysis.snapshot || {};
   const horizon = analysis.time_horizon || snapshot.time_horizon;
   const rrRatio = snapshot.risk_reward_ratio;
@@ -1569,6 +1580,13 @@ function renderAnalysisHighlights(analysis) {
       tone: "neutral",
     },
     {
+      label: "Fibonacci",
+      value: fibonacci?.available
+        ? `${fibBiasLabel(fibonacci.bias)} · ${Number(fibonacci.score ?? 50).toFixed(0)}/100`
+        : "sin swing valido",
+      tone: fibTone(fibonacci),
+    },
+    {
       label: "R/R",
       value: Number.isFinite(Number(rrRatio)) ? Number(rrRatio).toFixed(2) : "--",
       tone: Number(rrRatio) >= 1.5 ? "positive" : "negative",
@@ -1599,6 +1617,27 @@ function renderAnalysisHighlights(analysis) {
     .join("");
 }
 
+function fibBiasLabel(value) {
+  const labels = {
+    favorable: "favorable",
+    desfavorable: "desfavorable",
+    alerta: "alerta",
+    neutral: "neutral",
+  };
+  return labels[String(value || "neutral").toLowerCase()] || "neutral";
+}
+
+function fibTone(fibonacci) {
+  const bias = String(fibonacci?.bias || "neutral").toLowerCase();
+  if (bias === "favorable") {
+    return "positive";
+  }
+  if (bias === "desfavorable" || bias === "alerta") {
+    return "negative";
+  }
+  return "neutral";
+}
+
 function updateAnalysisFullVisibility(hasAnalysis = true) {
   if (!elements.analysisToggle || !elements.analysisFull) {
     return;
@@ -1616,6 +1655,7 @@ function renderDataSources(availability, sources) {
     order_book: "Order book",
     spot_trade_flow: "CVD/delta spot",
     ticker_24h: "Ticker 24h",
+    fibonacci: "Fibonacci",
     funding: "Funding",
     open_interest: "Open interest",
     long_short_ratio: "Long/short",
@@ -1659,6 +1699,44 @@ function renderLearningBox(learning) {
     </div>
     <p>${escapeHtml(learning.plain_text)}</p>
     ${learning.manual_close_explanation ? `<p>${escapeHtml(learning.manual_close_explanation)}</p>` : ""}
+  `;
+}
+
+function renderFibonacciAudit(report) {
+  if (!elements.fibonacciAuditBox) {
+    return;
+  }
+  if (!report) {
+    elements.fibonacciAuditBox.innerHTML = `
+      <span class="label">Auditoria Fibonacci v0.7</span>
+      <p>Inicia sesion para ver la muestra acumulada.</p>
+    `;
+    return;
+  }
+  const sample = report.sample || {};
+  const recommendations = report.recommendations || {};
+  const summary = report.summary || {};
+  const resolvedCases = Number(sample.resolved_cases || 0);
+  const minimum = Number(sample.minimum_for_review || 30);
+  const progress = minimum > 0 ? Math.min(100, (resolvedCases / minimum) * 100) : 0;
+  const topBias = Array.isArray(report.by_bias) && report.by_bias.length ? report.by_bias[0] : null;
+  const topZone = Array.isArray(report.by_entry_zone) && report.by_entry_zone.length ? report.by_entry_zone[0] : null;
+  const readinessText = sample.ready_for_weight_review
+    ? "Muestra lista para revisar pesos."
+    : `Faltan ${Math.max(0, minimum - resolvedCases)} cierres evaluables para revisar pesos.`;
+  elements.fibonacciAuditBox.innerHTML = `
+    <span class="label">Auditoria Fibonacci v0.7</span>
+    <div class="learning-grid">
+      <article><span>Analisis v0.7</span><strong>${Number(recommendations.total_v07 || 0)}</strong></article>
+      <article><span>En operaciones</span><strong>${Number(recommendations.linked_operations || 0)}</strong></article>
+      <article><span>Cierres evaluables</span><strong>${resolvedCases}/${minimum}</strong></article>
+      <article><span>Tasa exito</span><strong>${summary.available ? percent(Number(summary.success_rate || 0)) : "--"}</strong></article>
+      <article><span>PnL medio</span><strong class="${Number(summary.avg_pnl || 0) > 0 ? "positive" : Number(summary.avg_pnl || 0) < 0 ? "negative" : "neutral"}">${summary.available ? money(Number(summary.avg_pnl || 0)) : "--"}</strong></article>
+    </div>
+    <div class="audit-progress" aria-label="Progreso auditoria Fibonacci"><span style="width: ${progress.toFixed(1)}%"></span></div>
+    <p>${escapeHtml(readinessText)}</p>
+    ${topBias ? `<p>Sesgo con mas muestra: ${escapeHtml(topBias.name)} · ${topBias.cases} caso${topBias.cases === 1 ? "" : "s"} · exito ${percent(Number(topBias.success_rate || 0))}.</p>` : ""}
+    ${topZone ? `<p>Zona mas frecuente: ${escapeHtml(String(topZone.name).replaceAll("_", " "))} · ${topZone.cases} caso${topZone.cases === 1 ? "" : "s"}.</p>` : ""}
   `;
 }
 
@@ -1719,6 +1797,7 @@ async function startSimulation() {
     await loadOperations();
     await loadPortfolio();
     await loadContest();
+    await loadFibonacciAudit();
   } catch (error) {
     elements.analysisDecision.textContent = error.message;
   } finally {
@@ -1779,6 +1858,7 @@ async function closeOperationById(operationId) {
     await loadOperations();
     await loadPortfolio();
     await loadContest();
+    await loadFibonacciAudit();
   } catch (error) {
     elements.analysisDecision.textContent = error.message;
   } finally {
@@ -2170,6 +2250,19 @@ async function loadOperations() {
     renderOperations(data.operations || []);
   } catch {
     renderOperations([]);
+  }
+}
+
+async function loadFibonacciAudit() {
+  if (!currentUser) {
+    renderFibonacciAudit(null);
+    return;
+  }
+  try {
+    const report = await requestJson("/api/learning/fibonacci-audit");
+    renderFibonacciAudit(report);
+  } catch {
+    renderFibonacciAudit(null);
   }
 }
 

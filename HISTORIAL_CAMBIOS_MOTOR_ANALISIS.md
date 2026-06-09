@@ -2,6 +2,42 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-09 - rules-v0.7-fibonacci-confluence
+
+Estado de auditoria: implementacion inicial pendiente de validacion con operaciones cerradas.
+
+Base de partida:
+- Version anterior: `rules-v0.6-audit-calibrated`.
+- Baseline v0.6: 68 operaciones cerradas evaluables.
+- Se conserva la regla central: el R/R no infla directamente la probabilidad direccional.
+
+Cambios realizados:
+- Se anade deteccion automatica de swings por temporalidad usando pivotes objetivos y filtro minimo por ATR/rango.
+- Se calculan retrocesos Fibonacci `0.236`, `0.382`, `0.5`, `0.618`, `0.786`.
+- Se calculan extensiones `1.272`, `1.618`, `2.0`, `2.618`.
+- Se incorpora `fibonacci_context` al resultado y snapshot del analisis.
+- Se crea una metrica explicada `fibonacci_confluence`.
+- Fibonacci se usa como confluencia de zona, calidad de entrada, calidad de TP/SL y riesgo de ejecucion.
+- El ajuste directo sobre probabilidad queda limitado a `-0.02` / `+0.02`.
+- El aprendizaje descriptivo empieza a registrar sesgo, zona de entrada y puntuacion Fibonacci dentro del patron guardado.
+- Se endurece la validacion backend para impedir analisis u operaciones con SL/TP en el lado incorrecto de la entrada.
+- `refresh_learning_evaluations` deja de recalcular historico cerrado ya evaluado; solo crea evaluaciones faltantes y omite cierres manuales todavia en observacion.
+
+Motivo:
+- Incorporar Fibonacci como sistema de zonas medibles, no como predictor aislado.
+- Mejorar la lectura de entrada, invalidacion y objetivos cuando coinciden con estructura tecnica existente.
+- Crear trazabilidad para auditar si las zonas Fibonacci aportan valor real por activo, lado y temporalidad.
+
+Riesgo esperado:
+- Posible sobreajuste si se da demasiado peso a Fibonacci antes de tener muestra suficiente.
+- Posible ruido en mercados laterales o con swings poco limpios.
+- Los pivotes automaticos pueden elegir un impulso distinto al que usaria un analista visual.
+
+Estado pendiente de validacion:
+- Auditar tras al menos 30 operaciones cerradas con `rules-v0.7-fibonacci-confluence`.
+- Comparar operaciones con `fibonacci_context.bias = favorable` frente a neutral/desfavorable.
+- Medir por separado `golden_zone`, retroceso superficial, entrada extendida, LONG/SHORT y temporalidad.
+
 ## 2026-06-07 - rules-v0.6-audit-calibrated
 
 Estado de auditoria: aplicada tras auditoria de operaciones cerradas.

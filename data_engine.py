@@ -6,6 +6,10 @@ from dataclasses import dataclass
 import market_data
 
 
+FIB_RETRACEMENT_RATIOS = (0.236, 0.382, 0.5, 0.618, 0.786)
+FIB_EXTENSION_RATIOS = (1.272, 1.618, 2.0, 2.618)
+
+
 @dataclass(frozen=True)
 class CandleSet:
     interval: str
@@ -172,6 +176,135 @@ def detect_levels(candles: CandleSet, current_price: float, lookback: int = 120)
         "distance_to_support_pct": abs(distance_pct(current_price, nearest_support)) if nearest_support else None,
         "distance_to_resistance_pct": abs(distance_pct(nearest_resistance, current_price)) if nearest_resistance else None,
     }
+
+
+def summarize_fibonacci(candles: CandleSet, current_price: float, lookback: int = 180) -> dict:
+    highs = candles.highs[-lookback:]
+    lows = candles.lows[-lookback:]
+    closes = candles.closes[-lookback:]
+    if len(closes) < 34 or current_price <= 0:
+        return empty_fibonacci_context(candles.interval, len(closes), "muestra_insuficiente")
+
+    atr_value = atr(highs, lows, closes, 14)
+    atr_pct_value = pct(atr_value, current_price)
+    range_pct = pct(max(highs) - min(lows), current_price)
+    min_move_pct = max(atr_pct_value * 1.35, range_pct * 0.18, 0.35)
+    pivots = detect_price_pivots(highs, lows, left_right=3)
+    swing = select_recent_fibonacci_swing(pivots, min_move_pct)
+    if swing is None:
+        return empty_fibonacci_context(candles.interval, len(closes), "sin_impulso_valido")
+
+    start_price = swing["start_price"]
+    end_price = swing["end_price"]
+    move = abs(end_price - start_price)
+    if move <= 0:
+        return empty_fibonacci_context(candles.interval, len(closes), "impulso_sin_rango")
+
+    if swing["direction"] == "up":
+        retracements = {fib_key(ratio): round(end_price - move * ratio, 8) for ratio in FIB_RETRACEMENT_RATIOS}
+        extensions = {fib_key(ratio): round(end_price + move * (ratio - 1), 8) for ratio in FIB_EXTENSION_RATIOS}
+    else:
+        retracements = {fib_key(ratio): round(end_price + move * ratio, 8) for ratio in FIB_RETRACEMENT_RATIOS}
+        extensions = {fib_key(ratio): round(end_price - move * (ratio - 1), 8) for ratio in FIB_EXTENSION_RATIOS}
+
+    nearest = nearest_fibonacci_level(current_price, retracements | extensions)
+    return {
+        "available": True,
+        "interval": candles.interval,
+        "lookback_candles": min(lookback, len(closes)),
+        "swing": {
+            **swing,
+            "move_pct": round(pct(move, start_price), 4) if start_price else 0,
+            "atr_multiple": round(move / max(atr_value, 0.000001), 4),
+            "min_required_move_pct": round(min_move_pct, 4),
+        },
+        "retracements": retracements,
+        "extensions": extensions,
+        "nearest_level": nearest,
+        "current_zone": classify_fibonacci_price_zone(current_price, swing["direction"], start_price, end_price),
+    }
+
+
+def empty_fibonacci_context(interval: str, lookback_candles: int, reason: str) -> dict:
+    return {
+        "available": False,
+        "interval": interval,
+        "lookback_candles": lookback_candles,
+        "reason": reason,
+        "swing": None,
+        "retracements": {},
+        "extensions": {},
+        "nearest_level": None,
+        "current_zone": "sin_datos",
+    }
+
+
+def detect_price_pivots(highs: list[float], lows: list[float], left_right: int = 3) -> list[dict]:
+    pivots = []
+    if len(highs) != len(lows) or len(highs) < left_right * 2 + 1:
+        return pivots
+    for index in range(left_right, len(highs) - left_right):
+        high_window = highs[index - left_right : index + left_right + 1]
+        low_window = lows[index - left_right : index + left_right + 1]
+        high = highs[index]
+        low = lows[index]
+        if high == max(high_window) and high_window.count(high) == 1:
+            pivots.append({"index": index, "type": "high", "price": high})
+        if low == min(low_window) and low_window.count(low) == 1:
+            pivots.append({"index": index, "type": "low", "price": low})
+    return sorted(pivots, key=lambda pivot: pivot["index"])
+
+
+def select_recent_fibonacci_swing(pivots: list[dict], min_move_pct: float) -> dict | None:
+    for end in reversed(pivots):
+        opposite_type = "low" if end["type"] == "high" else "high"
+        for start in reversed([pivot for pivot in pivots if pivot["index"] < end["index"] and pivot["type"] == opposite_type]):
+            move_pct = abs(distance_pct(end["price"], start["price"]))
+            if move_pct < min_move_pct:
+                continue
+            return {
+                "direction": "up" if start["type"] == "low" and end["type"] == "high" else "down",
+                "start_index": start["index"],
+                "end_index": end["index"],
+                "start_price": round(float(start["price"]), 8),
+                "end_price": round(float(end["price"]), 8),
+            }
+    return None
+
+
+def nearest_fibonacci_level(current_price: float, levels: dict[str, float]) -> dict | None:
+    if not levels:
+        return None
+    name, price_value = min(levels.items(), key=lambda item: abs(item[1] - current_price))
+    return {
+        "ratio": name,
+        "price": price_value,
+        "distance_pct": round(abs(distance_pct(current_price, price_value)), 4) if price_value else None,
+    }
+
+
+def classify_fibonacci_price_zone(current_price: float, direction: str, start_price: float, end_price: float) -> str:
+    move = abs(end_price - start_price)
+    if move <= 0:
+        return "sin_rango"
+    retracement = (end_price - current_price) / move if direction == "up" else (current_price - end_price) / move
+    if retracement < -0.03:
+        return "extension"
+    if retracement < 0.236:
+        return "ruptura_o_retroceso_muy_superficial"
+    if retracement < 0.382:
+        return "retroceso_superficial"
+    if retracement <= 0.618:
+        return "golden_zone"
+    if retracement <= 0.786:
+        return "retroceso_profundo"
+    if retracement <= 1.0:
+        return "retroceso_extremo"
+    return "estructura_rota"
+
+
+def fib_key(value: float) -> str:
+    return f"{value:.3f}".rstrip("0").rstrip(".")
 
 
 def cluster_level(values: list[float]) -> float | None:
@@ -358,6 +491,7 @@ def availability(snapshot: dict) -> dict:
         "order_book": bool(snapshot["order_book"].get("best_bid")),
         "spot_trade_flow": trade_flow.get("sample_trades", 0) > 0,
         "ticker_24h": snapshot["ticker_24h"].get("quote_volume", 0) > 0,
+        "fibonacci": any(item.get("available") for item in snapshot.get("fibonacci", {}).values()),
         "funding": derivatives.get("funding_rate_pct") is not None,
         "open_interest": derivatives.get("open_interest") is not None,
         "open_interest_history": derivatives.get("open_interest_change_5m_window_pct") is not None,
@@ -397,6 +531,7 @@ def build_market_snapshot(symbol: str) -> dict:
             "global_market": "coingecko_global",
             "market_breadth": "coingecko_top_markets",
             "sentiment": "alternative_me_fear_greed",
+            "fibonacci": "binance_spot_klines_auto_swings",
         },
         "current_price": current_price,
         "timeframes": {
@@ -405,6 +540,10 @@ def build_market_snapshot(symbol: str) -> dict:
         },
         "levels": {
             interval: detect_levels(candles, current_price)
+            for interval, candles in timeframes.items()
+        },
+        "fibonacci": {
+            interval: summarize_fibonacci(candles, current_price)
             for interval, candles in timeframes.items()
         },
         "order_book": summarize_order_book(depth),

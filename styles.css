@@ -1526,6 +1526,20 @@ button:hover {
   line-height: 1.45;
 }
 
+.audit-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(101, 112, 102, 0.16);
+}
+
+.audit-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--price), var(--target));
+}
+
 .data-sources-box {
   border-color: rgba(31, 122, 140, 0.22);
   background: rgba(31, 122, 140, 0.06);

@@ -638,7 +638,11 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
             r.engine_version AS recommendation_engine_version,
             r.setup_grade AS recommendation_setup_grade,
             r.risk_level AS recommendation_risk_level,
-            r.confidence AS recommendation_confidence
+            r.confidence AS recommendation_confidence,
+            r.training_decision AS recommendation_training_decision,
+            r.tp_probability AS recommendation_tp_probability,
+            r.sl_probability AS recommendation_sl_probability,
+            r.range_probability AS recommendation_range_probability
         FROM operations o
         LEFT JOIN recommendations r ON r.id = (
             SELECT r2.id
@@ -894,9 +898,19 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         sl_probability=sl_probability,
         setup_grade=setup_grade,
         confidence=confidence,
+        training_decision=operation.get("recommendation_training_decision"),
+        expected_value_usdt=expected_value_from_snapshot(snapshot),
+        fibonacci_bias=fibonacci.get("bias"),
     )
     user_decision_quality = classify_user_decision_quality(operation, manual_trigger)
     failure_type = classify_failure_type(operation, snapshot, mfe_mae, plan_result)
+    learning_signal = build_learning_signal(
+        operation=operation,
+        snapshot=snapshot,
+        plan_result=plan_result,
+        analysis_verdict=analysis_verdict,
+        failure_type=failure_type,
+    )
     primary_lesson = build_primary_lesson(
         operation=operation,
         plan_result=plan_result,
@@ -912,6 +926,7 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         "analysis_verdict": analysis_verdict,
         "primary_lesson": primary_lesson,
         "failure_type": failure_type,
+        "learning_signal": learning_signal,
         "user_decision_quality": user_decision_quality,
         "excursion": mfe_mae,
         "manual_counterfactual": {
@@ -1177,19 +1192,162 @@ def classify_analysis_verdict(
     sl_probability: float | None,
     setup_grade: str | None,
     confidence: str | None,
+    training_decision: str | None = None,
+    expected_value_usdt: float | None = None,
+    fibonacci_bias: str | None = None,
 ) -> str:
     tp = tp_probability if tp_probability is not None else 0
     sl = sl_probability if sl_probability is not None else 0
+    decision = str(training_decision or "").lower()
+    fib_bias = str(fibonacci_bias or "").lower()
     weak_setup = setup_grade in {"D", "E"} or confidence in {"baja", "media-baja"}
+    analysis_warned = (
+        weak_setup
+        or decision == "observar"
+        or tp < sl
+        or (expected_value_usdt is not None and expected_value_usdt < 0)
+        or fib_bias in {"alerta", "desfavorable"}
+    )
     if plan_result in {"plan_success", "plan_would_succeed"}:
-        if tp >= sl or setup_grade in {"A", "B", "C"}:
+        if not analysis_warned and (tp >= sl or setup_grade in {"A", "B", "C"}):
             return "analysis_supported_success"
         return "success_against_analysis"
     if plan_result in {"plan_failure", "plan_would_fail"}:
-        if sl >= tp or weak_setup:
+        if analysis_warned or sl >= tp:
             return "analysis_warned_risk"
         return "analysis_missed_risk"
     return "analysis_unresolved"
+
+
+def expected_value_from_snapshot(snapshot: dict) -> float | None:
+    expected_value = snapshot.get("expected_value")
+    if isinstance(expected_value, dict):
+        return safe_float(expected_value.get("expected_value_usdt"))
+    return None
+
+
+def analysis_warning_reasons(operation: dict) -> list[str]:
+    snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
+    fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    expected_value_usdt = expected_value_from_snapshot(snapshot)
+    setup_grade = operation.get("recommendation_setup_grade")
+    training_decision = str(operation.get("recommendation_training_decision") or "").lower()
+    tp_probability = safe_float(operation.get("recommendation_tp_probability"))
+    sl_probability = safe_float(operation.get("recommendation_sl_probability"))
+    fibonacci_bias = str(fibonacci.get("bias") or "").lower()
+
+    reasons = []
+    if training_decision == "observar":
+        reasons.append("decision previa observar")
+    if setup_grade in {"D", "E"}:
+        reasons.append(f"setup {setup_grade}")
+    if tp_probability is not None and sl_probability is not None and tp_probability < sl_probability:
+        reasons.append("probabilidad de TP inferior a SL")
+    if expected_value_usdt is not None and expected_value_usdt < 0:
+        reasons.append("EV negativa")
+    if fibonacci_bias in {"alerta", "desfavorable"}:
+        reasons.append(f"Fibonacci {fibonacci_bias}")
+    return reasons
+
+
+def analysis_support_reasons(operation: dict) -> list[str]:
+    snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
+    fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    expected_value_usdt = expected_value_from_snapshot(snapshot)
+    setup_grade = operation.get("recommendation_setup_grade")
+    training_decision = str(operation.get("recommendation_training_decision") or "").lower()
+    tp_probability = safe_float(operation.get("recommendation_tp_probability"))
+    sl_probability = safe_float(operation.get("recommendation_sl_probability"))
+    fibonacci_bias = str(fibonacci.get("bias") or "").lower()
+
+    reasons = []
+    if training_decision in {"simular", "simular con ajustes"}:
+        reasons.append(f"decision previa {training_decision}")
+    if setup_grade in {"A", "B", "C"}:
+        reasons.append(f"setup {setup_grade}")
+    if tp_probability is not None and sl_probability is not None and tp_probability >= sl_probability:
+        reasons.append("probabilidad de TP igual o superior a SL")
+    if expected_value_usdt is not None and expected_value_usdt >= 0:
+        reasons.append("EV no negativa")
+    if fibonacci_bias in {"favorable", "neutral"}:
+        reasons.append(f"Fibonacci {fibonacci_bias}")
+    return reasons
+
+
+def build_learning_signal(
+    operation: dict,
+    snapshot: dict,
+    plan_result: str,
+    analysis_verdict: str,
+    failure_type: str | None,
+) -> dict:
+    technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
+    regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
+    scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
+    fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    expected_value_usdt = expected_value_from_snapshot(snapshot)
+    category_by_verdict = {
+        "analysis_supported_success": "reinforce_supported_success",
+        "success_against_analysis": "investigate_underestimated_opportunity",
+        "analysis_warned_risk": "reinforce_warned_risk",
+        "analysis_missed_risk": "investigate_underestimated_risk",
+    }
+    interpretation_by_verdict = {
+        "analysis_supported_success": "El resultado confirma una lectura favorable previa; util solo agregado con casos comparables.",
+        "success_against_analysis": "El resultado fue positivo pese a advertencias; no refuerza automaticamente el analisis, senala posible oportunidad infravalorada.",
+        "analysis_warned_risk": "El resultado negativo confirma advertencias previas; util para reforzar senales de riesgo si se repite.",
+        "analysis_missed_risk": "El resultado negativo ocurrio pese a apoyo del analisis; senala riesgo subestimado.",
+    }
+    return {
+        "category": category_by_verdict.get(analysis_verdict, "unresolved_context"),
+        "analysis_verdict": analysis_verdict,
+        "plan_result": plan_result,
+        "failure_type": failure_type,
+        "interpretation": interpretation_by_verdict.get(
+            analysis_verdict,
+            "Caso no concluyente; conservar como contexto sin ajustar pesos.",
+        ),
+        "actionability": "aggregate_only",
+        "minimum_comparable_cases": 30,
+        "comparable_case_key": {
+            "symbol": operation.get("symbol"),
+            "side": operation.get("side"),
+            "time_horizon": operation.get("time_horizon") or "intraday_short",
+            "setup_grade": operation.get("recommendation_setup_grade"),
+            "training_decision": operation.get("recommendation_training_decision"),
+            "risk_level": operation.get("recommendation_risk_level"),
+            "technical_label": technical.get("label"),
+            "market_regime": regime.get("name"),
+            "direction_score_bucket": score_bucket(safe_float(scores.get("direction_score"))),
+            "expected_value_bucket": value_bucket(expected_value_usdt),
+            "fibonacci_bias": fibonacci.get("bias"),
+            "fibonacci_entry_zone": fibonacci.get("entry_zone"),
+        },
+    }
+
+
+def score_bucket(value: float | None) -> str:
+    if value is None:
+        return "sin_dato"
+    if value < 35:
+        return "muy_bajo"
+    if value < 45:
+        return "bajo"
+    if value < 55:
+        return "neutral"
+    if value < 65:
+        return "favorable"
+    return "fuerte"
+
+
+def value_bucket(value: float | None) -> str:
+    if value is None:
+        return "sin_dato"
+    if value < 0:
+        return "negativa"
+    if value == 0:
+        return "neutral"
+    return "positiva"
 
 
 def classify_user_decision_quality(operation: dict, manual_trigger) -> str | None:
@@ -1247,11 +1405,21 @@ def build_primary_lesson(
     side = str(operation["side"]).upper()
     horizon = operation.get("time_horizon") or "sin temporalidad"
     if plan_result in {"plan_success", "plan_would_succeed"}:
+        if analysis_verdict == "success_against_analysis":
+            return (
+                f"El plan {side} en {horizon} gano, pero contra advertencias del analisis previo. "
+                f"No debe reforzar automaticamente la lectura inicial; revisar que senal infravaloro el movimiento real."
+            )
         return (
             f"El plan {side} en {horizon} quedo respaldado por el resultado. "
             f"Contexto tecnico: {technical_label or 'n/d'}, regimen {market_regime or 'n/d'}."
         )
     if plan_result in {"plan_failure", "plan_would_fail"}:
+        if analysis_verdict == "analysis_missed_risk":
+            return (
+                f"El plan {side} en {horizon} fallo pese a no estar advertido por el analisis previo. "
+                f"No debe reforzar patrones favorables; revisar que riesgo fue subestimado."
+            )
         return (
             f"El plan {side} en {horizon} fallo o habria fallado. "
             f"Lectura: {analysis_verdict}; causa candidata: {failure_type or 'sin clasificar'}."
@@ -1271,6 +1439,18 @@ def build_learning_conclusion(operation: dict) -> dict:
     pattern_text = build_learning_pattern_text(operation)
 
     if close_reason == "take_profit":
+        warnings = analysis_warning_reasons(operation)
+        if warnings:
+            warning_text = ", ".join(warnings)
+            return {
+                "outcome": "plan_success",
+                "summary": (
+                    f"Aprendizaje: el plan de {symbol} en {side} funciono y alcanzo TAKE PROFIT. "
+                    f"Resultado: {pnl:.2f} USDT. Sin embargo, el analisis previo contenia advertencias "
+                    f"({warning_text}); por tanto este caso debe guardarse como operacion ganadora contra advertencias, "
+                    f"no como refuerzo automatico de todas las condiciones del analisis. {pattern_text}"
+                ),
+            }
         return {
             "outcome": "plan_success",
             "summary": (
@@ -1280,11 +1460,26 @@ def build_learning_conclusion(operation: dict) -> dict:
             ),
         }
     if close_reason == "stop_loss":
+        warnings = analysis_warning_reasons(operation)
+        if warnings:
+            warning_text = ", ".join(warnings)
+            return {
+                "outcome": "plan_failure",
+                "summary": (
+                    f"Aprendizaje: el plan de {symbol} en {side} fallo y alcanzo STOP LOSS. "
+                    f"Resultado: {pnl:.2f} USDT. El analisis previo ya contenia advertencias "
+                    f"({warning_text}); este caso debe reforzar esas senales de riesgo. {pattern_text}"
+                ),
+            }
+        support = analysis_support_reasons(operation)
+        support_text = f" El analisis previo lo apoyaba ({', '.join(support)})." if support else ""
         return {
             "outcome": "plan_failure",
             "summary": (
                 f"Aprendizaje: el plan de {symbol} en {side} fallo y alcanzo STOP LOSS. "
-                f"Resultado: {pnl:.2f} USDT. Esta operacion debe alimentar los patrones de riesgo que anticiparon o no anticiparon el fallo. "
+                f"Resultado: {pnl:.2f} USDT.{support_text} "
+                f"Este caso debe guardarse como fallo no anticipado o riesgo subestimado, "
+                f"no como refuerzo de las condiciones favorables del analisis. "
                 f"{pattern_text}"
             ),
         }

@@ -22,11 +22,17 @@ Cambios realizados:
 - El aprendizaje descriptivo empieza a registrar sesgo, zona de entrada y puntuacion Fibonacci dentro del patron guardado.
 - Se endurece la validacion backend para impedir analisis u operaciones con SL/TP en el lado incorrecto de la entrada.
 - `refresh_learning_evaluations` deja de recalcular historico cerrado ya evaluado; solo crea evaluaciones faltantes y omite cierres manuales todavia en observacion.
+- Se corrige la conclusion de aprendizaje para diferenciar operaciones ganadoras respaldadas por el analisis frente a operaciones ganadoras contra advertencias previas (`observar`, setup debil, TP < SL, EV negativa o Fibonacci en alerta).
+- Se aplica el mismo criterio a operaciones que alcanzan STOP LOSS: si el motor las apoyaba, se guardan como riesgo no anticipado/subestimado; si ya habia advertencias, refuerzan esas senales de riesgo.
+- Se anade una senal interna de aprendizaje en `structured_json` con categoria, interpretacion, criterio `aggregate_only`, minimo de 30 casos comparables y clave de comparacion por activo, lado, horizonte, setup, regimen, EV y Fibonacci.
 
 Motivo:
 - Incorporar Fibonacci como sistema de zonas medibles, no como predictor aislado.
 - Mejorar la lectura de entrada, invalidacion y objetivos cuando coinciden con estructura tecnica existente.
 - Crear trazabilidad para auditar si las zonas Fibonacci aportan valor real por activo, lado y temporalidad.
+- Evitar que un TAKE PROFIT refuerce erroneamente todas las condiciones del analisis cuando el propio motor habia recomendado prudencia.
+- Evitar que un STOP LOSS recomendado por el motor se interprete como confirmacion de patrones favorables.
+- Preparar el aprendizaje para auditorias internas futuras sin necesidad de visualizar estos datos en la app.
 
 Riesgo esperado:
 - Posible sobreajuste si se da demasiado peso a Fibonacci antes de tener muestra suficiente.

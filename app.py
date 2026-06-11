@@ -1376,8 +1376,6 @@ def classify_failure_type(operation: dict, snapshot: dict, mfe_mae: dict, plan_r
     max_favorable_pct = mfe_mae.get("max_favorable_pct")
     if technical.get("label") == "desfavorable" or (direction_score is not None and direction_score <= 40):
         return "direction_against_structure"
-    if float(operation.get("leverage") or 0) >= 8:
-        return "excessive_leverage"
     if rr is not None and rr < 1.15:
         return "weak_reward_for_risk"
     if max_favorable_pct is not None and max_favorable_pct > 0.6:

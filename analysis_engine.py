@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.7-fibonacci-confluence"
+ENGINE_VERSION = "rules-v0.8-leverage-neutral-analysis"
 ENGINE_AUDIT_REFERENCE = {
     "date": "2026-06-09",
     "sample_size": 68,
@@ -18,7 +18,7 @@ ENGINE_AUDIT_REFERENCE = {
         "cvd_spot": "52.1%",
         "order_book_imbalance": "57.9%",
     },
-    "intent": "v0.7 anade Fibonacci como confluencia auditable de zonas, calidad de entrada y riesgo de ejecucion con impacto probabilistico limitado.",
+    "intent": "v0.8 mantiene Fibonacci como confluencia auditable y separa apalancamiento de la decision analitica: el leverage afecta PnL/exposicion, no probabilidad ni recomendacion.",
 }
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
@@ -162,7 +162,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     risk_distance = pct_from_entry(proposal.stop_loss, proposal.entry)
     reward_distance = pct_from_entry(proposal.take_profit, proposal.entry)
     rr_ratio = reward_distance / max(risk_distance, 0.000001)
-    leverage_penalty = max(0, proposal.leverage - 5) * 0.018
 
     micro_weight = horizon_profile["micro_weight"]
     derivatives_weight = horizon_profile["derivatives_weight"]
@@ -228,7 +227,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + oi_trend_bias
         + breadth_bias
         - volatility_penalty
-        - leverage_penalty
         - liquidity_penalty
         - overextension_penalty
         - funding_penalty
@@ -262,7 +260,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     layered_scores = build_layered_scores(
         tp_probability=tp_probability,
         rr_ratio=rr_ratio,
-        margin_risk_pct=margin_risk_pct,
+        price_risk_pct=risk_distance,
         volatility_penalty=volatility_penalty,
         level_penalty=level_penalty,
         liquidity_penalty=liquidity_penalty,
@@ -278,8 +276,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     )
 
     risk_score = (
-        (0.25 if proposal.leverage >= 8 else 0.08 if proposal.leverage >= 5 else 0)
-        + (0.2 if risk_distance < max(recent_range_pct, atr_pct) * 0.35 else 0)
+        (0.2 if risk_distance < max(recent_range_pct, atr_pct) * 0.35 else 0)
         + (0.12 if rr_ratio < 1.2 else 0)
         + (0.08 if recent_range_pct > 2.5 else 0)
         + (0.06 if spread_pct > 0.04 else 0)
@@ -325,8 +322,6 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         reasons.append("La relacion riesgo/beneficio es ajustada.")
     if volatility_penalty:
         alerts.append("El stop parece cerca respecto a la volatilidad/ATR reciente.")
-    if proposal.leverage >= 8:
-        alerts.append("Apalancamiento agresivo: x8-x10 aumenta el riesgo de barrido.")
     if volume_bias > 0:
         reasons.append("El volumen reciente esta por encima de su media corta.")
     if order_book_bias > 0:
@@ -380,12 +375,12 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     if contradiction_penalty:
         alerts.append("Hay contradiccion combinada entre capas: el motor reduce confianza antes de aumentar probabilidad.")
 
-    suggested_leverage = min(proposal.leverage, 5) if risk_score >= 0.24 else proposal.leverage
+    suggested_leverage = proposal.leverage
     parameter_advice = {
         "entry": {"action": "mantener", "suggested_value": proposal.entry, "reason": "Primera version: no hay senal suficiente para modificar entrada."},
         "stop_loss": {"action": "revisar" if volatility_penalty else "mantener", "suggested_value": proposal.stop_loss, "reason": "Se evalua contra volatilidad reciente."},
         "take_profit": {"action": "mantener", "suggested_value": proposal.take_profit, "reason": "Objetivo usado para calcular relacion riesgo/beneficio."},
-        "leverage": {"action": "reducir" if suggested_leverage < proposal.leverage else "mantener", "suggested_value": suggested_leverage, "reason": "Se penaliza apalancamiento alto con riesgo medio-alto o alto."},
+        "leverage": {"action": "mantener", "suggested_value": suggested_leverage, "reason": "El apalancamiento se registra como exposicion monetaria, pero no condiciona la lectura de mercado ni la recomendacion."},
     }
 
     decision = decision_from_context(setup_grade, risk_level, confidence, expected_value)
@@ -521,7 +516,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "oi_trend_bias": oi_trend_bias,
                 "breadth_bias": breadth_bias,
                 "volatility_penalty": volatility_penalty,
-                "leverage_penalty": leverage_penalty,
+                "leverage_penalty": 0,
+                "leverage_policy": "neutral_for_market_analysis",
                 "liquidity_penalty": liquidity_penalty,
                 "overextension_penalty": overextension_penalty,
                 "funding_penalty": funding_penalty,
@@ -872,6 +868,7 @@ def calculate_expected_value(
         "net_loss_usdt": round(net_loss, 4),
         "expected_value_usdt": round(expected_value_usdt, 4),
         "expected_value_pct_margin": round((expected_value_usdt / proposal.margin) * 100, 4) if proposal.margin else 0,
+        "expected_value_pct_notional": round((expected_value_usdt / notional) * 100, 4) if notional else 0,
         "label": "positiva" if expected_value_usdt > 0 else "negativa" if expected_value_usdt < 0 else "neutral",
     }
 
@@ -879,7 +876,7 @@ def calculate_expected_value(
 def build_layered_scores(
     tp_probability: float,
     rr_ratio: float,
-    margin_risk_pct: float,
+    price_risk_pct: float,
     volatility_penalty: float,
     level_penalty: float,
     liquidity_penalty: float,
@@ -894,8 +891,8 @@ def build_layered_scores(
     fibonacci_context: dict,
 ) -> dict:
     direction_score = round(tp_probability * 100)
-    risk_design_penalty = min(22, margin_risk_pct * 0.9)
-    ev_design_score = score_to_percent(expected_value["expected_value_pct_margin"], -5, 10)
+    risk_design_penalty = min(22, price_risk_pct * 4.5)
+    ev_design_score = score_to_percent(expected_value.get("expected_value_pct_notional", 0), -0.8, 1.2)
     quality_score = round(
         min(
             100,
@@ -933,7 +930,7 @@ def build_layered_scores(
         alignment -= 12
     alignment += round(technical_rating.get("confidence_adjustment", 0))
     confidence_score = min(95, max(15, alignment))
-    ev_score = score_to_percent(expected_value["expected_value_pct_margin"], -8, 12)
+    ev_score = score_to_percent(expected_value.get("expected_value_pct_notional", 0), -1.0, 1.6)
     return {
         "direction_score": direction_score,
         "operation_quality_score": quality_score,
@@ -1269,9 +1266,7 @@ def build_plain_summary(
         else "la tendencia corta no da una ventaja clara"
     )
     leverage_text = (
-        f"El apalancamiento x{proposal.leverage:g} es agresivo para este contexto; el motor lo bajaria a x{suggested_leverage:g}."
-        if suggested_leverage < proposal.leverage
-        else f"El apalancamiento x{proposal.leverage:g} no activa una reduccion automatica en esta lectura."
+        f"Apalancamiento x{proposal.leverage:g}: solo afecta exposicion/PnL; no modifica la probabilidad ni la recomendacion del setup."
     )
     technical_text = (
         f"La capa tecnica queda {technical_rating['label']} ({technical_rating['score']}/100): "
@@ -1280,7 +1275,7 @@ def build_plain_summary(
     )
     return (
         f"Lectura {direction} para {horizon_profile['label']} ({horizon_profile['duration']}): setup {setup_grade} con riesgo {risk_level}. "
-        f"El motor v0.6 estima TP en rango {probability_ranges['tp']['label']}, SL {probability_ranges['sl']['label']} y rango/sin resolver {probability_ranges['range']['label']}; "
+        f"El motor v0.8 estima TP en rango {probability_ranges['tp']['label']}, SL {probability_ranges['sl']['label']} y rango/sin resolver {probability_ranges['range']['label']}; "
         f"los decimales internos se guardan solo para entrenamiento. "
         f"La probabilidad direccional se separa de la esperanza matematica, que ahora sale {expected_value['label']} ({expected_value['expected_value_usdt']:+.2f} USDT estimados). "
         f"La clave es que {trend_text}, mientras la relacion beneficio/riesgo es {rr_ratio:.2f} y el break-even aproximado es {break_even_probability:.0%}. "
@@ -1458,10 +1453,10 @@ def build_explained_metrics(
             "key": "leverage",
             "label": "Apalancamiento",
             "value": f"x{proposal.leverage:g}",
-            "score": min(100, max(0, leverage_score)),
-            "bias": "alerta" if proposal.leverage >= 8 else "neutral" if proposal.leverage >= 5 else "favorable",
+            "score": 50,
+            "bias": "neutral",
             "source": "Parametros del usuario",
-            "explanation": "A mayor apalancamiento, menor margen de error. El sistema lo penaliza porque aumenta el impacto de movimientos normales contra la posicion.",
+            "explanation": "El apalancamiento solo escala ganancia o perdida sobre margen. No modifica probabilidad, setup ni recomendacion del analisis.",
         },
         {
             "key": "levels",

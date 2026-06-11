@@ -87,6 +87,7 @@ const elements = {
   operationSelectorSheet: document.querySelector("#operationSelectorSheet"),
   operationSelectorSheetList: document.querySelector("#operationSelectorSheet .op-sheet-list"),
   newOperationQuickButton: document.querySelector("#newOperationQuickButton"),
+  operationConfigPanel: document.querySelector("#operationConfigPanel"),
   operationsList: document.querySelector("#operationsList"),
   selectedOperationDetail: document.querySelector("#selectedOperationDetail"),
   chart: document.querySelector("#tradeChart"),
@@ -369,6 +370,14 @@ function scrollToAnalysisResult() {
   window.setTimeout(() => {
     window.scrollBy({ top: -28, left: 0, behavior: "smooth" });
   }, 220);
+}
+
+function scrollToOperationConfig() {
+  const target = elements.operationConfigPanel || elements.timeHorizon || elements.symbol;
+  if (!target) {
+    return;
+  }
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function operationToConfig(operation) {
@@ -3107,6 +3116,7 @@ elements.operationSelector.addEventListener("change", () => {
   if (selectedOperationId === null) {
     prepareNewOperationForm();
     setOperationMode(operationMode);
+    scrollToOperationConfig();
     return;
   }
   newOperationViewActive = false;
@@ -3129,7 +3139,7 @@ elements.newOperationQuickButton.addEventListener("click", () => {
   prepareNewOperationForm();
   renderOperationSelector();
   updateMetrics();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToOperationConfig();
 });
 elements.longButton.addEventListener("click", () => setSide("long"));
 elements.shortButton.addEventListener("click", () => setSide("short"));

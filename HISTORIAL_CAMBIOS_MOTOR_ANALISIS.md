@@ -2,6 +2,31 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-11 - rules-v0.8-leverage-neutral-analysis
+
+Estado de auditoria: cambio aplicado para separar lectura de mercado y gestion monetaria.
+
+Base de partida:
+- Version anterior: `rules-v0.7-fibonacci-confluence`.
+- Se detecta que el motor estaba penalizando demasiado operaciones por apalancamiento alto, convirtiendo el leverage en una razon para `observar`.
+
+Cambios realizados:
+- El apalancamiento deja de restar probabilidad al TP.
+- El apalancamiento deja de sumar riesgo al `risk_level`.
+- El apalancamiento deja de penalizar la calidad del setup y el score de EV usado para graduar A/B/C/D.
+- La recomendacion ya no sugiere reducir leverage como condicion del analisis.
+- La tarjeta de apalancamiento queda neutral: informa exposicion/PnL, pero no afecta setup, probabilidad ni decision.
+- El aprendizaje deja de clasificar fallos como `excessive_leverage`.
+
+Motivo:
+- El mercado no cambia su probabilidad de alcanzar TP o SL por el apalancamiento elegido por el usuario.
+- El leverage solo escala ganancia o perdida sobre margen; pertenece a gestion monetaria, no a direccion, confluencia o calidad de la operacion.
+- Evitar que el motor sea excesivamente defensivo y termine casi siempre en `observar` por una variable que no altera el movimiento del precio.
+
+Criterio de revision futura:
+- Auditar si aparecen mas setups operables A/B/C sin aumentar fallos no anticipados.
+- Vigilar por separado riesgo de mercado y exposicion monetaria; no volver a mezclar leverage con probabilidad direccional.
+
 ## 2026-06-09 - rules-v0.7-fibonacci-confluence
 
 Estado de auditoria: implementacion inicial pendiente de validacion con operaciones cerradas.

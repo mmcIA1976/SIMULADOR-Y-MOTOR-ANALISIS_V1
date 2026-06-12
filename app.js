@@ -1979,6 +1979,7 @@ function renderContestLeaderboard(rows) {
         </div>
         <div class="contest-row-stats">
           <span>Operaciones: ${row.operation_count || 0}</span>
+          <span class="contest-hit-rate">${contestClosedHitRateText(row)}</span>
           <span>PnL cerrado: <b class="${Number(row.pnl_accumulated || 0) >= 0 ? "positive" : "negative"}">${money(Number(row.pnl_accumulated || 0))}</b></span>
           <span>Flotante: <b class="${Number(row.unrealized_pnl || 0) >= 0 ? "positive" : "negative"}">${money(Number(row.unrealized_pnl || 0))}</b></span>
           <span>Capital estimado: <b>${money(Number(row.estimated_equity ?? row.equity_without_unrealized ?? 0))}</b></span>
@@ -1987,6 +1988,21 @@ function renderContestLeaderboard(rows) {
       </div>
     </article>
   `).join("");
+}
+
+function contestClosedHitRateText(row) {
+  const wins = Number(row.closed_wins || 0);
+  const losses = Number(row.closed_losses || 0);
+  const total = wins + losses;
+  const rateValue = total ? (wins / total) * 100 : null;
+  const rate = rateValue === null ? "--" : `${rateValue.toFixed(1)}%`;
+  const rateClass = rateValue === null || rateValue < 50 ? "negative" : "positive";
+  return `
+    <span class="contest-hit-rate-label">Acierto cerrado:</span>
+    <b class="positive">${wins}</b> ganadas /
+    <b class="negative">${losses}</b> perdidas,
+    <b class="${rateClass}">${rate}</b>
+  `;
 }
 
 function updateContestFloatingFromLivePrice(symbol, price) {

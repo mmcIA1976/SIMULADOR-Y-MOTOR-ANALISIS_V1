@@ -618,6 +618,24 @@ label {
   font-weight: 750;
 }
 
+.contest-hit-rate {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: 100%;
+  padding: 4px 9px;
+  border: 1px solid #eadb96;
+  border-radius: 999px;
+  background: #fff7c8;
+  color: #5f5521;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.contest-hit-rate-label {
+  font-weight: 850;
+}
+
 .contest-ops {
   display: grid;
   gap: 8px;

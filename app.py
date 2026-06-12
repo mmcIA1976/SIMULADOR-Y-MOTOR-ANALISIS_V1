@@ -2661,6 +2661,8 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             ce.cash_balance,
             COALESCE(SUM(CASE WHEN o.status = 'OPEN' THEN o.margin ELSE 0 END), 0) AS invested_margin,
             COALESCE(SUM(CASE WHEN o.status = 'CLOSED' THEN o.final_pnl ELSE 0 END), 0) AS closed_pnl,
+            COALESCE(SUM(CASE WHEN o.status = 'CLOSED' AND COALESCE(o.final_pnl, 0) > 0 THEN 1 ELSE 0 END), 0) AS closed_wins,
+            COALESCE(SUM(CASE WHEN o.status = 'CLOSED' AND COALESCE(o.final_pnl, 0) < 0 THEN 1 ELSE 0 END), 0) AS closed_losses,
             COUNT(o.id) AS operation_count,
             COALESCE(
                 GROUP_CONCAT(
@@ -2754,6 +2756,12 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
         item["estimated_total_pnl"] = round(closed_pnl + unrealized_pnl, 4)
         item["pnl_accumulated"] = round(closed_pnl, 4)
         item["closed_pnl"] = round(closed_pnl, 4)
+        closed_wins = int(item.get("closed_wins") or 0)
+        closed_losses = int(item.get("closed_losses") or 0)
+        closed_resolved = closed_wins + closed_losses
+        item["closed_wins"] = closed_wins
+        item["closed_losses"] = closed_losses
+        item["closed_win_rate"] = round(closed_wins / closed_resolved, 4) if closed_resolved else None
         item["contest_operations"] = operations_by_user.get(int(item["user_id"]), [])
         item["avatar_url"] = avatar_url(
             {

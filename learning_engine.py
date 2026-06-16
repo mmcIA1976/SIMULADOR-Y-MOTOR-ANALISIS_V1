@@ -33,6 +33,11 @@ class LearnedCase:
     fibonacci_bias: str | None
     fibonacci_entry_zone: str | None
     fibonacci_score_bucket: str | None
+    entry_order_type: str | None
+    zone_reaction_bias: str | None
+    zone_sweep_risk: str | None
+    zone_confluence_bucket: str | None
+    zone_probability_adjustment_bucket: str | None
     derivatives_period: str | None
     levels_timeframe: str | None
 
@@ -170,6 +175,11 @@ def build_case(operation: dict, ticks: list[dict], scope: str) -> LearnedCase:
         fibonacci_bias=pattern["fibonacci_bias"],
         fibonacci_entry_zone=pattern["fibonacci_entry_zone"],
         fibonacci_score_bucket=pattern["fibonacci_score_bucket"],
+        entry_order_type=pattern["entry_order_type"],
+        zone_reaction_bias=pattern["zone_reaction_bias"],
+        zone_sweep_risk=pattern["zone_sweep_risk"],
+        zone_confluence_bucket=pattern["zone_confluence_bucket"],
+        zone_probability_adjustment_bucket=pattern["zone_probability_adjustment_bucket"],
         derivatives_period=pattern["derivatives_period"],
         levels_timeframe=pattern["levels_timeframe"],
     )
@@ -190,6 +200,9 @@ def pattern_from_snapshot(snapshot: dict) -> dict:
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
     fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    entry_context = snapshot.get("entry_order_context") if isinstance(snapshot.get("entry_order_context"), dict) else {}
+    zone = snapshot.get("zone_analysis") if isinstance(snapshot.get("zone_analysis"), dict) else {}
+    zone_probability = snapshot.get("zone_probability_context") if isinstance(snapshot.get("zone_probability_context"), dict) else {}
     timeframes = snapshot.get("analysis_timeframes") if isinstance(snapshot.get("analysis_timeframes"), dict) else {}
     return {
         "market_regime": regime.get("name"),
@@ -200,6 +213,11 @@ def pattern_from_snapshot(snapshot: dict) -> dict:
         "fibonacci_bias": fibonacci.get("bias"),
         "fibonacci_entry_zone": fibonacci.get("entry_zone"),
         "fibonacci_score_bucket": score_bucket(fibonacci.get("score")),
+        "entry_order_type": zone.get("entry_order_type") or entry_context.get("entry_order_type"),
+        "zone_reaction_bias": zone.get("reaction_bias"),
+        "zone_sweep_risk": zone.get("liquidity_sweep_risk"),
+        "zone_confluence_bucket": score_bucket(zone.get("zone_confluence_score")),
+        "zone_probability_adjustment_bucket": signed_bucket(zone_probability.get("probability_adjustment")),
         "derivatives_period": timeframes.get("derivatives_period"),
         "levels_timeframe": timeframes.get("levels"),
     }
@@ -215,6 +233,18 @@ def score_bucket(value: object) -> str | None:
     if score <= 40:
         return "bajo"
     return "medio"
+
+
+def signed_bucket(value: object) -> str | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number > 0.003:
+        return "positivo"
+    if number < -0.003:
+        return "negativo"
+    return "neutral"
 
 
 def counterfactual_plan_result(operation: dict, ticks: list[dict]) -> str:
@@ -256,6 +286,16 @@ def filter_similar_cases(cases: Iterable[LearnedCase], proposal: TradeProposal, 
         if pattern["fibonacci_bias"] and case.fibonacci_bias and pattern["fibonacci_bias"] != case.fibonacci_bias:
             continue
         if pattern["fibonacci_entry_zone"] and case.fibonacci_entry_zone and pattern["fibonacci_entry_zone"] != case.fibonacci_entry_zone:
+            continue
+        if pattern["entry_order_type"] and case.entry_order_type and pattern["entry_order_type"] != case.entry_order_type:
+            continue
+        if pattern["zone_reaction_bias"] and case.zone_reaction_bias and pattern["zone_reaction_bias"] != case.zone_reaction_bias:
+            continue
+        if pattern["zone_sweep_risk"] and case.zone_sweep_risk and pattern["zone_sweep_risk"] != case.zone_sweep_risk:
+            continue
+        if pattern["zone_confluence_bucket"] and case.zone_confluence_bucket and pattern["zone_confluence_bucket"] != case.zone_confluence_bucket:
+            continue
+        if pattern["zone_probability_adjustment_bucket"] and case.zone_probability_adjustment_bucket and pattern["zone_probability_adjustment_bucket"] != case.zone_probability_adjustment_bucket:
             continue
         similar.append(case)
     return similar
@@ -359,6 +399,11 @@ def build_pattern_breakdown(cases: list[LearnedCase]) -> dict:
         "market_regimes": frequency([case.market_regime for case in resolved]),
         "fibonacci_biases": frequency([case.fibonacci_bias for case in resolved]),
         "fibonacci_entry_zones": frequency([case.fibonacci_entry_zone for case in resolved]),
+        "entry_order_types": frequency([case.entry_order_type for case in resolved]),
+        "zone_reaction_biases": frequency([case.zone_reaction_bias for case in resolved]),
+        "zone_sweep_risks": frequency([case.zone_sweep_risk for case in resolved]),
+        "zone_confluence_buckets": frequency([case.zone_confluence_bucket for case in resolved]),
+        "zone_probability_adjustment_buckets": frequency([case.zone_probability_adjustment_bucket for case in resolved]),
         "derivatives_periods": frequency([case.derivatives_period for case in resolved]),
         "levels_timeframes": frequency([case.levels_timeframe for case in resolved]),
     }

@@ -2,6 +2,281 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-15 - Visualizacion explicita analisis order limit
+
+Estado: aplicado tras auditar que el motor calculaba `zone_analysis`, pero la UI no lo mostraba con suficiente claridad.
+
+Cambios realizados:
+- El resumen de analisis muestra tarjetas especificas para ordenes pendientes:
+  - `Zona orden`
+  - `Activacion`
+  - `Barrida`
+  - `Ajuste zona`
+- Los puntos criticos incluyen una linea explicita de orden pendiente con tipo de orden, zona, confluencia, probabilidad de activacion, barrida y ajuste.
+- Se valida con una propuesta real `pending` SHORT BTC `price_gte` que el motor devuelve `limit_pullback`, `resistance_pullback_zone`, `zone_analysis.available = True` y metrica `pending_zone_analysis`.
+
+Motivo:
+- Evitar que el resultado visible parezca un analisis generico de mercado cuando el usuario esta analizando una orden limit/pendiente.
+- Hacer visible la diferencia entre entrada a mercado y entrada por activacion de zona.
+
+Riesgo esperado:
+- Bajo. Mejora presentacion y trazabilidad visual; no modifica probabilidades ni aprendizaje.
+
+## 2026-06-15 - Correccion etiqueta version motor v0.9
+
+Estado: aplicado tras detectar que el resumen visible seguia mostrando `motor v0.8`.
+
+Cambios realizados:
+- El resumen plano del analisis deja de usar texto fijo `v0.8` y usa `ENGINE_VERSION`.
+- La metrica `Direccion probable` deja de mostrar una fuente fija `Motor v0.6` y usa `ENGINE_VERSION`.
+
+Motivo:
+- Evitar confusion entre la version real del motor y textos antiguos de presentacion.
+- Garantizar que nuevos analisis muestren `rules-v0.9-pending-zone-adjusted` cuando usen el motor actual.
+
+Riesgo esperado:
+- Bajo. Solo corrige etiquetas/texto de trazabilidad; no modifica probabilidades, pesos ni aprendizaje.
+
+## 2026-06-15 - Fase 9 ordenes pendientes: higiene pre-entrega
+
+Estado: aplicado como preparacion para entrega/push seguro.
+
+Cambios realizados:
+- Se actualiza `README.md` para reflejar Supabase, motor v0.9, ordenes pendientes y validacion con tests.
+- Se anaden a `.gitignore` archivos locales que no deben subirse: `.codex_backups/`, `ABRIR_APP_LOCAL.md` y `CONTINUIDAD_NUEVO_CHAT.md`.
+- Se mantiene `db.py` fuera del alcance de cambios a subir, porque sigue siendo un archivo local/protegido en este proyecto.
+
+Motivo:
+- Reducir riesgo de subir archivos auxiliares locales por accidente.
+- Dejar comandos de validacion alineados con la suite nueva de ordenes pendientes.
+- Preparar el bloque para una revision final y push controlado por archivos.
+
+Riesgo esperado:
+- Bajo. Cambios de documentacion e higiene de repositorio; no cambian comportamiento productivo.
+
+Criterio de revision futura:
+- Antes del push, stagear solo archivos intencionados y confirmar que `db.py` no entra salvo orden expresa.
+
+## 2026-06-15 - Fase 8 ordenes pendientes: validacion integrada local
+
+Estado: validado en app local contra Supabase.
+
+Comprobaciones realizadas:
+- La app local arranca en `http://127.0.0.1:8766/` usando el procedimiento de `ABRIR_APP_LOCAL.md`.
+- Startup FastAPI completado sin errores.
+- La pagina principal responde HTTP 200.
+- `/api/price?symbol=BTCUSDT&record=false` responde HTTP 200 y mantiene el contrato `activated_operations` / `closed_operations`.
+- `/api/learning/pending-zone-audit` responde HTTP 401 sin sesion, confirmando que el endpoint queda protegido y no rompe la app.
+- La suite `tests.test_pending_zone_analysis` pasa completa.
+- Compilacion Python y revision sintactica JS pasan.
+
+Motivo:
+- Cerrar el bloque de implementacion de ordenes pendientes con una validacion end-to-end local.
+- Verificar que los cambios del motor, aprendizaje, auditoria y documentacion no rompen el arranque real con Supabase.
+
+Riesgo esperado:
+- Bajo. Validacion operativa; no cambia comportamiento productivo.
+
+Criterio de revision futura:
+- Repetir esta validacion antes del push final y tras crear una orden pendiente real nueva desde la UI.
+
+## 2026-06-15 - Fase 7 ordenes pendientes: contrato tecnico documentado
+
+Estado: aplicado en documentacion tecnica del proyecto.
+
+Cambios realizados:
+- Se actualiza `ESPECIFICACION_MOTOR_ANALISIS.md` para reflejar el motor real v0.9.
+- Se documenta que el apalancamiento es neutral para la lectura de mercado y no debe condicionar probabilidad ni recomendacion tecnica.
+- Se documenta la diferencia entre entrada `market` y `pending`.
+- Se documentan los tipos derivados `limit_pullback`, `stop_breakout` y `stop_breakdown`.
+- Se documenta `zone_analysis`, `zone_probability_context`, sus limites de ajuste y su interpretacion correcta.
+- Se documenta el aprendizaje por zonas pendientes y las categorias internas de `zone_learning`.
+- Se actualiza `FUENTES_DATOS_Y_ANALISIS.md` con los datos actuales usados para zonas pendientes y las limitaciones conocidas.
+
+Motivo:
+- Evitar que futuras fases o nuevos chats vuelvan a mezclar leverage con calidad de analisis.
+- Dejar claro que una orden pendiente no activada no equivale a fallo direccional.
+- Dejar trazable que los ajustes de zona v0.9 son prudentes y no deben ampliarse sin muestra suficiente.
+
+Riesgo esperado:
+- Bajo. Solo documentacion; no cambia comportamiento productivo.
+
+Criterio de revision futura:
+- Actualizar esta especificacion cada vez que se cambien pesos, caps, fuentes de datos o categorias de aprendizaje del motor.
+
+## 2026-06-15 - Fase 6 ordenes pendientes: pruebas de regresion
+
+Estado: aplicado como suite local sin dependencias nuevas.
+
+Cambios realizados:
+- Se crea `tests/test_pending_zone_analysis.py` con `unittest` estandar.
+- Se cubre una zona `limit_pullback` favorable que debe recibir ajuste positivo pequeno y sin riesgo adicional.
+- Se cubre una zona mala/de barrida que debe penalizar probabilidad y sumar riesgo.
+- Se cubre una orden lejana que debe aumentar `range/no ejecucion` sin castigar direccion.
+- Se valida que una operacion pendiente cerrada en SL con zona advertida se clasifique como `pending_zone_liquidity_sweep` y `reinforce_warned_pending_zone_risk`.
+- Se valida que la auditoria agregada agrupe correctamente casos por bucket positivo/negativo de ajuste de zona.
+
+Motivo:
+- Proteger las reglas criticas de v0.9 antes de seguir iterando.
+- Evitar regresiones donde una orden no activada se interprete como fallo direccional.
+- Evitar que una zona mala ganadora/perdedora genere aprendizaje ambiguo sin categoria interna.
+
+Riesgo esperado:
+- Bajo. Solo anade pruebas locales y no cambia comportamiento productivo.
+
+Criterio de revision futura:
+- Ampliar esta suite cuando se anadan nuevas familias de orden, nuevos datos de microestructura o recalibraciones de `zone_probability_context`.
+
+## 2026-06-15 - Fase 5 ordenes pendientes: auditoria agregada de zonas
+
+Estado: aplicado como endpoint interno de auditoria, sin cambios de probabilidades ni esquema.
+
+Cambios realizados:
+- Se crea `/api/learning/pending-zone-audit`.
+- El informe lee `learning_evaluations.structured_json` y extrae casos con `analysis_context.zone`.
+- Resume operaciones pendientes evaluables por motor `rules-v0.9-pending-zone-adjusted`.
+- Agrupa resultados por `entry_order_type`, `entry_zone_type`, `reaction_bias`, `liquidity_sweep_risk`, bucket de ajuste de zona, categoria `zone_learning`, temporalidad y lado.
+- Incluye tasa de exito, tasa de activacion, PnL total/promedio, confluencia media y probabilidad media de activacion.
+- Mantiene umbral minimo de 30 casos resueltos antes de revisar pesos.
+
+Motivo:
+- La fase 4 guarda aprendizaje de zona, pero necesitabamos una forma de auditar si esos datos empiezan a ser estadisticamente utiles.
+- Separar activacion de resultado: una orden puede ser buena como zona, mala como ejecucion, o simplemente no activarse.
+- Preparar la futura recalibracion de `zone_probability_context` con datos agregados y no con impresiones aisladas.
+
+Riesgo esperado:
+- Bajo. Solo lectura y agregacion de datos ya guardados; no cambia operaciones, aprendizaje guardado ni probabilidades.
+
+Criterio de revision futura:
+- Usar este informe cuando haya suficientes operaciones pendientes cerradas para decidir si subir, bajar o mantener los caps de ajuste v0.9.
+- Revisar primero grupos con al menos 30 casos comparables; ignorar conclusiones con muestras pequenas.
+
+## 2026-06-15 - Fase 4 ordenes pendientes: aprendizaje por zona
+
+Estado: aplicado sin cambios de esquema; se guarda en JSON estructurado y claves internas de comparacion.
+
+Cambios realizados:
+- El aprendizaje estructurado guarda `pending_entry_context` con tipo de entrada, condicion, tipo de orden, precio solicitado, activacion y precio/hora de disparo.
+- `analysis_context.zone` guarda zona pendiente, confluencia, probabilidad de activacion, sesgo de reaccion, riesgo de barrida, calidad de invalidacion/TP y ajustes v0.9.
+- Se crea `zone_learning` para clasificar cada caso como zona favorable reforzada, zona favorable fallida, riesgo de zona confirmado, exito contra advertencia o contexto no concluyente.
+- `classify_analysis_verdict` considera advertencias de zona: ajuste negativo, riesgo anadido o barrida alta.
+- `classify_failure_type` puede clasificar fallos como `pending_zone_liquidity_sweep`, `pending_zone_risk_confirmed` o `pending_zone_target_path_blocked`.
+- `learning_engine.py` incorpora tipo de orden, sesgo de reaccion, riesgo de barrida, bucket de confluencia y bucket de ajuste de zona al filtrado de casos similares.
+- Los desgloses agregados de aprendizaje incluyen familias de orden pendiente y buckets de zona.
+- El texto interno de patron guardado incorpora orden, zona, reaccion, barrida y ajuste de zona cuando aplica.
+
+Motivo:
+- El objetivo no es solo saber si una operacion gano o perdio, sino si el motor evaluo bien la zona que iba a activar la orden.
+- Evitar que una orden pendiente ganadora refuerce senales equivocadas si el motor habia advertido mala zona.
+- Evitar que una orden pendiente no activada se trate como fallo direccional.
+- Preparar muestras comparables para recalibrar `zone_probability_context` con datos reales.
+
+Riesgo esperado:
+- Bajo. No cambia probabilidades ni esquema de base de datos; solo mejora aprendizaje, clasificacion y trazabilidad interna.
+
+Criterio de revision futura:
+- Cuando haya suficientes operaciones pendientes cerradas, auditar `zone_learning.category` por `entry_order_type`, `reaction_bias`, `liquidity_sweep_risk` y `zone_probability_adjustment_bucket`.
+- Revisar especialmente fallos con `reinforce_favorable_pending_zone` y exitos con `investigate_success_against_pending_zone_warning`.
+
+## 2026-06-15 - rules-v0.9-pending-zone-adjusted
+
+Estado: aplicado como primera integracion prudente del analisis de zona en ordenes pendientes.
+
+Base de partida:
+- Version anterior: `rules-v0.8-leverage-neutral-analysis`.
+- Fase previa: `zone_analysis` descriptivo guardado en resultado y snapshot, sin alterar probabilidades.
+
+Cambios realizados:
+- El motor sube a `rules-v0.9-pending-zone-adjusted`.
+- Se crea `zone_probability_context` para convertir la calidad de zona pendiente en ajustes pequenos y auditables.
+- La probabilidad direccional solo se ajusta en ordenes pendientes y con limites estrictos: maximo `+0.025` y minimo `-0.035`.
+- La probabilidad de activacion se separa de la probabilidad de TP: si la orden esta lejos o con activacion incierta, aumenta el escenario `range/no ejecucion` en vez de inflar o castigar directamente el TP.
+- El riesgo de zona puede sumar riesgo si hay barrida probable, falsa ruptura, mala invalidacion o barreras antes del TP.
+- El snapshot guarda `zone_probability_context` y los componentes `zone_probability_adjustment`, `zone_range_probability_adjustment`, `zone_risk_score_addition`, `zone_confluence_score` y `zone_activation_probability`.
+
+Motivo:
+- Las ordenes limit/stop no se comportan igual que una entrada a mercado: primero deben activarse, y despues la zona debe reaccionar.
+- Evitar dos errores de aprendizaje: premiar una orden solo porque se activo, o castigar una orden buena simplemente porque nunca llego al precio.
+- Empezar a usar la informacion de zonas sin sobreajustar antes de tener muestra suficiente.
+
+Riesgo esperado:
+- Moderado-bajo. Cambia probabilidades solo en ordenes pendientes y con caps pequenos.
+- Puede necesitar recalibracion cuando existan suficientes operaciones pendientes cerradas y evaluadas.
+
+Criterio de revision futura:
+- Auditar por separado ordenes `limit_pullback`, `stop_breakout` y `stop_breakdown`.
+- Comparar `zone_probability_adjustment` positivo, neutral y negativo contra TP/SL, MFE/MAE, activacion/no activacion y cierre manual.
+- No aumentar los caps hasta tener al menos 30 casos comparables por familia de orden o una evidencia estadistica clara.
+
+## 2026-06-15 - Fase 2 ordenes pendientes: analisis interno de zona
+
+Estado: aplicado como capa descriptiva sin modificar todavia probabilidades finales.
+
+Cambios realizados:
+- `TradeProposal` incorpora contexto de entrada: `entry_type`, `trigger_condition` y `entry_order_type`.
+- El motor calcula `zone_analysis` para ordenes pendientes y lo guarda en el resultado y en el snapshot.
+- `zone_analysis` registra distancia a activacion, unidades de ATR/rango, confluencia de zona, probabilidad estimada de activacion, sesgo de reaccion, riesgo de barrida, calidad de pullback/ruptura, invalidacion y camino al TP.
+- Se anade una metrica explicada `pending_zone_analysis` para auditar la lectura sin convertirla todavia en ajuste de probabilidad.
+- El endpoint `/api/analyze` pasa al motor si el analisis corresponde a entrada a mercado o a orden pendiente.
+
+Motivo:
+- Una orden pendiente no debe evaluarse igual que una entrada a mercado: importa si el precio debe caer/subir hasta una zona, si esa zona es soporte/resistencia defendible, si parece barrida de liquidez o ruptura, y si el TP queda libre o bloqueado por niveles.
+- Preparar datos comparables para aprendizaje futuro antes de tocar pesos del motor.
+
+Riesgo esperado:
+- Bajo. Es enriquecimiento interno y trazabilidad; no altera `tp_probability`, `sl_probability`, `range_probability`, EV ni decision final.
+
+Criterio de revision futura:
+- Tras suficientes ordenes pendientes cerradas, auditar `zone_confluence_score`, `reaction_bias`, `liquidity_sweep_risk`, `target_path_quality` y `activation_probability` frente a activaciones, MFE/MAE, TP, SL y cierres manuales.
+
+## 2026-06-15 - Visualizacion de disparo y activacion de orden pendiente
+
+Estado: aplicado tras verificar una orden pendiente real activada por vela de 1 minuto.
+
+Cambios realizados:
+- El grafico muestra el nivel de una orden `PENDING_ENTRY` como `Disparo` en color amarillo.
+- Cuando una orden pendiente ya fue activada, el grafico marca el punto `auto_entry` con linea vertical y etiqueta `Activada`.
+- El marcador usa el tick de activacion o, si no existe, la hora `triggered_at` mas cercana.
+
+Motivo:
+- Hacer auditable visualmente la diferencia entre nivel planificado, activacion real y posterior seguimiento de la operacion.
+- Facilitar la revision manual de si la orden pendiente se activo en el punto correcto antes de evaluar TP/SL.
+
+Riesgo esperado:
+- Bajo. Solo afecta visualizacion y trazabilidad; no cambia datos de mercado, probabilidades ni aprendizaje.
+
+## 2026-06-15 - Validacion backend del enlace analisis orden pendiente
+
+Estado: aplicado tras probar una orden pendiente real que paso a operacion abierta.
+
+Cambios realizados:
+- Al crear una operacion desde un analisis previo, el backend valida que el analisis corresponda al mismo simbolo, direccion y marco temporal.
+- Para ordenes pendientes, tambien valida `entry_type`, `trigger_condition`, `entry_order_type` y precio solicitado.
+- Se impide enlazar una operacion pendiente a un analisis a mercado, o una condicion de activacion distinta a la analizada.
+
+Motivo:
+- Proteger la trazabilidad analisis -> orden -> activacion -> resultado.
+- Evitar que el aprendizaje futuro use conclusiones de una operacion con un analisis que no corresponde exactamente al plan ejecutado.
+
+Riesgo esperado:
+- Bajo. Endurece validacion de coherencia; no cambia la formula de probabilidad ni la lectura tecnica.
+
+## 2026-06-15 - Trazabilidad de orden pendiente en analisis
+
+Estado: aplicado tras auditar un analisis pre-trade creado como orden pendiente.
+
+Cambios realizados:
+- El endpoint de analisis acepta y valida `entry_type` y `trigger_condition`.
+- El JSON interno del analisis guarda `entry_order_context` con tipo de entrada, condicion de activacion, tipo de orden derivado y precio solicitado.
+- Se mantiene intacto el calculo de probabilidades: la orden pendiente no altera por si sola la probabilidad, pero queda registrada para auditoria y aprendizaje posterior.
+
+Motivo:
+- Evitar que un analisis hecho para una orden pendiente quede guardado como si fuera una entrada a mercado.
+- Mejorar la trazabilidad entre analisis previo, activacion real y resultado final de la operacion.
+
+Riesgo esperado:
+- Bajo. Es enriquecimiento de contexto guardado; no cambia pesos, probabilidades ni decisiones del motor.
+
 ## 2026-06-11 - rules-v0.8-leverage-neutral-analysis
 
 Estado de auditoria: cambio aplicado para separar lectura de mercado y gestion monetaria.

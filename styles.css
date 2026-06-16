@@ -300,6 +300,19 @@ label {
   font-weight: 700;
 }
 
+.pending-order-fields {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #eadb96;
+  border-radius: 8px;
+  background: #fff9d8;
+}
+
+.pending-order-fields.hidden {
+  display: none;
+}
+
 .status-card strong {
   margin: 8px 0;
   font-size: clamp(1.15rem, 1.9vw, 1.65rem);
@@ -693,6 +706,11 @@ label {
 .contest-op-pill.is-open {
   border-color: rgba(31, 122, 140, 0.28);
   background: rgba(31, 122, 140, 0.08);
+}
+
+.contest-op-pill.is-pending {
+  border-color: rgba(215, 167, 42, 0.34);
+  background: #fff8d6;
 }
 
 .contest-op-pill em {
@@ -1932,6 +1950,10 @@ canvas {
   border-color: rgba(31, 122, 140, 0.45);
 }
 
+.state-pending {
+  border-color: rgba(215, 167, 42, 0.55);
+}
+
 .state-proposal {
   border-color: rgba(197, 138, 43, 0.48);
 }
@@ -2022,6 +2044,11 @@ canvas {
 .exit-evidence.target {
   border-left-color: var(--target);
   background: #f5fcf8;
+}
+
+.exit-evidence.activation {
+  border-left-color: #d7a72a;
+  background: #fffaf0;
 }
 
 .exit-evidence span {
@@ -2117,6 +2144,11 @@ canvas {
 
 .operation-row.state-target {
   border-color: rgba(31, 157, 104, 0.35);
+}
+
+.operation-row.state-pending {
+  border-color: rgba(215, 167, 42, 0.36);
+  background: #fffaf0;
 }
 
 .operation-row.state-observing {

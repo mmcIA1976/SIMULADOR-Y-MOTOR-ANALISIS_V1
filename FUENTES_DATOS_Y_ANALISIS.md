@@ -38,11 +38,13 @@ Valor:
 - buena para empezar
 - datos de alta frecuencia
 - sin necesidad de API privada para endpoints publicos
+- suficiente para la primera version de analisis de ordenes pendientes: ATR, rangos, soporte/resistencia, Fibonacci, order book cercano, CVD aproximado, funding y open interest.
 
 Limitacion:
 
 - representa principalmente Binance, no todo el mercado
 - puede sesgar el analisis si se usa como unica fuente
+- el order book top 20 es una foto actual, no una prueba completa de liquidez historica por zona
 
 Fuente:
 
@@ -118,11 +120,48 @@ Valor:
 - enfoque institucional
 - muy util para medir liquidez real
 - permite estudiar si una entrada tiene buena ejecucion o riesgo de barrido
+- mejoraria la validacion de `liquidity_sweep_risk`, falsas rupturas y calidad real de ejecucion en ordenes pendientes
 
 Limitacion:
 
 - orientado a planes profesionales
 - puede ser excesivo para el MVP
+
+## Analisis actual de zonas pendientes
+
+La version actual del motor usa datos gratuitos disponibles para evaluar ordenes pendientes:
+
+- velas por temporalidad para tendencia, rango, ATR y niveles;
+- swings automaticos y Fibonacci para confluencia de entrada, objetivo e invalidacion;
+- soporte/resistencia del horizonte elegido;
+- order book cercano como contexto micro, no como prueba aislada;
+- CVD spot aproximado;
+- taker buy/sell, funding y open interest de futuros;
+- amplitud de mercado y sentimiento como contexto.
+
+Campos derivados:
+
+- `zone_confluence_score`
+- `activation_probability`
+- `reaction_bias`
+- `liquidity_sweep_risk`
+- `target_path_quality`
+- `invalidation_quality`
+
+Limitaciones conocidas:
+
+- no hay heatmap real de liquidaciones multi-exchange;
+- no hay volumen historico por precio;
+- no hay order book historico profundo;
+- no hay slippage multi-exchange;
+- la probabilidad de activacion es una estimacion prudente basada en distancia, ATR, rango y contexto, no una prediccion estadistica validada.
+
+Fuentes futuras que mas valor aportarian a esta capa:
+
+- CoinGlass o Coinalyze para liquidaciones, OI y heatmaps agregados;
+- Kaiko para profundidad historica, spread, slippage y liquidez por exchange;
+- datos de volumen por precio si se incorpora un proveedor adecuado;
+- eventos macro si se quiere bloquear activaciones cerca de noticias de alto impacto.
 
 Fuentes:
 

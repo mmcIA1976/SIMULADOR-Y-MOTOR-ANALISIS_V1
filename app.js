@@ -38,6 +38,10 @@ const elements = {
   contestHistoryToggle: document.querySelector("#contestHistoryToggle"),
   longButton: document.querySelector("#longButton"),
   shortButton: document.querySelector("#shortButton"),
+  entryType: document.querySelector("#entryType"),
+  triggerCondition: document.querySelector("#triggerCondition"),
+  pendingOrderFields: document.querySelector("#pendingOrderFields"),
+  entryHelp: document.querySelector("#entryHelp"),
   refreshButton: document.querySelector("#refreshButton"),
   analyzeButton: document.querySelector("#analyzeButton"),
   analyzeFeedback: document.querySelector("#analyzeFeedback"),
@@ -127,6 +131,7 @@ let lastAnalysisPayload = null;
 let lastPortfolio = null;
 let allOperations = [];
 let openOperations = [];
+let activeOperations = [];
 let selectedOperationId = null;
 let entryMode = "market";
 let operationMode = "training";
@@ -147,6 +152,8 @@ function getConfig() {
     symbol: elements.symbol.value,
     time_horizon: elements.timeHorizon.value,
     side,
+    entry_type: entryMode,
+    trigger_condition: elements.triggerCondition?.value || "price_lte",
     entry: numberValue(elements.entry),
     margin: numberValue(elements.margin),
     leverage: numberValue(elements.leverage),
@@ -162,11 +169,56 @@ function syncMarketEntry() {
   elements.entry.value = currentPrice.toFixed(2);
 }
 
+function setEntryMode(nextMode) {
+  entryMode = nextMode === "pending" ? "pending" : "market";
+  if (elements.entryType) {
+    elements.entryType.value = entryMode;
+  }
+  if (elements.pendingOrderFields) {
+    elements.pendingOrderFields.classList.toggle("hidden", entryMode !== "pending");
+  }
+  if (elements.entry) {
+    elements.entry.readOnly = entryMode === "market";
+  }
+  if (entryMode === "market") {
+    syncMarketEntry();
+  }
+  updateEntryOrderHelp();
+  updateActionLabels();
+}
+
+function updateActionLabels() {
+  if (!elements.startSimulationButton || selectedOperationId !== null) {
+    return;
+  }
+  elements.startSimulationButton.textContent = entryMode === "pending" ? "Crear orden pendiente" : "Iniciar simulacion";
+}
+
+function updateEntryOrderHelp() {
+  if (!elements.entryHelp) {
+    return;
+  }
+  if (entryMode !== "pending") {
+    elements.entryHelp.textContent = "Se actualiza con el ultimo precio. Cambia a orden pendiente para definir un nivel de activacion.";
+    return;
+  }
+  const entryPrice = numberValue(elements.entry);
+  const triggerCondition = elements.triggerCondition?.value || "price_lte";
+  const description = entryOrderDescription(side, triggerCondition, entryPrice);
+  const distanceText = hasCurrentPriceForSymbol(elements.symbol.value)
+    ? ` Distancia desde precio vivo: ${distanceToTriggerText(entryPrice, currentPrice)}.`
+    : "";
+  elements.entryHelp.textContent = `${description}.${distanceText}`;
+}
+
 function readFormDraft() {
   return {
     symbol: elements.symbol.value,
     timeHorizon: elements.timeHorizon.value,
     side,
+    entryMode,
+    entry: elements.entry.value,
+    triggerCondition: elements.triggerCondition?.value || "price_lte",
     margin: elements.margin.value,
     leverage: elements.leverage.value,
     stopLoss: elements.stopLoss.value,
@@ -186,6 +238,13 @@ function applyProposalDraft() {
   elements.symbol.value = draft.symbol || "BTCUSDT";
   elements.timeHorizon.value = draft.timeHorizon || "";
   setSide(draft.side || "long", { silent: true });
+  setEntryMode(draft.entryMode || "market");
+  if (entryMode === "pending") {
+    elements.entry.value = draft.entry || "";
+  }
+  if (elements.triggerCondition) {
+    elements.triggerCondition.value = draft.triggerCondition || "price_lte";
+  }
   elements.margin.value = draft.margin || "200";
   elements.leverage.value = draft.leverage || "10";
   elements.stopLoss.value = draft.stopLoss || "";
@@ -200,22 +259,28 @@ function applyOperationToForm(operation) {
   elements.symbol.value = operation.symbol;
   elements.timeHorizon.value = operation.time_horizon || operation.recommendation?.time_horizon || "intraday_short";
   setSide(operation.side, { silent: true });
+  setEntryMode(operation.entry_type || "market");
+  if (elements.triggerCondition) {
+    elements.triggerCondition.value = operation.trigger_condition || "price_lte";
+  }
   elements.entry.value = Number(operation.entry).toFixed(2);
   elements.margin.value = String(Number(operation.margin));
   elements.leverage.value = String(Number(operation.leverage));
   elements.stopLoss.value = Number(operation.stop_loss).toFixed(2);
   elements.takeProfit.value = Number(operation.take_profit).toFixed(2);
   setTradeFormLocked(true);
+  updateEntryOrderHelp();
 }
 
 function setTradeFormLocked(locked) {
-  for (const control of [elements.symbol, elements.timeHorizon, elements.margin, elements.leverage, elements.stopLoss, elements.takeProfit]) {
+  for (const control of [elements.symbol, elements.timeHorizon, elements.entryType, elements.triggerCondition, elements.entry, elements.margin, elements.leverage, elements.stopLoss, elements.takeProfit]) {
+    if (!control) continue;
     control.disabled = locked;
   }
   elements.longButton.disabled = locked;
   elements.shortButton.disabled = locked;
   elements.analyzeButton.disabled = locked;
-  elements.startSimulationButton.disabled = locked || openOperations.filter((operation) => (operation.mode || "training") === operationMode).length >= 2;
+  elements.startSimulationButton.disabled = locked || activeOperations.filter((operation) => (operation.mode || "training") === operationMode).length >= 2;
 }
 
 function getTradePayload() {
@@ -224,6 +289,8 @@ function getTradePayload() {
     symbol: config.symbol,
     time_horizon: config.time_horizon,
     side: config.side,
+    entry_type: config.entry_type,
+    trigger_condition: config.entry_type === "pending" ? config.trigger_condition : null,
     entry: config.entry,
     margin: config.margin,
     leverage: config.leverage,
@@ -235,7 +302,13 @@ function getTradePayload() {
 function validateTradeForm() {
   const config = getConfig();
   if (!Number.isFinite(config.entry)) {
-    return { message: "Todavia no hay precio de entrada actualizado.", field: elements.entry };
+    return {
+      message: config.entry_type === "pending" ? "Define un precio de activacion valido para la orden pendiente." : "Todavia no hay precio de entrada actualizado.",
+      field: elements.entry,
+    };
+  }
+  if (config.entry_type === "pending" && !["price_lte", "price_gte"].includes(config.trigger_condition)) {
+    return { message: "Selecciona una condicion valida para activar la orden pendiente.", field: elements.triggerCondition };
   }
   if (!config.time_horizon) {
     return { message: "Selecciona un marco temporal antes de analizar.", field: elements.timeHorizon };
@@ -317,7 +390,12 @@ function isSameTradePayload(current, analyzed) {
     return false;
   }
   const numericKeys = ["margin", "leverage", "stop_loss", "take_profit"];
-  const sameText = current.symbol === analyzed.symbol && current.side === analyzed.side && current.time_horizon === analyzed.time_horizon;
+  const sameText =
+    current.symbol === analyzed.symbol &&
+    current.side === analyzed.side &&
+    current.time_horizon === analyzed.time_horizon &&
+    current.entry_type === analyzed.entry_type &&
+    (current.entry_type !== "pending" || current.trigger_condition === analyzed.trigger_condition);
   const sameNumbers = numericKeys.every((key) => Math.abs(Number(current[key]) - Number(analyzed[key])) < 0.000001);
   if (!sameText || !sameNumbers) {
     return false;
@@ -385,6 +463,8 @@ function operationToConfig(operation) {
     symbol: operation.symbol,
     time_horizon: operation.time_horizon || "intraday_short",
     side: operation.side,
+    entry_type: operation.entry_type || "market",
+    trigger_condition: operation.trigger_condition || "price_lte",
     entry: Number(operation.entry),
     margin: Number(operation.margin),
     leverage: Number(operation.leverage),
@@ -738,6 +818,7 @@ function prepareNewOperationForm() {
   lastAnalysisPayload = null;
   setTradeFormLocked(false);
   elements.symbol.value = elements.symbol.value || "BTCUSDT";
+  setEntryMode("market");
   elements.margin.value = "200";
   elements.leverage.value = "10";
   elements.timeHorizon.value = "";
@@ -749,6 +830,8 @@ function prepareNewOperationForm() {
   elements.analysisHeadline.textContent = "Nueva operacion";
   elements.analysisDecision.textContent = "Define Stop Loss y Take Profit para analizar la nueva operacion.";
   elements.analysisSummary.textContent = "";
+  updateActionLabels();
+  updateCloseActionLabel();
   updateMetrics();
 }
 
@@ -928,6 +1011,46 @@ function signedPct(value) {
   return `${sign}${value.toFixed(4)}%`;
 }
 
+function entryOrderTypeFrom(sideValue, triggerCondition) {
+  if (!triggerCondition) {
+    return null;
+  }
+  if (sideValue === "long") {
+    return triggerCondition === "price_lte" ? "limit_pullback" : "stop_breakout";
+  }
+  return triggerCondition === "price_gte" ? "limit_pullback" : "stop_breakdown";
+}
+
+function entryOrderLabel(type) {
+  return {
+    limit_pullback: "Limit pullback",
+    stop_breakout: "Stop breakout",
+    stop_breakdown: "Stop breakdown",
+  }[type] || "A mercado";
+}
+
+function entryTriggerLabel(triggerCondition) {
+  return triggerCondition === "price_gte" ? "activar si sube hasta" : "activar si baja hasta";
+}
+
+function entryOrderDescription(sideValue, triggerCondition, entryPrice) {
+  const type = entryOrderTypeFrom(sideValue, triggerCondition);
+  if (!type) {
+    return "Entrada a mercado con el ultimo precio disponible.";
+  }
+  return `${entryOrderLabel(type)} · ${String(sideValue).toUpperCase()} · ${entryTriggerLabel(triggerCondition)} ${priceText(Number(entryPrice))}`;
+}
+
+function distanceToTriggerText(entryPrice, price) {
+  const entryValue = Number(entryPrice);
+  const priceValue = Number(price);
+  if (!Number.isFinite(entryValue) || !Number.isFinite(priceValue) || priceValue <= 0) {
+    return "--";
+  }
+  const pct = ((entryValue - priceValue) / priceValue) * 100;
+  return `${priceText(Math.abs(entryValue - priceValue))} USDT (${signedPct(pct)})`;
+}
+
 function calculate(config, price) {
   const rawVariation = ((price - config.entry) / config.entry) * 100;
   const directionVariation = config.side === "long" ? rawVariation : -rawVariation;
@@ -945,13 +1068,27 @@ function calculate(config, price) {
   return { rawVariation, directionVariation, pnl, state };
 }
 
-function liveExitCandidateForSymbol(symbol) {
+function pendingEntryShouldTrigger(operation, price) {
+  const entryPrice = Number(operation.requested_entry ?? operation.entry);
+  if (!Number.isFinite(entryPrice) || !Number.isFinite(price)) {
+    return false;
+  }
+  return operation.trigger_condition === "price_gte" ? price >= entryPrice : price <= entryPrice;
+}
+
+function liveEventCandidateForSymbol(symbol) {
   if (!currentUser || !hasCurrentPriceForSymbol(symbol)) {
     return null;
   }
   const normalizedSymbol = normalizeSymbol(symbol);
-  return openOperations.find((operation) => {
-    if (normalizeSymbol(operation.symbol) !== normalizedSymbol || operation.status !== "OPEN") {
+  return activeOperations.find((operation) => {
+    if (normalizeSymbol(operation.symbol) !== normalizedSymbol) {
+      return false;
+    }
+    if (operation.status === "PENDING_ENTRY") {
+      return pendingEntryShouldTrigger(operation, currentPrice);
+    }
+    if (operation.status !== "OPEN") {
       return false;
     }
     const result = calculate(operationToConfig(operation), currentPrice);
@@ -960,7 +1097,7 @@ function liveExitCandidateForSymbol(symbol) {
 }
 
 async function checkLiveExits(symbol) {
-  const operation = liveExitCandidateForSymbol(symbol);
+  const operation = liveEventCandidateForSymbol(symbol);
   if (!operation || exitCheckInFlight || pendingExitCheckOperationIds.has(Number(operation.id))) {
     return;
   }
@@ -970,22 +1107,45 @@ async function checkLiveExits(symbol) {
     const data = await requestJson(`/api/operations/check-exits?symbol=${encodeURIComponent(normalizeSymbol(symbol))}`, {
       method: "POST",
     });
-    if (Array.isArray(data.closed_operations) && data.closed_operations.length) {
-      const closedText = data.closed_operations
-        .map((closed) => `#${closed.id} ${closed.reason === "stop_loss" ? "cerrada por stop loss" : "cerrada por take profit"}`)
-        .join(" · ");
-      elements.analysisDecision.textContent = closedText;
-      await loadOperations();
-      await loadPortfolio();
-      if (operationMode === "contest") {
-        await loadContest();
-      }
+    if (hasOperationEvents(data)) {
+      await handleOperationEvents(data);
     }
   } catch (error) {
     elements.lastUpdate.textContent = error.message;
   } finally {
     exitCheckInFlight = false;
     pendingExitCheckOperationIds.delete(Number(operation.id));
+  }
+}
+
+function hasOperationEvents(data) {
+  return (
+    (Array.isArray(data.activated_operations) && data.activated_operations.length) ||
+    (Array.isArray(data.closed_operations) && data.closed_operations.length)
+  );
+}
+
+async function handleOperationEvents(data) {
+  const messages = [];
+  if (Array.isArray(data.activated_operations) && data.activated_operations.length) {
+    messages.push(
+      data.activated_operations
+        .map((operation) => `#${operation.id} activada en ${priceText(Number(operation.entry_price))}`)
+        .join(" · ")
+    );
+  }
+  if (Array.isArray(data.closed_operations) && data.closed_operations.length) {
+    messages.push(
+      data.closed_operations
+        .map((operation) => `#${operation.id} ${operation.reason === "stop_loss" ? "cerrada por stop loss" : "cerrada por take profit"}`)
+        .join(" · ")
+    );
+  }
+  elements.analysisDecision.textContent = messages.join(" · ");
+  await loadOperations();
+  await loadPortfolio();
+  if (operationMode === "contest") {
+    await loadContest();
   }
 }
 
@@ -1011,6 +1171,9 @@ function getOperationStateLabel(operation, result) {
   if (operation.status === "OPEN") {
     return `ABIERTA #${operation.id}`;
   }
+  if (operation.status === "PENDING_ENTRY") {
+    return `PENDIENTE #${operation.id}`;
+  }
   if (operation.close_reason === "stop_loss") {
     return `STOP LOSS #${operation.id}`;
   }
@@ -1032,6 +1195,12 @@ function getOperationVisualStatus(operation) {
   }
   if (operation.status === "OPEN") {
     return { label: `ABIERTA #${operation.id}`, headline: `Operacion #${operation.id} abierta en seguimiento`, htmlHeadline: `Operacion #${operation.id} abierta en seguimiento`, className: "state-open", result: "Operacion en curso" };
+  }
+  if (operation.status === "PENDING_ENTRY") {
+    return { label: `PENDIENTE #${operation.id}`, headline: `Orden pendiente #${operation.id} esperando activacion`, htmlHeadline: `Orden pendiente #${operation.id} esperando activacion`, className: "state-pending", result: "Esperando precio de entrada" };
+  }
+  if (operation.status === "CANCELLED") {
+    return { label: `CANCELADA #${operation.id}`, headline: `Orden pendiente #${operation.id} cancelada`, htmlHeadline: `Orden pendiente #${operation.id} cancelada`, className: "state-closed", result: "Orden pendiente cancelada" };
   }
   const finalPnl = Number(operation.final_pnl);
   const isProfit = Number.isFinite(finalPnl) && finalPnl > 0;
@@ -1058,6 +1227,14 @@ function getOperationVisualStatus(operation) {
     return { label: `OBSERVACION CERRADA #${operation.id}`, headline: `Operacion #${operation.id} con observacion finalizada`, htmlHeadline: `Operacion #${operation.id} con observacion finalizada`, className: "state-closed", result: operation.observation_summary || "Observacion cerrada y lista para aprendizaje" };
   }
   return { label: `CERRADA #${operation.id}`, headline: `Operacion #${operation.id} cerrada sin clasificacion especifica`, htmlHeadline: `Operacion #${operation.id} cerrada sin clasificacion especifica`, className: "state-closed", result: "Operacion cerrada" };
+}
+
+function operationStatusShortLabel(operation) {
+  const status = String(operation?.status || "").toUpperCase();
+  if (status === "PENDING_ENTRY") {
+    return entryOrderLabel(operation.entry_order_type || entryOrderTypeFrom(String(operation.side || "").toLowerCase(), operation.trigger_condition));
+  }
+  return getOperationVisualStatus(operation).label.replace(`#${operation.id}`, "").trim();
 }
 
 function updateMetrics() {
@@ -1090,7 +1267,7 @@ function updateMetrics() {
     elements.variation.textContent = "--";
     elements.pnl.textContent = "--";
     elements.stateText.textContent = "SIN SESION";
-  elements.stateCard.classList.remove("state-open", "state-stop", "state-target", "state-proposal", "state-closed", "state-observing");
+  elements.stateCard.classList.remove("state-open", "state-pending", "state-stop", "state-target", "state-proposal", "state-closed", "state-observing");
   elements.stateCard.classList.add("state-closed");
     drawChart();
     return;
@@ -1110,9 +1287,11 @@ function updateMetrics() {
   const result = calculate(config, displayPrice);
   elements.currentPrice.textContent = `${priceText(displayPrice)} USDT`;
   elements.variation.textContent = signedPct(result.rawVariation);
-  elements.pnl.textContent = operation && operation.status === "CLOSED" && Number.isFinite(Number(operation.final_pnl))
-    ? money(Number(operation.final_pnl))
-    : money(result.pnl);
+  elements.pnl.textContent = operation?.status === "PENDING_ENTRY"
+    ? "--"
+    : operation && operation.status === "CLOSED" && Number.isFinite(Number(operation.final_pnl))
+      ? money(Number(operation.final_pnl))
+      : money(result.pnl);
   if (operation) {
     elements.stateText.innerHTML = getOperationVisualStatus(operation).htmlHeadline;
   } else {
@@ -1120,9 +1299,9 @@ function updateMetrics() {
   }
 
   setTone(elements.variation, result.rawVariation);
-  setTone(elements.pnl, operation && operation.status === "CLOSED" ? Number(operation.final_pnl || 0) : result.pnl);
+  setTone(elements.pnl, operation?.status === "PENDING_ENTRY" ? 0 : operation && operation.status === "CLOSED" ? Number(operation.final_pnl || 0) : result.pnl);
 
-  elements.stateCard.classList.remove("state-open", "state-stop", "state-target", "state-proposal", "state-closed", "state-observing");
+  elements.stateCard.classList.remove("state-open", "state-pending", "state-stop", "state-target", "state-proposal", "state-closed", "state-observing");
   if (operation) {
     elements.stateCard.classList.add(getOperationVisualStatus(operation).className);
   } else if (result.state === "STOP LOSS") elements.stateCard.classList.add("state-stop");
@@ -1197,6 +1376,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
       activeHistorySymbol = symbol;
     }
     syncMarketEntry();
+    updateEntryOrderHelp();
     const capturedAt = new Date();
     if (record) {
       if (selectedOperationId === null && activeHistorySymbol === symbol) {
@@ -1215,16 +1395,8 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
 
     elements.lastUpdate.textContent = new Date().toLocaleString("es-ES");
     elements.autoStatus.textContent = record ? "Auto ON" : "Live ON";
-    if (record && currentUser && Array.isArray(data.closed_operations) && data.closed_operations.length) {
-      const closedText = data.closed_operations
-        .map((operation) => `#${operation.id} ${operation.reason === "stop_loss" ? "cerrada por stop loss" : "cerrada por take profit"}`)
-        .join(" · ");
-      elements.analysisDecision.textContent = closedText;
-      await loadOperations();
-      await loadPortfolio();
-      if (operationMode === "contest") {
-        await loadContest();
-      }
+    if (record && currentUser && hasOperationEvents(data)) {
+      await handleOperationEvents(data);
     } else if (record && currentUser && selectedOperationId !== null) {
       updateMetrics();
       renderSelectedOperationDetail(getSelectedOperation());
@@ -1530,10 +1702,16 @@ function renderEvidenceItem(metric, tone) {
 
 function renderAnalysisKeypoints(analysis) {
   const fibonacci = analysis.fibonacci_context || analysis.snapshot?.fibonacci_context || null;
+  const zone = analysis.zone_analysis || analysis.snapshot?.zone_analysis || null;
+  const zoneProbability = analysis.zone_probability_context || analysis.snapshot?.zone_probability_context || null;
   const fibPoint = fibonacci?.available
     ? `Fibonacci: ${fibBiasLabel(fibonacci.bias)} (${Number(fibonacci.score ?? 50).toFixed(0)}/100); zona entrada ${String(fibonacci.entry_zone || "n/d").replaceAll("_", " ")}.`
     : "";
+  const zonePoint = zone?.available
+    ? `Orden pendiente: ${entryOrderLabel(zone.entry_order_type)} en ${String(zone.entry_zone_type || "zona pendiente").replaceAll("_", " ")}; confluencia ${Number(zone.zone_confluence_score ?? 50).toFixed(0)}/100, activacion ${percent(Number(zone.activation_probability || 0))}, barrida ${zoneSweepLabel(zone.liquidity_sweep_risk)}, ajuste ${formatSignedPercent(Number(zoneProbability?.probability_adjustment || 0))}.`
+    : "";
   const combined = [
+    zonePoint,
     fibPoint,
     ...(analysis.alerts || []),
     ...(analysis.reasons || []),
@@ -1558,11 +1736,43 @@ function renderAnalysisHighlights(analysis) {
   const regime = analysis.market_regime || analysis.snapshot?.market_regime;
   const fibonacci = analysis.fibonacci_context || analysis.snapshot?.fibonacci_context || null;
   const snapshot = analysis.snapshot || {};
+  const entryContext = analysis.entry_order_context || snapshot.entry_order_context || null;
+  const zone = analysis.zone_analysis || snapshot.zone_analysis || null;
+  const zoneProbability = analysis.zone_probability_context || snapshot.zone_probability_context || null;
   const horizon = analysis.time_horizon || snapshot.time_horizon;
   const rrRatio = snapshot.risk_reward_ratio;
   const marginRisk = snapshot.margin_risk_pct;
   const marginReward = snapshot.margin_reward_pct;
   const items = [
+    {
+      label: "Orden",
+      value: entryContext?.entry_type === "pending"
+        ? `${entryOrderLabel(entryContext.entry_order_type)} · ${entryTriggerLabel(entryContext.trigger_condition)} ${priceText(Number(entryContext.requested_entry))}`
+        : "A mercado",
+      tone: "neutral",
+    },
+    ...(zone?.available ? [
+      {
+        label: "Zona orden",
+        value: `${String(zone.entry_zone_type || "zona pendiente").replaceAll("_", " ")} · ${Number(zone.zone_confluence_score ?? 50).toFixed(0)}/100`,
+        tone: zoneConfluenceTone(zone.zone_confluence_score),
+      },
+      {
+        label: "Activacion",
+        value: `${percent(Number(zone.activation_probability || 0))} · ${Number(zone.atr_units_to_activation ?? 0).toFixed(2)} ATR`,
+        tone: Number(zone.activation_probability || 0) >= 0.55 ? "positive" : Number(zone.activation_probability || 0) <= 0.35 ? "negative" : "neutral",
+      },
+      {
+        label: "Barrida",
+        value: `${zoneSweepLabel(zone.liquidity_sweep_risk)} · ${String(zone.reaction_bias || "sin sesgo").replaceAll("_", " ")}`,
+        tone: zoneSweepTone(zone.liquidity_sweep_risk),
+      },
+      {
+        label: "Ajuste zona",
+        value: `${formatSignedPercent(Number(zoneProbability?.probability_adjustment || 0))} TP · ${formatSignedPercent(Number(zoneProbability?.range_probability_adjustment || 0))} rango`,
+        tone: Number(zoneProbability?.probability_adjustment || 0) > 0 ? "positive" : Number(zoneProbability?.probability_adjustment || 0) < 0 ? "negative" : "neutral",
+      },
+    ] : []),
     {
       label: "Marco temporal",
       value: timeHorizonLabel(horizon),
@@ -1645,6 +1855,50 @@ function fibTone(fibonacci) {
     return "negative";
   }
   return "neutral";
+}
+
+function zoneConfluenceTone(score) {
+  const value = Number(score);
+  if (value >= 65) {
+    return "positive";
+  }
+  if (value <= 42) {
+    return "negative";
+  }
+  return "neutral";
+}
+
+function zoneSweepTone(value) {
+  const risk = String(value || "").toLowerCase();
+  if (risk === "alto") {
+    return "negative";
+  }
+  if (risk === "bajo") {
+    return "positive";
+  }
+  return "neutral";
+}
+
+function zoneSweepLabel(value) {
+  const risk = String(value || "").toLowerCase();
+  if (risk === "alto") {
+    return "alto";
+  }
+  if (risk === "medio") {
+    return "medio";
+  }
+  if (risk === "bajo") {
+    return "bajo";
+  }
+  return "n/d";
+}
+
+function formatSignedPercent(value) {
+  if (!Number.isFinite(value)) {
+    return "--";
+  }
+  const text = percent(value);
+  return value > 0 ? `+${text}` : text;
 }
 
 function updateAnalysisFullVisibility(hasAnalysis = true) {
@@ -1760,7 +2014,8 @@ async function startSimulation() {
   }
   const validationError = validateTradeForm();
   if (validationError) {
-    elements.analysisDecision.textContent = validationError;
+    elements.analysisDecision.textContent = validationError.message;
+    showFormError(validationError);
     return;
   }
   const payload = getTradePayload();
@@ -1768,9 +2023,9 @@ async function startSimulation() {
     elements.analysisDecision.textContent = "Has cambiado parametros desde el ultimo analisis. Vuelve a analizar antes de iniciar.";
     return;
   }
-  const openInMode = openOperations.filter((operation) => (operation.mode || "training") === operationMode);
-  if (openInMode.length >= 2) {
-    elements.analysisDecision.textContent = "Ya tienes 2 operaciones abiertas en este modo. Cierra una antes de iniciar otra.";
+  const activeInMode = activeOperations.filter((operation) => (operation.mode || "training") === operationMode);
+  if (activeInMode.length >= 2) {
+    elements.analysisDecision.textContent = "Ya tienes 2 operaciones activas o pendientes en este modo. Cierra o cancela una antes de iniciar otra.";
     return;
   }
 
@@ -1780,8 +2035,8 @@ async function startSimulation() {
   const originalLabel = button.textContent;
   button.classList.add("is-loading");
   button.disabled = true;
-  button.textContent = "Iniciando simulacion...";
-  elements.analysisDecision.textContent = "Iniciando simulacion...";
+  button.textContent = payload.entry_type === "pending" ? "Creando orden..." : "Iniciando simulacion...";
+  elements.analysisDecision.textContent = payload.entry_type === "pending" ? "Creando orden pendiente..." : "Iniciando simulacion...";
 
   try {
     const preview = getCreateOperationPayload();
@@ -1794,15 +2049,20 @@ async function startSimulation() {
     proposalDraft = null;
     lastAnalysis = null;
     lastAnalysisPayload = null;
-    elements.analysisDecision.textContent = `Simulacion registrada #${operation.id}.`;
+    elements.analysisDecision.textContent = operation.status === "PENDING_ENTRY"
+      ? `Orden pendiente registrada #${operation.id}.`
+      : `Simulacion registrada #${operation.id}.`;
     const outcome = plannedOutcome(getConfig());
     const sideLabel = String(preview.side || side).toUpperCase();
+    const entryLabel = preview.entry_type === "pending"
+      ? `Pendiente (${preview.trigger_condition === "price_gte" ? "si sube a" : "si baja a"} ${priceText(preview.entry)})`
+      : `Entrada ${priceText(preview.entry)}`;
     const detailText =
       `${preview.symbol} ${sideLabel} · ${timeHorizonLabel(preview.time_horizon)} · ` +
-      `Entrada ${priceText(preview.entry)} · Margen ${money(preview.margin)} · x${Number(preview.leverage).toFixed(0)} · ` +
+      `${entryLabel} · Margen ${money(preview.margin)} · x${Number(preview.leverage).toFixed(0)} · ` +
       `SL ${priceText(preview.stop_loss)} · TP ${priceText(preview.take_profit)} · ` +
       `TP ${money(outcome.tpPnl)} / SL ${money(outcome.slPnl)}.`;
-    showFloatingNotice(`Comienza la simulacion #${operation.id}`, detailText, 6000);
+    showFloatingNotice(operation.status === "PENDING_ENTRY" ? `Orden pendiente #${operation.id}` : `Comienza la simulacion #${operation.id}`, detailText, 6000);
     await loadOperations();
     await loadPortfolio();
     await loadContest();
@@ -1814,8 +2074,9 @@ async function startSimulation() {
     button.textContent = originalLabel;
     // Re-enable only if the simulation slot is still available; subsequent
     // render passes (updateMetrics / renderOperations) will reconcile this.
-    const openNow = openOperations.filter((op) => (op.mode || "training") === operationMode);
-    button.disabled = openNow.length >= 2;
+    const activeNow = activeOperations.filter((op) => (op.mode || "training") === operationMode);
+    button.disabled = activeNow.length >= 2;
+    updateActionLabels();
   }
 }
 
@@ -1825,6 +2086,10 @@ async function closeSimulation() {
     return;
   }
   const selectedOperation = getSelectedOperation();
+  if (selectedOperation?.status === "PENDING_ENTRY") {
+    await cancelPendingOperation(selectedOperation.id);
+    return;
+  }
   const activeOperation = selectedOperation && selectedOperation.status === "OPEN" ? selectedOperation : openOperations[0];
   if (!activeOperation) {
     elements.analysisDecision.textContent = "No hay simulacion abierta para cerrar.";
@@ -1962,6 +2227,20 @@ function renderContest(state) {
   syncContestLeaderboardWithLivePrices(state.leaderboard || []);
   renderContestLeaderboard(state.leaderboard || []);
   renderContestHistory(state.history || []);
+}
+
+async function cancelPendingOperation(operationId) {
+  try {
+    const result = await requestJson(`/api/operations/${operationId}/cancel`, { method: "POST" });
+    elements.analysisDecision.textContent = `Orden pendiente #${result.id} cancelada.`;
+    selectedOperationId = null;
+    newOperationViewActive = true;
+    await loadOperations();
+    await loadPortfolio();
+    await loadContest();
+  } catch (error) {
+    elements.analysisDecision.textContent = error.message;
+  }
 }
 
 function renderContestLeaderboard(rows) {
@@ -2105,10 +2384,14 @@ function renderContestOperationGroups(row) {
     return `<div class="contest-ops-empty">Sin operaciones de concurso todavia.</div>`;
   }
   const openOperations = operations.filter((operation) => operation.status === "OPEN");
-  const closedOperations = operations.filter((operation) => operation.status !== "OPEN");
+  const pendingOperations = operations.filter((operation) => operation.status === "PENDING_ENTRY");
+  const closedOperations = operations.filter((operation) => !["OPEN", "PENDING_ENTRY"].includes(operation.status));
   const groups = [];
   if (openOperations.length) {
     groups.push(renderContestOperationGroup("Abiertas", "open", openOperations));
+  }
+  if (pendingOperations.length) {
+    groups.push(renderContestOperationGroup("Pendientes", "pending", pendingOperations));
   }
   if (closedOperations.length) {
     groups.push(renderContestOperationGroup("Cerradas", "closed", closedOperations));
@@ -2130,20 +2413,26 @@ function renderContestOperationGroup(label, type, operations) {
 function renderContestOperationPill(operation) {
   const status = String(operation.status || "").toUpperCase();
   const isOpen = status === "OPEN";
+  const isPending = status === "PENDING_ENTRY";
   const side = String(operation.side || "").toUpperCase();
   const symbol = symbolLabel(operation.symbol || "");
   const finalPnl = Number(operation.final_pnl || 0);
   const floatingPnl = Number(operation.unrealized_pnl);
-  const displayPnl = isOpen ? floatingPnl : finalPnl;
+  const displayPnl = isOpen ? floatingPnl : isPending ? NaN : finalPnl;
   const hasDisplayPnl = Number.isFinite(displayPnl);
   const pnlClass = displayPnl >= 0 ? "positive" : "negative";
   const result = hasDisplayPnl
     ? `<b class="${pnlClass}">${isOpen ? "Flotante " : ""}${money(displayPnl)}</b>`
     : "";
+  const statusLabel = isOpen
+    ? "Abierta"
+    : isPending
+      ? entryOrderLabel(operation.entry_order_type || entryOrderTypeFrom(String(operation.side || "").toLowerCase(), operation.trigger_condition))
+      : "Cerrada";
   return `
-    <span class="contest-op-pill ${isOpen ? "is-open" : "is-closed"}">
+    <span class="contest-op-pill ${isOpen ? "is-open" : isPending ? "is-pending" : "is-closed"}">
       <strong>#${escapeHtml(operation.id)} ${escapeHtml(symbol)} ${escapeHtml(side)}</strong>
-      <em>${isOpen ? "Abierta" : "Cerrada"}</em>
+      <em>${escapeHtml(statusLabel)}</em>
       ${result}
     </span>
   `;
@@ -2328,6 +2617,7 @@ function loadSelectedOperationTicks() {
 function renderOperations(operations) {
   allOperations = operations;
   openOperations = operations.filter((operation) => operation.status === "OPEN");
+  activeOperations = operations.filter((operation) => ["OPEN", "PENDING_ENTRY"].includes(String(operation.status || "").toUpperCase()));
   const selectedStillExists = operations.some((operation) => operation.id === selectedOperationId);
   if (!selectedStillExists) {
     if (!(selectedOperationId === null && newOperationViewActive)) {
@@ -2336,9 +2626,9 @@ function renderOperations(operations) {
     }
   }
   syncModeWithSelectedOperation(getSelectedOperation());
-  const openInMode = openOperations.filter((operation) => (operation.mode || "training") === operationMode);
-  elements.startSimulationButton.disabled = openInMode.length >= 2;
-  elements.closeSimulationButton.disabled = !openOperations.length;
+  const activeInMode = activeOperations.filter((operation) => (operation.mode || "training") === operationMode);
+  elements.startSimulationButton.disabled = activeInMode.length >= 2;
+  elements.closeSimulationButton.disabled = true;
   elements.operationsList.innerHTML = "";
   renderOperationSelector();
 
@@ -2355,11 +2645,12 @@ function renderOperations(operations) {
   for (const operation of operations.slice(0, 8)) {
     const row = document.createElement("div");
     const visualStatus = getOperationVisualStatus(operation);
+    const statusLabel = operationStatusShortLabel(operation);
     row.className = operation.id === selectedOperationId ? `operation-row selected ${visualStatus.className}` : `operation-row ${visualStatus.className}`;
     const observation = operation.observation_status === "OBSERVING" ? ` · observacion hasta ${new Date(operation.observation_until).toLocaleString("es-ES")}` : "";
     row.innerHTML = `
       <div>
-        <strong>#${operation.id} ${escapeHtml(operation.symbol)} ${escapeHtml(operation.side.toUpperCase())} · ${(operation.mode || "training") === "contest" ? "CONCURSO" : "ENTRENAMIENTO"} · ${escapeHtml(visualStatus.label.replace(`#${operation.id}`, "").trim())}</strong>
+        <strong>#${operation.id} ${escapeHtml(operation.symbol)} ${escapeHtml(operation.side.toUpperCase())} · ${(operation.mode || "training") === "contest" ? "CONCURSO" : "ENTRENAMIENTO"} · ${escapeHtml(statusLabel)}</strong>
         <span>${timeHorizonLabel(operation.time_horizon || "intraday_short")} · Entrada ${priceText(operation.entry)} · SL ${priceText(operation.stop_loss)} · TP ${priceText(operation.take_profit)}${observation}</span>
       </div>
       <div class="operation-actions">
@@ -2371,7 +2662,17 @@ function renderOperations(operations) {
   }
   renderSelectedOperationDetail(getSelectedOperation());
   updateMetrics();
+  updateCloseActionLabel();
   loadSelectedOperationTicks();
+}
+
+function updateCloseActionLabel() {
+  if (!elements.closeSimulationButton) {
+    return;
+  }
+  const selected = getSelectedOperation();
+  elements.closeSimulationButton.textContent = selected?.status === "PENDING_ENTRY" ? "Cancelar orden pendiente" : "Cerrar manualmente";
+  elements.closeSimulationButton.disabled = !openOperations.length && selected?.status !== "PENDING_ENTRY";
 }
 
 function renderOperationSelector() {
@@ -2386,7 +2687,7 @@ function renderOperationSelector() {
   const options = [
     `<option value="proposal">Nueva operacion</option>`,
     ...allOperations.map((operation) => {
-      const status = getOperationVisualStatus(operation).label.replace(`#${operation.id}`, "").trim().toLowerCase();
+      const status = operationStatusShortLabel(operation).toLowerCase();
       const mode = operation.mode || "training";
       const modeLabel = mode === "contest" ? "concurso" : "entrenamiento";
       const horizon = timeHorizonLabel(operation.time_horizon || operation.recommendation?.time_horizon || "intraday_short").split(" · ")[0].toLowerCase();
@@ -2395,9 +2696,11 @@ function renderOperationSelector() {
       // for contest mode and dark blue for training mode — quick at-a-glance ID.
       // Native <option> only supports background-color and color (and only on
       // Chromium/Firefox desktop), so we encode the mode color as the row color.
-      const isOpen = String(operation.status).toUpperCase() === "OPEN";
-      const classes = isOpen
-        ? ` class="op-opt is-open ${mode === "contest" ? "is-contest" : "is-training"}"`
+      const statusValue = String(operation.status).toUpperCase();
+      const isOpen = statusValue === "OPEN";
+      const isPending = statusValue === "PENDING_ENTRY";
+      const classes = isOpen || isPending
+        ? ` class="op-opt ${isOpen ? "is-open" : "is-pending"} ${mode === "contest" ? "is-contest" : "is-training"}"`
         : "";
       return `<option${classes} value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(status)}</option>`;
     }),
@@ -2414,13 +2717,15 @@ function renderOperationSelectorMobile(selectedValue) {
   const items = [
     { value: "proposal", label: "Nueva operacion", isOpen: false, mode: null },
     ...allOperations.map((operation) => {
-      const status = getOperationVisualStatus(operation).label.replace(`#${operation.id}`, "").trim().toLowerCase();
+      const status = operationStatusShortLabel(operation).toLowerCase();
       const mode = operation.mode || "training";
       const modeLabel = mode === "contest" ? "concurso" : "entrenamiento";
       const horizon = timeHorizonLabel(operation.time_horizon || operation.recommendation?.time_horizon || "intraday_short").split(" · ")[0].toLowerCase();
-      const isOpen = String(operation.status).toUpperCase() === "OPEN";
+      const statusValue = String(operation.status).toUpperCase();
+      const isOpen = statusValue === "OPEN";
+      const isPending = statusValue === "PENDING_ENTRY";
       const label = `#${operation.id} · ${operation.symbol} · ${operation.side.toUpperCase()} · ${modeLabel} · ${horizon} · ${status}`;
-      return { value: String(operation.id), label, isOpen, mode };
+      return { value: String(operation.id), label, isOpen, isPending, mode };
     }),
   ];
   elements.operationSelectorSheetList.innerHTML = items
@@ -2428,6 +2733,10 @@ function renderOperationSelectorMobile(selectedValue) {
       const cls = ["op-sheet-item"];
       if (item.isOpen) {
         cls.push("is-open");
+        cls.push(item.mode === "contest" ? "is-contest" : "is-training");
+      }
+      if (item.isPending) {
+        cls.push("is-pending");
         cls.push(item.mode === "contest" ? "is-contest" : "is-training");
       }
       const selected = item.value === selectedValue ? ' aria-selected="true"' : "";
@@ -2462,8 +2771,10 @@ function renderSelectedOperationDetail(operation) {
   const config = operationToConfig(operation);
   const liveResult = hasCurrentPriceForSymbol(config.symbol) ? calculate(config, currentPrice) : null;
   const finalPnl = operation.final_pnl === null || operation.final_pnl === undefined ? null : Number(operation.final_pnl);
-  const displayPnl = operation.status === "CLOSED" && Number.isFinite(finalPnl) ? finalPnl : liveResult?.pnl;
-  const displayVariation = liveResult ? liveResult.rawVariation : null;
+  const displayPnl = operation.status === "PENDING_ENTRY"
+    ? null
+    : operation.status === "CLOSED" && Number.isFinite(finalPnl) ? finalPnl : liveResult?.pnl;
+  const displayVariation = operation.status === "PENDING_ENTRY" ? null : liveResult ? liveResult.rawVariation : null;
   const displayExposure = Number(operation.margin) * Number(operation.leverage);
   const outcome = plannedOutcome(config);
   const ticks = Array.isArray(operation.ticks) ? operation.ticks : [];
@@ -2478,6 +2789,18 @@ function renderSelectedOperationDetail(operation) {
   const closeInfo = operation.status === "CLOSED" && Number.isFinite(closePrice)
     ? `Cierre ${priceText(closePrice)}`
     : "Sin cierre";
+  const operationEntryType = operation.entry_type || "market";
+  const requestedEntry = Number(operation.requested_entry ?? operation.entry);
+  const orderType = operation.entry_order_type || entryOrderTypeFrom(operation.side, operation.trigger_condition);
+  const entryModeInfo = operationEntryType === "pending"
+    ? `${entryOrderLabel(orderType)} · ${entryTriggerLabel(operation.trigger_condition)}`
+    : "A mercado";
+  const triggerDistance = operationEntryType === "pending"
+    ? distanceToTriggerText(requestedEntry, currentPrice)
+    : null;
+  const activationInfo = operation.triggered_at
+    ? formatEvidenceTime(operation.triggered_at)
+    : operation.status === "PENDING_ENTRY" ? "Esperando activacion" : "--";
   const observationSummary = operation.observation_summary
     ? `<div class="observation-summary"><span>Conclusion de observacion</span><p>${escapeHtml(operation.observation_summary)}</p></div>`
     : "";
@@ -2485,6 +2808,7 @@ function renderSelectedOperationDetail(operation) {
     ? `<div class="learning-conclusion"><span>Conclusion para aprendizaje</span><p>${escapeHtml(operation.learning_summary)}</p></div>`
     : "";
   const exitEvidence = renderExitEvidence(operation);
+  const activationEvidence = renderActivationEvidence(operation);
 
   elements.selectedOperationDetail.innerHTML = `
     <div class="result-banner ${visualStatus.className}">
@@ -2492,11 +2816,16 @@ function renderSelectedOperationDetail(operation) {
       <span>#${operation.id} · ${modeLabel} · ${escapeHtml(visualStatus.headline)}</span>
       <em>${escapeHtml(horizonLabel)}</em>
     </div>
+    ${activationEvidence}
     ${exitEvidence}
     ${learningSummary}
     ${observationSummary}
     <div class="detail-grid">
       <article><span>Entrada</span><strong>${priceText(operation.entry)}</strong></article>
+      <article><span>Tipo entrada</span><strong>${escapeHtml(entryModeInfo)}</strong></article>
+      ${operationEntryType === "pending" ? `<article><span>Entrada solicitada</span><strong>${priceText(requestedEntry)}</strong></article>` : ""}
+      ${operationEntryType === "pending" ? `<article><span>Activacion</span><strong>${escapeHtml(activationInfo)}</strong></article>` : ""}
+      ${operationEntryType === "pending" ? `<article><span>Distancia al disparo</span><strong>${escapeHtml(triggerDistance || "--")}</strong></article>` : ""}
       <article><span>Cierre</span><strong>${closeInfo}</strong></article>
       <article><span>Stop loss</span><strong>${priceText(operation.stop_loss)}</strong></article>
       <article><span>Take profit</span><strong>${priceText(operation.take_profit)}</strong></article>
@@ -2552,6 +2881,39 @@ function renderSelectedOperationDetail(operation) {
     recommendation,
     `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
   );
+}
+
+function renderActivationEvidence(operation) {
+  const evidence = operation.activation_evidence;
+  if (!evidence || operation.entry_type !== "pending") {
+    return "";
+  }
+  const market = evidence.market_data || {};
+  const sourceLabel = {
+    binance_spot_1m_kline: "Binance Spot · vela 1 minuto",
+    binance_spot_ticker: "Binance Spot · precio vivo",
+  }[evidence.source] || evidence.source || "Fuente registrada";
+  const orderType = operation.entry_order_type || evidence.entry_order_type || entryOrderTypeFrom(operation.side, operation.trigger_condition);
+  const proofText = evidence.source === "binance_spot_1m_kline"
+    ? `La vela contiene minimo ${priceText(Number(market.low))} y maximo ${priceText(Number(market.high))}; la entrada solicitada estaba en ${priceText(Number(evidence.requested_entry))}.`
+    : `El precio vivo registrado fue ${priceText(Number(market.price))}; la entrada solicitada estaba en ${priceText(Number(evidence.requested_entry))}.`;
+  return `
+    <section class="exit-evidence activation">
+      <div>
+        <span>Evidencia de activacion</span>
+        <strong>${escapeHtml(entryOrderLabel(orderType))} activada</strong>
+        <p>${escapeHtml(proofText)}</p>
+      </div>
+      <div class="exit-evidence-grid">
+        <article><span>Fuente</span><strong>${escapeHtml(sourceLabel)}</strong></article>
+        <article><span>Hora evento</span><strong>${escapeHtml(formatEvidenceTime(evidence.trigger_time || market.open_time))}</strong></article>
+        <article><span>Entrada solicitada</span><strong>${priceText(Number(evidence.requested_entry))}</strong></article>
+        <article><span>Apertura</span><strong>${priceText(Number(market.open))}</strong></article>
+        <article><span>Minimo</span><strong>${priceText(Number(market.low))}</strong></article>
+        <article><span>Maximo</span><strong>${priceText(Number(market.high ?? market.price))}</strong></article>
+      </div>
+    </section>
+  `;
 }
 
 function renderExitEvidence(operation) {
@@ -2688,7 +3050,7 @@ function drawChart() {
     drawRiskZones(config, yFor, pad, chartWidth, yMin, yMax);
     drawReferenceLine(config.stopLoss, "Stop loss", "#d64b4b", yFor, pad, chartWidth, yMin, yMax, { tag: false });
     drawReferenceLine(config.takeProfit, "Take profit", "#1f9d68", yFor, pad, chartWidth, yMin, yMax, { tag: false });
-    drawReferenceLine(config.entry, "Entrada", "#2f3847", yFor, pad, chartWidth, yMin, yMax, { tag: false });
+    drawReferenceLine(config.entry, operation?.status === "PENDING_ENTRY" ? "Disparo" : "Entrada", operation?.status === "PENDING_ENTRY" ? "#d7a72a" : "#2f3847", yFor, pad, chartWidth, yMin, yMax, { tag: false });
   }
 
   if (chartHistory.length) {
@@ -2742,6 +3104,7 @@ function drawChart() {
       drawTag(`Precio ${priceText(lastPrice)}`, lastX - 130, lastY - 50, getLivePriceTagColor(config, lastPrice), "#ffffff");
     }
     drawSampleSummary(chartHistory, pad, chartHeight);
+    drawActivationMarker(operation, chartHistory, xFor, yFor, pad, chartHeight);
     drawCloseMarker(operation, chartHistory, xFor, yFor, pad, chartHeight);
   } else {
     ctx.fillStyle = "#657066";
@@ -2752,7 +3115,7 @@ function drawChart() {
   if (isValidTradeConfig(config)) {
     drawReferenceTag(config.stopLoss, "Stop loss", "#d64b4b", yFor, pad, yMin, yMax);
     drawReferenceTag(config.takeProfit, "Take profit", "#1f9d68", yFor, pad, yMin, yMax);
-    drawReferenceTag(config.entry, "Entrada", "#2f3847", yFor, pad, yMin, yMax, { yOffset: -40 });
+    drawReferenceTag(config.entry, operation?.status === "PENDING_ENTRY" ? "Disparo" : "Entrada", operation?.status === "PENDING_ENTRY" ? "#d7a72a" : "#2f3847", yFor, pad, yMin, yMax, { yOffset: -40 });
   }
 
   drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, chartHeight, yMin, yMax);
@@ -2761,6 +3124,63 @@ function drawChart() {
 
 function isClosedByPlan(operation) {
   return operation?.status === "CLOSED" && ["stop_loss", "take_profit"].includes(operation.close_reason);
+}
+
+function drawActivationMarker(operation, chartHistory, xFor, yFor, pad, chartHeight) {
+  if (!operation || operation.entry_type !== "pending" || !operation.triggered_at) {
+    return;
+  }
+  const index = findActivationPointIndex(operation, chartHistory);
+  const activationPrice = Number(operation.trigger_price ?? operation.requested_entry ?? operation.entry);
+  if (index < 0 || !Number.isFinite(activationPrice)) {
+    return;
+  }
+  const x = xFor(index);
+  const y = yFor(activationPrice);
+  const color = "#d7a72a";
+  ctx.save();
+  ctx.setLineDash([3, 7]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x, pad.top);
+  ctx.lineTo(x, pad.top + chartHeight);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  drawTag(`Activada ${priceText(activationPrice)}`, x - 118, y + 32, color, "#ffffff");
+  ctx.restore();
+}
+
+function findActivationPointIndex(operation, chartHistory) {
+  const autoEntryIndex = chartHistory.findIndex((point) => point.source === "auto_entry");
+  if (autoEntryIndex >= 0) {
+    return autoEntryIndex;
+  }
+  const targetTime = new Date(operation.triggered_at).getTime();
+  if (!Number.isFinite(targetTime)) {
+    return -1;
+  }
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+  chartHistory.forEach((point, index) => {
+    const pointTime = new Date(point.time || point.captured_at).getTime();
+    if (!Number.isFinite(pointTime)) {
+      return;
+    }
+    const distance = Math.abs(pointTime - targetTime);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
 }
 
 function drawCloseMarker(operation, chartHistory, xFor, yFor, pad, chartHeight) {
@@ -2979,6 +3399,7 @@ function setSide(nextSide, options = {}) {
   side = nextSide;
   elements.longButton.classList.toggle("active", side === "long");
   elements.shortButton.classList.toggle("active", side === "short");
+  updateEntryOrderHelp();
   if (selectedOperationId === null && !newOperationViewActive) {
     proposalDraft = readFormDraft();
   }
@@ -3002,8 +3423,9 @@ function setOperationMode(nextMode) {
   if (operationMode === "contest") {
     loadContest();
   }
-  const openInMode = openOperations.filter((operation) => (operation.mode || "training") === operationMode);
-  elements.startSimulationButton.disabled = selectedOperationId !== null || openInMode.length >= 2;
+  const activeInMode = activeOperations.filter((operation) => (operation.mode || "training") === operationMode);
+  elements.startSimulationButton.disabled = selectedOperationId !== null || activeInMode.length >= 2;
+  updateActionLabels();
 }
 
 function syncModeWithSelectedOperation(operation) {
@@ -3017,14 +3439,23 @@ function syncModeWithSelectedOperation(operation) {
   }
 }
 
-for (const input of [elements.timeHorizon, elements.margin, elements.leverage, elements.stopLoss, elements.takeProfit]) {
+for (const input of [elements.timeHorizon, elements.entryType, elements.triggerCondition, elements.entry, elements.margin, elements.leverage, elements.stopLoss, elements.takeProfit]) {
+  if (!input) continue;
   input.addEventListener("input", () => {
+    updateEntryOrderHelp();
     if (selectedOperationId === null && !newOperationViewActive) {
       proposalDraft = readFormDraft();
     }
     updateMetrics();
   });
 }
+elements.entryType?.addEventListener("change", () => {
+  setEntryMode(elements.entryType.value);
+  if (selectedOperationId === null && !newOperationViewActive) {
+    proposalDraft = readFormDraft();
+  }
+  updateMetrics();
+});
 
 elements.symbol.addEventListener("change", () => {
   if (selectedOperationId === null && !newOperationViewActive) {
@@ -3142,6 +3573,7 @@ elements.operationSelector.addEventListener("change", () => {
   syncModeWithSelectedOperation(operation);
   renderOperationSelector();
   renderSelectedOperationDetail(operation);
+  updateCloseActionLabel();
   updateMetrics();
   fetchVisibleOperationPrice(operation);
   loadOperationTicks(operation);

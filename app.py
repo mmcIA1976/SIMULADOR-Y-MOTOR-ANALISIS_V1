@@ -54,6 +54,8 @@ class TradePayload(BaseModel):
     symbol: str = Field(min_length=5, max_length=20)
     side: str
     time_horizon: str = Field(min_length=1, max_length=30)
+    entry_type: str = Field(default="market", max_length=20)
+    trigger_condition: str | None = Field(default=None, max_length=20)
     entry: float = Field(gt=0)
     margin: float = Field(gt=0)
     leverage: float = Field(gt=0, le=10)
@@ -87,6 +89,57 @@ def validate_trade_plan(side: str, entry: float, stop_loss: float, take_profit: 
             raise HTTPException(status_code=400, detail="En una operacion short, el Take Profit debe estar por debajo de la entrada")
     else:
         raise HTTPException(status_code=400, detail="Direccion no valida")
+
+
+def validate_entry_order(entry_type: str, trigger_condition: str | None) -> None:
+    if entry_type not in {"market", "pending"}:
+        raise HTTPException(status_code=400, detail="Tipo de entrada no valido")
+    if entry_type == "pending" and trigger_condition not in {"price_lte", "price_gte"}:
+        raise HTTPException(status_code=400, detail="Condicion de activacion no valida")
+
+
+def entry_order_type(side: str, trigger_condition: str | None) -> str | None:
+    if trigger_condition is None:
+        return None
+    if side == "long":
+        return "limit_pullback" if trigger_condition == "price_lte" else "stop_breakout"
+    return "limit_pullback" if trigger_condition == "price_gte" else "stop_breakdown"
+
+
+def close_enough(left: float | int | None, right: float | int | None, tolerance: float = 0.01) -> bool:
+    try:
+        return abs(float(left) - float(right)) <= tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def validate_recommendation_matches_operation(
+    recommendation: dict,
+    payload: CreateOperationPayload,
+    entry_type: str,
+    trigger_condition: str | None,
+) -> None:
+    if recommendation.get("symbol") != payload.symbol.upper():
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde al simbolo de la operacion")
+    if recommendation.get("side") != payload.side.lower():
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde a la direccion de la operacion")
+    if recommendation.get("time_horizon") != payload.time_horizon:
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde al marco temporal de la operacion")
+
+    analysis_payload = parse_exit_evidence(recommendation.get("analysis_json"))
+    entry_context = analysis_payload.get("entry_order_context") or analysis_payload.get("snapshot", {}).get("entry_order_context") or {}
+    analyzed_entry_type = entry_context.get("entry_type") or "market"
+    if analyzed_entry_type != entry_type:
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde al tipo de entrada de la operacion")
+    if entry_type != "pending":
+        return
+    if entry_context.get("trigger_condition") != trigger_condition:
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde a la condicion de activacion")
+    expected_order_type = entry_order_type(payload.side.lower(), trigger_condition)
+    if entry_context.get("entry_order_type") != expected_order_type:
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde al tipo de orden pendiente")
+    if not close_enough(entry_context.get("requested_entry"), payload.entry):
+        raise HTTPException(status_code=400, detail="El analisis previo no corresponde al precio de activacion")
 
 
 def current_user(session_token: str | None) -> dict:
@@ -173,6 +226,7 @@ def set_session_cookie(response: Response, user_id: int) -> None:
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    ensure_pending_entry_columns()
     migrate_file_avatars_to_database()
     finalize_due_observations()
     refresh_learning_conclusions()
@@ -183,6 +237,33 @@ def startup() -> None:
 @app.on_event("shutdown")
 def shutdown() -> None:
     close_pool()
+
+
+def ensure_pending_entry_columns() -> None:
+    columns = {
+        "entry_type": "TEXT NOT NULL DEFAULT 'market'",
+        "requested_entry": "REAL",
+        "trigger_condition": "TEXT",
+        "entry_order_type": "TEXT",
+        "triggered_at": "TEXT",
+        "trigger_price": "REAL",
+        "activation_evidence_json": "TEXT",
+    }
+    with connect() as db:
+        for column, definition in columns.items():
+            exists = db.execute(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = ? AND column_name = ?
+                LIMIT 1
+                """,
+                ("operations", column),
+            ).fetchone()
+            if not exists:
+                db.execute(f"ALTER TABLE operations ADD COLUMN {column} {definition}")
+        db.execute("UPDATE operations SET entry_type = 'market' WHERE entry_type IS NULL OR entry_type = ''")
+        db.execute("UPDATE operations SET requested_entry = entry WHERE requested_entry IS NULL")
 
 
 @app.get("/")
@@ -359,9 +440,11 @@ def price(
             "symbol": symbol,
             "price": value,
             "operation_ids": [],
+            "activated_operations": [],
             "closed_operations": [],
         }
     operation_ids: list[int] = []
+    activated_operations: list[dict] = []
     closed_operations: list[dict] = []
     user = None
     if session_token:
@@ -371,11 +454,15 @@ def price(
             user = None
     with connect() as db:
         finalize_due_observations(db)
+        activated_by_trigger = activate_triggered_pending_operations(db, symbol, value, int(user["id"])) if user else {}
         closed_by_trigger = close_triggered_open_operations(db, symbol, value, int(user["id"])) if user else {}
         if closed_by_trigger:
             refresh_learning_conclusions(db)
             refresh_learning_evaluations(db)
         if user:
+            activated_operations.extend(
+                operation for operation in activated_by_trigger.values() if operation.get("user_id") == user["id"]
+            )
             closed_operations.extend(
                 operation for operation in closed_by_trigger.values() if operation.get("user_id") == user["id"]
             )
@@ -384,7 +471,7 @@ def price(
                 SELECT * FROM operations
                 WHERE user_id = ?
                   AND symbol = ?
-                  AND (status = 'OPEN' OR observation_status = 'OBSERVING')
+                  AND (status IN ('OPEN', 'PENDING_ENTRY') OR observation_status = 'OBSERVING')
                 """,
                 (user["id"], symbol),
             ).fetchall()
@@ -397,12 +484,11 @@ def price(
                         "INSERT INTO price_ticks (operation_id, symbol, price, source) VALUES (?, ?, ?, ?)",
                         (operation_id, symbol, value, "binance"),
                     )
-                if operation_id in closed_by_trigger:
-                    closed_operations.append(closed_by_trigger[operation_id])
     return {
         "symbol": symbol,
         "price": value,
         "operation_ids": operation_ids,
+        "activated_operations": activated_operations,
         "closed_operations": closed_operations,
     }
 
@@ -441,12 +527,87 @@ def check_operation_exits(
     symbol = symbol.upper()
     current_price = market_data.get_price(symbol)
     with connect() as db:
+        activated_by_trigger = activate_triggered_pending_operations(db, symbol, current_price, int(user["id"]))
         closed_by_trigger = close_triggered_open_operations(db, symbol, current_price, int(user["id"]))
+        if closed_by_trigger:
+            refresh_learning_conclusions(db)
+            refresh_learning_evaluations(db)
     return {
         "symbol": symbol,
         "price": current_price,
+        "activated_operations": list(activated_by_trigger.values()),
         "closed_operations": list(closed_by_trigger.values()),
     }
+
+
+def activate_triggered_pending_operations(
+    db,
+    symbol: str,
+    current_price: float,
+    user_id: int | None = None,
+) -> dict[int, dict]:
+    if user_id is None:
+        rows = db.execute(
+            "SELECT * FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY'",
+            (symbol,),
+        ).fetchall()
+    else:
+        rows = db.execute(
+            "SELECT * FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY' AND user_id = ?",
+            (symbol, user_id),
+        ).fetchall()
+    activated: dict[int, dict] = {}
+    for row in rows:
+        operation = row_to_dict(row)
+        trigger = triggered_entry_from_market_path(operation, current_price)
+        if not trigger:
+            continue
+        entry_price, trigger_time, activation_evidence = trigger
+        db.execute(
+            """
+            UPDATE operations
+            SET status = 'OPEN',
+                started_at = ?,
+                triggered_at = ?,
+                trigger_price = ?,
+                entry = ?,
+                activation_evidence_json = ?
+            WHERE id = ?
+            """,
+            (
+                trigger_time,
+                trigger_time,
+                entry_price,
+                entry_price,
+                json.dumps(activation_evidence, ensure_ascii=True),
+                operation["id"],
+            ),
+        )
+        db.execute(
+            "INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at) VALUES (?, ?, ?, ?, ?)",
+            (operation["id"], operation["symbol"], entry_price, "auto_entry", trigger_time),
+        )
+        mode = operation.get("mode") or "training"
+        portfolio = sync_user_cash_balance(db, int(operation["user_id"]))
+        record_wallet_event(
+            db,
+            user_id=int(operation["user_id"]),
+            mode=mode,
+            event_type="pending_entry_activated",
+            amount=0,
+            balance_after=float(portfolio[mode]["cash_balance"]),
+            operation_id=int(operation["id"]),
+            contest_season_id=operation.get("contest_season_id"),
+            note=f"Orden pendiente activada en {entry_price}.",
+        )
+        activated[int(operation["id"])] = {
+            "id": int(operation["id"]),
+            "user_id": int(operation["user_id"]),
+            "entry_price": entry_price,
+            "trigger_time": trigger_time,
+            "activation_evidence": activation_evidence,
+        }
+    return activated
 
 
 def close_triggered_open_operations(
@@ -739,6 +900,13 @@ def fibonacci_audit(session_token: str | None = Cookie(default=None, alias=SESSI
         return build_fibonacci_audit_report(db, int(user["id"]))
 
 
+@app.get("/api/learning/pending-zone-audit")
+def pending_zone_audit(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_pending_zone_audit_report(db, int(user["id"]))
+
+
 def build_fibonacci_audit_report(db, user_id: int) -> dict:
     recommendation_stats = row_to_dict(db.execute(
         """
@@ -872,12 +1040,178 @@ def group_fibonacci_cases(cases: list[dict], key: str) -> list[dict]:
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
 
+def build_pending_zone_audit_report(db, user_id: int) -> dict:
+    recommendation_stats = row_to_dict(db.execute(
+        """
+        SELECT
+            COUNT(*) AS total_v09,
+            COUNT(CASE WHEN operation_id IS NULL THEN 1 END) AS pending_operations,
+            COUNT(CASE WHEN operation_id IS NOT NULL THEN 1 END) AS linked_operations
+        FROM recommendations
+        WHERE user_id = ?
+          AND engine_version = 'rules-v0.9-pending-zone-adjusted'
+        """,
+        (user_id,),
+    ).fetchone()) or {}
+    rows = db.execute(
+        """
+        SELECT
+            le.operation_id,
+            le.symbol,
+            le.side,
+            le.time_horizon,
+            le.final_pnl,
+            le.plan_result,
+            le.analysis_verdict,
+            le.structured_json,
+            r.engine_version
+        FROM learning_evaluations le
+        LEFT JOIN recommendations r ON r.id = le.recommendation_id
+        WHERE le.user_id = ?
+          AND r.engine_version = 'rules-v0.9-pending-zone-adjusted'
+        ORDER BY le.updated_at DESC, le.operation_id DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    cases = [pending_zone_case_from_evaluation(row_to_dict(row)) for row in rows]
+    cases = [case for case in cases if case is not None]
+    resolved_cases = [
+        case for case in cases
+        if case["plan_result"] in {"plan_success", "plan_failure", "plan_would_succeed", "plan_would_fail"}
+    ]
+    return {
+        "engine_version": "rules-v0.9-pending-zone-adjusted",
+        "user_id": user_id,
+        "recommendations": {
+            "total_v09": int(recommendation_stats.get("total_v09") or 0),
+            "pending_operations": int(recommendation_stats.get("pending_operations") or 0),
+            "linked_operations": int(recommendation_stats.get("linked_operations") or 0),
+        },
+        "sample": {
+            "evaluated_cases": len(cases),
+            "resolved_cases": len(resolved_cases),
+            "minimum_for_review": 30,
+            "ready_for_weight_review": len(resolved_cases) >= 30,
+        },
+        "summary": summarize_pending_zone_cases(resolved_cases),
+        "by_entry_order_type": group_pending_zone_cases(resolved_cases, "entry_order_type"),
+        "by_entry_zone_type": group_pending_zone_cases(resolved_cases, "entry_zone_type"),
+        "by_reaction_bias": group_pending_zone_cases(resolved_cases, "reaction_bias"),
+        "by_sweep_risk": group_pending_zone_cases(resolved_cases, "liquidity_sweep_risk"),
+        "by_probability_adjustment": group_pending_zone_cases(resolved_cases, "probability_adjustment_bucket"),
+        "by_zone_learning_category": group_pending_zone_cases(resolved_cases, "zone_learning_category"),
+        "by_time_horizon": group_pending_zone_cases(resolved_cases, "time_horizon"),
+        "by_side": group_pending_zone_cases(resolved_cases, "side"),
+        "recent_cases": cases[:12],
+    }
+
+
+def pending_zone_case_from_evaluation(row: dict) -> dict | None:
+    try:
+        structured = json.loads(row.get("structured_json") or "{}")
+    except json.JSONDecodeError:
+        structured = {}
+    analysis_context = structured.get("analysis_context") if isinstance(structured.get("analysis_context"), dict) else {}
+    pending_context = structured.get("pending_entry_context") if isinstance(structured.get("pending_entry_context"), dict) else {}
+    zone = analysis_context.get("zone") if isinstance(analysis_context.get("zone"), dict) else {}
+    zone_learning = analysis_context.get("zone_learning") if isinstance(analysis_context.get("zone_learning"), dict) else {}
+    if not zone.get("available"):
+        return None
+    plan_result = row.get("plan_result")
+    success = plan_result in {"plan_success", "plan_would_succeed"}
+    failure = plan_result in {"plan_failure", "plan_would_fail"}
+    probability_adjustment = safe_float(zone.get("probability_adjustment"))
+    return {
+        "operation_id": int(row["operation_id"]),
+        "symbol": row.get("symbol"),
+        "side": row.get("side"),
+        "time_horizon": row.get("time_horizon"),
+        "final_pnl": round(float(row.get("final_pnl") or 0), 4),
+        "plan_result": plan_result,
+        "analysis_verdict": row.get("analysis_verdict"),
+        "resolved": success or failure,
+        "success": success,
+        "failure": failure,
+        "activated": bool(pending_context.get("activated")),
+        "entry_order_type": zone.get("entry_order_type") or pending_context.get("entry_order_type") or "sin_tipo",
+        "entry_zone_type": zone.get("entry_zone_type") or "sin_zona",
+        "reaction_bias": zone.get("reaction_bias") or "sin_reaccion",
+        "liquidity_sweep_risk": zone.get("liquidity_sweep_risk") or "sin_riesgo",
+        "zone_learning_category": zone_learning.get("category") or "sin_categoria",
+        "zone_confluence_score": safe_float(zone.get("zone_confluence_score")),
+        "activation_probability": safe_float(zone.get("activation_probability")),
+        "target_path_quality": safe_float(zone.get("target_path_quality")),
+        "invalidation_quality": safe_float(zone.get("invalidation_quality")),
+        "probability_adjustment": probability_adjustment,
+        "probability_adjustment_bucket": signed_value_bucket(probability_adjustment),
+        "risk_score_addition": safe_float(zone.get("risk_score_addition")),
+        "range_probability_adjustment": safe_float(zone.get("range_probability_adjustment")),
+    }
+
+
+def summarize_pending_zone_cases(cases: list[dict]) -> dict:
+    if not cases:
+        return {
+            "available": False,
+            "message": "Aun no hay operaciones pendientes cerradas evaluables con motor v0.9.",
+        }
+    successes = sum(1 for case in cases if case["success"])
+    failures = sum(1 for case in cases if case["failure"])
+    activated = sum(1 for case in cases if case["activated"])
+    total_pnl = sum(float(case["final_pnl"]) for case in cases)
+    confluence_scores = [float(case["zone_confluence_score"]) for case in cases if case.get("zone_confluence_score") is not None]
+    activation_probabilities = [float(case["activation_probability"]) for case in cases if case.get("activation_probability") is not None]
+    return {
+        "available": True,
+        "cases": len(cases),
+        "successes": successes,
+        "failures": failures,
+        "success_rate": round(successes / len(cases), 4),
+        "activated_cases": activated,
+        "activation_rate": round(activated / len(cases), 4),
+        "total_pnl": round(total_pnl, 4),
+        "avg_pnl": round(total_pnl / len(cases), 4),
+        "avg_zone_confluence_score": round(sum(confluence_scores) / len(confluence_scores), 4) if confluence_scores else None,
+        "avg_activation_probability": round(sum(activation_probabilities) / len(activation_probabilities), 4) if activation_probabilities else None,
+    }
+
+
+def group_pending_zone_cases(cases: list[dict], key: str) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    for case in cases:
+        groups.setdefault(str(case.get(key) or "sin_dato"), []).append(case)
+    result = []
+    for name, items in groups.items():
+        successes = sum(1 for item in items if item["success"])
+        activated = sum(1 for item in items if item["activated"])
+        total_pnl = sum(float(item["final_pnl"]) for item in items)
+        confluence_scores = [float(item["zone_confluence_score"]) for item in items if item.get("zone_confluence_score") is not None]
+        activation_probabilities = [float(item["activation_probability"]) for item in items if item.get("activation_probability") is not None]
+        result.append({
+            "name": name,
+            "cases": len(items),
+            "successes": successes,
+            "failures": sum(1 for item in items if item["failure"]),
+            "success_rate": round(successes / len(items), 4) if items else 0,
+            "activated_cases": activated,
+            "activation_rate": round(activated / len(items), 4) if items else 0,
+            "total_pnl": round(total_pnl, 4),
+            "avg_pnl": round(total_pnl / len(items), 4) if items else 0,
+            "avg_zone_confluence_score": round(sum(confluence_scores) / len(confluence_scores), 4) if confluence_scores else None,
+            "avg_activation_probability": round(sum(activation_probabilities) / len(activation_probabilities), 4) if activation_probabilities else None,
+        })
+    return sorted(result, key=lambda item: (-item["cases"], item["name"]))
+
+
 def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> dict:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
     fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    entry_context = snapshot.get("entry_order_context") if isinstance(snapshot.get("entry_order_context"), dict) else {}
+    zone_analysis = snapshot.get("zone_analysis") if isinstance(snapshot.get("zone_analysis"), dict) else {}
+    zone_probability = snapshot.get("zone_probability_context") if isinstance(snapshot.get("zone_probability_context"), dict) else {}
     rr_ratio = safe_float(snapshot.get("risk_reward_ratio"))
     risk_margin_pct = safe_float(snapshot.get("risk_margin_pct"))
     reward_margin_pct = safe_float(snapshot.get("reward_margin_pct"))
@@ -901,6 +1235,8 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         training_decision=operation.get("recommendation_training_decision"),
         expected_value_usdt=expected_value_from_snapshot(snapshot),
         fibonacci_bias=fibonacci.get("bias"),
+        zone_analysis=zone_analysis,
+        zone_probability=zone_probability,
     )
     user_decision_quality = classify_user_decision_quality(operation, manual_trigger)
     failure_type = classify_failure_type(operation, snapshot, mfe_mae, plan_result)
@@ -938,6 +1274,15 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
                 "captured_at": manual_trigger[2],
             } if manual_trigger else None,
         },
+        "pending_entry_context": {
+            "entry_type": entry_context.get("entry_type"),
+            "trigger_condition": entry_context.get("trigger_condition"),
+            "entry_order_type": entry_context.get("entry_order_type"),
+            "requested_entry": safe_float(entry_context.get("requested_entry")),
+            "activated": bool(operation.get("triggered_at") or operation.get("activation_evidence_json")),
+            "triggered_at": operation.get("triggered_at"),
+            "trigger_price": safe_float(operation.get("trigger_price")),
+        },
         "analysis_context": {
             "setup_grade": setup_grade,
             "risk_level": operation.get("recommendation_risk_level"),
@@ -962,6 +1307,30 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
                 "stop_zone": fibonacci.get("stop_zone"),
                 "probability_adjustment": safe_float(fibonacci.get("probability_adjustment")),
             },
+            "zone": {
+                "available": bool(zone_analysis.get("available")),
+                "entry_order_type": zone_analysis.get("entry_order_type") or entry_context.get("entry_order_type"),
+                "entry_zone_type": zone_analysis.get("entry_zone_type"),
+                "reaction_bias": zone_analysis.get("reaction_bias"),
+                "liquidity_sweep_risk": zone_analysis.get("liquidity_sweep_risk"),
+                "zone_confluence_score": safe_float(zone_analysis.get("zone_confluence_score")),
+                "activation_probability": safe_float(zone_analysis.get("activation_probability")),
+                "pullback_quality": safe_float(zone_analysis.get("pullback_quality")),
+                "breakout_quality": safe_float(zone_analysis.get("breakout_quality")),
+                "invalidation_quality": safe_float(zone_analysis.get("invalidation_quality")),
+                "target_path_quality": safe_float(zone_analysis.get("target_path_quality")),
+                "probability_adjustment": safe_float(zone_probability.get("probability_adjustment")),
+                "range_probability_adjustment": safe_float(zone_probability.get("range_probability_adjustment")),
+                "risk_score_addition": safe_float(zone_probability.get("risk_score_addition")),
+                "zone_summary": zone_analysis.get("zone_summary"),
+                "probability_summary": zone_probability.get("summary"),
+            },
+            "zone_learning": build_zone_learning_context(
+                plan_result=plan_result,
+                zone_analysis=zone_analysis,
+                zone_probability=zone_probability,
+                operation=operation,
+            ),
         },
     }
     return {
@@ -1195,11 +1564,18 @@ def classify_analysis_verdict(
     training_decision: str | None = None,
     expected_value_usdt: float | None = None,
     fibonacci_bias: str | None = None,
+    zone_analysis: dict | None = None,
+    zone_probability: dict | None = None,
 ) -> str:
     tp = tp_probability if tp_probability is not None else 0
     sl = sl_probability if sl_probability is not None else 0
     decision = str(training_decision or "").lower()
     fib_bias = str(fibonacci_bias or "").lower()
+    zone_analysis = zone_analysis or {}
+    zone_probability = zone_probability or {}
+    zone_delta = safe_float(zone_probability.get("probability_adjustment")) or 0
+    zone_risk = safe_float(zone_probability.get("risk_score_addition")) or 0
+    zone_sweep = str(zone_analysis.get("liquidity_sweep_risk") or "").lower()
     weak_setup = setup_grade in {"D", "E"} or confidence in {"baja", "media-baja"}
     analysis_warned = (
         weak_setup
@@ -1207,6 +1583,9 @@ def classify_analysis_verdict(
         or tp < sl
         or (expected_value_usdt is not None and expected_value_usdt < 0)
         or fib_bias in {"alerta", "desfavorable"}
+        or zone_delta < 0
+        or zone_risk >= 0.02
+        or zone_sweep == "alto"
     )
     if plan_result in {"plan_success", "plan_would_succeed"}:
         if not analysis_warned and (tp >= sl or setup_grade in {"A", "B", "C"}):
@@ -1229,6 +1608,8 @@ def expected_value_from_snapshot(snapshot: dict) -> float | None:
 def analysis_warning_reasons(operation: dict) -> list[str]:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    zone_analysis = snapshot.get("zone_analysis") if isinstance(snapshot.get("zone_analysis"), dict) else {}
+    zone_probability = snapshot.get("zone_probability_context") if isinstance(snapshot.get("zone_probability_context"), dict) else {}
     expected_value_usdt = expected_value_from_snapshot(snapshot)
     setup_grade = operation.get("recommendation_setup_grade")
     training_decision = str(operation.get("recommendation_training_decision") or "").lower()
@@ -1247,12 +1628,22 @@ def analysis_warning_reasons(operation: dict) -> list[str]:
         reasons.append("EV negativa")
     if fibonacci_bias in {"alerta", "desfavorable"}:
         reasons.append(f"Fibonacci {fibonacci_bias}")
+    zone_delta = safe_float(zone_probability.get("probability_adjustment"))
+    zone_risk = safe_float(zone_probability.get("risk_score_addition"))
+    if zone_delta is not None and zone_delta < 0:
+        reasons.append(f"zona pendiente ajuste {zone_delta:+.3f}")
+    if zone_risk is not None and zone_risk >= 0.02:
+        reasons.append("zona pendiente con riesgo anadido")
+    if str(zone_analysis.get("liquidity_sweep_risk") or "").lower() == "alto":
+        reasons.append("riesgo alto de barrida en zona")
     return reasons
 
 
 def analysis_support_reasons(operation: dict) -> list[str]:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    zone_analysis = snapshot.get("zone_analysis") if isinstance(snapshot.get("zone_analysis"), dict) else {}
+    zone_probability = snapshot.get("zone_probability_context") if isinstance(snapshot.get("zone_probability_context"), dict) else {}
     expected_value_usdt = expected_value_from_snapshot(snapshot)
     setup_grade = operation.get("recommendation_setup_grade")
     training_decision = str(operation.get("recommendation_training_decision") or "").lower()
@@ -1271,6 +1662,11 @@ def analysis_support_reasons(operation: dict) -> list[str]:
         reasons.append("EV no negativa")
     if fibonacci_bias in {"favorable", "neutral"}:
         reasons.append(f"Fibonacci {fibonacci_bias}")
+    zone_delta = safe_float(zone_probability.get("probability_adjustment"))
+    if zone_delta is not None and zone_delta > 0:
+        reasons.append(f"zona pendiente favorable {zone_delta:+.3f}")
+    if safe_float(zone_analysis.get("zone_confluence_score")) is not None and safe_float(zone_analysis.get("zone_confluence_score")) >= 65:
+        reasons.append("confluencia de zona pendiente alta")
     return reasons
 
 
@@ -1285,7 +1681,16 @@ def build_learning_signal(
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
     fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    entry_context = snapshot.get("entry_order_context") if isinstance(snapshot.get("entry_order_context"), dict) else {}
+    zone_analysis = snapshot.get("zone_analysis") if isinstance(snapshot.get("zone_analysis"), dict) else {}
+    zone_probability = snapshot.get("zone_probability_context") if isinstance(snapshot.get("zone_probability_context"), dict) else {}
     expected_value_usdt = expected_value_from_snapshot(snapshot)
+    zone_learning = build_zone_learning_context(
+        plan_result=plan_result,
+        zone_analysis=zone_analysis,
+        zone_probability=zone_probability,
+        operation=operation,
+    )
     category_by_verdict = {
         "analysis_supported_success": "reinforce_supported_success",
         "success_against_analysis": "investigate_underestimated_opportunity",
@@ -1322,8 +1727,74 @@ def build_learning_signal(
             "expected_value_bucket": value_bucket(expected_value_usdt),
             "fibonacci_bias": fibonacci.get("bias"),
             "fibonacci_entry_zone": fibonacci.get("entry_zone"),
+            "entry_type": entry_context.get("entry_type"),
+            "entry_order_type": zone_analysis.get("entry_order_type") or entry_context.get("entry_order_type"),
+            "zone_reaction_bias": zone_analysis.get("reaction_bias"),
+            "zone_sweep_risk": zone_analysis.get("liquidity_sweep_risk"),
+            "zone_confluence_bucket": score_bucket(safe_float(zone_analysis.get("zone_confluence_score"))),
+            "zone_probability_adjustment_bucket": signed_value_bucket(safe_float(zone_probability.get("probability_adjustment"))),
+            "zone_learning_category": zone_learning.get("category"),
         },
     }
+
+
+def build_zone_learning_context(plan_result: str, zone_analysis: dict, zone_probability: dict, operation: dict) -> dict:
+    if not zone_analysis.get("available"):
+        return {
+            "available": False,
+            "category": "not_pending_zone",
+            "interpretation": "Operacion sin zona pendiente evaluable.",
+        }
+    zone_delta = safe_float(zone_probability.get("probability_adjustment")) or 0
+    risk_addition = safe_float(zone_probability.get("risk_score_addition")) or 0
+    activated = bool(operation.get("triggered_at") or operation.get("activation_evidence_json"))
+    favorable_zone = zone_delta > 0 and str(zone_analysis.get("liquidity_sweep_risk") or "").lower() != "alto"
+    warned_zone = zone_delta < 0 or risk_addition >= 0.02 or str(zone_analysis.get("liquidity_sweep_risk") or "").lower() == "alto"
+
+    if not activated and plan_result in {"manual_pending_or_unclassified", "plan_unresolved"}:
+        category = "pending_zone_not_activated"
+        interpretation = "La orden pendiente no aporta lectura direccional suficiente; conservar para medir probabilidad de activacion."
+    elif plan_result in {"plan_success", "plan_would_succeed"} and favorable_zone:
+        category = "reinforce_favorable_pending_zone"
+        interpretation = "Zona pendiente favorable respaldada por resultado positivo; usar solo con casos comparables."
+    elif plan_result in {"plan_failure", "plan_would_fail"} and favorable_zone:
+        category = "investigate_failed_favorable_pending_zone"
+        interpretation = "Zona pendiente favorable fallo; revisar barrida, invalidacion, camino al TP o timing."
+    elif plan_result in {"plan_failure", "plan_would_fail"} and warned_zone:
+        category = "reinforce_warned_pending_zone_risk"
+        interpretation = "El fallo confirma advertencias de zona pendiente; puede reforzar riesgo si se repite."
+    elif plan_result in {"plan_success", "plan_would_succeed"} and warned_zone:
+        category = "investigate_success_against_pending_zone_warning"
+        interpretation = "El plan gano pese a advertencias de zona; no reforzar automaticamente, investigar infravaloracion."
+    else:
+        category = "pending_zone_context_only"
+        interpretation = "Zona pendiente sin conclusion fuerte; conservar como contexto agregado."
+    return {
+        "available": True,
+        "category": category,
+        "interpretation": interpretation,
+        "activated": activated,
+        "entry_order_type": zone_analysis.get("entry_order_type"),
+        "entry_zone_type": zone_analysis.get("entry_zone_type"),
+        "reaction_bias": zone_analysis.get("reaction_bias"),
+        "liquidity_sweep_risk": zone_analysis.get("liquidity_sweep_risk"),
+        "zone_confluence_score": safe_float(zone_analysis.get("zone_confluence_score")),
+        "activation_probability": safe_float(zone_analysis.get("activation_probability")),
+        "probability_adjustment": zone_delta,
+        "range_probability_adjustment": safe_float(zone_probability.get("range_probability_adjustment")),
+        "risk_score_addition": risk_addition,
+        "minimum_comparable_cases": 30,
+    }
+
+
+def signed_value_bucket(value: float | None) -> str:
+    if value is None:
+        return "sin_dato"
+    if value > 0.003:
+        return "positivo"
+    if value < -0.003:
+        return "negativo"
+    return "neutral"
 
 
 def score_bucket(value: float | None) -> str:
@@ -1371,9 +1842,18 @@ def classify_failure_type(operation: dict, snapshot: dict, mfe_mae: dict, plan_r
         return None
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
     scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
+    zone_analysis = snapshot.get("zone_analysis") if isinstance(snapshot.get("zone_analysis"), dict) else {}
+    zone_probability = snapshot.get("zone_probability_context") if isinstance(snapshot.get("zone_probability_context"), dict) else {}
     rr = safe_float(snapshot.get("risk_reward_ratio"))
     direction_score = safe_float(scores.get("direction_score"))
     max_favorable_pct = mfe_mae.get("max_favorable_pct")
+    if zone_analysis.get("available"):
+        if str(zone_analysis.get("liquidity_sweep_risk") or "").lower() == "alto":
+            return "pending_zone_liquidity_sweep"
+        if (safe_float(zone_probability.get("risk_score_addition")) or 0) >= 0.02:
+            return "pending_zone_risk_confirmed"
+        if (safe_float(zone_analysis.get("target_path_quality")) or 100) <= 40:
+            return "pending_zone_target_path_blocked"
     if technical.get("label") == "desfavorable" or (direction_score is not None and direction_score <= 40):
         return "direction_against_structure"
     if rr is not None and rr < 1.15:
@@ -1520,6 +2000,9 @@ def build_learning_pattern_text(operation: dict) -> str:
     regime = snapshot.get("market_regime") or {}
     scores = snapshot.get("layered_scores") or {}
     fibonacci = snapshot.get("fibonacci_context") or {}
+    entry_context = snapshot.get("entry_order_context") or {}
+    zone = snapshot.get("zone_analysis") or {}
+    zone_probability = snapshot.get("zone_probability_context") or {}
     pieces = [
         f"horizonte {operation.get('time_horizon') or snapshot.get('time_horizon') or 'sin definir'}",
         f"rating tecnico {technical.get('label', 'no disponible')} {technical.get('score', '--')}/100",
@@ -1530,6 +2013,14 @@ def build_learning_pattern_text(operation: dict) -> str:
         f"derivados {timeframes.get('derivatives_period', 'n/d')}",
         f"niveles {timeframes.get('levels', 'n/d')}",
     ]
+    if entry_context.get("entry_type") == "pending" or zone.get("available"):
+        pieces.extend([
+            f"orden {zone.get('entry_order_type') or entry_context.get('entry_order_type') or 'pendiente'}",
+            f"zona {zone.get('entry_zone_type', 'n/d')} confluencia {zone.get('zone_confluence_score', '--')}/100",
+            f"reaccion {zone.get('reaction_bias', 'n/d')}",
+            f"barrida {zone.get('liquidity_sweep_risk', 'n/d')}",
+            f"ajuste zona {zone_probability.get('probability_adjustment', 'n/d')}",
+        ])
     return f"Patron guardado para aprendizaje: {', '.join(pieces)}."
 
 
@@ -1627,6 +2118,41 @@ def triggered_exit_from_market_path(operation: dict, current_price: float) -> tu
     return None
 
 
+def triggered_entry_from_market_path(operation: dict, current_price: float) -> tuple[float, str, dict] | None:
+    start_time_ms = timestamp_ms_from_operation_creation(operation)
+    end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    entry_price = float(operation.get("requested_entry") or operation["entry"])
+    klines = get_operation_klines_1m(operation["symbol"], start_time_ms, end_time_ms)
+    for kline in klines:
+        open_time = iso_from_ms(int(kline[0]))
+        high = float(kline[2])
+        low = float(kline[3])
+        if triggered_entry_condition_from_range(operation, low, high):
+            return entry_price, open_time, build_activation_evidence(
+                operation,
+                "binance_spot_1m_kline",
+                open_time,
+                {
+                    "open": float(kline[1]),
+                    "high": high,
+                    "low": low,
+                    "close": float(kline[4]),
+                    "volume": float(kline[5]),
+                    "open_time": open_time,
+                    "close_time": iso_from_ms(int(kline[6])),
+                },
+            )
+    if triggered_entry_condition(operation, current_price):
+        trigger_time = datetime.now(timezone.utc).isoformat()
+        return entry_price, trigger_time, build_activation_evidence(
+            operation,
+            "binance_spot_ticker",
+            trigger_time,
+            {"price": current_price},
+        )
+    return None
+
+
 def get_operation_klines_1m(symbol: str, start_time_ms: int, end_time_ms: int) -> list[list]:
     klines: list[list] = []
     next_start = start_time_ms
@@ -1698,6 +2224,23 @@ def build_exit_evidence(operation: dict, reason: str, source: str, trigger_time:
     }
 
 
+def build_activation_evidence(operation: dict, source: str, trigger_time: str, market_data_payload: dict) -> dict:
+    entry_price = float(operation.get("requested_entry") or operation["entry"])
+    return {
+        "source": source,
+        "symbol": operation["symbol"],
+        "side": operation["side"],
+        "trigger_time": trigger_time,
+        "entry_type": operation.get("entry_type") or "pending",
+        "entry_order_type": operation.get("entry_order_type"),
+        "trigger_condition": operation.get("trigger_condition"),
+        "requested_entry": entry_price,
+        "stop_loss": float(operation["stop_loss"]),
+        "take_profit": float(operation["take_profit"]),
+        "market_data": market_data_payload,
+    }
+
+
 def iso_from_ms(timestamp_ms: int) -> str:
     return datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat()
 
@@ -1708,6 +2251,14 @@ def operation_start_time_ms(operation: dict) -> int:
     if started_at.tzinfo is None:
         started_at = started_at.replace(tzinfo=timezone.utc)
     return int(started_at.timestamp() * 1000)
+
+
+def timestamp_ms_from_operation_creation(operation: dict) -> int:
+    raw_created_at = operation.get("created_at") or operation.get("started_at")
+    created_at = datetime.fromisoformat(str(raw_created_at).replace(" ", "T"))
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return int(created_at.timestamp() * 1000)
 
 
 def operation_age_minutes(operation: dict) -> float:
@@ -1756,6 +2307,20 @@ def triggered_exit_reason_from_range(operation: dict, low: float, high: float) -
     return None
 
 
+def triggered_entry_condition(operation: dict, price_value: float) -> bool:
+    entry_price = float(operation.get("requested_entry") or operation["entry"])
+    if operation.get("trigger_condition") == "price_gte":
+        return price_value >= entry_price
+    return price_value <= entry_price
+
+
+def triggered_entry_condition_from_range(operation: dict, low: float, high: float) -> bool:
+    entry_price = float(operation.get("requested_entry") or operation["entry"])
+    if operation.get("trigger_condition") == "price_gte":
+        return high >= entry_price
+    return low <= entry_price
+
+
 def range_hits_both_exits(operation: dict, low: float, high: float) -> bool:
     side = operation["side"]
     stop_loss = float(operation["stop_loss"])
@@ -1779,22 +2344,44 @@ def market_snapshot(symbol: str = "BTCUSDT") -> dict:
 @app.post("/api/analyze")
 def analyze(payload: TradePayload, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)
+    entry_type = payload.entry_type.lower()
+    trigger_condition = payload.trigger_condition if entry_type == "pending" else None
+    side = payload.side.lower()
+    validate_entry_order(entry_type, trigger_condition)
+    if side not in {"long", "short"}:
+        raise HTTPException(status_code=400, detail="Direccion no valida")
     proposal = TradeProposal(
         symbol=payload.symbol.upper(),
-        side=payload.side.lower(),
+        side=side,
         time_horizon=payload.time_horizon,
         entry=payload.entry,
         margin=payload.margin,
         leverage=payload.leverage,
         stop_loss=payload.stop_loss,
         take_profit=payload.take_profit,
+        entry_type=entry_type,
+        trigger_condition=trigger_condition,
+        entry_order_type=entry_order_type(side, trigger_condition),
     )
-    if proposal.side not in {"long", "short"}:
-        raise HTTPException(status_code=400, detail="Direccion no valida")
     if proposal.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
     validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
     result = apply_learning_modifier(user["id"], proposal, analyze_trade(proposal))
+    entry_context = {
+        "entry_type": entry_type,
+        "trigger_condition": trigger_condition,
+        "entry_order_type": entry_order_type(proposal.side, trigger_condition),
+        "requested_entry": proposal.entry,
+        "activation_rule": (
+            "activate_when_price_reaches_or_exceeds_entry"
+            if trigger_condition == "price_gte"
+            else "activate_when_price_reaches_or_falls_below_entry"
+            if trigger_condition == "price_lte"
+            else "market_entry_at_current_price"
+        ),
+    }
+    result["entry_order_context"] = entry_context
+    result.setdefault("snapshot", {})["entry_order_context"] = entry_context
     with connect() as db:
         cursor = db.execute(
             """
@@ -1837,10 +2424,13 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
     user = current_user(session_token)
     side = payload.side.lower()
     mode = payload.mode.lower()
+    entry_type = payload.entry_type.lower()
+    trigger_condition = payload.trigger_condition if entry_type == "pending" else None
     if side not in {"long", "short"}:
         raise HTTPException(status_code=400, detail="Direccion no valida")
     if payload.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
+    validate_entry_order(entry_type, trigger_condition)
     validate_trade_plan(side, payload.entry, payload.stop_loss, payload.take_profit)
     if mode not in VALID_OPERATION_MODES:
         raise HTTPException(status_code=400, detail="Modo de operacion no valido")
@@ -1852,32 +2442,34 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
             if get_contest_entry(db, int(user["id"]), season_id) is None:
                 raise HTTPException(status_code=409, detail="Primero inicia tu participacion en el concurso mensual")
         portfolio = sync_user_cash_balance(db, int(user["id"]))
-        open_count = db.execute(
-            "SELECT COUNT(*) AS count FROM operations WHERE user_id = ? AND mode = ? AND status = 'OPEN'",
+        active_count = db.execute(
+            "SELECT COUNT(*) AS count FROM operations WHERE user_id = ? AND mode = ? AND status IN ('OPEN', 'PENDING_ENTRY')",
             (user["id"], mode),
         ).fetchone()["count"]
-        if open_count >= 2:
-            raise HTTPException(status_code=409, detail="Maximo 2 operaciones abiertas por usuario en este modo")
+        if active_count >= 2:
+            raise HTTPException(status_code=409, detail="Maximo 2 operaciones activas o pendientes por usuario en este modo")
         cash_balance = float(portfolio[mode]["cash_balance"])
         if payload.margin > cash_balance:
             raise HTTPException(status_code=400, detail="Saldo ficticio insuficiente para bloquear ese margen")
         if payload.recommendation_id is not None:
-            recommendation = db.execute(
+            recommendation = row_to_dict(db.execute(
                 """
-                SELECT id FROM recommendations
+                SELECT id, symbol, side, time_horizon, analysis_json
+                FROM recommendations
                 WHERE id = ? AND user_id = ? AND operation_id IS NULL
                 """,
                 (payload.recommendation_id, user["id"]),
-            ).fetchone()
+            ).fetchone())
             if recommendation is None:
                 raise HTTPException(status_code=400, detail="Analisis previo no valido para esta operacion")
+            validate_recommendation_matches_operation(recommendation, payload, entry_type, trigger_condition)
         cursor = db.execute(
             """
             INSERT INTO operations (
                 user_id, symbol, side, time_horizon, entry, margin, leverage, stop_loss, take_profit,
-                status, started_at, mode, contest_season_id
+                status, started_at, mode, contest_season_id, entry_type, requested_entry, trigger_condition, entry_order_type
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', CURRENT_TIMESTAMP, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user["id"],
@@ -1889,8 +2481,14 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 payload.leverage,
                 payload.stop_loss,
                 payload.take_profit,
+                "PENDING_ENTRY" if entry_type == "pending" else "OPEN",
+                None if entry_type == "pending" else datetime.now(timezone.utc).isoformat(),
                 mode,
                 season_id,
+                entry_type,
+                payload.entry,
+                trigger_condition,
+                entry_order_type(side, trigger_condition),
             ),
         )
         operation_id = int(cursor.lastrowid)
@@ -1911,9 +2509,9 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
             balance_after=balance_after,
             operation_id=operation_id,
             contest_season_id=season_id,
-            note="Margen bloqueado al iniciar operacion simulada.",
+            note="Margen bloqueado al crear orden pendiente." if entry_type == "pending" else "Margen bloqueado al iniciar operacion simulada.",
         )
-    return {"id": operation_id, "status": "OPEN"}
+    return {"id": operation_id, "status": "PENDING_ENTRY" if entry_type == "pending" else "OPEN"}
 
 
 @app.get("/api/operations")
@@ -1930,6 +2528,7 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
         for operation in operations:
             ensure_closed_exit_window_ticks(db, operation)
             operation["exit_evidence"] = parse_exit_evidence(operation.get("exit_evidence_json"))
+            operation["activation_evidence"] = parse_exit_evidence(operation.get("activation_evidence_json"))
             operation["recommendation"] = None
             operation["ticks"] = []
 
@@ -2239,6 +2838,45 @@ def close_operation(
     return {"id": operation_id, "status": "CLOSED", "final_pnl": pnl}
 
 
+@app.post("/api/operations/{operation_id}/cancel")
+def cancel_pending_operation(operation_id: int, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        operation = row_to_dict(db.execute(
+            "SELECT * FROM operations WHERE id = ? AND user_id = ?",
+            (operation_id, user["id"]),
+        ).fetchone())
+        if operation is None:
+            raise HTTPException(status_code=404, detail="Operacion no encontrada")
+        if operation.get("status") != "PENDING_ENTRY":
+            raise HTTPException(status_code=400, detail="Solo se pueden cancelar ordenes pendientes")
+        db.execute(
+            """
+            UPDATE operations
+            SET status = 'CANCELLED',
+                closed_at = CURRENT_TIMESTAMP,
+                close_reason = 'pending_cancelled',
+                final_pnl = 0
+            WHERE id = ? AND user_id = ?
+            """,
+            (operation_id, user["id"]),
+        )
+        portfolio = sync_user_cash_balance(db, int(user["id"]))
+        mode = operation.get("mode") or "training"
+        record_wallet_event(
+            db,
+            user_id=int(user["id"]),
+            mode=mode,
+            event_type="pending_entry_cancelled",
+            amount=float(operation.get("margin") or 0),
+            balance_after=float(portfolio[mode]["cash_balance"]),
+            operation_id=operation_id,
+            contest_season_id=operation.get("contest_season_id"),
+            note="Margen liberado al cancelar orden pendiente.",
+        )
+    return {"id": operation_id, "status": "CANCELLED", "final_pnl": 0}
+
+
 def approximate_pnl(operation: dict, close_price: float) -> float:
     entry = float(operation["entry"])
     margin = float(operation["margin"])
@@ -2356,15 +2994,15 @@ def calculate_portfolio_from_db(db, user_id: int) -> dict:
 def calculate_mode_portfolio(db, user_id: int, mode: str, starting_balance: float, season_id: int | None) -> dict:
     params: tuple = (user_id, mode) if season_id is None else (user_id, mode, season_id)
     season_clause = "" if season_id is None else " AND contest_season_id = ?"
-    open_rows = db.execute(
-        f"SELECT margin FROM operations WHERE user_id = ? AND mode = ? AND status = 'OPEN'{season_clause}",
+    active_rows = db.execute(
+        f"SELECT margin FROM operations WHERE user_id = ? AND mode = ? AND status IN ('OPEN', 'PENDING_ENTRY'){season_clause}",
         params,
     ).fetchall()
     closed_pnl = db.execute(
         f"SELECT COALESCE(SUM(final_pnl), 0) AS pnl FROM operations WHERE user_id = ? AND mode = ? AND status = 'CLOSED'{season_clause}",
         params,
     ).fetchone()["pnl"]
-    invested_margin = sum(float(row["margin"]) for row in open_rows)
+    invested_margin = sum(float(row["margin"]) for row in active_rows)
     closed_pnl_value = float(closed_pnl)
     cash_balance = starting_balance + closed_pnl_value - invested_margin
     total_equity = cash_balance + invested_margin
@@ -2375,7 +3013,7 @@ def calculate_mode_portfolio(db, user_id: int, mode: str, starting_balance: floa
         "invested_margin": round(invested_margin, 4),
         "total_equity_without_unrealized": round(total_equity, 4),
         "closed_pnl": round(closed_pnl_value, 4),
-        "open_operations": len(open_rows),
+        "open_operations": len(active_rows),
         "max_open_operations": 2,
     }
 
@@ -2659,7 +3297,7 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             u.avatar_updated_at,
             ce.starting_balance,
             ce.cash_balance,
-            COALESCE(SUM(CASE WHEN o.status = 'OPEN' THEN o.margin ELSE 0 END), 0) AS invested_margin,
+            COALESCE(SUM(CASE WHEN o.status IN ('OPEN', 'PENDING_ENTRY') THEN o.margin ELSE 0 END), 0) AS invested_margin,
             COALESCE(SUM(CASE WHEN o.status = 'CLOSED' THEN o.final_pnl ELSE 0 END), 0) AS closed_pnl,
             COALESCE(SUM(CASE WHEN o.status = 'CLOSED' AND COALESCE(o.final_pnl, 0) > 0 THEN 1 ELSE 0 END), 0) AS closed_wins,
             COALESCE(SUM(CASE WHEN o.status = 'CLOSED' AND COALESCE(o.final_pnl, 0) < 0 THEN 1 ELSE 0 END), 0) AS closed_losses,
@@ -2714,7 +3352,7 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
         WHERE mode = 'contest'
           AND contest_season_id = ?
         ORDER BY
-            CASE WHEN status = 'OPEN' THEN 0 ELSE 1 END,
+            CASE WHEN status = 'OPEN' THEN 0 WHEN status = 'PENDING_ENTRY' THEN 1 ELSE 2 END,
             id DESC
         """,
         (season_id,),

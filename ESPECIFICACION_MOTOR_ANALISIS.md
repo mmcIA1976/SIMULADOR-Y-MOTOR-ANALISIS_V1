@@ -18,7 +18,6 @@ La pantalla principal debe mostrar solo lo esencial:
   - operar en simulacion
   - observar
   - descartar
-  - reducir apalancamiento
   - ajustar stop
 - Tres a cinco razones principales.
 - Alertas criticas si existen eventos o condiciones anormales.
@@ -41,7 +40,7 @@ Riesgo: medio-alto
 Confianza: media
 
 Lectura:
-La tendencia corta acompana, pero el funding esta elevado y el precio esta cerca de una zona de liquidaciones. El sistema recomienda simular con menor apalancamiento o esperar confirmacion.
+La tendencia corta acompana, pero el funding esta elevado y el precio esta cerca de una zona de liquidaciones. El sistema recomienda simular con tamano prudente o esperar confirmacion.
 ```
 
 ## Flujo obligatorio pre-operacion
@@ -108,11 +107,16 @@ Parametros que puede revisar:
 
 ### Apalancamiento
 
-- limitar segun volatilidad
-- reducir si la distancia al stop es amplia
-- reducir si hay evento macro cercano
-- reducir si el usuario tiene mal historico con ese nivel
-- marcar x10 como agresivo por defecto salvo condiciones favorables
+El apalancamiento no debe modificar la probabilidad direccional ni la recomendacion tecnica del setup.
+
+Regla actual del motor:
+
+- el leverage escala PnL, exposicion y sensibilidad monetaria;
+- no cambia si el precio tiene mas o menos probabilidad de llegar a TP o SL;
+- no debe aparecer como razon para observar, aceptar o descartar una operacion;
+- puede mostrarse como dato de gestion monetaria, pero no como senal de mercado.
+
+Esta regla evita mezclar calidad de analisis con tamano de apuesta.
 
 ### Margen
 
@@ -148,9 +152,9 @@ Ejemplo de salida:
       "reason": "Objetivo compatible con rango superior si hay continuidad."
     },
     "leverage": {
-      "action": "reducir",
-      "suggested_value": 5,
-      "reason": "x10 aumenta demasiado la sensibilidad al barrido de stop."
+      "action": "mantener",
+      "suggested_value": 10,
+      "reason": "El apalancamiento afecta exposicion/PnL, pero no modifica la lectura de mercado."
     }
   },
   "reasons": [
@@ -272,6 +276,78 @@ Ejemplos de condicion adicional:
 
 Estas condiciones deben quedar registradas para evaluar si el sistema recomendo esperar correctamente.
 
+## Ordenes pendientes implementadas
+
+El motor distingue entre entrada a mercado y orden pendiente.
+
+Tipos actuales:
+
+- `market`: la operacion empieza al precio de entrada usado por el usuario.
+- `pending` con `price_lte`: se activa si el precio toca o cae por debajo de la entrada.
+- `pending` con `price_gte`: se activa si el precio toca o supera la entrada.
+
+Tipo operativo derivado:
+
+- long + `price_lte`: `limit_pullback`
+- long + `price_gte`: `stop_breakout`
+- short + `price_gte`: `limit_pullback`
+- short + `price_lte`: `stop_breakdown`
+
+La orden pendiente queda registrada como `PENDING_ENTRY` hasta que el mercado toca el nivel. Al activarse:
+
+- pasa a `OPEN`;
+- guarda `triggered_at`;
+- guarda `trigger_price`;
+- guarda evidencia de activacion en `activation_evidence_json`;
+- empieza a evaluarse contra TP/SL desde la activacion.
+
+## Analisis de zona para ordenes pendientes
+
+Una orden pendiente no se debe analizar igual que una entrada a mercado.
+
+El motor calcula `zone_analysis` para separar tres preguntas:
+
+1. Si el precio tiene probabilidad razonable de activar la orden.
+2. Si la zona de activacion tiene confluencia tecnica suficiente.
+3. Si, una vez activada, la reaccion esperada favorece el plan o aumenta riesgo de barrida/falsa ruptura.
+
+Campos internos principales:
+
+- `entry_order_type`
+- `entry_zone_type`
+- `distance_to_activation_pct`
+- `atr_units_to_activation`
+- `range_units_to_activation`
+- `zone_confluence_score`
+- `activation_probability`
+- `reaction_bias`
+- `rejection_probability`
+- `breakout_probability`
+- `liquidity_sweep_risk`
+- `pullback_quality`
+- `breakout_quality`
+- `invalidation_quality`
+- `target_path_quality`
+- `zone_summary`
+- `zone_reasons`
+- `zone_alerts`
+
+El motor v0.9 crea tambien `zone_probability_context`.
+
+Reglas de prudencia:
+
+- una zona favorable puede sumar como maximo `+0.025` a la probabilidad direccional;
+- una zona desfavorable puede restar como maximo `-0.035`;
+- una orden con baja probabilidad de activacion aumenta `range/no ejecucion` en vez de castigarse como mala direccion;
+- el riesgo de barrida, mala invalidacion o barreras antes del TP pueden aumentar `risk_score`;
+- no se deben ampliar estos caps sin al menos 30 casos comparables.
+
+Interpretacion correcta:
+
+- Si una orden no se activa, no significa que la direccion fuera mala.
+- Si una orden se activa en una zona advertida y falla, refuerza el riesgo de zona.
+- Si una orden gana pese a advertencias de zona, no refuerza automaticamente esas advertencias; se investiga como oportunidad infravalorada.
+
 ## Lo que se guarda por debajo
 
 Cada analisis debe quedar registrado aunque el usuario solo vea una conclusion simple.
@@ -297,6 +373,9 @@ Datos por recomendacion:
 - decision sugerida
 - recomendaciones de parametros
 - plan de ordenes simuladas
+- contexto de orden pendiente: tipo de entrada, condicion de activacion, tipo de orden y precio solicitado
+- `zone_analysis` si aplica
+- `zone_probability_context` si aplica
 - plan DCA de entrada si existe
 - plan DCA de salida si existe
 - razones principales
@@ -317,6 +396,38 @@ Cuando la operacion termina, se registra:
 - diferencia entre entrada propuesta y entrada media real
 - efecto de salidas parciales sobre PnL
 - notas del usuario
+- aprendizaje estructurado de zona pendiente si aplica
+
+## Aprendizaje por zonas pendientes
+
+El aprendizaje guarda cada operacion cerrada en `learning_evaluations.structured_json`.
+
+Para ordenes pendientes debe incluir:
+
+- `pending_entry_context`: tipo de entrada, condicion, tipo de orden, precio solicitado, activacion y precio/hora de disparo;
+- `analysis_context.zone`: confluencia, probabilidad de activacion, reaccion esperada, riesgo de barrida, invalidacion, camino al TP y ajustes v0.9;
+- `zone_learning`: categoria interna para saber si la zona debe reforzarse, investigarse o tratarse como advertencia confirmada.
+
+Categorias internas relevantes:
+
+- `reinforce_favorable_pending_zone`
+- `investigate_failed_favorable_pending_zone`
+- `reinforce_warned_pending_zone_risk`
+- `investigate_success_against_pending_zone_warning`
+- `pending_zone_not_activated`
+- `pending_zone_context_only`
+
+Las auditorias agregadas usan `/api/learning/pending-zone-audit` para agrupar por:
+
+- tipo de orden;
+- tipo de zona;
+- sesgo de reaccion;
+- riesgo de barrida;
+- bucket de ajuste de zona;
+- categoria de aprendizaje;
+- lado y temporalidad.
+
+Ninguna conclusion debe considerarse robusta con muestras pequenas.
 
 ## Multiusuario
 
@@ -339,8 +450,8 @@ El sistema debe aprender en dos niveles:
    - como opera cada usuario
    - donde suele acertar
    - donde suele fallar
-   - que apalancamientos le perjudican
    - que activos domina peor o mejor
+   - que tipos de entrada y zonas suele gestionar mejor o peor
 
 2. Aprendizaje agregado:
    - patrones comunes entre todos los usuarios
@@ -360,7 +471,7 @@ Probabilidad base del setup segun todos los usuarios
 Ejemplo:
 
 ```text
-El setup tiene buen comportamiento general, pero este usuario ha tenido malos resultados usando x10 en condiciones de alta volatilidad. Se reduce la confianza y se recomienda bajar apalancamiento.
+El setup tiene buen comportamiento general, pero este usuario suele cerrar peor las ordenes pendientes activadas en zonas de barrida alta. Se mantiene la lectura de mercado, pero se reduce confianza operativa hasta tener mas casos comparables.
 ```
 
 ## Privacidad y separacion de datos
@@ -565,7 +676,7 @@ El sistema recomienda bloquear simulaciones x10 durante 30 minutos despues de 2 
 
 El motor debe poder sugerir entrenamiento conductual:
 
-- reducir apalancamiento tras una racha negativa
+- reducir exposicion o margen tras una racha negativa, como gestion conductual y no como cambio de probabilidad de mercado
 - esperar una vela o una confirmacion adicional
 - limitar numero de operaciones por sesion
 - pausar tras dos perdidas consecutivas
@@ -576,7 +687,7 @@ El motor debe poder sugerir entrenamiento conductual:
 Ejemplo:
 
 ```text
-La operacion tecnicamente es aceptable, pero coincide con un patron personal de riesgo: entrada long con x10 despues de perdida reciente. Recomendacion: simular con x3 o esperar nueva confirmacion.
+La operacion tecnicamente es aceptable, pero coincide con un patron personal de riesgo: entrada impulsiva despues de perdida reciente. Recomendacion: reducir exposicion, pausar o esperar nueva confirmacion.
 ```
 
 ## Motor de probabilidad inicial
@@ -763,7 +874,7 @@ El sistema debe tener memoria operativa:
 Ejemplo:
 
 ```text
-Antes el sistema aceptaba longs x10 con funding alto si la tendencia era positiva. Tras 87 operaciones, esa combinacion muestra peor resultado del esperado. Nueva recomendacion: reducir apalancamiento o esperar confirmacion de delta comprador.
+Antes el sistema aceptaba longs con funding alto si la tendencia era positiva. Tras 87 operaciones, esa combinacion muestra peor resultado del esperado. Nueva recomendacion: exigir mejor confirmacion de delta comprador o tratar el funding extremo como advertencia de entrada tardia.
 ```
 
 ## Calibracion
@@ -774,7 +885,7 @@ Ejemplo:
 
 - Si todas las operaciones con probabilidad TP 60-65% solo ganan 45%, el motor esta siendo optimista.
 - Si operaciones con funding extremo fallan mas de lo esperado, el peso del funding aumenta.
-- Si el usuario pierde mas con x10, el motor penaliza apalancamiento alto para ese perfil.
+- Si el usuario pierde mas al aumentar exposicion tras rachas negativas, el motor lo trata como senal conductual, no como menor probabilidad direccional del mercado.
 - Si el usuario falla mas cuando declara frustracion o exceso de confianza, el motor reduce confianza o recomienda pausa.
 
 ## Interfaz recomendada

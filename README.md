@@ -10,8 +10,10 @@ Simulador educativo multiusuario para analizar, registrar y auditar operaciones 
 - Maximo de 2 operaciones abiertas por usuario y modo.
 - Carteras separadas para entrenamiento y concurso mensual.
 - Motor de analisis por temporalidad: intradia corto, intradia amplio y swing corto.
+- Ordenes pendientes simuladas con activacion por nivel: pullback limite, ruptura y breakdown.
+- Motor v0.9 con analisis de zonas pendientes, aprendizaje estructurado y auditoria agregada.
 - Registro de recomendaciones, ticks de precio, cierres, observacion y conclusiones de aprendizaje.
-- SQLite para desarrollo local.
+- La app online usa Supabase PostgreSQL. El entorno local se usa solo para desarrollo y puede conectar con Supabase si esta configurado.
 
 ## Desarrollo local
 
@@ -22,6 +24,8 @@ python -m venv .venv
 ```
 
 Abre `http://127.0.0.1:8766`.
+
+Nota: en este proyecto, el arranque local usado para desarrollo puede conectar con Supabase durante el startup. Si trabajas desde Codex/local, usa el procedimiento local acordado y no subas archivos auxiliares locales.
 
 ## Variables de entorno
 
@@ -70,7 +74,8 @@ Validacion de conteos:
 ## Validacion rapida
 
 ```powershell
-.\.venv\Scripts\python.exe -m py_compile app.py db.py analysis_engine.py learning_engine.py data_engine.py market_data.py security.py
+.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis
+.\.venv\Scripts\python.exe -m py_compile app.py analysis_engine.py learning_engine.py data_engine.py market_data.py security.py tests\test_pending_zone_analysis.py
 node --check .\app.js
 ```
 

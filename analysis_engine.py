@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.8-leverage-neutral-analysis"
+ENGINE_VERSION = "rules-v0.9-pending-zone-adjusted"
 ENGINE_AUDIT_REFERENCE = {
-    "date": "2026-06-09",
+    "date": "2026-06-15",
     "sample_size": 68,
     "baseline": {
         "technical_score": "85.7%",
@@ -18,7 +18,7 @@ ENGINE_AUDIT_REFERENCE = {
         "cvd_spot": "52.1%",
         "order_book_imbalance": "57.9%",
     },
-    "intent": "v0.8 mantiene Fibonacci como confluencia auditable y separa apalancamiento de la decision analitica: el leverage afecta PnL/exposicion, no probabilidad ni recomendacion.",
+    "intent": "v0.9 mantiene leverage neutral e incorpora ajuste prudente para ordenes pendientes segun calidad de zona, riesgo de barrida y probabilidad de activacion.",
 }
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
@@ -88,6 +88,9 @@ class TradeProposal:
     leverage: float
     stop_loss: float
     take_profit: float
+    entry_type: str = "market"
+    trigger_condition: str | None = None
+    entry_order_type: str | None = None
 
 
 def pct_from_entry(target: float, entry: float) -> float:
@@ -211,6 +214,22 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     )
     market_regime = classify_market_regime(market_snapshot["timeframes"], recent_range_pct, atr_pct, proposal.side)
     regime_bias = market_regime_direction_bias(proposal.side, market_regime, proposal.time_horizon)
+    zone_analysis = build_zone_analysis(
+        proposal=proposal,
+        current_price=current_price,
+        levels_for_horizon=levels_for_horizon,
+        fibonacci_context=fibonacci_context,
+        market_regime=market_regime,
+        technical_rating=technical_rating,
+        atr_pct=atr_pct,
+        recent_range_pct=recent_range_pct,
+        order_book_imbalance=order_book_imbalance,
+        taker_buy_sell_ratio=taker_buy_sell_ratio,
+        cvd_ratio=trade_flow.get("cvd_ratio"),
+        open_interest_change_pct=open_interest_change_pct,
+        volume_ratio=volume_ratio,
+    )
+    zone_probability_context = build_zone_probability_context(zone_analysis)
 
     tp_probability = (
         0.5
@@ -222,6 +241,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + momentum_bias
         + regime_bias
         + fibonacci_context["probability_adjustment"]
+        + zone_probability_context["probability_adjustment"]
         + taker_flow_bias
         + cvd_bias
         + oi_trend_bias
@@ -241,7 +261,11 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         - contradiction_penalty
     )
     tp_probability = min(0.74, max(0.26, tp_probability))
-    range_probability = range_probability_for_context(recent_range_pct, contradiction_penalty, market_regime)
+    range_probability = min(
+        0.2,
+        range_probability_for_context(recent_range_pct, contradiction_penalty, market_regime)
+        + zone_probability_context["range_probability_adjustment"],
+    )
     sl_probability = max(0.05, 1 - tp_probability - range_probability)
     probability_ranges = build_probability_ranges(tp_probability, sl_probability, range_probability, contradiction_penalty)
     margin_risk_pct = risk_distance * proposal.leverage
@@ -290,6 +314,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + (0.05 if technical_rating["entry_timing_penalty"] else 0)
         + (0.05 if technical_rating["barrier_penalty"] else 0)
         + fibonacci_context["risk_score_addition"]
+        + zone_probability_context["risk_score_addition"]
         + (0.08 if contradiction_penalty >= 0.03 else 0)
     )
     if risk_score >= 0.42:
@@ -350,6 +375,12 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         reasons.append(f"Fibonacci aporta confluencia: {fibonacci_context['summary']}")
     elif fibonacci_context["bias"] in {"desfavorable", "alerta"}:
         alerts.append(f"Fibonacci advierte riesgo de diseno: {fibonacci_context['summary']}")
+    if zone_probability_context["probability_adjustment"] > 0:
+        reasons.append(f"La orden pendiente mejora por zona: {zone_analysis.get('zone_summary')}")
+    elif zone_probability_context["probability_adjustment"] < 0:
+        alerts.append(f"La orden pendiente pierde calidad por zona: {zone_analysis.get('zone_summary')}")
+    if zone_probability_context["range_probability_adjustment"] > 0:
+        alerts.append("La orden pendiente puede quedar sin activarse; aumenta el escenario de rango/no ejecucion.")
     if sentiment_penalty:
         alerts.append("El sentimiento de mercado esta extremo y aumenta el riesgo de entrada tardia.")
     if oi_trend_bias > 0:
@@ -437,7 +468,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         tf_volatility=tf_volatility,
     )
     explained_metrics = build_score_metrics(layered_scores, expected_value, market_regime, probability_ranges) + [
-        build_fibonacci_metric(fibonacci_context)
+        build_fibonacci_metric(fibonacci_context),
+        build_zone_analysis_metric(zone_analysis),
     ] + explained_metrics
 
     return {
@@ -458,6 +490,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "market_regime": market_regime,
         "technical_rating": technical_rating,
         "fibonacci_context": fibonacci_context,
+        "zone_analysis": zone_analysis,
+        "zone_probability_context": zone_probability_context,
         "invalidation_rules": invalidation_rules,
         "plain_summary": plain_summary,
         "explained_metrics": explained_metrics,
@@ -490,6 +524,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             "market_regime": market_regime,
             "technical_rating": technical_rating,
             "fibonacci_context": fibonacci_context,
+            "zone_analysis": zone_analysis,
+            "zone_probability_context": zone_probability_context,
             "invalidation_rules": invalidation_rules,
             "engine_version": ENGINE_VERSION,
             "audit_reference": ENGINE_AUDIT_REFERENCE,
@@ -511,6 +547,11 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "market_regime_bias": regime_bias,
                 "fibonacci_probability_adjustment": fibonacci_context["probability_adjustment"],
                 "fibonacci_confluence_score": fibonacci_context["score"],
+                "zone_probability_adjustment": zone_probability_context["probability_adjustment"],
+                "zone_range_probability_adjustment": zone_probability_context["range_probability_adjustment"],
+                "zone_risk_score_addition": zone_probability_context["risk_score_addition"],
+                "zone_confluence_score": zone_analysis.get("zone_confluence_score"),
+                "zone_activation_probability": zone_analysis.get("activation_probability"),
                 "taker_flow_bias": taker_flow_bias,
                 "cvd_bias": cvd_bias,
                 "oi_trend_bias": oi_trend_bias,
@@ -690,6 +731,331 @@ def fibonacci_level_confluence(proposal: TradeProposal, levels_for_horizon: dict
     return abs((proposal.entry - float(resistance)) / max(abs(float(resistance)), 0.000001)) * 100 <= tolerance_pct
 
 
+def build_zone_analysis(
+    proposal: TradeProposal,
+    current_price: float,
+    levels_for_horizon: dict,
+    fibonacci_context: dict,
+    market_regime: dict,
+    technical_rating: dict,
+    atr_pct: float,
+    recent_range_pct: float,
+    order_book_imbalance: float,
+    taker_buy_sell_ratio: float | None,
+    cvd_ratio: float | None,
+    open_interest_change_pct: float | None,
+    volume_ratio: float,
+) -> dict:
+    entry_type = (proposal.entry_type or "market").lower()
+    trigger_condition = proposal.trigger_condition
+    order_type = proposal.entry_order_type or classify_entry_order_type(proposal.side, trigger_condition)
+    if entry_type != "pending":
+        return {
+            "available": False,
+            "entry_type": entry_type,
+            "entry_order_type": order_type,
+            "entry_zone_type": "market_entry",
+            "zone_confluence_score": 50,
+            "activation_probability": None,
+            "reaction_bias": "no_aplica",
+            "rejection_probability": None,
+            "breakout_probability": None,
+            "liquidity_sweep_risk": "no_aplica",
+            "pullback_quality": None,
+            "breakout_quality": None,
+            "invalidation_quality": None,
+            "target_path_quality": None,
+            "zone_summary": "Entrada a mercado: no requiere analisis de activacion pendiente.",
+            "zone_reasons": [],
+            "zone_alerts": [],
+        }
+
+    direction_to_trigger = "up" if trigger_condition == "price_gte" else "down"
+    distance_to_activation_pct = pct_between(current_price, proposal.entry)
+    atr_units_to_activation = distance_to_activation_pct / max(atr_pct, 0.000001)
+    range_units_to_activation = distance_to_activation_pct / max(recent_range_pct, 0.000001)
+    tolerance_pct = max(0.18, min(0.75, atr_pct * 0.8))
+    support = levels_for_horizon.get("nearest_support")
+    resistance = levels_for_horizon.get("nearest_resistance")
+    support_distance = pct_between(proposal.entry, float(support)) if support is not None else None
+    resistance_distance = pct_between(proposal.entry, float(resistance)) if resistance is not None else None
+    desired_level = "support" if order_type == "limit_pullback" and proposal.side == "long" else "resistance" if order_type == "limit_pullback" else "resistance" if order_type == "stop_breakout" else "support" if order_type == "stop_breakdown" else None
+    desired_level_distance = support_distance if desired_level == "support" else resistance_distance if desired_level == "resistance" else None
+
+    confluence_score = 50
+    reasons: list[str] = []
+    alerts: list[str] = []
+
+    fib_bias = fibonacci_context.get("bias", "neutral")
+    if fib_bias == "favorable":
+        confluence_score += 14
+        reasons.append("Fibonacci acompana la zona de entrada.")
+    elif fib_bias in {"desfavorable", "alerta"}:
+        confluence_score -= 10
+        alerts.append("Fibonacci advierte que la zona no es limpia.")
+
+    if desired_level_distance is not None:
+        if desired_level_distance <= tolerance_pct:
+            confluence_score += 13
+            reasons.append(f"La entrada coincide con {desired_level} relevante del horizonte.")
+        elif desired_level_distance <= max(tolerance_pct * 1.8, 0.55):
+            confluence_score += 6
+            reasons.append(f"La entrada queda cerca de {desired_level} relevante.")
+        else:
+            confluence_score -= 5
+            alerts.append(f"La entrada no queda apoyada por {desired_level} cercano.")
+    else:
+        alerts.append("No hay soporte/resistencia cercano suficiente para validar la zona.")
+
+    technical_score = technical_rating.get("score", 50)
+    if technical_score >= 62:
+        confluence_score += 8
+        reasons.append("El rating tecnico general acompana el plan.")
+    elif technical_score <= 42:
+        confluence_score -= 8
+        alerts.append("El rating tecnico general contradice el plan.")
+
+    regime_name = market_regime.get("name")
+    if (proposal.side == "long" and regime_name == "tendencia_alcista") or (proposal.side == "short" and regime_name == "tendencia_bajista"):
+        confluence_score += 8
+        reasons.append("El regimen dominante acompana la direccion despues de la activacion.")
+    elif regime_name == "rebote_contra_tendencia":
+        confluence_score -= 7
+        alerts.append("La orden depende de un rebote contra estructura superior.")
+
+    activation_probability = 0.5
+    if distance_to_activation_pct <= atr_pct * 0.75:
+        activation_probability += 0.18
+    elif distance_to_activation_pct <= atr_pct * 1.5:
+        activation_probability += 0.1
+    elif distance_to_activation_pct > max(recent_range_pct, atr_pct * 2.5):
+        activation_probability -= 0.16
+    if direction_to_trigger == "up":
+        activation_probability += 0.06 if regime_name == "tendencia_alcista" else -0.06 if regime_name == "tendencia_bajista" else 0
+    else:
+        activation_probability += 0.06 if regime_name == "tendencia_bajista" else -0.06 if regime_name == "tendencia_alcista" else 0
+    if volume_ratio >= 1.25:
+        activation_probability += 0.04
+    activation_probability = clamp_float(activation_probability, 0.05, 0.9)
+
+    risk_distance_pct = pct_from_entry(proposal.stop_loss, proposal.entry)
+    reward_distance_pct = pct_from_entry(proposal.take_profit, proposal.entry)
+    stop_noise_threshold = max(atr_pct, recent_range_pct * 0.35)
+    sweep_score = 45
+    if risk_distance_pct < stop_noise_threshold:
+        sweep_score += 28
+        alerts.append("El SL queda dentro del ruido normal de la zona; aumenta riesgo de barrida.")
+    elif risk_distance_pct < stop_noise_threshold * 1.6:
+        sweep_score += 12
+    else:
+        sweep_score -= 8
+        reasons.append("El SL deja algo de margen frente al ruido normal.")
+
+    if order_type == "limit_pullback":
+        if proposal.side == "long" and order_book_imbalance < -0.12:
+            sweep_score += 8
+        if proposal.side == "short" and order_book_imbalance > 0.12:
+            sweep_score += 8
+    sweep_score = round(clamp_float(sweep_score, 5, 95))
+    liquidity_sweep_risk = "alto" if sweep_score >= 68 else "medio" if sweep_score >= 42 else "bajo"
+
+    if order_type == "limit_pullback":
+        rejection_probability = clamp_float(0.34 + (confluence_score - 50) / 130 - (sweep_score - 45) / 220, 0.1, 0.82)
+        breakout_probability = clamp_float(0.28 + (sweep_score - 45) / 180 - (confluence_score - 50) / 170, 0.08, 0.78)
+        reaction_bias = "rebote_probable" if rejection_probability >= 0.54 else "zona_de_barrida" if liquidity_sweep_risk == "alto" else "reaccion_incierta"
+        pullback_quality = round(clamp_float(confluence_score - max(0, sweep_score - 50) * 0.35, 0, 100))
+        breakout_quality = None
+    else:
+        breakout_probability = clamp_float(0.35 + (technical_score - 50) / 140 + (volume_ratio - 1) * 0.08 - (sweep_score - 45) / 260, 0.1, 0.84)
+        rejection_probability = clamp_float(0.3 + (sweep_score - 45) / 180 - (technical_score - 50) / 180, 0.08, 0.78)
+        reaction_bias = "ruptura_probable" if breakout_probability >= 0.54 else "falsa_ruptura_riesgo" if liquidity_sweep_risk == "alto" else "ruptura_incierta"
+        breakout_quality = round(clamp_float(confluence_score + (volume_ratio - 1) * 12 - max(0, sweep_score - 50) * 0.25, 0, 100))
+        pullback_quality = None
+
+    invalidation_quality = round(clamp_float(58 + risk_distance_pct * 5 - sweep_score * 0.32 + (8 if fib_bias == "favorable" else -6 if fib_bias in {"desfavorable", "alerta"} else 0), 0, 100))
+    target_path_quality = build_target_path_quality(proposal, levels_for_horizon, reward_distance_pct, atr_pct)
+    confluence_score = round(clamp_float(confluence_score, 0, 100))
+
+    if target_path_quality <= 40:
+        alerts.append("El camino al TP tiene una barrera tecnica relevante antes del objetivo.")
+    elif target_path_quality >= 66:
+        reasons.append("El camino al TP no muestra una barrera inmediata dominante.")
+
+    if taker_buy_sell_ratio is not None:
+        if (proposal.side == "long" and taker_buy_sell_ratio >= 1.15) or (proposal.side == "short" and taker_buy_sell_ratio <= 0.85):
+            reasons.append("El flujo taker de futuros acompana la reaccion esperada.")
+        elif (proposal.side == "long" and taker_buy_sell_ratio <= 0.85) or (proposal.side == "short" and taker_buy_sell_ratio >= 1.15):
+            alerts.append("El flujo taker de futuros contradice la reaccion esperada.")
+    if cvd_ratio is not None and abs(cvd_ratio) >= 0.12:
+        if (proposal.side == "long" and cvd_ratio > 0) or (proposal.side == "short" and cvd_ratio < 0):
+            reasons.append("El CVD spot acompana la direccion posterior a la activacion.")
+        else:
+            alerts.append("El CVD spot contradice la direccion posterior a la activacion.")
+    if open_interest_change_pct is not None and abs(open_interest_change_pct) >= 1.2:
+        reasons.append("El open interest muestra actividad suficiente para vigilar reaccion real de la zona.")
+
+    entry_zone_type = {
+        "limit_pullback": "support_pullback_zone" if proposal.side == "long" else "resistance_pullback_zone",
+        "stop_breakout": "resistance_breakout_zone",
+        "stop_breakdown": "support_breakdown_zone",
+    }.get(order_type, "pending_zone")
+    zone_summary = (
+        f"{entry_zone_type}: activacion a {distance_to_activation_pct:.2f}% "
+        f"({atr_units_to_activation:.2f} ATR), confluencia {confluence_score}/100, "
+        f"riesgo de barrida {liquidity_sweep_risk}."
+    )
+    return {
+        "available": True,
+        "entry_type": entry_type,
+        "trigger_condition": trigger_condition,
+        "entry_order_type": order_type,
+        "entry_zone_type": entry_zone_type,
+        "distance_to_activation_pct": round(distance_to_activation_pct, 4),
+        "atr_units_to_activation": round(atr_units_to_activation, 4),
+        "range_units_to_activation": round(range_units_to_activation, 4),
+        "zone_confluence_score": confluence_score,
+        "activation_probability": round(activation_probability, 4),
+        "reaction_bias": reaction_bias,
+        "rejection_probability": round(rejection_probability, 4),
+        "breakout_probability": round(breakout_probability, 4),
+        "liquidity_sweep_risk": liquidity_sweep_risk,
+        "liquidity_sweep_score": sweep_score,
+        "pullback_quality": pullback_quality,
+        "breakout_quality": breakout_quality,
+        "invalidation_quality": invalidation_quality,
+        "target_path_quality": target_path_quality,
+        "nearest_support": support,
+        "nearest_resistance": resistance,
+        "desired_level": desired_level,
+        "desired_level_distance_pct": round(desired_level_distance, 4) if desired_level_distance is not None else None,
+        "zone_summary": zone_summary,
+        "zone_reasons": reasons[:6],
+        "zone_alerts": alerts[:6],
+    }
+
+
+def build_zone_probability_context(zone_analysis: dict) -> dict:
+    if not zone_analysis.get("available"):
+        return {
+            "probability_adjustment": 0,
+            "range_probability_adjustment": 0,
+            "risk_score_addition": 0,
+            "summary": "sin ajuste: entrada a mercado o zona no disponible",
+            "reasons": [],
+        }
+
+    confluence = float(zone_analysis.get("zone_confluence_score") or 50)
+    activation_probability = zone_analysis.get("activation_probability")
+    activation = float(activation_probability) if activation_probability is not None else 0.5
+    target_path = float(zone_analysis.get("target_path_quality") or 50)
+    invalidation = float(zone_analysis.get("invalidation_quality") or 50)
+    sweep_risk = zone_analysis.get("liquidity_sweep_risk")
+    reaction_bias = zone_analysis.get("reaction_bias")
+    order_type = zone_analysis.get("entry_order_type")
+
+    adjustment = 0.0
+    risk_addition = 0.0
+    range_adjustment = 0.0
+    reasons: list[str] = []
+
+    if order_type == "limit_pullback":
+        if reaction_bias == "rebote_probable" and confluence >= 65 and sweep_risk != "alto":
+            adjustment += 0.018
+            reasons.append("pullback en zona con reaccion probable")
+        elif reaction_bias == "zona_de_barrida" or sweep_risk == "alto":
+            adjustment -= 0.025
+            risk_addition += 0.035
+            reasons.append("pullback con riesgo de barrida")
+    elif order_type in {"stop_breakout", "stop_breakdown"}:
+        if reaction_bias == "ruptura_probable" and confluence >= 60 and target_path >= 55:
+            adjustment += 0.014
+            reasons.append("ruptura con zona y camino aceptables")
+        elif reaction_bias == "falsa_ruptura_riesgo" or sweep_risk == "alto":
+            adjustment -= 0.025
+            risk_addition += 0.035
+            reasons.append("ruptura con riesgo de falsa activacion")
+
+    if confluence >= 78 and target_path >= 62 and invalidation >= 52 and sweep_risk != "alto":
+        adjustment += 0.007
+        reasons.append("confluencia, invalidacion y TP alineados")
+    if confluence <= 42:
+        adjustment -= 0.012
+        risk_addition += 0.012
+        reasons.append("confluencia de zona debil")
+    if target_path <= 40:
+        adjustment -= 0.012
+        risk_addition += 0.01
+        reasons.append("barrera tecnica antes del TP")
+    if invalidation <= 38:
+        adjustment -= 0.012
+        risk_addition += 0.012
+        reasons.append("invalidacion poco robusta")
+
+    if activation < 0.28:
+        range_adjustment += 0.04
+        reasons.append("activacion poco probable")
+    elif activation < 0.42:
+        range_adjustment += 0.02
+        reasons.append("activacion incierta")
+    elif activation > 0.72 and sweep_risk == "alto":
+        risk_addition += 0.01
+        reasons.append("activacion probable pero con riesgo de barrida")
+
+    adjustment = round(clamp_float(adjustment, -0.035, 0.025), 4)
+    range_adjustment = round(clamp_float(range_adjustment, 0, 0.04), 4)
+    risk_addition = round(clamp_float(risk_addition, 0, 0.06), 4)
+    return {
+        "probability_adjustment": adjustment,
+        "range_probability_adjustment": range_adjustment,
+        "risk_score_addition": risk_addition,
+        "summary": "; ".join(reasons) if reasons else "zona pendiente sin ajuste decisivo",
+        "reasons": reasons,
+    }
+
+
+def classify_entry_order_type(side: str, trigger_condition: str | None) -> str | None:
+    if trigger_condition == "price_lte":
+        return "limit_pullback" if side == "long" else "stop_breakdown"
+    if trigger_condition == "price_gte":
+        return "stop_breakout" if side == "long" else "limit_pullback"
+    return None
+
+
+def build_target_path_quality(proposal: TradeProposal, levels_for_horizon: dict, reward_distance_pct: float, atr_pct: float) -> int:
+    if reward_distance_pct <= 0:
+        return 0
+    tolerance = max(0.12, atr_pct * 0.45)
+    if proposal.side == "long":
+        barrier = levels_for_horizon.get("nearest_resistance")
+        if barrier is None:
+            return 60
+        barrier = float(barrier)
+        if proposal.entry < barrier < proposal.take_profit:
+            barrier_distance = pct_from_entry(barrier, proposal.entry)
+            return round(clamp_float(35 + score_to_percent(barrier_distance, 0, reward_distance_pct) * 0.25, 15, 55))
+        if pct_between(proposal.take_profit, barrier) <= tolerance:
+            return 70
+        return 62
+    barrier = levels_for_horizon.get("nearest_support")
+    if barrier is None:
+        return 60
+    barrier = float(barrier)
+    if proposal.take_profit < barrier < proposal.entry:
+        barrier_distance = pct_from_entry(barrier, proposal.entry)
+        return round(clamp_float(35 + score_to_percent(barrier_distance, 0, reward_distance_pct) * 0.25, 15, 55))
+    if pct_between(proposal.take_profit, barrier) <= tolerance:
+        return 70
+    return 62
+
+
+def pct_between(price_a: float, price_b: float) -> float:
+    return abs((float(price_a) - float(price_b)) / max(abs(float(price_b)), 0.000001)) * 100
+
+
+def clamp_float(value: float, low: float, high: float) -> float:
+    return min(high, max(low, value))
+
+
 def build_fibonacci_metric(fibonacci_context: dict) -> dict:
     bias = fibonacci_context.get("bias", "neutral")
     return {
@@ -700,6 +1066,33 @@ def build_fibonacci_metric(fibonacci_context: dict) -> dict:
         "bias": "favorable" if bias == "favorable" else "desfavorable" if bias in {"desfavorable", "alerta"} else "contexto",
         "source": "Binance Spot klines · swings automaticos",
         "explanation": fibonacci_context.get("summary") or "Evalua retrocesos/extensiones como zonas de entrada, objetivo e invalidacion; no funciona como senal aislada.",
+    }
+
+
+def build_zone_analysis_metric(zone_analysis: dict) -> dict:
+    if not zone_analysis.get("available"):
+        return {
+            "key": "pending_zone_analysis",
+            "label": "Zona orden pendiente",
+            "value": "no aplica",
+            "score": 50,
+            "bias": "contexto",
+            "source": "Analisis interno de ejecucion",
+            "explanation": zone_analysis.get("zone_summary", "La entrada a mercado no requiere activacion por zona."),
+        }
+    score = zone_analysis.get("zone_confluence_score", 50)
+    activation = zone_analysis.get("activation_probability")
+    value = f"{score}/100"
+    if activation is not None:
+        value += f" · activacion {activation:.0%}"
+    return {
+        "key": "pending_zone_analysis",
+        "label": "Zona orden pendiente",
+        "value": value,
+        "score": score,
+        "bias": "favorable" if score >= 65 else "alerta" if score <= 42 else "contexto",
+        "source": "Soporte/resistencia, Fibonacci, ATR, flujo y regimen",
+        "explanation": zone_analysis.get("zone_summary") or "Evalua si la orden pendiente espera una zona defendible, una ruptura limpia o una zona de barrida probable.",
     }
 
 
@@ -995,7 +1388,7 @@ def build_score_metrics(layered_scores: dict, expected_value: dict, market_regim
             "value": f"{probability_ranges['tp']['label']} TP",
             "score": layered_scores["direction_score"],
             "bias": "favorable" if layered_scores["direction_score"] >= 55 else "desfavorable" if layered_scores["direction_score"] <= 45 else "neutral",
-            "source": "Motor v0.6 calibrado por auditoria",
+            "source": ENGINE_VERSION,
             "explanation": "Estima direccion sin premiar el ratio riesgo/beneficio. El R/R se usa en esperanza matematica, no para inflar probabilidad.",
         },
         {
@@ -1275,7 +1668,7 @@ def build_plain_summary(
     )
     return (
         f"Lectura {direction} para {horizon_profile['label']} ({horizon_profile['duration']}): setup {setup_grade} con riesgo {risk_level}. "
-        f"El motor v0.8 estima TP en rango {probability_ranges['tp']['label']}, SL {probability_ranges['sl']['label']} y rango/sin resolver {probability_ranges['range']['label']}; "
+        f"El motor {ENGINE_VERSION} estima TP en rango {probability_ranges['tp']['label']}, SL {probability_ranges['sl']['label']} y rango/sin resolver {probability_ranges['range']['label']}; "
         f"los decimales internos se guardan solo para entrenamiento. "
         f"La probabilidad direccional se separa de la esperanza matematica, que ahora sale {expected_value['label']} ({expected_value['expected_value_usdt']:+.2f} USDT estimados). "
         f"La clave es que {trend_text}, mientras la relacion beneficio/riesgo es {rr_ratio:.2f} y el break-even aproximado es {break_even_probability:.0%}. "

@@ -12,6 +12,10 @@ data/
 !.env.example
 *.log
 
+.codex_backups/
+ABRIR_APP_LOCAL.md
+CONTINUIDAD_NUEVO_CHAT.md
+
 node_modules/
 dist/
 .pytest_cache/

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador Trading BTC</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260612-contest-hit-rate-capsule">
+    <link rel="stylesheet" href="/static/styles.css?v=20260615-pending-entry-v3">
   </head>
   <body>
     <main class="app-shell">
@@ -92,12 +92,12 @@
           <strong id="walletUnrealized">--</strong>
         </article>
         <article class="metric">
-          <span>Operaciones abiertas</span>
+          <span>Operaciones activas</span>
           <strong id="walletOpenOps">--</strong>
         </article>
       </section>
       <p class="wallet-note">
-        Equity estimado = disponible + margen invertido + PnL flotante de las operaciones abiertas al ultimo precio consultado.
+        Equity estimado = disponible + margen reservado/invertido + PnL flotante de las operaciones abiertas al ultimo precio consultado.
       </p>
 
       <section class="mode-panel" aria-label="Modo de operacion">
@@ -247,9 +247,27 @@
           </div>
 
           <label>
+            Tipo de entrada
+            <select id="entryType">
+              <option value="market">A mercado</option>
+              <option value="pending">Orden pendiente</option>
+            </select>
+          </label>
+
+          <div id="pendingOrderFields" class="pending-order-fields hidden">
+            <label>
+              Activar orden cuando
+              <select id="triggerCondition">
+                <option value="price_lte">El precio baje hasta la entrada</option>
+                <option value="price_gte">El precio suba hasta la entrada</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
             Entrada a mercado
             <input id="entry" type="number" step="0.01" value="76766" readonly>
-            <small class="field-help">Se actualiza con el ultimo precio. Las entradas condicionadas se anadiran como ordenes.</small>
+            <small class="field-help" id="entryHelp">Se actualiza con el ultimo precio. Cambia a orden pendiente para definir un nivel de activacion.</small>
           </label>
           <label>
             Margen
@@ -359,6 +377,6 @@
       <p id="floatingNoticeBody"></p>
     </aside>
 
-    <script src="/static/app.js?v=20260612-contest-hit-rate-capsule"></script>
+    <script src="/static/app.js?v=20260615-pending-entry-v3"></script>
   </body>
 </html>

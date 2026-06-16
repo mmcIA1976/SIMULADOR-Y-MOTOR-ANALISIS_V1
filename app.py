@@ -35,6 +35,7 @@ AVATAR_MIME_TO_EXT = {
 }
 VALID_OPERATION_MODES = {"training", "contest"}
 VALID_TIME_HORIZONS = {"intraday_short", "intraday_wide", "short_swing"}
+TRAINING_RECHARGE_AMOUNT = 1000.0
 
 app = FastAPI(title="Trading Trainer", version="0.1.0")
 
@@ -2441,6 +2442,12 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
             season_id = int(season["id"])
             if get_contest_entry(db, int(user["id"]), season_id) is None:
                 raise HTTPException(status_code=409, detail="Primero inicia tu participacion en el concurso mensual")
+        if mode == "training":
+            ensure_training_wallet_funded(
+                db,
+                int(user["id"]),
+                note="Recarga automatica de entrenamiento antes de abrir una nueva operacion.",
+            )
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         active_count = db.execute(
             "SELECT COUNT(*) AS count FROM operations WHERE user_id = ? AND mode = ? AND status IN ('OPEN', 'PENDING_ENTRY')",
@@ -2902,6 +2909,11 @@ def reconcile_all_user_cash_balances() -> None:
 
 
 def sync_user_cash_balance(db, user_id: int) -> dict:
+    ensure_training_wallet_funded(
+        db,
+        user_id,
+        note="Recarga automatica de entrenamiento por saldo agotado.",
+    )
     portfolio = calculate_portfolio_from_db(db, user_id)
     db.execute(
         "UPDATE users SET cash_balance = ? WHERE id = ?",
@@ -2914,6 +2926,39 @@ def sync_user_cash_balance(db, user_id: int) -> dict:
             (contest["cash_balance"], contest["entry_id"]),
         )
     return portfolio
+
+
+def ensure_training_wallet_funded(
+    db,
+    user_id: int,
+    note: str = "Recarga automatica de entrenamiento.",
+) -> int:
+    user = db.execute("SELECT starting_balance FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    starting_balance = float(user["starting_balance"])
+    portfolio = calculate_mode_portfolio(db, user_id, "training", starting_balance, None)
+    cash_balance = float(portfolio["cash_balance"])
+    recharge_count = 0
+    while cash_balance < 0.01:
+        starting_balance = round(starting_balance + TRAINING_RECHARGE_AMOUNT, 4)
+        recharge_count += 1
+        portfolio = calculate_mode_portfolio(db, user_id, "training", starting_balance, None)
+        cash_balance = float(portfolio["cash_balance"])
+        db.execute(
+            "UPDATE users SET starting_balance = ?, cash_balance = ? WHERE id = ?",
+            (starting_balance, cash_balance, user_id),
+        )
+        record_wallet_event(
+            db,
+            user_id=user_id,
+            mode="training",
+            event_type="training_recharge",
+            amount=TRAINING_RECHARGE_AMOUNT,
+            balance_after=cash_balance,
+            note=note,
+        )
+    return recharge_count
 
 
 def reconcile_all_contest_entry_balances(db) -> None:

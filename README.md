@@ -9,6 +9,7 @@ Simulador educativo multiusuario para analizar, registrar y auditar operaciones 
 - Simulacion de operaciones BTC/USDT y otros pares Binance Spot.
 - Maximo de 2 operaciones abiertas por usuario y modo.
 - Carteras separadas para entrenamiento y concurso mensual.
+- Recarga automatica de entrenamiento en bloques ficticios de 1000 USDT cuando el usuario agota el saldo libre. Cada recarga queda registrada en `wallet_events` como `training_recharge`.
 - Motor de analisis por temporalidad: intradia corto, intradia amplio y swing corto.
 - Ordenes pendientes simuladas con activacion por nivel: pullback limite, ruptura y breakdown.
 - Motor v0.9 con analisis de zonas pendientes, aprendizaje estructurado y auditoria agregada.
@@ -75,7 +76,8 @@ Validacion de conteos:
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis
-.\.venv\Scripts\python.exe -m py_compile app.py analysis_engine.py learning_engine.py data_engine.py market_data.py security.py tests\test_pending_zone_analysis.py
+.\.venv\Scripts\python.exe -m unittest tests.test_training_recharge
+.\.venv\Scripts\python.exe -m py_compile app.py analysis_engine.py learning_engine.py data_engine.py market_data.py security.py tests\test_pending_zone_analysis.py tests\test_training_recharge.py
 node --check .\app.js
 ```
 

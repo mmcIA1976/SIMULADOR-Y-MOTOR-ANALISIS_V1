@@ -486,10 +486,10 @@ def availability(snapshot: dict) -> dict:
     market_breadth = snapshot["market_breadth"]
     trade_flow = snapshot["trade_flow"]
     return {
-        "spot_price": snapshot["current_price"] is not None,
-        "spot_klines": bool(snapshot["timeframes"]),
+        "futures_price": snapshot["current_price"] is not None,
+        "futures_klines": bool(snapshot["timeframes"]),
         "order_book": bool(snapshot["order_book"].get("best_bid")),
-        "spot_trade_flow": trade_flow.get("sample_trades", 0) > 0,
+        "futures_trade_flow": trade_flow.get("sample_trades", 0) > 0,
         "ticker_24h": snapshot["ticker_24h"].get("quote_volume", 0) > 0,
         "fibonacci": any(item.get("available") for item in snapshot.get("fibonacci", {}).values()),
         "funding": derivatives.get("funding_rate_pct") is not None,
@@ -522,16 +522,16 @@ def build_market_snapshot(symbol: str) -> dict:
     snapshot = {
         "symbol": symbol,
         "source": {
-            "price": "binance_spot_ticker",
-            "klines": "binance_spot_klines",
-            "order_book": "binance_spot_depth",
-            "trade_flow": "binance_spot_agg_trades",
-            "ticker_24h": "binance_spot_24hr",
+            "price": "binance_usdm_futures_ticker",
+            "klines": "binance_usdm_futures_klines",
+            "order_book": "binance_usdm_futures_depth",
+            "trade_flow": "binance_usdm_futures_agg_trades",
+            "ticker_24h": "binance_usdm_futures_24hr",
             "derivatives": "binance_usdm_futures_public",
             "global_market": "coingecko_global",
             "market_breadth": "coingecko_top_markets",
             "sentiment": "alternative_me_fear_greed",
-            "fibonacci": "binance_spot_klines_auto_swings",
+            "fibonacci": "binance_usdm_futures_klines_auto_swings",
         },
         "current_price": current_price,
         "timeframes": {

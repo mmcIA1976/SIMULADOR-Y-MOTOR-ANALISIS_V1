@@ -21,10 +21,10 @@ Se recomienda trabajar por capas:
 
 Uso:
 
-- precio actual
-- velas OHLCV
-- order book
-- trades agregados
+- precio actual de Binance USD-M Futures para operaciones simuladas
+- velas OHLCV de Binance USD-M Futures para activacion y cierre TP/SL
+- order book de Binance USD-M Futures
+- trades agregados de Binance USD-M Futures
 - volumen
 - volumen taker buy
 - futuros USDT-M
@@ -39,6 +39,11 @@ Valor:
 - datos de alta frecuencia
 - sin necesidad de API privada para endpoints publicos
 - suficiente para la primera version de analisis de ordenes pendientes: ATR, rangos, soporte/resistencia, Fibonacci, order book cercano, CVD aproximado, funding y open interest.
+
+Regla operativa:
+
+- Las operaciones simuladas imitan trading de futuros. Por tanto, activaciones, TP, SL, grafico operativo y precio actual deben usar Binance USD-M Futures, no Binance Spot.
+- Spot puede seguir siendo una fuente de contexto futuro si se incorpora expresamente, pero no debe decidir cierres de operaciones de futuros.
 
 Limitacion:
 
@@ -135,7 +140,7 @@ La version actual del motor usa datos gratuitos disponibles para evaluar ordenes
 - swings automaticos y Fibonacci para confluencia de entrada, objetivo e invalidacion;
 - soporte/resistencia del horizonte elegido;
 - order book cercano como contexto micro, no como prueba aislada;
-- CVD spot aproximado;
+- CVD/delta aproximado con trades agregados de Futures;
 - taker buy/sell, funding y open interest de futuros;
 - amplitud de mercado y sentimiento como contexto.
 

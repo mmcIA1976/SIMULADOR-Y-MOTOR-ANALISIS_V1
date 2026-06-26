@@ -6,7 +6,7 @@ Simulador educativo multiusuario para analizar, registrar y auditar operaciones 
 
 - Registro/login local con cookie de sesion.
 - Avatar guardado en base de datos.
-- Simulacion de operaciones BTC/USDT y otros pares Binance Spot.
+- Simulacion de operaciones BTC/USDT y otros pares Binance USD-M Futures usando endpoints publicos.
 - Maximo de 2 operaciones abiertas por usuario y modo.
 - Carteras separadas para entrenamiento y concurso mensual.
 - Recarga automatica de entrenamiento en bloques ficticios de 1000 USDT cuando el usuario agota el saldo libre. Cada recarga queda registrada en `wallet_events` como `training_recharge`.

@@ -2,6 +2,73 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-26 - Correccion fuente operativa a Binance USD-M Futures
+
+Estado: aplicado a la capa operativa y de datos de mercado.
+
+Origen:
+- Auditoria de la operacion `#140` de `mauriciomc`, BTCUSDT SHORT en concurso.
+- TP configurado: `58500`.
+- Binance Spot marco minimo `58500.10`, por lo que la app no cerro.
+- Binance USD-M Futures marco minimo `58388.00`, por lo que una simulacion de futuros si debia considerar tocado el TP.
+
+Cambios realizados:
+- `market_data.get_price` pasa a usar `/fapi/v1/ticker/price`.
+- `market_data.get_klines` pasa a usar `/fapi/v1/klines`.
+- `market_data.get_depth` pasa a usar `/fapi/v1/depth`.
+- `market_data.get_24h_ticker` pasa a usar `/fapi/v1/ticker/24hr`.
+- `market_data.get_agg_trades` pasa a usar `/fapi/v1/aggTrades`.
+- Activacion de ordenes pendientes, cierres TP/SL, historico de mercado, evidencia de salida y expiracion de concurso quedan trazados como Binance USD-M Futures.
+- La UI de fuentes de datos deja de hablar de Spot para precio, velas y CVD/delta.
+
+Motivo:
+- La app simula operativa de futuros; por tanto, la fuente que decide entradas, TP y SL debe ser Futures, no Spot.
+- Evitar divergencias por mechas diferentes entre mercado spot y contrato perpetuo.
+
+Riesgo esperado:
+- Medio. Cambia la fuente de precio operativa y puede cerrar/activar operaciones cuando Futures toque niveles aunque Spot no los toque.
+- Es el comportamiento correcto para una simulacion de futuros.
+
+Seguimiento:
+- Validar operacion `#140` con la nueva fuente antes de cerrarla.
+- Revisar futuras operaciones con evidencia `binance_usdm_futures_*`.
+
+## 2026-06-26 - Hipotesis de mejoras candidatas no aplicadas
+
+Estado: documentado, no aplicado al motor.
+
+Archivo creado:
+- `HIPOTESIS_MEJORAS_MOTOR_ANALISIS.md`
+- `auditorias_aprendizaje/README.md`
+- `auditorias_aprendizaje/2026-06-26_operaciones_verificadas_130_hipotesis_motor_v0_9.md`
+
+Origen:
+- Auditoria de Supabase sobre operaciones, recomendaciones, ticks y evaluaciones de aprendizaje existentes.
+- La auditoria detecta patrones potencialmente utiles, pero la muestra aun no justifica cambiar pesos sin validacion posterior.
+
+Hipotesis registradas:
+- Endurecer operaciones con `sl_probability >= 0.50`.
+- Penalizar mas `direction_score < 50`.
+- Exigir mas confirmacion para longs en `tendencia_bajista`.
+- No premiar `risk_reward_ratio` alto si la estructura no acompana.
+- Auditar confianza alta en setups C.
+- Mantener Fibonacci como confluencia secundaria hasta tener mas muestra.
+- Penalizar provisionalmente `stop_breakdown` pendiente con riesgo de falsa ruptura.
+- Separar fallo tecnico de fallo por exposicion/apalancamiento.
+- Dar mas peso a la decision final `observar` como advertencia real.
+
+Motivo:
+- Guardar las conclusiones sin modificar todavia el comportamiento del motor.
+- Poder comprobar en el futuro si estas reglas habrian mejorado el resultado antes de implementarlas.
+
+Riesgo esperado:
+- Nulo para el motor actual. Solo documentacion y trazabilidad de hipotesis.
+
+Seguimiento:
+- Repetir auditoria cuando haya mas operaciones cerradas y evaluadas.
+- No aplicar cambios hasta comparar impacto estimado sobre nuevas operaciones.
+- Usar la carpeta `auditorias_aprendizaje/` para guardar cada nueva comprobacion con fecha y numero de operaciones verificadas.
+
 ## 2026-06-15 - Visualizacion explicita analisis order limit
 
 Estado: aplicado tras auditar que el motor calculaba `zone_analysis`, pero la UI no lo mostraba con suficiente claridad.

@@ -483,7 +483,7 @@ def price(
                     operation_ids.append(operation_id)
                     db.execute(
                         "INSERT INTO price_ticks (operation_id, symbol, price, source) VALUES (?, ?, ?, ?)",
-                        (operation_id, symbol, value, "binance"),
+                        (operation_id, symbol, value, "binance_usdm_futures"),
                     )
     return {
         "symbol": symbol,
@@ -514,7 +514,7 @@ def market_history(symbol: str = "BTCUSDT", minutes: int = 60) -> dict:
         "symbol": symbol,
         "interval": "1m",
         "minutes": limit,
-        "source": "binance_spot_klines_1m",
+        "source": "binance_usdm_futures_klines_1m",
         "points": points,
     }
 
@@ -711,7 +711,7 @@ def record_exit_window_ticks(db, operation: dict, close_price: float, trigger_ti
                 operation["id"],
                 operation["symbol"],
                 float(kline[4]),
-                "binance_1m_exit_window",
+                "binance_usdm_futures_1m_exit_window",
                 iso_from_ms(int(kline[6])),
             ),
         )
@@ -2094,7 +2094,7 @@ def triggered_exit_from_market_path(operation: dict, current_price: float) -> tu
             return reason, triggered_exit_price(operation, reason), open_time, build_exit_evidence(
                 operation,
                 reason,
-                "binance_spot_1m_kline",
+                "binance_usdm_futures_1m_kline",
                 open_time,
                 {
                     "open": float(kline[1]),
@@ -2112,7 +2112,7 @@ def triggered_exit_from_market_path(operation: dict, current_price: float) -> tu
         return immediate_reason, triggered_exit_price(operation, immediate_reason), "precio_actual", build_exit_evidence(
             operation,
             immediate_reason,
-            "binance_spot_ticker",
+            "binance_usdm_futures_ticker",
             "precio_actual",
             {"price": current_price},
         )
@@ -2131,7 +2131,7 @@ def triggered_entry_from_market_path(operation: dict, current_price: float) -> t
         if triggered_entry_condition_from_range(operation, low, high):
             return entry_price, open_time, build_activation_evidence(
                 operation,
-                "binance_spot_1m_kline",
+                "binance_usdm_futures_1m_kline",
                 open_time,
                 {
                     "open": float(kline[1]),
@@ -2147,7 +2147,7 @@ def triggered_entry_from_market_path(operation: dict, current_price: float) -> t
         trigger_time = datetime.now(timezone.utc).isoformat()
         return entry_price, trigger_time, build_activation_evidence(
             operation,
-            "binance_spot_ticker",
+            "binance_usdm_futures_ticker",
             trigger_time,
             {"price": current_price},
         )
@@ -2194,7 +2194,7 @@ def triggered_exit_from_trades(operation: dict, start_time_ms: int, end_time_ms:
                 return reason, triggered_exit_price(operation, reason), trigger_time, build_exit_evidence(
                     operation,
                     reason,
-                    "binance_spot_agg_trade",
+                    "binance_usdm_futures_agg_trade",
                     trigger_time,
                     {
                         "price": price,
@@ -2662,7 +2662,7 @@ def ensure_exit_evidence(db, operation: dict) -> None:
             evidence = build_exit_evidence(
                 operation,
                 reason,
-                "binance_spot_1m_kline",
+                "binance_usdm_futures_1m_kline",
                 iso_from_ms(int(kline[0])),
                 {
                     "open": float(kline[1]),
@@ -3222,7 +3222,7 @@ def contest_expiry_price(db, operation: dict, ends_at: datetime) -> tuple[float,
             end_time_ms=timestamp_ms(ends_at + timedelta(minutes=1)),
         )
         if klines:
-            return round(float(klines[0][4]), 8), "contest_expiry_binance_1m"
+            return round(float(klines[0][4]), 8), "contest_expiry_binance_usdm_futures_1m"
     except Exception:
         pass
 
@@ -3240,7 +3240,7 @@ def contest_expiry_price(db, operation: dict, ends_at: datetime) -> tuple[float,
     if tick:
         return round(float(tick["price"]), 8), "contest_expiry_last_tick"
 
-    return round(float(market_data.get_price(symbol)), 8), "contest_expiry_live_fallback"
+    return round(float(market_data.get_price(symbol)), 8), "contest_expiry_binance_usdm_futures_live_fallback"
 
 
 def contest_history(db, limit: int = 12) -> list[dict]:

@@ -675,7 +675,7 @@ function timeHorizonLabel(value) {
 }
 
 function normalizeSymbol(symbol) {
-  return String(symbol || "BTCUSDT").toUpperCase();
+  return String(symbol || "BTCUSDT").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 function symbolLabel(symbol) {
@@ -1318,11 +1318,8 @@ function updateBinanceChartLink(symbol) {
     return;
   }
   const normalized = normalizeSymbol(symbol);
-  const pair = normalized.endsWith("USDT")
-    ? `${normalized.slice(0, -4)}_USDT`
-    : normalized;
-  elements.binanceChartLink.href = `https://www.binance.com/es/trade/${encodeURIComponent(pair)}?type=spot`;
-  elements.binanceChartLink.textContent = `Ver grafica ${pair.replace("_", "/")} en Binance Spot`;
+  elements.binanceChartLink.href = `https://www.binance.com/en/futures/${encodeURIComponent(normalized)}`;
+  elements.binanceChartLink.textContent = `Ver grafica ${normalized.replace("USDT", "/USDT")} en Binance Futures`;
 }
 
 function updatePlanPreview(config) {
@@ -1443,7 +1440,7 @@ function appendOperationTicks(operationIds, price, capturedAt) {
     }
     operation.ticks.push({
       price,
-      source: "binance",
+      source: "binance_usdm_futures",
       captured_at: capturedAt.toISOString(),
     });
     if (operation.ticks.length > MAX_HISTORY_POINTS) {
@@ -1913,10 +1910,10 @@ function updateAnalysisFullVisibility(hasAnalysis = true) {
 
 function renderDataSources(availability, sources) {
   const labels = {
-    spot_price: "Precio spot",
-    spot_klines: "Velas multi-TF",
+    futures_price: "Precio futuros",
+    futures_klines: "Velas futuros multi-TF",
     order_book: "Order book",
-    spot_trade_flow: "CVD/delta spot",
+    futures_trade_flow: "CVD/delta futuros",
     ticker_24h: "Ticker 24h",
     fibonacci: "Fibonacci",
     funding: "Funding",
@@ -2890,11 +2887,13 @@ function renderActivationEvidence(operation) {
   }
   const market = evidence.market_data || {};
   const sourceLabel = {
+    binance_usdm_futures_1m_kline: "Binance Futures · vela 1 minuto",
+    binance_usdm_futures_ticker: "Binance Futures · precio vivo",
     binance_spot_1m_kline: "Binance Spot · vela 1 minuto",
     binance_spot_ticker: "Binance Spot · precio vivo",
   }[evidence.source] || evidence.source || "Fuente registrada";
   const orderType = operation.entry_order_type || evidence.entry_order_type || entryOrderTypeFrom(operation.side, operation.trigger_condition);
-  const proofText = evidence.source === "binance_spot_1m_kline"
+  const proofText = ["binance_usdm_futures_1m_kline", "binance_spot_1m_kline"].includes(evidence.source)
     ? `La vela contiene minimo ${priceText(Number(market.low))} y maximo ${priceText(Number(market.high))}; la entrada solicitada estaba en ${priceText(Number(evidence.requested_entry))}.`
     : `El precio vivo registrado fue ${priceText(Number(market.price))}; la entrada solicitada estaba en ${priceText(Number(evidence.requested_entry))}.`;
   return `
@@ -2923,13 +2922,16 @@ function renderExitEvidence(operation) {
   }
   const market = evidence.market_data || {};
   const sourceLabel = {
+    binance_usdm_futures_1m_kline: "Binance Futures · vela 1 minuto",
+    binance_usdm_futures_agg_trade: "Binance Futures · trade agregado",
+    binance_usdm_futures_ticker: "Binance Futures · precio vivo",
     binance_spot_1m_kline: "Binance Spot · vela 1 minuto",
     binance_spot_agg_trade: "Binance Spot · trade agregado",
     binance_spot_ticker: "Binance Spot · precio vivo",
     recorded_close_price: "Precio de cierre registrado",
   }[evidence.source] || evidence.source || "Fuente registrada";
   const reason = evidence.reason === "take_profit" ? "TAKE PROFIT" : "STOP LOSS";
-  const proofText = evidence.source === "binance_spot_1m_kline"
+  const proofText = ["binance_usdm_futures_1m_kline", "binance_spot_1m_kline"].includes(evidence.source)
     ? `La vela contiene minimo ${priceText(Number(market.low))} y maximo ${priceText(Number(market.high))}; el nivel ${reason} estaba en ${priceText(Number(evidence.level))}.`
     : `El precio registrado fue ${priceText(Number(market.price))}; el nivel ${reason} estaba en ${priceText(Number(evidence.level))}.`;
   return `

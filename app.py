@@ -435,7 +435,13 @@ def price(
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     symbol = symbol.upper()
-    value = market_data.get_price(symbol)
+    try:
+        value = market_data.get_price(symbol)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
+        ) from exc
     if not record:
         return {
             "symbol": symbol,
@@ -526,7 +532,13 @@ def check_operation_exits(
 ) -> dict:
     user = current_user(session_token)
     symbol = symbol.upper()
-    current_price = market_data.get_price(symbol)
+    try:
+        current_price = market_data.get_price(symbol)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
+        ) from exc
     with connect() as db:
         activated_by_trigger = activate_triggered_pending_operations(db, symbol, current_price, int(user["id"]))
         closed_by_trigger = close_triggered_open_operations(db, symbol, current_price, int(user["id"]))

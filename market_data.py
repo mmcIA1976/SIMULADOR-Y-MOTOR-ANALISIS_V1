@@ -12,6 +12,7 @@ BINANCE_DEPTH_PATH = "/api/v3/depth?symbol={symbol}&limit=20"
 BINANCE_TICKER_24H_PATH = "/api/v3/ticker/24hr?symbol={symbol}"
 BINANCE_AGG_TRADES_PATH = "/api/v3/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_USDM_BASE_URLS = (
+    "https://www.binance.com",
     "https://fapi.binance.com",
     "https://fapi1.binance.com",
     "https://fapi2.binance.com",

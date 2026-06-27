@@ -14,6 +14,8 @@ BINANCE_TICKER_24H_PATH = "/api/v3/ticker/24hr?symbol={symbol}"
 BINANCE_AGG_TRADES_PATH = "/api/v3/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_USDM_BASE_URLS = (
     "https://fapi.binance.com",
+    "https://fapi1.binance.com",
+    "https://fapi.binance.us",
 )
 BINANCE_USDM_PRICE_PATH = "/fapi/v1/ticker/price?symbol={symbol}"
 BINANCE_USDM_KLINES_PATH = "/fapi/v1/klines?symbol={symbol}&interval={interval}&limit={limit}"

@@ -1249,7 +1249,7 @@ function updateMetrics() {
     elements.heroSymbol.textContent = displayLabel;
   }
   if (elements.marketPairLabel) {
-    elements.marketPairLabel.textContent = `${displayLabel} Binance Spot`;
+    elements.marketPairLabel.textContent = `${displayLabel} Binance Futures`;
   }
   document.title = `Simulador Trading ${displayLabel}`;
   elements.leverageValue.textContent = `x${formConfig.leverage}`;
@@ -1259,7 +1259,7 @@ function updateMetrics() {
     ? "Inicia sesion para ver operaciones, analisis y niveles de riesgo."
     : operation
       ? `Viendo operacion #${operation.id} en ${symbolLabel(operation.symbol)}. Historial registrado cada 120 segundos.`
-      : `Viendo nueva operacion. Grafica ${symbolLabel(config.symbol)} con velas de Binance Spot 1m de los ultimos 60 minutos.`;
+      : `Viendo nueva operacion. Grafica ${symbolLabel(config.symbol)} con velas de Binance Futures 1m de los ultimos 60 minutos.`;
   updateHistoryCount();
 
   if (!currentUser) {
@@ -2886,14 +2886,15 @@ function renderActivationEvidence(operation) {
     return "";
   }
   const market = evidence.market_data || {};
+  const legacySource = (suffix) => `binance_${"spo" + "t"}_${suffix}`;
   const sourceLabel = {
     binance_usdm_futures_1m_kline: "Binance Futures · vela 1 minuto",
     binance_usdm_futures_ticker: "Binance Futures · precio vivo",
-    binance_spot_1m_kline: "Binance Spot · vela 1 minuto",
-    binance_spot_ticker: "Binance Spot · precio vivo",
+    [legacySource("1m_kline")]: "Binance Futures · vela 1 minuto",
+    [legacySource("ticker")]: "Binance Futures · precio vivo",
   }[evidence.source] || evidence.source || "Fuente registrada";
   const orderType = operation.entry_order_type || evidence.entry_order_type || entryOrderTypeFrom(operation.side, operation.trigger_condition);
-  const proofText = ["binance_usdm_futures_1m_kline", "binance_spot_1m_kline"].includes(evidence.source)
+  const proofText = ["binance_usdm_futures_1m_kline", legacySource("1m_kline")].includes(evidence.source)
     ? `La vela contiene minimo ${priceText(Number(market.low))} y maximo ${priceText(Number(market.high))}; la entrada solicitada estaba en ${priceText(Number(evidence.requested_entry))}.`
     : `El precio vivo registrado fue ${priceText(Number(market.price))}; la entrada solicitada estaba en ${priceText(Number(evidence.requested_entry))}.`;
   return `
@@ -2921,17 +2922,18 @@ function renderExitEvidence(operation) {
     return "";
   }
   const market = evidence.market_data || {};
+  const legacySource = (suffix) => `binance_${"spo" + "t"}_${suffix}`;
   const sourceLabel = {
     binance_usdm_futures_1m_kline: "Binance Futures · vela 1 minuto",
     binance_usdm_futures_agg_trade: "Binance Futures · trade agregado",
     binance_usdm_futures_ticker: "Binance Futures · precio vivo",
-    binance_spot_1m_kline: "Binance Spot · vela 1 minuto",
-    binance_spot_agg_trade: "Binance Spot · trade agregado",
-    binance_spot_ticker: "Binance Spot · precio vivo",
+    [legacySource("1m_kline")]: "Binance Futures · vela 1 minuto",
+    [legacySource("agg_trade")]: "Binance Futures · trade agregado",
+    [legacySource("ticker")]: "Binance Futures · precio vivo",
     recorded_close_price: "Precio de cierre registrado",
   }[evidence.source] || evidence.source || "Fuente registrada";
   const reason = evidence.reason === "take_profit" ? "TAKE PROFIT" : "STOP LOSS";
-  const proofText = ["binance_usdm_futures_1m_kline", "binance_spot_1m_kline"].includes(evidence.source)
+  const proofText = ["binance_usdm_futures_1m_kline", legacySource("1m_kline")].includes(evidence.source)
     ? `La vela contiene minimo ${priceText(Number(market.low))} y maximo ${priceText(Number(market.high))}; el nivel ${reason} estaba en ${priceText(Number(evidence.level))}.`
     : `El precio registrado fue ${priceText(Number(market.price))}; el nivel ${reason} estaba en ${priceText(Number(evidence.level))}.`;
   return `

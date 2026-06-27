@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simulador educativo de operaciones long/short con precios publicos de Binance.
+Simulador educativo de operaciones long/short con precios publicos de Binance Futures.
 
 No ejecuta ordenes reales ni usa claves API.
 """
@@ -16,13 +16,11 @@ from dataclasses import dataclass
 from datetime import datetime
 
 
-BINANCE_SPOT_BASE_URLS = (
-    "https://api.binance.com",
-    "https://api1.binance.com",
-    "https://api.binance.us",
+BINANCE_USDM_BASE_URLS = (
+    "https://fapi.binance.com",
 )
-BINANCE_SPOT_TIMEOUT_SECONDS = 4.5
-_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[0]
+BINANCE_MARKET_TIMEOUT_SECONDS = 4.5
+_preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
 
 
 MAX_LEVERAGE = 10
@@ -80,19 +78,19 @@ def parse_args() -> tuple[TradeConfig, bool]:
 
 
 def fetch_binance_price(symbol: str) -> float:
-    global _preferred_spot_base_url
+    global _preferred_futures_base_url
     last_error: Exception | None = None
     safe_symbol = urllib.parse.quote(symbol)
-    candidate_bases = (_preferred_spot_base_url,) + tuple(
-        base for base in BINANCE_SPOT_BASE_URLS if base != _preferred_spot_base_url
+    candidate_bases = (_preferred_futures_base_url,) + tuple(
+        base for base in BINANCE_USDM_BASE_URLS if base != _preferred_futures_base_url
     )
     for base_url in candidate_bases:
-        url = f"{base_url}/api/v3/ticker/price?symbol={safe_symbol}"
+        url = f"{base_url}/fapi/v1/ticker/price?symbol={safe_symbol}"
         request = urllib.request.Request(url, headers={"User-Agent": "trading-simulator/1.0"})
         try:
-            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
+            with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-            _preferred_spot_base_url = base_url
+            _preferred_futures_base_url = base_url
             return float(payload["price"])
         except Exception as exc:
             last_error = exc

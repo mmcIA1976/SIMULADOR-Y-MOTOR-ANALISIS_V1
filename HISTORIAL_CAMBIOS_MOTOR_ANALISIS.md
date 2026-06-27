@@ -2,6 +2,30 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-27 - Limpieza de trazabilidad visual Binance Futures
+
+Estado: aplicado tras verificacion online en Railway Singapur.
+
+Origen:
+- La app ya consultaba Binance USD-M Futures correctamente, pero la tarjeta visible de precio seguia mostrando `Binance Spot`.
+- Quedaban etiquetas internas del motor describiendo velas, order book, ticker 24h y CVD como `spot`, aunque los datos actuales proceden de endpoints Futures.
+
+Cambios realizados:
+- La UI de precio en vivo muestra `Binance Futures`.
+- El texto del grafico local pasa a describir velas de `Binance Futures 1m`.
+- Las evidencias de activacion/cierre se presentan como Binance Futures, incluyendo compatibilidad de lectura para evidencias antiguas.
+- Las metricas explicadas del motor cambian sus fuentes a Binance Futures: tendencia multi-TF, momentum, volatilidad, order book, niveles, CVD y ticker 24h.
+- El simulador auxiliar de consola pasa de `/api/v3/ticker/price` a `/fapi/v1/ticker/price`.
+- Se elimina codigo auxiliar Spot no usado en `market_data.py`.
+- Se actualiza el cache-buster de assets para evitar que la app online muestre JS/HTML anterior.
+
+Motivo:
+- Evitar mensajes contradictorios entre fuente operativa, motor de analisis, evidencias y visualizacion.
+- Mantener una unica fuente de verdad para una simulacion de futuros: Binance USD-M Futures.
+
+Riesgo esperado:
+- Bajo. No cambia pesos del motor ni reglas de decision; corrige etiquetas, trazabilidad y restos de fuente antigua.
+
 ## 2026-06-26 - Correccion fuente operativa a Binance USD-M Futures
 
 Estado: aplicado a la capa operativa y de datos de mercado.

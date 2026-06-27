@@ -15,7 +15,7 @@ ENGINE_AUDIT_REFERENCE = {
         "asset_24h_move": "78.8%",
         "direction_score": "76.7%",
         "risk_reward_ratio": "32.7%",
-        "cvd_spot": "52.1%",
+        "cvd_futures": "52.1%",
         "order_book_imbalance": "57.9%",
     },
     "intent": "v0.9 mantiene leverage neutral e incorpora ajuste prudente para ordenes pendientes segun calidad de zona, riesgo de barrida y probabilidad de activacion.",
@@ -366,9 +366,9 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     elif taker_flow_bias < 0:
         alerts.append("El flujo taker de derivados va contra la direccion propuesta.")
     if cvd_bias > 0:
-        reasons.append("El CVD spot reciente acompana la direccion propuesta.")
+        reasons.append("El CVD Futures reciente acompana la direccion propuesta.")
     elif cvd_bias < 0:
-        alerts.append("El CVD spot reciente va contra la direccion propuesta.")
+        alerts.append("El CVD Futures reciente va contra la direccion propuesta.")
     if level_penalty:
         alerts.append("La operacion esta cerca de una zona tecnica que puede limitar el recorrido o barrer el stop.")
     if fibonacci_context["bias"] == "favorable":
@@ -888,9 +888,9 @@ def build_zone_analysis(
             alerts.append("El flujo taker de futuros contradice la reaccion esperada.")
     if cvd_ratio is not None and abs(cvd_ratio) >= 0.12:
         if (proposal.side == "long" and cvd_ratio > 0) or (proposal.side == "short" and cvd_ratio < 0):
-            reasons.append("El CVD spot acompana la direccion posterior a la activacion.")
+            reasons.append("El CVD Futures acompana la direccion posterior a la activacion.")
         else:
-            alerts.append("El CVD spot contradice la direccion posterior a la activacion.")
+            alerts.append("El CVD Futures contradice la direccion posterior a la activacion.")
     if open_interest_change_pct is not None and abs(open_interest_change_pct) >= 1.2:
         reasons.append("El open interest muestra actividad suficiente para vigilar reaccion real de la zona.")
 
@@ -1064,7 +1064,7 @@ def build_fibonacci_metric(fibonacci_context: dict) -> dict:
         "value": f"{fibonacci_context.get('score', 50)}/100",
         "score": fibonacci_context.get("score", 50),
         "bias": "favorable" if bias == "favorable" else "desfavorable" if bias in {"desfavorable", "alerta"} else "contexto",
-        "source": "Binance Spot klines · swings automaticos",
+        "source": "Binance Futures klines · swings automaticos",
         "explanation": fibonacci_context.get("summary") or "Evalua retrocesos/extensiones como zonas de entrada, objetivo e invalidacion; no funciona como senal aislada.",
     }
 
@@ -1374,7 +1374,7 @@ def build_invalidation_rules(proposal: TradeProposal, market_regime: dict, level
     if taker_flow_bias < 0:
         rules.append("Invalidar o reducir si el flujo taker de futuros sigue agresivamente contra la operacion.")
     if cvd_bias < 0:
-        rules.append("Invalidar si el CVD spot se mantiene contra la direccion propuesta.")
+        rules.append("Invalidar si el CVD Futures se mantiene contra la direccion propuesta.")
     if market_regime["name"] == "rebote_contra_tendencia":
         rules.append("Al ser rebote contra estructura 4h, exigir avance rapido; si se estanca, baja la calidad del setup.")
     return rules[:5]
@@ -1680,7 +1680,7 @@ def build_plain_summary(
         f"La volatilidad del marco elegido ronda {recent_range_pct:.2f}% y el ATR equivale a {atr_pct:.2f}%. "
         f"El RSI {rsi_timeframe} esta en {rsi_signal:.1f} y el imbalance del order book es {order_book_imbalance:+.2f}. "
         f"En derivados, funding {format_optional_pct(funding_rate_pct)} y taker buy/sell {format_optional_number(taker_buy_sell_ratio)}; "
-        f"en spot, CVD reciente {format_optional_number(cvd_ratio)}. "
+        f"en Futures, CVD reciente {format_optional_number(cvd_ratio)}. "
         f"Sentimiento Fear & Greed: {format_optional_number(fear_greed_value)}. "
         f"{leverage_text} Decision de entrenamiento: {decision}."
     )
@@ -1794,7 +1794,7 @@ def build_explained_metrics(
             "value": " / ".join(f"{key}:{timeframes[key]['ema_stack']}" for key in ("5m", "15m", "1h", "4h", "1d", "1w") if key in timeframes),
             "score": min(100, max(0, trend_score_value)),
             "bias": "favorable" if trend_score_value >= 60 else "desfavorable" if trend_score_value <= 40 else "neutral",
-            "source": "Binance velas spot 5m, 15m, 1h, 4h, 1d y 1w",
+            "source": "Binance Futures velas 5m, 15m, 1h, 4h, 1d y 1w",
             "explanation": "Compara EMAs en varios marcos temporales. Cuantos mas marcos acompanan, mas solida es la direccion; si varios van en contra, la entrada queda penalizada.",
         },
         {
@@ -1803,7 +1803,7 @@ def build_explained_metrics(
             "value": f"{rsi_value:.1f}",
             "score": min(100, max(0, momentum_score)),
             "bias": "favorable" if 38 <= rsi_value <= 62 else "alerta" if rsi_value > 72 or rsi_value < 28 else "neutral",
-            "source": f"Binance velas spot {tf_momentum.get('interval', horizon_profile.get('momentum_timeframe', '5m'))}",
+            "source": f"Binance Futures velas {tf_momentum.get('interval', horizon_profile.get('momentum_timeframe', '5m'))}",
             "explanation": "El RSI mide velocidad del movimiento. Muy alto puede indicar compra extendida; muy bajo puede indicar venta extendida. No decide solo, ayuda a evitar entradas tarde.",
         },
         {
@@ -1812,7 +1812,7 @@ def build_explained_metrics(
             "value": f"{tf_volatility['atr_pct']:.2f}%",
             "score": min(100, max(0, volatility_score)),
             "bias": "favorable" if volatility_score >= 60 else "alerta",
-            "source": f"Binance velas spot {tf_volatility.get('interval', horizon_profile.get('volatility_timeframe', '5m'))}",
+            "source": f"Binance Futures velas {tf_volatility.get('interval', horizon_profile.get('volatility_timeframe', '5m'))}",
             "explanation": "El ATR aproxima el movimiento normal reciente. Si el stop queda dentro de ese ruido, puede saltar aunque la idea no sea necesariamente mala.",
         },
         {
@@ -1821,7 +1821,7 @@ def build_explained_metrics(
             "value": f"{order_book['imbalance']:+.2f}",
             "score": min(100, max(0, imbalance_score)),
             "bias": "favorable" if (proposal.side == "long" and order_book["imbalance"] > 0.12) or (proposal.side == "short" and order_book["imbalance"] < -0.12) else "desfavorable" if abs(order_book["imbalance"]) > 0.12 else "neutral",
-            "source": "Binance order book spot top 20 niveles",
+            "source": "Binance Futures order book top 20 niveles",
             "explanation": "Compara liquidez cercana en compras y ventas. No predice por si solo, pero muestra si la presion inmediata acompana o dificulta la entrada.",
         },
         {
@@ -1830,7 +1830,7 @@ def build_explained_metrics(
             "value": f"{order_book['spread_pct']:.4f}%",
             "score": min(100, max(0, liquidity_score)),
             "bias": "favorable" if liquidity_score >= 70 else "alerta",
-            "source": "Binance order book spot",
+            "source": "Binance Futures order book",
             "explanation": "Mide la diferencia entre mejor comprador y mejor vendedor. Cuanto menor es, mas limpia suele ser la ejecucion simulada.",
         },
         {
@@ -1857,16 +1857,16 @@ def build_explained_metrics(
             "value": f"{level_distance:.2f}%" if level_distance is not None else "no disponible",
             "score": min(100, max(0, level_score)),
             "bias": "alerta" if level_score <= 35 else "neutral" if level_score <= 60 else "favorable",
-            "source": "Binance velas spot 1h",
+            "source": "Binance Futures velas 1h",
             "explanation": "Detecta el nivel tecnico cercano mas relevante. Para longs importa la resistencia superior; para shorts, el soporte inferior. Si esta demasiado cerca, limita recorrido.",
         },
         {
-            "key": "cvd_spot",
-            "label": "CVD spot reciente",
+            "key": "cvd_futures",
+            "label": "CVD Futures reciente",
             "value": format_optional_number(cvd_ratio),
             "score": min(100, max(0, cvd_score)),
             "bias": "favorable" if cvd_score >= 60 else "desfavorable" if cvd_score <= 40 else "neutral",
-            "source": "Binance spot aggregate trades",
+            "source": "Binance Futures aggregate trades",
             "explanation": "Aproxima compras agresivas menos ventas agresivas. Si el CVD acompana la direccion, hay flujo real; si contradice, la entrada tiene menos confirmacion.",
         },
         {
@@ -1875,7 +1875,7 @@ def build_explained_metrics(
             "value": f"{ticker_24h['price_change_pct']:+.2f}%",
             "score": score_to_percent(ticker_24h["price_change_pct"], -5, 5),
             "bias": "contexto",
-            "source": "Binance ticker 24h spot",
+            "source": "Binance Futures ticker 24h",
             "explanation": "Da contexto general del dia. Sirve para saber si la operacion se plantea en un mercado fuerte, debil o lateral.",
         },
         {

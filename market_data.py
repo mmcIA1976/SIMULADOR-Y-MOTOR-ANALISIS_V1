@@ -5,13 +5,9 @@ import urllib.parse
 import urllib.request
 from urllib.error import HTTPError
 
-from trading_simulator import BINANCE_SPOT_BASE_URLS, BINANCE_SPOT_TIMEOUT_SECONDS
+from trading_simulator import BINANCE_MARKET_TIMEOUT_SECONDS
 
 
-BINANCE_KLINES_PATH = "/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
-BINANCE_DEPTH_PATH = "/api/v3/depth?symbol={symbol}&limit=20"
-BINANCE_TICKER_24H_PATH = "/api/v3/ticker/24hr?symbol={symbol}"
-BINANCE_AGG_TRADES_PATH = "/api/v3/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_USDM_BASE_URLS = (
     "https://fapi.binance.com",
 )
@@ -39,7 +35,6 @@ COINGECKO_MARKETS_URL = (
 )
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
-_preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[0]
 _preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
 
 BINANCE_API_HEADERS = {
@@ -66,32 +61,6 @@ def get_json_optional(url: str) -> object | None:
         return None
 
 
-def get_spot_json(path: str) -> object:
-    global _preferred_spot_base_url
-    last_error: Exception | None = None
-    candidate_bases = (_preferred_spot_base_url,) + tuple(
-        base for base in BINANCE_SPOT_BASE_URLS if base != _preferred_spot_base_url
-    )
-    for base_url in candidate_bases:
-        url = f"{base_url}{path}"
-        request = urllib.request.Request(url, headers={"User-Agent": "trading-trainer/0.1"})
-        try:
-            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            _preferred_spot_base_url = base_url
-            return payload
-        except Exception as exc:
-            last_error = exc
-    raise RuntimeError(f"No se pudo consultar Binance Spot para {path}: {last_error}")
-
-
-def get_spot_json_optional(path: str) -> object | None:
-    try:
-        return get_spot_json(path)
-    except Exception:
-        return None
-
-
 def get_futures_json(path: str) -> object:
     global _preferred_futures_base_url
     errors: list[str] = []
@@ -103,7 +72,7 @@ def get_futures_json(path: str) -> object:
         request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
         raw = ""
         try:
-            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
+            with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
                 raw = response.read().decode("utf-8")
                 payload = json.loads(raw)
             _preferred_futures_base_url = base_url
@@ -147,7 +116,7 @@ def diagnose_futures_hosts(symbol: str) -> list[dict]:
             "error": None,
         }
         try:
-            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
+            with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
                 raw_bytes = response.read()
                 raw = raw_bytes.decode("utf-8", errors="replace")
                 item["status"] = int(response.status)

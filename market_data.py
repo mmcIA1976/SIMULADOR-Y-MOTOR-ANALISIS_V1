@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import urllib.parse
 import urllib.request
+from urllib.error import HTTPError
 
 from trading_simulator import BINANCE_SPOT_BASE_URLS, BINANCE_SPOT_TIMEOUT_SECONDS
 
@@ -45,6 +46,18 @@ COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
 _preferred_spot_base_url = BINANCE_SPOT_BASE_URLS[0]
 _preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
+
+BINANCE_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/126.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json,text/plain,*/*",
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+    "Referer": "https://www.binance.com/en/futures/BTCUSDT",
+    "Origin": "https://www.binance.com",
+}
 
 
 def get_json(url: str) -> object:
@@ -94,12 +107,21 @@ def get_futures_json(path: str) -> object:
     )
     for base_url in candidate_bases:
         url = f"{base_url}{path}"
-        request = urllib.request.Request(url, headers={"User-Agent": "trading-trainer/0.1"})
+        request = urllib.request.Request(url, headers=BINANCE_BROWSER_HEADERS)
         try:
             with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+                raw = response.read().decode("utf-8")
+                payload = json.loads(raw)
             _preferred_futures_base_url = base_url
             return payload
+        except HTTPError as exc:
+            try:
+                body = exc.read().decode("utf-8", errors="replace")[:180]
+            except Exception:
+                body = ""
+            last_error = RuntimeError(f"HTTP {exc.code} desde {base_url}: {body}")
+        except json.JSONDecodeError as exc:
+            last_error = RuntimeError(f"Respuesta no JSON desde {base_url}: {raw[:180]}")
         except Exception as exc:
             last_error = exc
     raise RuntimeError(f"No se pudo consultar Binance USD-M Futures para {path}: {last_error}")

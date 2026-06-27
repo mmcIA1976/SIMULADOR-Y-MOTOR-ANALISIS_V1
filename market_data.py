@@ -134,6 +134,50 @@ def get_futures_json_optional(path: str) -> object | None:
         return None
 
 
+def diagnose_futures_hosts(symbol: str) -> list[dict]:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    path = BINANCE_USDM_PRICE_PATH.format(symbol=safe_symbol)
+    results = []
+    for base_url in BINANCE_USDM_BASE_URLS:
+        url = f"{base_url}{path}"
+        request = urllib.request.Request(url, headers=BINANCE_BROWSER_HEADERS)
+        item = {
+            "base_url": base_url,
+            "url": url,
+            "ok": False,
+            "status": None,
+            "content_type": None,
+            "json_ok": False,
+            "body_prefix": "",
+            "error": None,
+        }
+        try:
+            with urllib.request.urlopen(request, timeout=BINANCE_SPOT_TIMEOUT_SECONDS) as response:
+                raw_bytes = response.read()
+                raw = raw_bytes.decode("utf-8", errors="replace")
+                item["status"] = int(response.status)
+                item["content_type"] = response.headers.get("Content-Type")
+                item["body_prefix"] = raw[:240]
+                try:
+                    parsed = json.loads(raw)
+                    item["json_ok"] = True
+                    item["ok"] = isinstance(parsed, dict) and "price" in parsed
+                except json.JSONDecodeError as exc:
+                    item["error"] = f"json_decode_error: {exc}"
+        except HTTPError as exc:
+            item["status"] = int(exc.code)
+            item["content_type"] = exc.headers.get("Content-Type") if exc.headers else None
+            try:
+                item["body_prefix"] = exc.read().decode("utf-8", errors="replace")[:240]
+            except Exception:
+                item["body_prefix"] = ""
+            item["error"] = f"http_error: {exc}"
+        except Exception as exc:
+            item["error"] = str(exc)
+        results.append(item)
+    return results
+
+
 def get_price(symbol: str) -> float:
     safe_symbol = urllib.parse.quote(symbol.upper())
     payload = get_futures_json(BINANCE_USDM_PRICE_PATH.format(symbol=safe_symbol))

@@ -525,6 +525,16 @@ def market_history(symbol: str = "BTCUSDT", minutes: int = 60) -> dict:
     }
 
 
+@app.get("/api/diagnostics/binance-futures")
+def binance_futures_diagnostics(symbol: str = "ETHUSDT") -> dict:
+    symbol = symbol.upper()
+    return {
+        "symbol": symbol,
+        "provider": "binance_usdm_futures",
+        "results": market_data.diagnose_futures_hosts(symbol),
+    }
+
+
 @app.post("/api/operations/check-exits")
 def check_operation_exits(
     symbol: str = "BTCUSDT",

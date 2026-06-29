@@ -2,6 +2,32 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-29 - Correccion cierre global TP/SL en concurso
+
+Estado: aplicado y verificado contra operaciones reales atrasadas.
+
+Origen:
+- Auditoria de operaciones abiertas del usuario `chaval` en concurso.
+- La operacion `#92` BTCUSDT SHORT seguia abierta aunque el precio actual ya estaba por debajo del TP.
+- Al revisar el camino real desde la entrada, la primera salida valida fue STOP LOSS el `2026-06-10T15:46:00+00:00`, antes de cualquier TP posterior.
+- La operacion `#81` ETHUSDT LONG tambien estaba abierta; al ampliar el historico se detecto que habia alcanzado TAKE PROFIT el `2026-06-15T10:54:00+00:00`.
+
+Cambios realizados:
+- `/api/price` deja de revisar TP/SL solo del usuario logueado y refresca todas las operaciones activas del simbolo consultado.
+- `/api/operations/check-exits` aplica el mismo refresco global del simbolo, devolviendo al frontend solo las operaciones del usuario actual.
+- Al cargar el concurso, se revisan todos los simbolos activos del concurso antes de construir ranking y capitales.
+- El limite de velas 1m para buscar el primer cruce TP/SL sube de 5 paginas a 60 paginas, cubriendo operaciones mensuales largas.
+- Los cierres automaticos guardan `closed_at` con la hora real del cruce detectado cuando existe vela/trade de Binance Futures, no con la hora en la que la app proceso tarde el cierre.
+- Se corrigieron en Supabase operaciones atrasadas detectadas: `#92`, `#132`, `#155` y `#81`.
+
+Motivo:
+- El concurso muestra operaciones de todos los usuarios; por tanto el cierre automatico no puede depender de que cada usuario consulte su propia operacion.
+- El motor de aprendizaje necesita resultado, motivo de cierre y duracion real, no la fecha tardia de procesamiento.
+
+Riesgo esperado:
+- Medio-bajo. Aumenta llamadas a Binance Futures cuando se cargan concursos con simbolos activos, pero evita estados abiertos falsos y resultados contaminados.
+- La busqueda historica de 60.000 velas puede ser mas lenta en operaciones muy antiguas; se acepta para preservar exactitud en concurso mensual.
+
 ## 2026-06-27 - Limpieza de trazabilidad visual Binance Futures
 
 Estado: aplicado tras verificacion online en Railway Singapur.

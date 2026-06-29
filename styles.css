@@ -692,15 +692,26 @@ label {
   max-width: 100%;
   align-items: center;
   gap: 6px;
+  appearance: none;
+  cursor: pointer;
   border: 1px solid rgba(18, 35, 30, 0.10);
   border-radius: 999px;
   background: #ffffff;
   padding: 5px 9px;
   color: var(--ink);
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 850;
   line-height: 1.15;
   white-space: nowrap;
+}
+
+.contest-op-pill:hover,
+.contest-op-pill:focus-visible {
+  border-color: rgba(31, 122, 140, 0.45);
+  box-shadow: 0 8px 20px rgba(18, 35, 30, 0.10);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .contest-op-pill.is-open {
@@ -729,6 +740,140 @@ label {
   line-height: 1.4;
 }
 
+.contest-operation-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(18, 35, 30, 0.44);
+}
+
+.contest-operation-modal.hidden {
+  display: none;
+}
+
+.contest-operation-dialog {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  overflow: auto;
+  border: 1px solid rgba(31, 122, 140, 0.28);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(18, 35, 30, 0.24);
+}
+
+.contest-operation-close {
+  position: sticky;
+  top: 12px;
+  left: calc(100% - 48px);
+  z-index: 2;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  margin: 12px 12px -46px auto;
+  place-items: center;
+  border: 1px solid rgba(18, 35, 30, 0.14);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.contest-operation-close:hover,
+.contest-operation-close:focus-visible {
+  border-color: rgba(31, 122, 140, 0.42);
+  outline: none;
+}
+
+.contest-operation-modal-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 26px 58px 18px 26px;
+  border-bottom: 1px solid rgba(18, 35, 30, 0.10);
+}
+
+.contest-operation-modal-head div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.contest-operation-modal-head span,
+.contest-operation-modal-head small,
+.contest-operation-grid span,
+.contest-operation-probability span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.contest-operation-modal-head strong {
+  color: var(--ink);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1.05;
+}
+
+.contest-operation-modal-head b {
+  flex: 0 0 auto;
+  max-width: 240px;
+  padding-top: 4px;
+  text-align: right;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.contest-operation-probability {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 26px 0;
+  padding: 14px 16px;
+  border: 1px solid #eadb96;
+  border-radius: 8px;
+  background: #fff7c8;
+  color: #5f5521;
+}
+
+.contest-operation-probability strong {
+  color: var(--price);
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.contest-operation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 18px 26px 26px;
+}
+
+.contest-operation-grid article {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid rgba(18, 35, 30, 0.10);
+  border-radius: 8px;
+  background: rgba(247, 248, 243, 0.75);
+}
+
+.contest-operation-grid strong {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .contest-row small,
 .contest-empty {
   color: var(--muted);
@@ -748,6 +893,34 @@ label {
 
   .contest-ops-group {
     grid-template-columns: 1fr;
+  }
+
+  .contest-operation-modal {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .contest-operation-dialog {
+    max-height: calc(100vh - 20px);
+  }
+
+  .contest-operation-modal-head {
+    display: grid;
+    padding: 22px 52px 16px 18px;
+  }
+
+  .contest-operation-modal-head b {
+    max-width: none;
+    text-align: left;
+  }
+
+  .contest-operation-probability {
+    margin: 14px 18px 0;
+  }
+
+  .contest-operation-grid {
+    grid-template-columns: 1fr;
+    padding: 14px 18px 20px;
   }
 }
 

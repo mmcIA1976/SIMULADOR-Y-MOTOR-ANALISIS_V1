@@ -24,7 +24,7 @@ AVATAR_DIR = APP_DIR / "data" / "avatars"
 SESSION_COOKIE = "trading_trainer_session"
 MAX_AVATAR_BYTES = 1_000_000
 ONE_MINUTE_MS = 60_000
-MAX_EXIT_KLINE_PAGES = 5
+MAX_EXIT_KLINE_PAGES = 60
 MAX_EXIT_TRADE_PAGES = 8
 EXIT_WINDOW_BEFORE_MINUTES = 90
 EXIT_WINDOW_AFTER_MINUTES = 30
@@ -392,6 +392,7 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
     user = current_user(session_token)
     with connect() as db:
         season = ensure_current_contest_season(db)
+        active_refresh = refresh_contest_active_operations(db, int(season["id"]))
         entry = get_contest_entry(db, int(user["id"]), int(season["id"]))
         portfolio = calculate_portfolio_from_db(db, int(user["id"]))
         leaderboard = contest_leaderboard(db, int(season["id"]))
@@ -405,6 +406,7 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
         "portfolio": portfolio["contest"],
         "leaderboard": leaderboard,
         "history": history,
+        "active_refresh": active_refresh,
     }
 
 
@@ -414,6 +416,7 @@ def contest_join(session_token: str | None = Cookie(default=None, alias=SESSION_
     with connect() as db:
         season = ensure_current_contest_season(db)
         entry = ensure_contest_entry(db, int(user["id"]), int(season["id"]))
+        active_refresh = refresh_contest_active_operations(db, int(season["id"]))
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         leaderboard = contest_leaderboard(db, int(season["id"]))
         history = contest_history(db)
@@ -425,6 +428,7 @@ def contest_join(session_token: str | None = Cookie(default=None, alias=SESSION_
         "portfolio": portfolio["contest"],
         "leaderboard": leaderboard,
         "history": history,
+        "active_refresh": active_refresh,
     }
 
 
@@ -461,8 +465,7 @@ def price(
             user = None
     with connect() as db:
         finalize_due_observations(db)
-        activated_by_trigger = activate_triggered_pending_operations(db, symbol, value, int(user["id"])) if user else {}
-        closed_by_trigger = close_triggered_open_operations(db, symbol, value, int(user["id"])) if user else {}
+        activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, value)
         if closed_by_trigger:
             refresh_learning_conclusions(db)
             refresh_learning_evaluations(db)
@@ -550,16 +553,61 @@ def check_operation_exits(
             detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
         ) from exc
     with connect() as db:
-        activated_by_trigger = activate_triggered_pending_operations(db, symbol, current_price, int(user["id"]))
-        closed_by_trigger = close_triggered_open_operations(db, symbol, current_price, int(user["id"]))
+        activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, current_price)
         if closed_by_trigger:
             refresh_learning_conclusions(db)
             refresh_learning_evaluations(db)
     return {
         "symbol": symbol,
         "price": current_price,
-        "activated_operations": list(activated_by_trigger.values()),
-        "closed_operations": list(closed_by_trigger.values()),
+        "activated_operations": [
+            operation for operation in activated_by_trigger.values() if operation.get("user_id") == user["id"]
+        ],
+        "closed_operations": [
+            operation for operation in closed_by_trigger.values() if operation.get("user_id") == user["id"]
+        ],
+    }
+
+
+def refresh_symbol_active_operations(
+    db,
+    symbol: str,
+    current_price: float,
+    user_id: int | None = None,
+) -> tuple[dict[int, dict], dict[int, dict]]:
+    activated = activate_triggered_pending_operations(db, symbol, current_price, user_id)
+    closed = close_triggered_open_operations(db, symbol, current_price, user_id)
+    return activated, closed
+
+
+def refresh_contest_active_operations(db, season_id: int) -> dict[str, list[dict]]:
+    rows = db.execute(
+        """
+        SELECT DISTINCT symbol
+        FROM operations
+        WHERE mode = 'contest'
+          AND contest_season_id = ?
+          AND status IN ('OPEN', 'PENDING_ENTRY')
+        """,
+        (season_id,),
+    ).fetchall()
+    activated: dict[int, dict] = {}
+    closed: dict[int, dict] = {}
+    for row in rows:
+        symbol = str(row["symbol"]).upper()
+        try:
+            current_price = market_data.get_price(symbol)
+        except Exception:
+            continue
+        activated_for_symbol, closed_for_symbol = refresh_symbol_active_operations(db, symbol, current_price)
+        activated.update(activated_for_symbol)
+        closed.update(closed_for_symbol)
+    if closed:
+        refresh_learning_conclusions(db)
+        refresh_learning_evaluations(db)
+    return {
+        "activated_operations": list(activated.values()),
+        "closed_operations": list(closed.values()),
     }
 
 
@@ -657,16 +705,18 @@ def close_triggered_open_operations(
             continue
         reason, close_price, trigger_time, exit_evidence = trigger
         pnl = approximate_pnl(operation, close_price)
+        closed_at = trigger_time if trigger_time != "precio_actual" else datetime.now(timezone.utc).isoformat()
         db.execute(
             """
             UPDATE operations
-            SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, close_price = ?,
+            SET status = 'CLOSED', closed_at = ?, close_price = ?,
                 close_reason = ?, final_pnl = ?, observation_status = 'PLAN_EXECUTED',
                 observation_until = NULL, closing_note = ?, learning_outcome = NULL,
                 learning_summary = NULL, exit_evidence_json = ?
             WHERE id = ?
             """,
             (
+                closed_at,
                 close_price,
                 reason,
                 pnl,
@@ -3404,29 +3454,52 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
     operation_rows = db.execute(
         """
         SELECT
-            id,
-            user_id,
-            symbol,
-            side,
-            status,
-            entry,
-            stop_loss,
-            take_profit,
-            margin,
-            leverage,
-            final_pnl
-        FROM operations
-        WHERE mode = 'contest'
-          AND contest_season_id = ?
+            o.id,
+            o.user_id,
+            o.symbol,
+            o.side,
+            o.status,
+            o.entry,
+            o.stop_loss,
+            o.take_profit,
+            o.margin,
+            o.leverage,
+            o.final_pnl,
+            o.close_price,
+            o.close_reason,
+            o.created_at,
+            o.triggered_at,
+            o.closed_at,
+            o.time_horizon,
+            o.entry_type,
+            o.requested_entry,
+            o.trigger_condition,
+            o.entry_order_type,
+            r.id AS recommendation_id,
+            r.tp_probability AS recommendation_tp_probability,
+            r.created_at AS recommendation_created_at
+        FROM operations o
+        LEFT JOIN recommendations r ON r.id = (
+            SELECT r2.id
+            FROM recommendations r2
+            WHERE r2.operation_id = o.id
+            ORDER BY r2.created_at DESC
+            LIMIT 1
+        )
+        WHERE o.mode = 'contest'
+          AND o.contest_season_id = ?
         ORDER BY
-            CASE WHEN status = 'OPEN' THEN 0 WHEN status = 'PENDING_ENTRY' THEN 1 ELSE 2 END,
-            id DESC
+            CASE WHEN o.status = 'OPEN' THEN 0 WHEN o.status = 'PENDING_ENTRY' THEN 1 ELSE 2 END,
+            o.id DESC
         """,
         (season_id,),
     ).fetchall()
     operations_by_user: dict[int, list[dict]] = {}
     for operation_row in operation_rows:
         operation = row_to_dict(operation_row)
+        for key, value in list(operation.items()):
+            if isinstance(value, datetime):
+                operation[key] = value.isoformat()
         operations_by_user.setdefault(int(operation["user_id"]), []).append(operation)
     prices = live_prices_for_operations(open_operations)
     unrealized_by_user: dict[int, float] = {}

@@ -98,6 +98,9 @@ const elements = {
   floatingNotice: document.querySelector("#floatingNotice"),
   floatingNoticeTitle: document.querySelector("#floatingNoticeTitle"),
   floatingNoticeBody: document.querySelector("#floatingNoticeBody"),
+  contestOperationModal: document.querySelector("#contestOperationModal"),
+  contestOperationModalBody: document.querySelector("#contestOperationModalBody"),
+  contestOperationModalClose: document.querySelector("#contestOperationModalClose"),
 };
 
 const ctx = elements.chart.getContext("2d");
@@ -2165,10 +2168,24 @@ async function loadContest() {
   try {
     contestState = await requestJson("/api/contest/current");
     renderContest(contestState);
+    if (contestRefreshChangedOperations(contestState.active_refresh)) {
+      await loadOperations();
+      await loadPortfolio();
+    }
   } catch {
     contestState = null;
     renderContest(null);
   }
+}
+
+function contestRefreshChangedOperations(refresh) {
+  return Boolean(
+    refresh
+    && (
+      (Array.isArray(refresh.activated_operations) && refresh.activated_operations.length > 0)
+      || (Array.isArray(refresh.closed_operations) && refresh.closed_operations.length > 0)
+    )
+  );
 }
 
 async function joinContest() {
@@ -2181,6 +2198,9 @@ async function joinContest() {
     elements.joinContestButton.textContent = "Iniciando...";
     contestState = await requestJson("/api/contest/join", { method: "POST" });
     renderContest(contestState);
+    if (contestRefreshChangedOperations(contestState.active_refresh)) {
+      await loadOperations();
+    }
     await loadPortfolio();
   } catch (error) {
     elements.authMessage.textContent = error.message;
@@ -2427,12 +2447,161 @@ function renderContestOperationPill(operation) {
       ? entryOrderLabel(operation.entry_order_type || entryOrderTypeFrom(String(operation.side || "").toLowerCase(), operation.trigger_condition))
       : "Cerrada";
   return `
-    <span class="contest-op-pill ${isOpen ? "is-open" : isPending ? "is-pending" : "is-closed"}">
+    <button class="contest-op-pill ${isOpen ? "is-open" : isPending ? "is-pending" : "is-closed"}" type="button" data-contest-operation-id="${escapeHtml(operation.id)}">
       <strong>#${escapeHtml(operation.id)} ${escapeHtml(symbol)} ${escapeHtml(side)}</strong>
       <em>${escapeHtml(statusLabel)}</em>
       ${result}
-    </span>
+    </button>
   `;
+}
+
+function findContestOperation(operationId) {
+  const rows = Array.isArray(contestState?.leaderboard) ? contestState.leaderboard : [];
+  for (const row of rows) {
+    const operation = (Array.isArray(row.contest_operations) ? row.contest_operations : [])
+      .find((item) => Number(item.id) === Number(operationId));
+    if (operation) {
+      return { operation, row };
+    }
+  }
+  return null;
+}
+
+function formatContestDateTime(value) {
+  if (!value) {
+    return "--";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function contestDurationInfo(operation) {
+  const status = String(operation.status || "").toUpperCase();
+  const startValue = operation.triggered_at || operation.created_at;
+  const start = startValue ? new Date(startValue) : null;
+  const end = operation.closed_at ? new Date(operation.closed_at) : null;
+  if (status !== "CLOSED" || !start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { text: status === "CLOSED" ? "--" : "En curso", category: status === "CLOSED" ? "--" : "Operación abierta" };
+  }
+  const totalMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const text = [
+    days ? `${days}d` : "",
+    hours ? `${hours}h` : "",
+    !days && minutes ? `${minutes}min` : "",
+  ].filter(Boolean).join(" ") || "menos de 1min";
+  const category = totalMinutes < 1440
+    ? "Intradia"
+    : totalMinutes <= 10080
+      ? "Swing corto"
+      : "Posicion prolongada";
+  return { text, category };
+}
+
+function contestEntrySummary(operation) {
+  const entryType = operation.entry_type || "market";
+  if (entryType !== "pending") {
+    return "A mercado";
+  }
+  const orderType = operation.entry_order_type || entryOrderTypeFrom(String(operation.side || "").toLowerCase(), operation.trigger_condition);
+  return `${entryOrderLabel(orderType)} · ${entryTriggerLabel(operation.trigger_condition)}`;
+}
+
+function contestOperationOutcome(operation) {
+  const status = String(operation.status || "").toUpperCase();
+  if (status === "OPEN") {
+    return Number.isFinite(Number(operation.unrealized_pnl)) ? `Flotante ${money(Number(operation.unrealized_pnl))}` : "Abierta";
+  }
+  if (status === "PENDING_ENTRY") {
+    return "Pendiente de activacion";
+  }
+  const pnl = Number(operation.final_pnl);
+  const reason = operation.close_reason === "take_profit"
+    ? "TAKE PROFIT"
+    : operation.close_reason === "stop_loss"
+      ? "STOP LOSS"
+      : "Cierre manual";
+  return `${reason}${Number.isFinite(pnl) ? ` · ${money(pnl)}` : ""}`;
+}
+
+function contestAnalysisProbability(operation) {
+  const value = Number(operation.recommendation_tp_probability);
+  return Number.isFinite(value) ? percent(value) : "--";
+}
+
+function renderContestOperationModalContent(operation, row) {
+  const status = String(operation.status || "").toUpperCase();
+  const sideLabel = String(operation.side || "").toUpperCase();
+  const symbol = symbolLabel(operation.symbol || "");
+  const entryType = operation.entry_type || "market";
+  const startLabel = operation.triggered_at
+    ? "Inicio real"
+    : status === "PENDING_ENTRY"
+      ? "Creada"
+      : "Inicio";
+  const duration = contestDurationInfo(operation);
+  const requestedEntry = Number(operation.requested_entry ?? operation.entry);
+  const closePrice = Number(operation.close_price);
+  const resultValue = Number(operation.final_pnl ?? operation.unrealized_pnl);
+  const resultClass = !Number.isFinite(resultValue) || resultValue >= 0 ? "positive" : "negative";
+  return `
+    <header class="contest-operation-modal-head">
+      <div>
+        <span>${escapeHtml(row?.username || "Usuario")}</span>
+        <strong id="contestOperationModalTitle">#${escapeHtml(operation.id)} ${escapeHtml(symbol)} ${escapeHtml(sideLabel)}</strong>
+        <small>${escapeHtml(operationStatusShortLabel(operation))}</small>
+      </div>
+      <b class="${resultClass}">${escapeHtml(contestOperationOutcome(operation))}</b>
+    </header>
+    <section class="contest-operation-probability">
+      <span>Probabilidad previa del analisis</span>
+      <strong>${contestAnalysisProbability(operation)}</strong>
+    </section>
+    <div class="contest-operation-grid">
+      <article><span>${escapeHtml(startLabel)}</span><strong>${escapeHtml(formatContestDateTime(operation.triggered_at || operation.created_at))}</strong></article>
+      ${status === "CLOSED" ? `<article><span>Cierre</span><strong>${escapeHtml(formatContestDateTime(operation.closed_at))}</strong></article>` : ""}
+      ${status === "CLOSED" ? `<article><span>Duracion</span><strong>${escapeHtml(duration.text)} · ${escapeHtml(duration.category)}</strong></article>` : ""}
+      <article><span>Tipo de entrada</span><strong>${escapeHtml(contestEntrySummary(operation))}</strong></article>
+      <article><span>Marco</span><strong>${escapeHtml(timeHorizonLabel(operation.time_horizon || "intraday_short"))}</strong></article>
+      <article><span>Entrada ${entryType === "pending" ? "solicitada" : ""}</span><strong>${priceText(requestedEntry)}</strong></article>
+      ${entryType === "pending" && operation.triggered_at ? `<article><span>Entrada ejecutada</span><strong>${priceText(Number(operation.entry))}</strong></article>` : ""}
+      ${status === "CLOSED" && Number.isFinite(closePrice) ? `<article><span>Precio cierre</span><strong>${priceText(closePrice)}</strong></article>` : ""}
+      <article><span>Take profit</span><strong>${priceText(Number(operation.take_profit))}</strong></article>
+      <article><span>Stop loss</span><strong>${priceText(Number(operation.stop_loss))}</strong></article>
+      <article><span>Margen</span><strong>${money(Number(operation.margin))}</strong></article>
+      <article><span>Apalancamiento</span><strong>x${Number(operation.leverage || 0).toFixed(0)}</strong></article>
+      <article><span>Exposicion</span><strong>${money(Number(operation.margin) * Number(operation.leverage))}</strong></article>
+    </div>
+  `;
+}
+
+function openContestOperationModal(operationId) {
+  const match = findContestOperation(operationId);
+  if (!match || !elements.contestOperationModal || !elements.contestOperationModalBody) {
+    return;
+  }
+  elements.contestOperationModalBody.innerHTML = renderContestOperationModalContent(match.operation, match.row);
+  elements.contestOperationModal.classList.remove("hidden");
+  elements.contestOperationModalClose?.focus();
+}
+
+function closeContestOperationModal() {
+  if (!elements.contestOperationModal || !elements.contestOperationModalBody) {
+    return;
+  }
+  elements.contestOperationModal.classList.add("hidden");
+  elements.contestOperationModalBody.innerHTML = "";
 }
 
 function renderContestAvatar(row) {
@@ -3602,6 +3771,24 @@ elements.contestHistoryToggle?.addEventListener("click", () => {
   const historyCount = Array.isArray(contestState?.history) ? contestState.history.length : 0;
   contestHistoryOpen = !contestHistoryOpen;
   updateContestHistoryVisibility(historyCount);
+});
+elements.contestLeaderboard?.addEventListener("click", (event) => {
+  const pill = event.target.closest(".contest-op-pill");
+  if (!pill) {
+    return;
+  }
+  openContestOperationModal(pill.dataset.contestOperationId);
+});
+elements.contestOperationModalClose?.addEventListener("click", closeContestOperationModal);
+elements.contestOperationModal?.addEventListener("click", (event) => {
+  if (event.target === elements.contestOperationModal) {
+    closeContestOperationModal();
+  }
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.contestOperationModal?.classList.contains("hidden")) {
+    closeContestOperationModal();
+  }
 });
 window.addEventListener("resize", resizeCanvas);
 

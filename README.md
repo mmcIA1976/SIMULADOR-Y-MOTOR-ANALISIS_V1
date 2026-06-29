@@ -2,6 +2,12 @@
 
 Simulador educativo multiusuario para analizar, registrar y auditar operaciones crypto con datos de mercado reales. No ejecuta ordenes reales, no conecta con cuentas de exchange y no solicita claves API privadas.
 
+## Norte estrategico
+
+El documento [`NORTE_ESTRATEGICO_AUTONOMIA.md`](NORTE_ESTRATEGICO_AUTONOMIA.md) fija el objetivo real del proyecto: evolucionar desde simulador asistido por usuario hacia motor autonomo de analisis, simulacion, aprendizaje y futura base de bot.
+
+Antes de priorizar nuevas mejoras, contrastar la tarea contra ese documento. La prioridad actual es fiabilidad operativa autonoma, auditoria historica y aprendizaje limpio.
+
 ## Estado actual
 
 - Registro/login local con cookie de sesion.

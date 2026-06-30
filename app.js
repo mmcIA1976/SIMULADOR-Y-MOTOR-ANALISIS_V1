@@ -622,7 +622,7 @@ function requestJson(url, options = {}) {
     const request = new XMLHttpRequest();
     request.open(options.method || "GET", url, true);
     request.responseType = "json";
-    request.timeout = 30000;
+    request.timeout = options.timeout || 30000;
     if (options.body) {
       request.setRequestHeader("Content-Type", "application/json");
     }
@@ -634,8 +634,8 @@ function requestJson(url, options = {}) {
         reject(new Error(payload.detail || payload.error || `Error HTTP ${request.status}`));
       }
     };
-    request.onerror = () => reject(new Error("No se pudo consultar el precio."));
-    request.ontimeout = () => reject(new Error("La consulta del precio ha tardado demasiado."));
+    request.onerror = () => reject(new Error(options.errorMessage || "No se pudo completar la consulta."));
+    request.ontimeout = () => reject(new Error(options.timeoutMessage || "La consulta ha tardado demasiado."));
     request.send(options.body ? JSON.stringify(options.body) : undefined);
   });
 }
@@ -1483,6 +1483,9 @@ async function analyzeOperation() {
     const analysis = await requestJson("/api/analyze", {
       method: "POST",
       body: payload,
+      timeout: 90000,
+      errorMessage: "No se pudo completar el analisis.",
+      timeoutMessage: "El analisis ha tardado demasiado. Intentalo de nuevo en unos instantes.",
     });
     lastAnalysis = analysis;
     lastAnalysisPayload = payload;

@@ -49,8 +49,8 @@ BINANCE_API_HEADERS = {
 
 
 def get_json(url: str) -> object:
-    request = urllib.request.Request(url, headers={"User-Agent": "trading-trainer/0.1"})
-    with urllib.request.urlopen(request, timeout=15) as response:
+    request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
+    with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

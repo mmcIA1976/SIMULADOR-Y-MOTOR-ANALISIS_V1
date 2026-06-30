@@ -2,6 +2,30 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-30 - Robustez y rendimiento del analisis online
+
+Estado: aplicado para evitar timeout del analisis en produccion.
+
+Origen:
+- En local el analisis funcionaba, pero online la interfaz podia mostrar error.
+- Una prueba autenticada contra `/api/analyze` en Railway devolvio HTTP 200, pero tardo `31.011 ms`.
+- El frontend tenia timeout global de `30.000 ms`, por lo que podia cancelar el analisis justo antes de recibir la respuesta.
+
+Cambios realizados:
+- Las fuentes opcionales externas usan el mismo timeout corto que Binance Futures, evitando esperas largas de 15 segundos.
+- El snapshot del motor consulta en paralelo velas multi-timeframe, order book, trades, ticker 24h, derivados, mercado global, amplitud y sentimiento.
+- La capa de derivados consulta en paralelo funding, open interest, ratios long/short y taker ratio por periodo.
+- Si una fuente secundaria falla o tarda demasiado, el analisis continua con esa capa vacia en vez de bloquear todo el resultado.
+- La llamada frontend de `/api/analyze` tiene timeout especifico de `90.000 ms` y mensajes de error propios de analisis.
+
+Motivo:
+- El analisis completo combina muchas fuentes; no debe depender de que todas respondan en cadena dentro de 30 segundos.
+- Mantener disponible el motor online sin alterar las formulas de probabilidad ni los pesos de decision.
+
+Riesgo esperado:
+- Bajo. Cambia la estrategia de obtencion de datos y tolerancia a fallos, no el calculo de scoring.
+- Si una fuente secundaria no responde, su disponibilidad queda reflejada en `snapshot.availability` y el motor trabaja con valores neutrales o vacios ya previstos.
+
 ## 2026-06-29 - Correccion cierre global TP/SL en concurso
 
 Estado: aplicado y verificado contra operaciones reales atrasadas.

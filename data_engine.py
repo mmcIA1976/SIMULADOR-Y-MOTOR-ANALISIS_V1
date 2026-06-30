@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import statistics
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import market_data
 
 
+SNAPSHOT_INTERVALS = ("5m", "15m", "1h", "4h", "1d", "1w")
 FIB_RETRACEMENT_RATIOS = (0.236, 0.382, 0.5, 0.618, 0.786)
 FIB_EXTENSION_RATIOS = (1.272, 1.618, 2.0, 2.618)
 
@@ -89,6 +91,13 @@ def distance_pct(a: float, b: float) -> float:
     if b == 0:
         return 0.0
     return ((a - b) / b) * 100
+
+
+def future_value(future, default):
+    try:
+        return future.result()
+    except Exception:
+        return default
 
 
 def summarize_timeframe(candles: CandleSet, current_price: float) -> dict:
@@ -381,25 +390,32 @@ def open_interest_change(symbol: str, period: str, limit: int) -> dict:
 
 
 def summarize_derivatives(symbol: str) -> dict:
-    funding = market_data.get_funding_snapshot(symbol) or {}
-    open_interest = market_data.get_open_interest(symbol) or {}
-    funding_history = market_data.get_funding_history(symbol, 8)
+    periods = ("5m", "1h", "1d")
+    period_limits = {"5m": 30, "1h": 24, "1d": 30}
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = {
+            "funding": executor.submit(market_data.get_funding_snapshot, symbol),
+            "open_interest": executor.submit(market_data.get_open_interest, symbol),
+            "funding_history": executor.submit(market_data.get_funding_history, symbol, 8),
+        }
+        for period in periods:
+            futures[("open_interest", period)] = executor.submit(open_interest_change, symbol, period, period_limits[period])
+            futures[("global_ratio", period)] = executor.submit(market_data.get_global_long_short_ratio, symbol, period)
+            futures[("taker_ratio", period)] = executor.submit(market_data.get_taker_long_short_ratio, symbol, period)
+
+    funding = future_value(futures["funding"], None) or {}
+    open_interest = future_value(futures["open_interest"], None) or {}
+    funding_history = future_value(futures["funding_history"], []) or []
     derivative_periods = {
-        "5m": {
-            "open_interest": open_interest_change(symbol, "5m", 30),
-            "global_long_short_ratio": market_data.get_global_long_short_ratio(symbol, "5m") or {},
-            "taker_buy_sell_ratio": market_data.get_taker_long_short_ratio(symbol, "5m") or {},
-        },
-        "1h": {
-            "open_interest": open_interest_change(symbol, "1h", 24),
-            "global_long_short_ratio": market_data.get_global_long_short_ratio(symbol, "1h") or {},
-            "taker_buy_sell_ratio": market_data.get_taker_long_short_ratio(symbol, "1h") or {},
-        },
-        "1d": {
-            "open_interest": open_interest_change(symbol, "1d", 30),
-            "global_long_short_ratio": market_data.get_global_long_short_ratio(symbol, "1d") or {},
-            "taker_buy_sell_ratio": market_data.get_taker_long_short_ratio(symbol, "1d") or {},
-        },
+        period: {
+            "open_interest": future_value(
+                futures[("open_interest", period)],
+                {"period": period, "limit": period_limits[period], "change_pct": None, "count": 0},
+            ),
+            "global_long_short_ratio": future_value(futures[("global_ratio", period)], None) or {},
+            "taker_buy_sell_ratio": future_value(futures[("taker_ratio", period)], None) or {},
+        }
+        for period in periods
     }
     global_ratio = derivative_periods["5m"]["global_long_short_ratio"]
     taker_ratio = derivative_periods["5m"]["taker_buy_sell_ratio"]
@@ -507,17 +523,30 @@ def availability(snapshot: dict) -> dict:
 def build_market_snapshot(symbol: str) -> dict:
     symbol = symbol.upper()
     current_price = market_data.get_price(symbol)
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = {
+            "depth": executor.submit(market_data.get_depth, symbol),
+            "trades": executor.submit(market_data.get_agg_trades, symbol, 500),
+            "ticker_24h": executor.submit(market_data.get_24h_ticker, symbol),
+            "derivatives": executor.submit(summarize_derivatives, symbol),
+            "global_market": executor.submit(summarize_global_market),
+            "market_breadth": executor.submit(summarize_market_breadth, 100),
+            "sentiment": executor.submit(summarize_sentiment),
+        }
+        for interval in SNAPSHOT_INTERVALS:
+            futures[("klines", interval)] = executor.submit(market_data.get_klines, symbol, interval, 240)
+
     timeframes = {
-        interval: parse_klines(market_data.get_klines(symbol, interval, 240), interval)
-        for interval in ("5m", "15m", "1h", "4h", "1d", "1w")
+        interval: parse_klines(future_value(futures[("klines", interval)], []), interval)
+        for interval in SNAPSHOT_INTERVALS
     }
-    depth = market_data.get_depth(symbol)
-    trades = market_data.get_agg_trades(symbol, 500)
-    ticker_24h = market_data.get_24h_ticker(symbol)
-    derivatives = summarize_derivatives(symbol)
-    global_market = summarize_global_market()
-    market_breadth = summarize_market_breadth(100)
-    sentiment = summarize_sentiment()
+    depth = future_value(futures["depth"], {})
+    trades = future_value(futures["trades"], [])
+    ticker_24h = future_value(futures["ticker_24h"], {})
+    derivatives = future_value(futures["derivatives"], {})
+    global_market = future_value(futures["global_market"], {})
+    market_breadth = future_value(futures["market_breadth"], {})
+    sentiment = future_value(futures["sentiment"], {})
 
     snapshot = {
         "symbol": symbol,

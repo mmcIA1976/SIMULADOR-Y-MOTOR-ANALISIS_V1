@@ -2,6 +2,30 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-06-30 - Separacion estricta entre analisis y aprendizaje
+
+Estado: aplicado para restaurar el principio base del proyecto.
+
+Origen:
+- Auditoria completa del flujo `/api/analyze` detecto que el analisis ejecutaba `apply_learning_modifier`.
+- Ese modificador consultaba operaciones cerradas y podia alterar probabilidades, grado, decision y resumen durante un analisis nuevo.
+- Esto contradecia la regla del proyecto: el analisis debe depender solo de reglas, algoritmos y datos actuales de mercado/API; el aprendizaje debe servir para auditoria posterior e hipotesis, no para modificar resultados en tiempo real.
+
+Cambios realizados:
+- `/api/analyze` ejecuta solo `analyze_trade(proposal)`.
+- Se elimina la importacion de `apply_learning_modifier` desde `app.py`.
+- Se elimina `learning_engine.py`, modulo antiguo de modificador automatico basado en casos historicos.
+- La UI del resultado de analisis deja de mostrar caja o chip de aprendizaje dentro del analisis.
+- El aprendizaje posterior se mantiene en `operations.learning_summary`, `learning_evaluations` y auditorias agregadas, sin intervenir en nuevas probabilidades.
+
+Regla vigente:
+- Ningun analisis nuevo puede consultar operaciones cerradas ni historico de aprendizaje.
+- Ningun aprendizaje modifica probabilidades, setup grade, decision o resumen del analisis.
+- Cualquier mejora derivada de aprendizaje debe convertirse primero en hipotesis/auditoria y solo entrar al motor mediante cambio explicito aprobado.
+
+Riesgo esperado:
+- Bajo y deseado. Puede cambiar resultados de analisis futuros si antes estaban alterados por aprendizaje, pero esos resultados pasan a ser motor puro y trazable.
+
 ## 2026-06-30 - Robustez y rendimiento del analisis online
 
 Estado: aplicado para evitar timeout del analisis en produccion.

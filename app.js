@@ -82,7 +82,6 @@ const elements = {
   analysisInterpretation: document.querySelector("#analysisInterpretation"),
   explainedMetrics: document.querySelector("#explainedMetrics"),
   dataSourcesBox: document.querySelector("#dataSourcesBox"),
-  learningBox: document.querySelector("#learningBox"),
   fibonacciAuditBox: document.querySelector("#fibonacciAuditBox"),
   analysisReasons: document.querySelector("#analysisReasons"),
   operationSelector: document.querySelector("#operationSelector"),
@@ -807,7 +806,6 @@ function clearPrivateSessionView() {
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
-  elements.learningBox.innerHTML = "";
   renderFibonacciAudit(null);
   elements.analysisReasons.innerHTML = "";
   drawChart();
@@ -1473,7 +1471,6 @@ async function analyzeOperation() {
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
-  elements.learningBox.innerHTML = "";
   elements.analysisReasons.innerHTML = "";
   scrollToAnalysisResult();
   showFloatingNotice("Analisis en curso", "Empieza el analisis de la simulacion...", 2000);
@@ -1565,7 +1562,6 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
     elements.dataSourcesBox.innerHTML = "";
-    elements.learningBox.innerHTML = "";
     elements.analysisReasons.innerHTML = "";
     return;
   }
@@ -1585,7 +1581,6 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   renderAnalysisInterpretation(analysis, analysis.explained_metrics || []);
   renderExplainedMetrics(analysis.explained_metrics || []);
   renderDataSources(analysis.snapshot?.availability || {}, analysis.snapshot?.source || {});
-  renderLearningBox(analysis.learning_adjustment || analysis.snapshot?.learning_adjustment || null);
   elements.analysisReasons.innerHTML = "";
   for (const reason of [...(analysis.reasons || []), ...(analysis.alerts || [])]) {
     const item = document.createElement("li");
@@ -1823,11 +1818,6 @@ function renderAnalysisHighlights(analysis) {
       value: Number.isFinite(Number(marginReward)) ? `${Number(marginReward).toFixed(2)}%` : "--",
       tone: "positive",
     },
-    {
-      label: "Aprendizaje",
-      value: analysis.learning_adjustment?.mode === "descriptivo_sin_ajuste_automatico" ? "descriptivo" : "sin ajuste",
-      tone: "neutral",
-    },
   ];
   elements.analysisHighlights.innerHTML = items
     .map((item) => `
@@ -1939,32 +1929,6 @@ function renderDataSources(availability, sources) {
     <span class="label">Datos usados en el analisis</span>
     <div class="source-chips">${chips}</div>
     <p>${escapeHtml(sourceText)}</p>
-  `;
-}
-
-function renderLearningBox(learning) {
-  if (!learning) {
-    elements.learningBox.innerHTML = `
-      <span class="label">Aprendizaje</span>
-      <p>Aun no hay modificador aplicado a este analisis.</p>
-    `;
-    return;
-  }
-  const delta = Number(learning.tp_probability_delta || 0);
-  const suggestedDelta = Number(learning.suggested_tp_probability_delta || 0);
-  const deltaText = delta > 0 ? `+${percent(delta)}` : percent(delta);
-  const suggestedText = suggestedDelta > 0 ? `+${percent(suggestedDelta)}` : percent(suggestedDelta);
-  elements.learningBox.innerHTML = `
-    <span class="label">Aprendizaje ${learning.mode === "descriptivo_sin_ajuste_automatico" ? "descriptivo" : "aplicado"}</span>
-    <div class="learning-grid">
-      <article><span>Casos similares</span><strong>${learning.matching_cases}</strong></article>
-      <article><span>Planes resueltos</span><strong>${learning.resolved_plan_cases}/${learning.minimum_cases_to_adjust || 10}</strong></article>
-      <article><span>Ganaron / fallaron</span><strong>${learning.plan_successes}/${learning.plan_failures}</strong></article>
-      <article><span>Ajuste aplicado</span><strong class="${delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral"}">${deltaText}</strong></article>
-      <article><span>Sugerencia futura</span><strong class="${suggestedDelta > 0 ? "positive" : suggestedDelta < 0 ? "negative" : "neutral"}">${suggestedText}</strong></article>
-    </div>
-    <p>${escapeHtml(learning.plain_text)}</p>
-    ${learning.manual_close_explanation ? `<p>${escapeHtml(learning.manual_close_explanation)}</p>` : ""}
   `;
 }
 

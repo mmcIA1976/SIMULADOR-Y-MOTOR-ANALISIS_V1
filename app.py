@@ -15,7 +15,6 @@ import data_engine
 from analysis_engine import ENGINE_VERSION, TradeProposal, analyze_trade, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import close_pool, connect, init_db, row_to_dict
-from learning_engine import apply_learning_modifier
 from security import create_token, hash_password, read_token, verify_password
 
 
@@ -2439,7 +2438,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     if proposal.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
     validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
-    result = apply_learning_modifier(user["id"], proposal, analyze_trade(proposal))
+    result = analyze_trade(proposal)
     entry_context = {
         "entry_type": entry_type,
         "trigger_condition": trigger_condition,

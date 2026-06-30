@@ -83,7 +83,7 @@ Validacion de conteos:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis
 .\.venv\Scripts\python.exe -m unittest tests.test_training_recharge
-.\.venv\Scripts\python.exe -m py_compile app.py analysis_engine.py learning_engine.py data_engine.py market_data.py security.py tests\test_pending_zone_analysis.py tests\test_training_recharge.py
+.\.venv\Scripts\python.exe -m py_compile app.py analysis_engine.py data_engine.py market_data.py security.py tests\test_pending_zone_analysis.py tests\test_training_recharge.py
 node --check .\app.js
 ```
 

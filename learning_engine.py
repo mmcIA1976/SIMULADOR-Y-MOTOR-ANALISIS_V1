@@ -11,6 +11,7 @@ from db import connect, row_to_dict
 MIN_CASES_TO_ADJUST = 30
 MIN_CASES_FOR_STRONG_SIGNAL = 100
 MAX_ADJUSTMENT = 0.06
+MANUAL_CLOSE_REASONS = {"manual", "cut_loss", "take_partial", "emotion", "invalidated"}
 
 
 @dataclass(frozen=True)
@@ -116,15 +117,17 @@ def load_learned_cases(user_id: int) -> list[LearnedCase]:
         cases = []
         for row in rows:
             operation = row_to_dict(row)
-            ticks = db.execute(
-                """
-                SELECT price, captured_at
-                FROM price_ticks
-                WHERE operation_id = ? AND captured_at >= COALESCE(?, captured_at)
-                ORDER BY captured_at ASC
-                """,
-                (operation["id"], operation["closed_at"]),
-            ).fetchall()
+            ticks = []
+            if operation["close_reason"] in MANUAL_CLOSE_REASONS:
+                ticks = db.execute(
+                    """
+                    SELECT price, captured_at
+                    FROM price_ticks
+                    WHERE operation_id = ? AND captured_at >= COALESCE(?, captured_at)
+                    ORDER BY captured_at ASC
+                    """,
+                    (operation["id"], operation["closed_at"]),
+                ).fetchall()
             cases.append(
                 build_case(
                     operation=operation,
@@ -144,7 +147,7 @@ def build_case(operation: dict, ticks: list[dict], scope: str) -> LearnedCase:
         setup_outcome = "plan_success"
     elif close_reason == "stop_loss":
         setup_outcome = "plan_failure"
-    elif close_reason in {"manual", "cut_loss", "take_partial", "emotion", "invalidated"}:
+    elif close_reason in MANUAL_CLOSE_REASONS:
         counterfactual = counterfactual_plan_result(operation, ticks)
         setup_outcome = counterfactual
         if counterfactual == "plan_failure":

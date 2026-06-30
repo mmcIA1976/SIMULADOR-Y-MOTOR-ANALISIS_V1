@@ -17,6 +17,7 @@ Cambios realizados:
 - La capa de derivados consulta en paralelo funding, open interest, ratios long/short y taker ratio por periodo.
 - Si una fuente secundaria falla o tarda demasiado, el analisis continua con esa capa vacia en vez de bloquear todo el resultado.
 - La llamada frontend de `/api/analyze` tiene timeout especifico de `90.000 ms` y mensajes de error propios de analisis.
+- El aprendizaje deja de consultar `price_ticks` para operaciones cerradas por TP/SL, porque su resultado ya es definitivo; esos ticks solo se consultan para cierres manuales donde hace falta contrafactual.
 
 Motivo:
 - El analisis completo combina muchas fuentes; no debe depender de que todas respondan en cadena dentro de 30 segundos.
@@ -25,6 +26,7 @@ Motivo:
 Riesgo esperado:
 - Bajo. Cambia la estrategia de obtencion de datos y tolerancia a fallos, no el calculo de scoring.
 - Si una fuente secundaria no responde, su disponibilidad queda reflejada en `snapshot.availability` y el motor trabaja con valores neutrales o vacios ya previstos.
+- Bajo en aprendizaje. No cambia la clasificacion de operaciones ganadas/perdidas por TP/SL; reduce consultas innecesarias contra Supabase durante cada analisis.
 
 ## 2026-06-29 - Correccion cierre global TP/SL en concurso
 

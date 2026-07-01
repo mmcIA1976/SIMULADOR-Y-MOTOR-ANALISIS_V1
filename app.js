@@ -577,13 +577,74 @@ function saveHistory(symbol = activeHistorySymbol || elements.symbol.value) {
 
 function getChartHistory() {
   const operation = getSelectedOperation();
-  if (operation && Array.isArray(operation.ticks) && operation.ticks.length) {
-    const points = operation.ticks
+  if (operation) {
+    const ticks = Array.isArray(operation.ticks) ? operation.ticks : [];
+    const rawPoints = ticks
       .map((tick) => ({ price: Number(tick.price), time: new Date(tick.captured_at), source: tick.source || "" }))
-      .filter((point) => Number.isFinite(point.price) && !Number.isNaN(point.time.getTime()));
-    return focusClosedOperationHistory(operation, points);
+      .filter((point) => Number.isFinite(point.price) && !Number.isNaN(point.time.getTime()))
+      .sort((a, b) => a.time.getTime() - b.time.getTime());
+    const points = normalizeOperationChartHistory(operation, rawPoints);
+    if (points.length) {
+      return focusClosedOperationHistory(operation, points);
+    }
   }
   return recentProposalHistory();
+}
+
+function normalizeOperationChartHistory(operation, points) {
+  if (!operation || operation.status === "PENDING_ENTRY") {
+    return points;
+  }
+
+  const entryPrice = Number(operation.entry);
+  const entryTime = operation.triggered_at || operation.created_at;
+  const entryDate = new Date(entryTime);
+  if (!Number.isFinite(entryPrice) || Number.isNaN(entryDate.getTime())) {
+    return points;
+  }
+
+  const entryTimestamp = entryDate.getTime();
+  const closePrice = Number(operation.close_price);
+  const closeDate = new Date(operation.closed_at || operation.exit_evidence?.trigger_time);
+  const hasClosePoint = operation.status === "CLOSED" && Number.isFinite(closePrice) && !Number.isNaN(closeDate.getTime());
+  const closeTimestamp = hasClosePoint ? closeDate.getTime() : null;
+  const normalized = [
+    {
+      price: entryPrice,
+      time: entryDate,
+      source: operation.entry_type === "pending" ? "operation_activation_entry" : "operation_market_entry",
+    },
+  ];
+
+  points.forEach((point) => {
+    const pointTimestamp = point.time.getTime();
+    if (pointTimestamp < entryTimestamp) {
+      return;
+    }
+    if (hasClosePoint && pointTimestamp > closeTimestamp) {
+      return;
+    }
+    if (pointTimestamp === entryTimestamp && Math.abs(point.price - entryPrice) < 0.000001) {
+      return;
+    }
+    normalized.push(point);
+  });
+
+  if (hasClosePoint) {
+    const alreadyHasClosePoint = normalized.some((point) =>
+      Math.abs(point.time.getTime() - closeTimestamp) <= 1000 &&
+      Math.abs(point.price - closePrice) < 0.000001
+    );
+    if (!alreadyHasClosePoint) {
+      normalized.push({
+        price: closePrice,
+        time: closeDate,
+        source: "operation_close",
+      });
+    }
+  }
+
+  return normalized.sort((a, b) => a.time.getTime() - b.time.getTime());
 }
 
 function recentProposalHistory() {
@@ -596,16 +657,7 @@ function focusClosedOperationHistory(operation, points) {
   if (!operation || operation.status !== "CLOSED" || !["stop_loss", "take_profit"].includes(operation.close_reason)) {
     return points;
   }
-  if (points.length <= 90) {
-    return points;
-  }
-  const closeIndex = findClosePointIndex(operation, points);
-  if (closeIndex < 0) {
-    return points;
-  }
-  const start = Math.max(0, closeIndex - 65);
-  const end = Math.min(points.length, closeIndex + 26);
-  return points.slice(start, end);
+  return points;
 }
 
 function findClosePointIndex(operation, points) {
@@ -613,7 +665,24 @@ function findClosePointIndex(operation, points) {
   if (sourceIndex >= 0) {
     return sourceIndex;
   }
-  return -1;
+  const targetTime = new Date(operation?.closed_at || operation?.exit_evidence?.trigger_time).getTime();
+  if (!Number.isFinite(targetTime)) {
+    return -1;
+  }
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+  points.forEach((point, index) => {
+    const pointTime = new Date(point.time || point.captured_at).getTime();
+    if (!Number.isFinite(pointTime)) {
+      return;
+    }
+    const distance = Math.abs(pointTime - targetTime);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
 }
 
 function updateHistoryCount() {
@@ -950,7 +1019,20 @@ function formatSeconds(totalSeconds) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+function getSelectedClosedOperation() {
+  const operation = getSelectedOperation();
+  return String(operation?.status || "").toUpperCase() === "CLOSED" ? operation : null;
+}
+
 function updateCountdown() {
+  const closedOperation = getSelectedClosedOperation();
+  if (closedOperation) {
+    elements.autoStatus.textContent = "Historico";
+    elements.nextUpdate.textContent = closedOperation.closed_at
+      ? `Cierre ${new Date(closedOperation.closed_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`
+      : "Operacion cerrada";
+    return;
+  }
   if (!nextUpdateAt) {
     elements.nextUpdate.textContent = "--";
     return;
@@ -1253,6 +1335,8 @@ function updateMetrics() {
   const displayLabel = symbolLabel(displaySymbol);
   const hasDisplayPrice = hasCurrentPriceForSymbol(displaySymbol);
   const displayPrice = hasDisplayPrice ? currentPrice : null;
+  const closePriceForMetrics = operation?.status === "CLOSED" ? Number(operation.close_price) : NaN;
+  const metricPrice = Number.isFinite(closePriceForMetrics) ? closePriceForMetrics : displayPrice;
   updateBinanceChartLink(config.symbol || elements.symbol.value);
   if (elements.heroSymbol) {
     elements.heroSymbol.textContent = displayLabel;
@@ -1282,7 +1366,7 @@ function updateMetrics() {
     return;
   }
 
-  if (!hasDisplayPrice) {
+  if (!Number.isFinite(metricPrice)) {
     elements.currentPrice.textContent = "--";
     elements.variation.textContent = "--";
     elements.pnl.textContent = operation && operation.status === "CLOSED" && Number.isFinite(Number(operation.final_pnl))
@@ -1293,8 +1377,8 @@ function updateMetrics() {
     return;
   }
 
-  const result = calculate(config, displayPrice);
-  elements.currentPrice.textContent = `${priceText(displayPrice)} USDT`;
+  const result = calculate(config, metricPrice);
+  elements.currentPrice.textContent = `${priceText(metricPrice)} USDT`;
   elements.variation.textContent = signedPct(result.rawVariation);
   elements.pnl.textContent = operation?.status === "PENDING_ENTRY"
     ? "--"
@@ -1410,7 +1494,15 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
     elements.lastUpdate.textContent = priceIsStale
       ? `Ultimo precio guardado: ${data.captured_at ? new Date(data.captured_at).toLocaleString("es-ES") : "sin fecha"}`
       : new Date().toLocaleString("es-ES");
-    elements.autoStatus.textContent = priceIsStale ? "Precio guardado" : (record ? "Auto ON" : "Live ON");
+    const closedDisplayOperation = getSelectedClosedOperation();
+    if (closedDisplayOperation) {
+      elements.autoStatus.textContent = "Historico";
+      elements.nextUpdate.textContent = closedDisplayOperation.closed_at
+        ? `Cierre ${new Date(closedDisplayOperation.closed_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`
+        : "Operacion cerrada";
+    } else {
+      elements.autoStatus.textContent = priceIsStale ? "Precio guardado" : (record ? "Auto ON" : "Live ON");
+    }
     if (record && currentUser && hasOperationEvents(data)) {
       await handleOperationEvents(data);
     } else if (record && currentUser && selectedOperationId !== null) {
@@ -2960,7 +3052,11 @@ function renderSelectedOperationDetail(operation) {
 
   applyOperationToForm(operation);
   const config = operationToConfig(operation);
-  const liveResult = hasCurrentPriceForSymbol(config.symbol) ? calculate(config, currentPrice) : null;
+  const closePrice = Number(operation.close_price);
+  const closedMetricPrice = operation.status === "CLOSED" && Number.isFinite(closePrice) ? closePrice : null;
+  const liveResult = Number.isFinite(closedMetricPrice)
+    ? calculate(config, closedMetricPrice)
+    : hasCurrentPriceForSymbol(config.symbol) ? calculate(config, currentPrice) : null;
   const finalPnl = operation.final_pnl === null || operation.final_pnl === undefined ? null : Number(operation.final_pnl);
   const displayPnl = operation.status === "PENDING_ENTRY"
     ? null
@@ -2969,6 +3065,7 @@ function renderSelectedOperationDetail(operation) {
   const displayExposure = Number(operation.margin) * Number(operation.leverage);
   const outcome = plannedOutcome(config);
   const ticks = Array.isArray(operation.ticks) ? operation.ticks : [];
+  const chartPoints = getChartHistory();
   const firstTick = ticks[0];
   const lastTick = ticks[ticks.length - 1];
   const recommendation = operation.recommendation;
@@ -2976,7 +3073,6 @@ function renderSelectedOperationDetail(operation) {
   const operationIdentity = `Operacion ${symbolLabel(operation.symbol)} en ${String(operation.side).toUpperCase()}`;
   const modeLabel = (operation.mode || "training") === "contest" ? "Concurso mensual" : "Entrenamiento";
   const horizonLabel = timeHorizonLabel(operation.time_horizon || recommendation?.time_horizon || "intraday_short");
-  const closePrice = Number(operation.close_price);
   const closeInfo = operation.status === "CLOSED" && Number.isFinite(closePrice)
     ? `Cierre ${priceText(closePrice)}`
     : "Sin cierre";
@@ -3030,7 +3126,7 @@ function renderSelectedOperationDetail(operation) {
       <article><span>Exposicion</span><strong>${money(displayExposure)}</strong></article>
       <article><span>Prob. TP</span><strong>${probabilityLabel(recommendation, "tp", "tp_probability")}</strong></article>
       <article><span>Prob. SL</span><strong>${probabilityLabel(recommendation, "sl", "sl_probability")}</strong></article>
-      <article><span>Registros grafica</span><strong>${ticks.length}</strong></article>
+      <article><span>Registros grafica</span><strong>${chartPoints.length}</strong></article>
     </div>
     <details class="tick-table-wrap">
       <summary>Tabla de datos de la operacion seleccionada</summary>
@@ -3194,7 +3290,8 @@ function resizeCanvas() {
 function drawChart() {
   const { config, operation } = getDisplayContext();
   const chartHistory = getChartHistory();
-  const livePrice = hasCurrentPriceForSymbol(config.symbol) ? currentPrice : null;
+  const operationClosed = String(operation?.status || "").toUpperCase() === "CLOSED";
+  const livePrice = !operationClosed && hasCurrentPriceForSymbol(config.symbol) ? currentPrice : null;
   const rect = elements.chart.getBoundingClientRect();
   const width = rect.width;
   const height = rect.height;
@@ -3215,20 +3312,19 @@ function drawChart() {
     prices.push(livePrice);
   }
   if (Number.isFinite(config.entry)) {
-    const anchorPrice = Number.isFinite(livePrice) ? livePrice : config.entry;
-    const entryDistancePct = Math.abs((config.entry - anchorPrice) / anchorPrice);
-    if (entryDistancePct < 0.015) {
-      prices.push(config.entry);
-    }
+    prices.push(config.entry);
   }
   if (isValidTradeConfig(config)) {
-    const anchorPrice = Number.isFinite(livePrice) ? livePrice : config.entry;
     for (const level of [config.stopLoss, config.takeProfit]) {
-      const levelDistancePct = Math.abs((level - anchorPrice) / Math.max(Math.abs(anchorPrice), 0.000001));
-      if (levelDistancePct <= 0.35) {
-        prices.push(level);
-      }
+      prices.push(level);
     }
+  }
+  const closePrice = Number(operation?.close_price);
+  if (operationClosed && Number.isFinite(closePrice)) {
+    prices.push(closePrice);
+  }
+  if (!prices.length) {
+    prices.push(Number.isFinite(config.entry) ? config.entry : 1);
   }
 
   const minPrice = Math.min(...prices);
@@ -3317,7 +3413,9 @@ function drawChart() {
     drawReferenceTag(config.entry, operation?.status === "PENDING_ENTRY" ? "Disparo" : "Entrada", operation?.status === "PENDING_ENTRY" ? "#d7a72a" : "#2f3847", yFor, pad, yMin, yMax, { yOffset: -40 });
   }
 
-  drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, chartHeight, yMin, yMax);
+  if (!operationClosed) {
+    drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, chartHeight, yMin, yMax);
+  }
   drawAxisLabels(yMin, yMax, yFor, pad, width);
 }
 
@@ -3418,6 +3516,9 @@ function drawCloseMarker(operation, chartHistory, xFor, yFor, pad, chartHeight) 
 
 function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, chartHeight, yMin, yMax) {
   const { config } = getDisplayContext();
+  if (String(operation?.status || "").toUpperCase() === "CLOSED") {
+    return;
+  }
   if (!hasCurrentPriceForSymbol(config.symbol) || !isInScale(currentPrice, yMin, yMax)) {
     return;
   }
@@ -3437,11 +3538,6 @@ function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, cha
   ctx.setLineDash([]);
   const tagX = pad.left + chartWidth - 174;
   let tagY = y - 26;
-  const closePrice = Number(operation?.close_price);
-  if (isClosedByPlan(operation) && Number.isFinite(closePrice) && isInScale(closePrice, yMin, yMax)) {
-    const closeY = yFor(closePrice);
-    tagY = currentPrice >= closePrice ? closeY - 78 : closeY + 48;
-  }
   tagY = Math.max(pad.top + 8, Math.min(tagY, pad.top + chartHeight - 48));
   drawTag(`${symbolLabel(config.symbol)} ${priceText(currentPrice)}`, tagX, tagY, getLivePriceTagColor(config, currentPrice), "#ffffff");
   ctx.restore();

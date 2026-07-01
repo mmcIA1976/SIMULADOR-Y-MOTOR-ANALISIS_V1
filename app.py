@@ -431,6 +431,47 @@ def contest_join(session_token: str | None = Cookie(default=None, alias=SESSION_
     }
 
 
+def latest_recorded_symbol_price(db, symbol: str) -> dict | None:
+    row = db.execute(
+        """
+        SELECT price, source, captured_at
+        FROM price_ticks
+        WHERE symbol = ?
+        ORDER BY captured_at DESC
+        LIMIT 1
+        """,
+        (symbol.upper(),),
+    ).fetchone()
+    return row_to_dict(row)
+
+
+def stale_price_fallback(symbol: str, error: Exception) -> dict | None:
+    cached = market_data.get_cached_price(symbol, None)
+    if cached:
+        return {
+            "symbol": symbol.upper(),
+            "price": float(cached["price"]),
+            "source": cached.get("source") or "binance_usdm_futures_memory_cache",
+            "captured_at": cached.get("captured_at"),
+            "stale": True,
+            "price_error": str(error),
+            "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+        }
+    with connect() as db:
+        recorded = latest_recorded_symbol_price(db, symbol)
+    if not recorded:
+        return None
+    return {
+        "symbol": symbol.upper(),
+        "price": float(recorded["price"]),
+        "source": f"stored_price_tick:{recorded.get('source') or 'unknown'}",
+        "captured_at": recorded.get("captured_at"),
+        "stale": True,
+        "price_error": str(error),
+        "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+    }
+
+
 @app.get("/api/price")
 def price(
     symbol: str = "BTCUSDT",
@@ -438,13 +479,17 @@ def price(
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     symbol = symbol.upper()
+    stale_response: dict | None = None
     try:
         value = market_data.get_price(symbol)
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
-        ) from exc
+        stale_response = stale_price_fallback(symbol, exc)
+        if stale_response is None:
+            raise HTTPException(
+                status_code=502,
+                detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
+            ) from exc
+        value = float(stale_response["price"])
     if not record:
         return {
             "symbol": symbol,
@@ -452,6 +497,24 @@ def price(
             "operation_ids": [],
             "activated_operations": [],
             "closed_operations": [],
+            "source": stale_response["source"] if stale_response else "binance_usdm_futures_ticker",
+            "stale": bool(stale_response),
+            "captured_at": stale_response.get("captured_at") if stale_response else None,
+            "price_error": stale_response.get("price_error") if stale_response else None,
+            "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms") if stale_response else 0,
+        }
+    if stale_response:
+        return {
+            "symbol": symbol,
+            "price": value,
+            "operation_ids": [],
+            "activated_operations": [],
+            "closed_operations": [],
+            "source": stale_response["source"],
+            "stale": True,
+            "captured_at": stale_response.get("captured_at"),
+            "price_error": stale_response.get("price_error"),
+            "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms"),
         }
     operation_ids: list[int] = []
     activated_operations: list[dict] = []
@@ -499,6 +562,11 @@ def price(
         "operation_ids": operation_ids,
         "activated_operations": activated_operations,
         "closed_operations": closed_operations,
+        "source": "binance_usdm_futures_ticker",
+        "stale": False,
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "price_error": None,
+        "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
     }
 
 
@@ -547,10 +615,23 @@ def check_operation_exits(
     try:
         current_price = market_data.get_price(symbol)
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
-        ) from exc
+        stale_response = stale_price_fallback(symbol, exc)
+        if stale_response is None:
+            raise HTTPException(
+                status_code=502,
+                detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
+            ) from exc
+        return {
+            "symbol": symbol,
+            "price": float(stale_response["price"]),
+            "activated_operations": [],
+            "closed_operations": [],
+            "source": stale_response["source"],
+            "stale": True,
+            "captured_at": stale_response.get("captured_at"),
+            "price_error": stale_response.get("price_error"),
+            "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms"),
+        }
     with connect() as db:
         activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, current_price)
         if closed_by_trigger:
@@ -565,6 +646,11 @@ def check_operation_exits(
         "closed_operations": [
             operation for operation in closed_by_trigger.values() if operation.get("user_id") == user["id"]
         ],
+        "source": "binance_usdm_futures_ticker",
+        "stale": False,
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "price_error": None,
+        "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
     }
 
 

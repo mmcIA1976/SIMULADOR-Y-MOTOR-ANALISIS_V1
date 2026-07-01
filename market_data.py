@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import re
+import time
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from urllib.error import HTTPError
 
 from trading_simulator import BINANCE_MARKET_TIMEOUT_SECONDS
@@ -36,6 +39,10 @@ COINGECKO_MARKETS_URL = (
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
 _preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
+_futures_backoff_until_ms = 0
+_price_cache: dict[str, dict] = {}
+PRICE_CACHE_TTL_SECONDS = 12
+PRICE_STALE_MAX_SECONDS = 300
 
 BINANCE_API_HEADERS = {
     "User-Agent": (
@@ -48,10 +55,75 @@ BINANCE_API_HEADERS = {
 }
 
 
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _iso_from_ms(timestamp_ms: int) -> str:
+    return datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat()
+
+
+def _parse_binance_ban_until_ms(text: str) -> int | None:
+    match = re.search(r"banned until (\d{12,})", text)
+    return int(match.group(1)) if match else None
+
+
+def _is_binance_futures_url(url: str) -> bool:
+    return any(base in url for base in BINANCE_USDM_BASE_URLS)
+
+
+def futures_backoff_until_ms() -> int:
+    return _futures_backoff_until_ms
+
+
+def get_cached_price(symbol: str, max_age_seconds: float | None = PRICE_STALE_MAX_SECONDS) -> dict | None:
+    cached = _price_cache.get(symbol.upper())
+    if not cached:
+        return None
+    age_seconds = (_now_ms() - int(cached["captured_at_ms"])) / 1000
+    if max_age_seconds is not None and age_seconds > max_age_seconds:
+        return None
+    return {
+        "symbol": symbol.upper(),
+        "price": float(cached["price"]),
+        "captured_at": _iso_from_ms(int(cached["captured_at_ms"])),
+        "age_seconds": age_seconds,
+        "source": cached.get("source", "binance_usdm_futures_memory_cache"),
+    }
+
+
+def _remember_price(symbol: str, price: float, source: str = "binance_usdm_futures_ticker") -> None:
+    _price_cache[symbol.upper()] = {
+        "price": float(price),
+        "captured_at_ms": _now_ms(),
+        "source": source,
+    }
+
+
 def get_json(url: str) -> object:
+    global _futures_backoff_until_ms
+    now_ms = _now_ms()
+    if _is_binance_futures_url(url) and _futures_backoff_until_ms and now_ms < _futures_backoff_until_ms:
+        raise RuntimeError(
+            "Binance USD-M Futures temporalmente limitado hasta "
+            f"{_iso_from_ms(_futures_backoff_until_ms)}"
+        )
     request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
-    with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        if _is_binance_futures_url(url) and exc.code in (418, 429):
+            try:
+                body = exc.read().decode("utf-8", errors="replace")[:180]
+            except Exception:
+                body = ""
+            ban_until_ms = _parse_binance_ban_until_ms(body)
+            _futures_backoff_until_ms = max(
+                _futures_backoff_until_ms,
+                ban_until_ms or now_ms + 60_000,
+            )
+        raise
 
 
 def get_json_optional(url: str) -> object | None:
@@ -62,7 +134,13 @@ def get_json_optional(url: str) -> object | None:
 
 
 def get_futures_json(path: str) -> object:
-    global _preferred_futures_base_url
+    global _preferred_futures_base_url, _futures_backoff_until_ms
+    now_ms = _now_ms()
+    if _futures_backoff_until_ms and now_ms < _futures_backoff_until_ms:
+        raise RuntimeError(
+            "Binance USD-M Futures temporalmente limitado hasta "
+            f"{_iso_from_ms(_futures_backoff_until_ms)}"
+        )
     errors: list[str] = []
     candidate_bases = (_preferred_futures_base_url,) + tuple(
         base for base in BINANCE_USDM_BASE_URLS if base != _preferred_futures_base_url
@@ -82,6 +160,13 @@ def get_futures_json(path: str) -> object:
                 body = exc.read().decode("utf-8", errors="replace")[:180]
             except Exception:
                 body = ""
+            if exc.code in (418, 429):
+                ban_until_ms = _parse_binance_ban_until_ms(body)
+                fallback_backoff_ms = now_ms + 60_000
+                _futures_backoff_until_ms = max(
+                    _futures_backoff_until_ms,
+                    ban_until_ms or fallback_backoff_ms,
+                )
             errors.append(f"{base_url}: HTTP {exc.code} {body}")
         except json.JSONDecodeError as exc:
             errors.append(f"{base_url}: respuesta no JSON {raw[:180]} ({exc})")
@@ -143,11 +228,16 @@ def diagnose_futures_hosts(symbol: str) -> list[dict]:
 
 
 def get_price(symbol: str) -> float:
+    cached = get_cached_price(symbol, PRICE_CACHE_TTL_SECONDS)
+    if cached:
+        return float(cached["price"])
     safe_symbol = urllib.parse.quote(symbol.upper())
     payload = get_futures_json(BINANCE_USDM_PRICE_PATH.format(symbol=safe_symbol))
     if not isinstance(payload, dict) or "price" not in payload:
         raise RuntimeError(f"Respuesta de precio Futures no valida para {symbol}")
-    return float(payload["price"])
+    price = float(payload["price"])
+    _remember_price(symbol, price)
+    return price
 
 
 def get_klines(

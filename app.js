@@ -106,7 +106,7 @@ const ctx = elements.chart.getContext("2d");
 const history = [];
 const MAX_HISTORY_POINTS = 240;
 const UPDATE_INTERVAL_MS = 120000;
-const LIVE_PRICE_INTERVAL_MS = 15000;
+const LIVE_PRICE_INTERVAL_MS = 30000;
 const PROPOSAL_HISTORY_MINUTES = 60;
 const TIME_HORIZON_LABELS = {
   intraday_short: "Intradia corto · 30 min-4 h",
@@ -125,6 +125,7 @@ let exitCheckInFlight = false;
 const pendingExitCheckOperationIds = new Set();
 let currentPrice = null;
 let currentPriceSymbol = "BTCUSDT";
+let currentPriceIsStale = false;
 const livePricesBySymbol = new Map();
 let activeHistorySymbol = "BTCUSDT";
 let currentUser = null;
@@ -165,7 +166,7 @@ function getConfig() {
 }
 
 function syncMarketEntry() {
-  if (entryMode !== "market" || selectedOperationId !== null || !hasCurrentPriceForSymbol(elements.symbol.value)) {
+  if (entryMode !== "market" || selectedOperationId !== null || !hasFreshCurrentPriceForSymbol(elements.symbol.value)) {
     return;
   }
   elements.entry.value = currentPrice.toFixed(2);
@@ -486,6 +487,7 @@ function clearPriceIfDifferentSymbol(symbol) {
   }
   currentPrice = null;
   currentPriceSymbol = normalized;
+  currentPriceIsStale = false;
   elements.currentPrice.textContent = "--";
 }
 
@@ -560,6 +562,7 @@ function loadHistory(symbol = elements.symbol.value) {
 
   currentPrice = null;
   currentPriceSymbol = normalized;
+  currentPriceIsStale = false;
 }
 
 function saveHistory(symbol = activeHistorySymbol || elements.symbol.value) {
@@ -690,6 +693,10 @@ function symbolLabel(symbol) {
 
 function hasCurrentPriceForSymbol(symbol) {
   return Number.isFinite(currentPrice) && normalizeSymbol(currentPriceSymbol) === normalizeSymbol(symbol);
+}
+
+function hasFreshCurrentPriceForSymbol(symbol) {
+  return hasCurrentPriceForSymbol(symbol) && !currentPriceIsStale;
 }
 
 const adviceLabels = {
@@ -1078,7 +1085,7 @@ function pendingEntryShouldTrigger(operation, price) {
 }
 
 function liveEventCandidateForSymbol(symbol) {
-  if (!currentUser || !hasCurrentPriceForSymbol(symbol)) {
+  if (!currentUser || !hasFreshCurrentPriceForSymbol(symbol)) {
     return null;
   }
   const normalizedSymbol = normalizeSymbol(symbol);
@@ -1361,22 +1368,28 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
     if (!Number.isFinite(fetchedPrice)) {
       throw new Error("Precio no valido.");
     }
-    livePricesBySymbol.set(symbol, fetchedPrice);
+    const priceIsStale = Boolean(data.stale);
+    if (!priceIsStale) {
+      livePricesBySymbol.set(symbol, fetchedPrice);
+    }
     if (getActivePriceSymbol() !== symbol) {
-      updateContestFloatingFromLivePrice(symbol, fetchedPrice);
-      renderPortfolio(lastPortfolio);
+      if (!priceIsStale) {
+        updateContestFloatingFromLivePrice(symbol, fetchedPrice);
+        renderPortfolio(lastPortfolio);
+      }
       return;
     }
 
     currentPrice = fetchedPrice;
     currentPriceSymbol = symbol;
+    currentPriceIsStale = priceIsStale;
     if (selectedOperationId === null) {
       activeHistorySymbol = symbol;
     }
     syncMarketEntry();
     updateEntryOrderHelp();
     const capturedAt = new Date();
-    if (record) {
+    if (record && !priceIsStale) {
       if (selectedOperationId === null && activeHistorySymbol === symbol) {
         history.push({ price: currentPrice, time: new Date() });
         if (history.length > MAX_HISTORY_POINTS) {
@@ -1386,13 +1399,17 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
       }
       appendOperationTicks(data.operation_ids || [], currentPrice, capturedAt);
     }
-    updateContestFloatingFromLivePrice(symbol, currentPrice);
-    if (!record) {
+    if (!priceIsStale) {
+      updateContestFloatingFromLivePrice(symbol, currentPrice);
+    }
+    if (!record && !priceIsStale) {
       checkLiveExits(symbol);
     }
 
-    elements.lastUpdate.textContent = new Date().toLocaleString("es-ES");
-    elements.autoStatus.textContent = record ? "Auto ON" : "Live ON";
+    elements.lastUpdate.textContent = priceIsStale
+      ? `Ultimo precio guardado: ${data.captured_at ? new Date(data.captured_at).toLocaleString("es-ES") : "sin fecha"}`
+      : new Date().toLocaleString("es-ES");
+    elements.autoStatus.textContent = priceIsStale ? "Precio guardado" : (record ? "Auto ON" : "Live ON");
     if (record && currentUser && hasOperationEvents(data)) {
       await handleOperationEvents(data);
     } else if (record && currentUser && selectedOperationId !== null) {
@@ -2068,7 +2085,7 @@ async function closeSimulation() {
 async function closeOperationById(operationId) {
   const operation = allOperations.find((item) => Number(item.id) === Number(operationId));
   const closeSymbol = operation?.symbol || elements.symbol.value;
-  if (!hasCurrentPriceForSymbol(closeSymbol)) {
+  if (!hasFreshCurrentPriceForSymbol(closeSymbol)) {
     elements.analysisDecision.textContent = "No hay precio actual para cerrar.";
     fetchPrice({ record: false, symbolOverride: closeSymbol });
     return;
@@ -3108,6 +3125,7 @@ function resetHistory({ fetchLatest = true } = {}) {
   history.length = 0;
   currentPrice = null;
   currentPriceSymbol = symbol;
+  currentPriceIsStale = false;
   loadHistory(symbol);
   elements.currentPrice.textContent = "--";
   elements.variation.textContent = "--";
@@ -3605,6 +3623,7 @@ elements.symbol.addEventListener("change", () => {
   activeHistorySymbol = symbol;
   currentPrice = null;
   currentPriceSymbol = symbol;
+  currentPriceIsStale = false;
   resetHistory({ fetchLatest: false });
   updateMetrics();
   if (selectedOperationId === null) {

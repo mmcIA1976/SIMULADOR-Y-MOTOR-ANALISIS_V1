@@ -2,6 +2,34 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-07-01 - Proteccion de precio Binance Futures contra rate limit
+
+Estado: aplicado para estabilizar la app online tras ban HTTP 418 de Binance USD-M Futures.
+
+Origen:
+- Produccion mostro errores intermitentes al cargar precio y operaciones.
+- Binance devolvio `HTTP 418` indicando exceso de peticiones desde la IP de Railway y recomendando evitar REST repetitivo para datos vivos.
+- El endpoint `/api/price` devolvia 502 si Binance fallaba, dejando la pantalla sin precio y generando mas reintentos desde frontend.
+
+Cambios realizados:
+- `market_data.get_price` usa cache en memoria por simbolo durante 12 segundos para agrupar peticiones simultaneas de usuarios/pestanas.
+- Se detecta `HTTP 418/429`, se guarda `backoff_until` y se evita seguir golpeando Binance Futures mientras dura el limite.
+- Las fuentes opcionales de Binance Futures usadas por el analisis respetan el mismo backoff.
+- `/api/price` devuelve ultimo precio conocido de memoria o `price_ticks` como fallback visual si Binance esta limitado.
+- Los fallbacks obsoletos se marcan con `stale=true` y no activan limit orders, no cierran TP/SL y no se guardan como ticks operativos.
+- `/api/operations/check-exits` devuelve respuesta neutral cuando solo hay fallback obsoleto.
+- El frontend distingue precio vivo de precio guardado, bloquea cierres manuales con precio obsoleto y baja el polling visual de 15 a 30 segundos.
+
+Regla vigente:
+- Solo un precio fresco de Binance Futures o cache servidor muy reciente puede activar entradas pendientes o cerrar TP/SL.
+- Un precio guardado sirve para mantener la app visible, no para tomar decisiones operativas ni alimentar aprendizaje.
+- El aprendizaje no debe registrar conclusiones basadas en cierres/activaciones con precio obsoleto.
+
+Riesgo esperado:
+- Bajo para integridad operativa: se evita actuar con datos caducados.
+- Medio para experiencia durante un ban activo: la app puede mostrar ultimo precio guardado hasta que Binance permita de nuevo la IP, pero no debe simular cierres reales con ese dato.
+- Pendiente futuro: sustituir polling REST vivo por fuente centralizada tipo websocket/worker para autonomia real de operaciones.
+
 ## 2026-06-30 - Separacion estricta entre analisis y aprendizaje
 
 Estado: aplicado para restaurar el principio base del proyecto.

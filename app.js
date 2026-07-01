@@ -135,6 +135,7 @@ let lastPortfolio = null;
 let allOperations = [];
 let openOperations = [];
 let activeOperations = [];
+let operationsLoadSeq = 0;
 let selectedOperationId = null;
 let entryMode = "market";
 let operationMode = "training";
@@ -2152,6 +2153,9 @@ async function loadContest() {
   try {
     contestState = await requestJson("/api/contest/current");
     renderContest(contestState);
+    if (reconcileContestOperationsWithLocalState(contestState)) {
+      renderOperations(allOperations);
+    }
     if (contestRefreshChangedOperations(contestState.active_refresh)) {
       await loadOperations();
       await loadPortfolio();
@@ -2160,6 +2164,37 @@ async function loadContest() {
     contestState = null;
     renderContest(null);
   }
+}
+
+function reconcileContestOperationsWithLocalState(state) {
+  if (!currentUser || !Array.isArray(allOperations) || !allOperations.length) {
+    return false;
+  }
+  const rows = Array.isArray(state?.leaderboard) ? state.leaderboard : [];
+  const currentRow = rows.find((row) => Number(row.user_id) === Number(currentUser.id));
+  const contestOperations = Array.isArray(currentRow?.contest_operations) ? currentRow.contest_operations : [];
+  if (!contestOperations.length) {
+    return false;
+  }
+  const contestById = new Map(contestOperations.map((operation) => [Number(operation.id), operation]));
+  let changed = false;
+  allOperations = allOperations.map((operation) => {
+    const contestOperation = contestById.get(Number(operation.id));
+    if (!contestOperation) {
+      return operation;
+    }
+    const merged = { ...operation, ...contestOperation };
+    if (
+      String(operation.status || "") !== String(merged.status || "") ||
+      String(operation.closed_at || "") !== String(merged.closed_at || "") ||
+      String(operation.close_reason || "") !== String(merged.close_reason || "") ||
+      String(operation.final_pnl ?? "") !== String(merged.final_pnl ?? "")
+    ) {
+      changed = true;
+    }
+    return merged;
+  });
+  return changed;
 }
 
 function contestRefreshChangedOperations(refresh) {
@@ -2709,11 +2744,17 @@ async function loadOperations() {
     renderOperations([]);
     return;
   }
+  const requestSeq = ++operationsLoadSeq;
   try {
     const data = await requestJson("/api/operations");
+    if (requestSeq !== operationsLoadSeq) {
+      return;
+    }
     renderOperations(data.operations || []);
   } catch {
-    renderOperations([]);
+    if (requestSeq === operationsLoadSeq) {
+      renderOperations([]);
+    }
   }
 }
 

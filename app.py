@@ -719,7 +719,7 @@ def activate_triggered_pending_operations(
         if not trigger:
             continue
         entry_price, trigger_time, activation_evidence = trigger
-        db.execute(
+        update_cursor = db.execute(
             """
             UPDATE operations
             SET status = 'OPEN',
@@ -728,7 +728,7 @@ def activate_triggered_pending_operations(
                 trigger_price = ?,
                 entry = ?,
                 activation_evidence_json = ?
-            WHERE id = ?
+            WHERE id = ? AND status = 'PENDING_ENTRY'
             """,
             (
                 trigger_time,
@@ -739,6 +739,8 @@ def activate_triggered_pending_operations(
                 operation["id"],
             ),
         )
+        if update_cursor.rowcount == 0:
+            continue
         db.execute(
             "INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at) VALUES (?, ?, ?, ?, ?)",
             (operation["id"], operation["symbol"], entry_price, "auto_entry", trigger_time),
@@ -791,14 +793,14 @@ def close_triggered_open_operations(
         reason, close_price, trigger_time, exit_evidence = trigger
         pnl = approximate_pnl(operation, close_price)
         closed_at = trigger_time if trigger_time != "precio_actual" else datetime.now(timezone.utc).isoformat()
-        db.execute(
+        update_cursor = db.execute(
             """
             UPDATE operations
             SET status = 'CLOSED', closed_at = ?, close_price = ?,
                 close_reason = ?, final_pnl = ?, observation_status = 'PLAN_EXECUTED',
                 observation_until = NULL, closing_note = ?, learning_outcome = NULL,
                 learning_summary = NULL, exit_evidence_json = ?
-            WHERE id = ?
+            WHERE id = ? AND status = 'OPEN'
             """,
             (
                 closed_at,
@@ -810,6 +812,8 @@ def close_triggered_open_operations(
                 operation["id"],
             ),
         )
+        if update_cursor.rowcount == 0:
+            continue
         record_exit_window_ticks(db, operation, close_price, trigger_time)
         portfolio = sync_user_cash_balance(db, int(operation["user_id"]))
         mode = operation.get("mode") or "training"
@@ -2965,14 +2969,14 @@ def close_operation(
         if operation["status"] != "OPEN":
             raise HTTPException(status_code=409, detail="La operacion ya esta cerrada")
         pnl = approximate_pnl(operation, payload.close_price)
-        db.execute(
+        update_cursor = db.execute(
             """
             UPDATE operations
             SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, close_price = ?, close_reason = ?,
                 final_pnl = ?, observation_until = ?, observation_status = 'OBSERVING',
                 post_emotion = ?, plan_followed = ?, closing_note = ?,
                 learning_outcome = NULL, learning_summary = NULL
-            WHERE id = ? AND user_id = ?
+            WHERE id = ? AND user_id = ? AND status = 'OPEN'
             """,
             (
                 payload.close_price,
@@ -2986,6 +2990,8 @@ def close_operation(
                 user["id"],
             ),
         )
+        if update_cursor.rowcount == 0:
+            raise HTTPException(status_code=409, detail="La operacion ya esta cerrada")
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         mode = operation.get("mode") or "training"
         record_wallet_event(
@@ -3014,17 +3020,19 @@ def cancel_pending_operation(operation_id: int, session_token: str | None = Cook
             raise HTTPException(status_code=404, detail="Operacion no encontrada")
         if operation.get("status") != "PENDING_ENTRY":
             raise HTTPException(status_code=400, detail="Solo se pueden cancelar ordenes pendientes")
-        db.execute(
+        update_cursor = db.execute(
             """
             UPDATE operations
             SET status = 'CANCELLED',
                 closed_at = CURRENT_TIMESTAMP,
                 close_reason = 'pending_cancelled',
                 final_pnl = 0
-            WHERE id = ? AND user_id = ?
+            WHERE id = ? AND user_id = ? AND status = 'PENDING_ENTRY'
             """,
             (operation_id, user["id"]),
         )
+        if update_cursor.rowcount == 0:
+            raise HTTPException(status_code=400, detail="Solo se pueden cancelar ordenes pendientes")
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         mode = operation.get("mode") or "training"
         record_wallet_event(

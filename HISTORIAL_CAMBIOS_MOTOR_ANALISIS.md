@@ -2,6 +2,33 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-07-01 - Idempotencia de operaciones y sincronizacion concurso/lista
+
+Estado: aplicado tras detectar contradiccion visual en operacion `#161`.
+
+Origen:
+- La operacion `#161` de MauricioMC aparecia cerrada en el ranking de concurso y abierta en otra zona de la app.
+- Supabase confirmo que `operations.id=161` estaba `CLOSED` por `take_profit`, pero existian dos eventos `wallet_events` de cierre automatico para la misma operacion.
+- Esto indica carrera entre refrescos concurrentes: dos peticiones podian leer una operacion como `OPEN` y ejecutar el flujo de cierre antes de que la UI quedara sincronizada.
+
+Cambios realizados:
+- Activacion de orden pendiente: el `UPDATE` exige `status = 'PENDING_ENTRY'` y solo registra tick/evento si realmente actualizo la fila.
+- Cierre automatico TP/SL: el `UPDATE` exige `status = 'OPEN'` y solo registra ticks/evento wallet si realmente cerro la fila.
+- Cierre manual: el `UPDATE` exige `status = 'OPEN'` para impedir doble cierre por doble request.
+- Cancelacion de orden pendiente: el `UPDATE` exige `status = 'PENDING_ENTRY'`.
+- Frontend: `loadOperations` usa secuencia de peticiones para que una respuesta antigua no pise un estado mas reciente.
+- Frontend: el estado de concurso reconcilia las operaciones del usuario actual con la lista local para evitar ver una operacion cerrada y abierta a la vez.
+
+Regla vigente:
+- Una operacion solo puede transicionar una vez desde `PENDING_ENTRY` a `OPEN`.
+- Una operacion solo puede transicionar una vez desde `OPEN` a `CLOSED`.
+- Solo despues de una transicion efectiva se registran ticks operativos, eventos wallet y aprendizaje posterior.
+
+Riesgo esperado:
+- Bajo. Endurece condiciones de escritura sin cambiar reglas de calculo.
+- Corrige carreras entre multiples llamadas de precio/concurso y evita registros duplicados futuros.
+- Dato historico detectado: `wallet_events` de la operacion `#161` contiene un evento duplicado; el saldo/ranking actual se calcula desde `operations` y no duplica el PnL.
+
 ## 2026-07-01 - Proteccion de precio Binance Futures contra rate limit
 
 Estado: aplicado para estabilizar la app online tras ban HTTP 418 de Binance USD-M Futures.

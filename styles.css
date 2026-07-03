@@ -2320,8 +2320,33 @@ canvas {
 }
 
 .operation-row.state-pending {
-  border-color: rgba(215, 167, 42, 0.36);
-  background: #fffaf0;
+  border-color: rgba(139, 92, 246, 0.42);
+  background: linear-gradient(90deg, #ede9fe 0%, #faf7ff 100%);
+  box-shadow: inset 5px 0 0 #8b5cf6;
+}
+
+.operation-row.state-pending strong {
+  color: #4c1d95;
+}
+
+.operation-row.state-pending span {
+  color: #5b4b76;
+}
+
+.pending-entry-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #5b21b6;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .operation-row.state-observing {
@@ -2377,6 +2402,17 @@ canvas {
 
 #operationSelector option.op-opt.is-open.is-training {
   color: #11324a;
+}
+
+#operationSelector option.op-opt.is-pending {
+  background-color: #ede9fe;
+  color: #5b21b6;
+  font-weight: 900;
+}
+
+#operationSelector option.op-opt.is-pending.is-contest,
+#operationSelector option.op-opt.is-pending.is-training {
+  color: #5b21b6;
 }
 
 .op-select-wrap {
@@ -2513,6 +2549,18 @@ canvas {
 
 .op-sheet-item.is-open.is-training {
   color: #11324a;
+}
+
+.op-sheet-item.is-pending {
+  background: linear-gradient(90deg, #ede9fe 0%, #f7f2ff 100%);
+  border-left: 5px solid #8b5cf6;
+  color: #5b21b6;
+  font-weight: 900;
+}
+
+.op-sheet-item.is-pending.is-contest,
+.op-sheet-item.is-pending.is-training {
+  color: #5b21b6;
 }
 
 .analyze-feedback {

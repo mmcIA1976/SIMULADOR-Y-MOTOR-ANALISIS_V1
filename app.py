@@ -2689,7 +2689,7 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
         finalize_due_observations(db)
         refresh_learning_conclusions(db)
         rows = db.execute(
-            "SELECT * FROM operations WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+            "SELECT * FROM operations WHERE user_id = ? ORDER BY created_at DESC",
             (user["id"],),
         ).fetchall()
         operations = [row_to_dict(row) for row in rows]

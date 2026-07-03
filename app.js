@@ -2925,15 +2925,24 @@ function renderOperations(operations) {
     return;
   }
 
-  for (const operation of operations.slice(0, 8)) {
+  const pendingListOperations = operations.filter((operation) => String(operation.status || "").toUpperCase() === "PENDING_ENTRY");
+  const nonPendingListOperations = operations.filter((operation) => String(operation.status || "").toUpperCase() !== "PENDING_ENTRY");
+  const visibleOperations = [
+    ...pendingListOperations,
+    ...nonPendingListOperations.slice(0, Math.max(0, 8 - pendingListOperations.length)),
+  ];
+
+  for (const operation of visibleOperations) {
     const row = document.createElement("div");
     const visualStatus = getOperationVisualStatus(operation);
     const statusLabel = operationStatusShortLabel(operation);
+    const isPendingEntry = String(operation.status || "").toUpperCase() === "PENDING_ENTRY";
     row.className = operation.id === selectedOperationId ? `operation-row selected ${visualStatus.className}` : `operation-row ${visualStatus.className}`;
     const observation = operation.observation_status === "OBSERVING" ? ` · observacion hasta ${new Date(operation.observation_until).toLocaleString("es-ES")}` : "";
+    const pendingBadge = isPendingEntry ? `<em class="pending-entry-badge">Orden limit pendiente</em>` : "";
     row.innerHTML = `
       <div>
-        <strong>#${operation.id} ${escapeHtml(operation.symbol)} ${escapeHtml(operation.side.toUpperCase())} · ${(operation.mode || "training") === "contest" ? "CONCURSO" : "ENTRENAMIENTO"} · ${escapeHtml(statusLabel)}</strong>
+        <strong>#${operation.id} ${escapeHtml(operation.symbol)} ${escapeHtml(operation.side.toUpperCase())} · ${(operation.mode || "training") === "contest" ? "CONCURSO" : "ENTRENAMIENTO"} · ${escapeHtml(statusLabel)} ${pendingBadge}</strong>
         <span>${timeHorizonLabel(operation.time_horizon || "intraday_short")} · Entrada ${priceText(operation.entry)} · SL ${priceText(operation.stop_loss)} · TP ${priceText(operation.take_profit)}${observation}</span>
       </div>
       <div class="operation-actions">
@@ -2982,10 +2991,11 @@ function renderOperationSelector() {
       const statusValue = String(operation.status).toUpperCase();
       const isOpen = statusValue === "OPEN";
       const isPending = statusValue === "PENDING_ENTRY";
+      const selectorStatus = isPending ? `pendiente entrada · ${status}` : status;
       const classes = isOpen || isPending
         ? ` class="op-opt ${isOpen ? "is-open" : "is-pending"} ${mode === "contest" ? "is-contest" : "is-training"}"`
         : "";
-      return `<option${classes} value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(status)}</option>`;
+      return `<option${classes} value="${operation.id}"${selected}>#${operation.id} · ${escapeHtml(operation.symbol)} · ${escapeHtml(operation.side.toUpperCase())} · ${modeLabel} · ${escapeHtml(horizon)} · ${escapeHtml(selectorStatus)}</option>`;
     }),
   ];
   elements.operationSelector.innerHTML = options.join("");
@@ -3007,7 +3017,8 @@ function renderOperationSelectorMobile(selectedValue) {
       const statusValue = String(operation.status).toUpperCase();
       const isOpen = statusValue === "OPEN";
       const isPending = statusValue === "PENDING_ENTRY";
-      const label = `#${operation.id} · ${operation.symbol} · ${operation.side.toUpperCase()} · ${modeLabel} · ${horizon} · ${status}`;
+      const selectorStatus = isPending ? `pendiente entrada · ${status}` : status;
+      const label = `#${operation.id} · ${operation.symbol} · ${operation.side.toUpperCase()} · ${modeLabel} · ${horizon} · ${selectorStatus}`;
       return { value: String(operation.id), label, isOpen, isPending, mode };
     }),
   ];

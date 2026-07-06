@@ -24,6 +24,8 @@ SESSION_COOKIE = "trading_trainer_session"
 MAX_AVATAR_BYTES = 1_000_000
 ONE_MINUTE_MS = 60_000
 MAX_EXIT_KLINE_PAGES = 60
+MAX_PENDING_ENTRY_KLINE_PAGES = 2
+MAX_PENDING_ENTRY_BACKFILL_MINUTES = 360
 MAX_EXIT_TRADE_PAGES = 8
 EXIT_WINDOW_BEFORE_MINUTES = 90
 EXIT_WINDOW_AFTER_MINUTES = 30
@@ -519,6 +521,7 @@ def price(
     operation_ids: list[int] = []
     activated_operations: list[dict] = []
     closed_operations: list[dict] = []
+    operation_refresh_error: str | None = None
     user = None
     if session_token:
         try:
@@ -527,7 +530,11 @@ def price(
             user = None
     with connect() as db:
         finalize_due_observations(db)
-        activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, value)
+        try:
+            activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, value)
+        except Exception as exc:
+            activated_by_trigger, closed_by_trigger = {}, {}
+            operation_refresh_error = str(exc)
         if closed_by_trigger:
             refresh_learning_conclusions(db)
             refresh_learning_evaluations(db)
@@ -566,6 +573,7 @@ def price(
         "stale": False,
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "price_error": None,
+        "operation_refresh_error": operation_refresh_error,
         "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
     }
 
@@ -684,7 +692,10 @@ def refresh_contest_active_operations(db, season_id: int) -> dict[str, list[dict
             current_price = market_data.get_price(symbol)
         except Exception:
             continue
-        activated_for_symbol, closed_for_symbol = refresh_symbol_active_operations(db, symbol, current_price)
+        try:
+            activated_for_symbol, closed_for_symbol = refresh_symbol_active_operations(db, symbol, current_price)
+        except Exception:
+            continue
         activated.update(activated_for_symbol)
         closed.update(closed_for_symbol)
     if closed:
@@ -715,7 +726,11 @@ def activate_triggered_pending_operations(
     activated: dict[int, dict] = {}
     for row in rows:
         operation = row_to_dict(row)
-        trigger = triggered_entry_from_market_path(operation, current_price)
+        operation["_pending_scan_start_ms"] = pending_entry_scan_start_ms(db, operation)
+        try:
+            trigger = triggered_entry_from_market_path(operation, current_price)
+        except Exception:
+            trigger = triggered_entry_from_current_price(operation, current_price)
         if not trigger:
             continue
         entry_price, trigger_time, activation_evidence = trigger
@@ -2281,10 +2296,24 @@ def triggered_exit_from_market_path(operation: dict, current_price: float) -> tu
 
 
 def triggered_entry_from_market_path(operation: dict, current_price: float) -> tuple[float, str, dict] | None:
-    start_time_ms = timestamp_ms_from_operation_creation(operation)
+    current_trigger = triggered_entry_from_current_price(operation, current_price)
+    if current_trigger:
+        return current_trigger
     end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    start_time_ms = int(
+        operation.get("_pending_scan_start_ms")
+        or max(
+            timestamp_ms_from_operation_creation(operation),
+            end_time_ms - MAX_PENDING_ENTRY_BACKFILL_MINUTES * ONE_MINUTE_MS,
+        )
+    )
     entry_price = float(operation.get("requested_entry") or operation["entry"])
-    klines = get_operation_klines_1m(operation["symbol"], start_time_ms, end_time_ms)
+    klines = get_operation_klines_1m(
+        operation["symbol"],
+        start_time_ms,
+        end_time_ms,
+        max_pages=MAX_PENDING_ENTRY_KLINE_PAGES,
+    )
     for kline in klines:
         open_time = iso_from_ms(int(kline[0]))
         high = float(kline[2])
@@ -2304,21 +2333,52 @@ def triggered_entry_from_market_path(operation: dict, current_price: float) -> t
                     "close_time": iso_from_ms(int(kline[6])),
                 },
             )
-    if triggered_entry_condition(operation, current_price):
-        trigger_time = datetime.now(timezone.utc).isoformat()
-        return entry_price, trigger_time, build_activation_evidence(
-            operation,
-            "binance_usdm_futures_ticker",
-            trigger_time,
-            {"price": current_price},
-        )
     return None
 
 
-def get_operation_klines_1m(symbol: str, start_time_ms: int, end_time_ms: int) -> list[list]:
+def triggered_entry_from_current_price(operation: dict, current_price: float) -> tuple[float, str, dict] | None:
+    if not triggered_entry_condition(operation, current_price):
+        return None
+    entry_price = float(operation.get("requested_entry") or operation["entry"])
+    trigger_time = datetime.now(timezone.utc).isoformat()
+    return entry_price, trigger_time, build_activation_evidence(
+        operation,
+        "binance_usdm_futures_ticker",
+        trigger_time,
+        {"price": current_price},
+    )
+
+
+def pending_entry_scan_start_ms(db, operation: dict) -> int:
+    created_ms = timestamp_ms_from_operation_creation(operation)
+    row = db.execute(
+        """
+        SELECT captured_at
+        FROM price_ticks
+        WHERE operation_id = ?
+        ORDER BY captured_at DESC
+        LIMIT 1
+        """,
+        (operation["id"],),
+    ).fetchone()
+    if row is None or row["captured_at"] is None:
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        return max(created_ms, now_ms - MAX_PENDING_ENTRY_BACKFILL_MINUTES * ONE_MINUTE_MS)
+    tick_ms = timestamp_ms_from_trigger_time(str(row["captured_at"]))
+    if tick_ms is None:
+        return created_ms
+    return max(created_ms, tick_ms - ONE_MINUTE_MS)
+
+
+def get_operation_klines_1m(
+    symbol: str,
+    start_time_ms: int,
+    end_time_ms: int,
+    max_pages: int = MAX_EXIT_KLINE_PAGES,
+) -> list[list]:
     klines: list[list] = []
     next_start = start_time_ms
-    for _ in range(MAX_EXIT_KLINE_PAGES):
+    for _ in range(max_pages):
         batch = market_data.get_klines(
             symbol,
             "1m",

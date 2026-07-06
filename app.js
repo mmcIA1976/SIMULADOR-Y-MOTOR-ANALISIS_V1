@@ -3792,8 +3792,7 @@ elements.symbol.addEventListener("change", () => {
   resetHistory({ fetchLatest: false });
   updateMetrics();
   if (selectedOperationId === null) {
-    fetchPrice({ record: false, symbolOverride: symbol });
-    scheduleNextFetch();
+    fetchPrice({ resetTimer: true, record: true, symbolOverride: symbol });
     window.setTimeout(() => loadRecentMarketHistory(symbol), 150);
   }
 });
@@ -3946,7 +3945,6 @@ loadHistory();
 resizeCanvas();
 setOperationMode("training");
 updateMetrics();
-fetchPrice({ record: false });
-scheduleNextFetch();
+fetchPrice({ resetTimer: true, record: true });
 window.setTimeout(loadSession, 50);
 window.setTimeout(() => loadRecentMarketHistory(), 250);

@@ -13,6 +13,10 @@ from trading_simulator import BINANCE_MARKET_TIMEOUT_SECONDS
 
 BINANCE_USDM_BASE_URLS = (
     "https://fapi.binance.com",
+    "https://fapi1.binance.com",
+    "https://fapi2.binance.com",
+    "https://fapi3.binance.com",
+    "https://fapi4.binance.com",
 )
 BINANCE_USDM_PRICE_PATH = "/fapi/v1/ticker/price?symbol={symbol}"
 BINANCE_USDM_KLINES_PATH = "/fapi/v1/klines?symbol={symbol}&interval={interval}&limit={limit}"

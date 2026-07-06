@@ -1,7 +1,13 @@
 import json
 import unittest
 
-from analysis_engine import TradeProposal, build_zone_analysis, build_zone_probability_context
+from analysis_engine import (
+    TradeProposal,
+    build_fibonacci_trade_context,
+    build_risk_calibration_context,
+    build_zone_analysis,
+    build_zone_probability_context,
+)
 from app import (
     build_structured_learning_evaluation,
     group_pending_zone_cases,
@@ -82,6 +88,76 @@ class PendingZoneAnalysisTests(unittest.TestCase):
         self.assertEqual(context["probability_adjustment"], 0)
         self.assertEqual(context["range_probability_adjustment"], 0.04)
         self.assertEqual(context["risk_score_addition"], 0)
+
+    def test_risk_calibration_forces_observe_on_historically_weak_cluster(self):
+        proposal = TradeProposal(
+            symbol="BTCUSDT",
+            side="long",
+            time_horizon="intraday_short",
+            entry=100,
+            margin=100,
+            leverage=3,
+            stop_loss=99.9,
+            take_profit=104,
+            entry_type="pending",
+            trigger_condition="price_lte",
+            entry_order_type="stop_breakdown",
+        )
+        context = build_risk_calibration_context(
+            proposal=proposal,
+            tp_probability=0.39,
+            sl_probability=0.55,
+            rr_ratio=40,
+            risk_distance=0.1,
+            reward_distance=4.0,
+            technical_rating={"score": 34},
+            timeframes={
+                "15m": {"ema_stack": "bearish", "price_vs_ema_21_pct": -0.2},
+                "1h": {"ema_stack": "bearish", "price_vs_ema_21_pct": -0.3},
+            },
+            ticker_24h={"price_change_pct": -1.2},
+            zone_analysis={
+                "available": True,
+                "entry_order_type": "stop_breakdown",
+                "reaction_bias": "falsa_ruptura_riesgo",
+                "liquidity_sweep_risk": "alto",
+            },
+            zone_probability_context={"probability_adjustment": -0.035},
+            fibonacci_context={"bias": "favorable"},
+        )
+
+        self.assertTrue(context["force_observar"])
+        self.assertEqual(context["grade_cap"], "D")
+        self.assertLess(context["tp_probability_adjustment"], -0.1)
+        self.assertGreaterEqual(context["risk_score_addition"], 0.2)
+        self.assertIn("sl_probability_gte_55", context["flags"])
+        self.assertIn("pending_stop_breakdown", context["flags"])
+
+    def test_favorable_fibonacci_no_longer_adds_probability_bonus(self):
+        proposal = TradeProposal(
+            symbol="BTCUSDT",
+            side="long",
+            time_horizon="intraday_wide",
+            entry=110,
+            margin=100,
+            leverage=2,
+            stop_loss=104,
+            take_profit=125,
+        )
+        context = build_fibonacci_trade_context(
+            proposal=proposal,
+            fibonacci_data={
+                "available": True,
+                "swing": {"direction": "up", "start_price": 100, "end_price": 120},
+                "retracements": {"0.5": 110, "0.618": 107.64},
+                "extensions": {"1.272": 125.44},
+            },
+            levels_for_horizon={"nearest_support": 110.2},
+            atr_pct=0.4,
+        )
+
+        self.assertEqual(context["bias"], "favorable")
+        self.assertEqual(context["probability_adjustment"], 0)
 
 
 class PendingZoneLearningTests(unittest.TestCase):

@@ -5,20 +5,25 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.9-pending-zone-adjusted"
+ENGINE_VERSION = "rules-v0.10-risk-gated-calibration"
 ENGINE_AUDIT_REFERENCE = {
-    "date": "2026-06-15",
-    "sample_size": 68,
+    "date": "2026-07-06",
+    "sample_size": 184,
+    "resolved_sample_size": 170,
+    "current_engine_resolved_sample_size": 67,
     "baseline": {
-        "technical_score": "85.7%",
-        "market_regime": "80.0%",
-        "asset_24h_move": "78.8%",
-        "direction_score": "76.7%",
-        "risk_reward_ratio": "32.7%",
-        "cvd_futures": "52.1%",
-        "order_book_imbalance": "57.9%",
+        "rules_v0_9_win_rate": "34.3%",
+        "rules_v0_9_avg_pnl": "-0.56",
+        "direction_score_lt_40_failure_rate": "79.0%",
+        "technical_score_lt_40_failure_rate": "80.0%",
+        "rr_gte_3_failure_rate": "88.9%",
+        "reward_distance_gte_3_failure_rate": "70.8%",
+        "risk_distance_lt_0_25_failure_rate": "93.8%",
+        "ticker_24h_contra_failure_rate": "82.3%",
+        "ema_15m_contra_failure_rate": "80.8%",
+        "zone_negative_adjustment_failure_rate": "90.5%",
     },
-    "intent": "v0.9 mantiene leverage neutral e incorpora ajuste prudente para ordenes pendientes segun calidad de zona, riesgo de barrida y probabilidad de activacion.",
+    "intent": "v0.10 convierte la auditoria de 184 operaciones cerradas en frenos explicitos: penaliza riesgo historicamente fragil, no aumenta senales optimistas y deja trazabilidad por operacion.",
 }
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
@@ -267,6 +272,23 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + zone_probability_context["range_probability_adjustment"],
     )
     sl_probability = max(0.05, 1 - tp_probability - range_probability)
+    risk_calibration_context = build_risk_calibration_context(
+        proposal=proposal,
+        tp_probability=tp_probability,
+        sl_probability=sl_probability,
+        rr_ratio=rr_ratio,
+        risk_distance=risk_distance,
+        reward_distance=reward_distance,
+        technical_rating=technical_rating,
+        timeframes=market_snapshot["timeframes"],
+        ticker_24h=ticker_24h,
+        zone_analysis=zone_analysis,
+        zone_probability_context=zone_probability_context,
+        fibonacci_context=fibonacci_context,
+    )
+    tp_probability = min(0.74, max(0.22, tp_probability + risk_calibration_context["tp_probability_adjustment"]))
+    range_probability = min(0.22, max(0.04, range_probability + risk_calibration_context["range_probability_adjustment"]))
+    sl_probability = max(0.05, 1 - tp_probability - range_probability)
     probability_ranges = build_probability_ranges(tp_probability, sl_probability, range_probability, contradiction_penalty)
     margin_risk_pct = risk_distance * proposal.leverage
     margin_reward_pct = reward_distance * proposal.leverage
@@ -297,6 +319,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         technical_rating=technical_rating,
         expected_value=expected_value,
         fibonacci_context=fibonacci_context,
+        risk_calibration_context=risk_calibration_context,
     )
 
     risk_score = (
@@ -315,8 +338,10 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         + (0.05 if technical_rating["barrier_penalty"] else 0)
         + fibonacci_context["risk_score_addition"]
         + zone_probability_context["risk_score_addition"]
+        + risk_calibration_context["risk_score_addition"]
         + (0.08 if contradiction_penalty >= 0.03 else 0)
     )
+    risk_score = min(1.0, max(0.0, risk_score))
     if risk_score >= 0.42:
         risk_level = "alto"
     elif risk_score >= 0.24:
@@ -326,7 +351,10 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     else:
         risk_level = "bajo"
 
-    setup_grade = grade_from_scores(tp_probability, risk_score, layered_scores["expected_value_score"])
+    setup_grade = cap_grade(
+        grade_from_scores(tp_probability, risk_score, layered_scores["expected_value_score"]),
+        risk_calibration_context.get("grade_cap"),
+    )
     confidence = confidence_from_score(layered_scores["confidence_score"])
 
     reasons: list[str] = []
@@ -405,6 +433,8 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         alerts.append("El objetivo queda condicionado por una barrera tecnica cercana antes del TP.")
     if contradiction_penalty:
         alerts.append("Hay contradiccion combinada entre capas: el motor reduce confianza antes de aumentar probabilidad.")
+    reasons.extend(risk_calibration_context["reasons"])
+    alerts.extend(risk_calibration_context["alerts"])
 
     suggested_leverage = proposal.leverage
     parameter_advice = {
@@ -414,7 +444,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "leverage": {"action": "mantener", "suggested_value": suggested_leverage, "reason": "El apalancamiento se registra como exposicion monetaria, pero no condiciona la lectura de mercado ni la recomendacion."},
     }
 
-    decision = decision_from_context(setup_grade, risk_level, confidence, expected_value)
+    decision = decision_from_context(setup_grade, risk_level, confidence, expected_value, risk_calibration_context)
     invalidation_rules = build_invalidation_rules(proposal, market_regime, levels_for_horizon, taker_flow_bias, cvd_bias)
     plain_summary = build_plain_summary(
         proposal=proposal,
@@ -470,6 +500,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     explained_metrics = build_score_metrics(layered_scores, expected_value, market_regime, probability_ranges) + [
         build_fibonacci_metric(fibonacci_context),
         build_zone_analysis_metric(zone_analysis),
+        build_risk_calibration_metric(risk_calibration_context),
     ] + explained_metrics
 
     return {
@@ -492,6 +523,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "fibonacci_context": fibonacci_context,
         "zone_analysis": zone_analysis,
         "zone_probability_context": zone_probability_context,
+        "risk_calibration_context": risk_calibration_context,
         "invalidation_rules": invalidation_rules,
         "plain_summary": plain_summary,
         "explained_metrics": explained_metrics,
@@ -526,6 +558,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             "fibonacci_context": fibonacci_context,
             "zone_analysis": zone_analysis,
             "zone_probability_context": zone_probability_context,
+            "risk_calibration_context": risk_calibration_context,
             "invalidation_rules": invalidation_rules,
             "engine_version": ENGINE_VERSION,
             "audit_reference": ENGINE_AUDIT_REFERENCE,
@@ -550,6 +583,10 @@ def analyze_trade(proposal: TradeProposal) -> dict:
                 "zone_probability_adjustment": zone_probability_context["probability_adjustment"],
                 "zone_range_probability_adjustment": zone_probability_context["range_probability_adjustment"],
                 "zone_risk_score_addition": zone_probability_context["risk_score_addition"],
+                "risk_calibration_tp_adjustment": risk_calibration_context["tp_probability_adjustment"],
+                "risk_calibration_range_adjustment": risk_calibration_context["range_probability_adjustment"],
+                "risk_calibration_score_addition": risk_calibration_context["risk_score_addition"],
+                "risk_calibration_flags": risk_calibration_context["flags"],
                 "zone_confluence_score": zone_analysis.get("zone_confluence_score"),
                 "zone_activation_probability": zone_analysis.get("activation_probability"),
                 "taker_flow_bias": taker_flow_bias,
@@ -646,7 +683,7 @@ def build_fibonacci_trade_context(proposal: TradeProposal, fibonacci_data: dict,
     score = min(88, max(18, round(score)))
     if score >= 68:
         bias = "favorable"
-        probability_adjustment = 0.02 if aligned and entry_zone == "golden_zone" else 0.01
+        probability_adjustment = 0
         risk_score_addition = 0
         execution_risk_addition = -4
     elif score <= 38:
@@ -682,6 +719,306 @@ def build_fibonacci_trade_context(proposal: TradeProposal, fibonacci_data: dict,
         "summary": "; ".join(notes[:4]) if notes else "Fibonacci sin confluencia decisiva",
         "source": fibonacci_data,
     }
+
+
+def build_risk_calibration_context(
+    proposal: TradeProposal,
+    tp_probability: float,
+    sl_probability: float,
+    rr_ratio: float,
+    risk_distance: float,
+    reward_distance: float,
+    technical_rating: dict,
+    timeframes: dict,
+    ticker_24h: dict,
+    zone_analysis: dict,
+    zone_probability_context: dict,
+    fibonacci_context: dict,
+) -> dict:
+    flags: list[str] = []
+    reasons: list[str] = []
+    alerts: list[str] = []
+    tp_adjustment = 0.0
+    range_adjustment = 0.0
+    risk_addition = 0.0
+    quality_penalty = 0
+    confidence_penalty = 0
+    expected_value_penalty = 0
+    execution_risk_addition = 0
+    force_observar = False
+    grade_cap: str | None = None
+
+    def add_gate(
+        flag: str,
+        alert: str,
+        tp_delta: float = 0.0,
+        risk_delta: float = 0.0,
+        quality_delta: int = 0,
+        confidence_delta: int = 0,
+        ev_delta: int = 0,
+        execution_delta: int = 0,
+        cap: str | None = None,
+        force: bool = False,
+    ) -> None:
+        nonlocal tp_adjustment, risk_addition, quality_penalty, confidence_penalty
+        nonlocal expected_value_penalty, execution_risk_addition, force_observar, grade_cap
+        flags.append(flag)
+        alerts.append(alert)
+        tp_adjustment += tp_delta
+        risk_addition += risk_delta
+        quality_penalty += quality_delta
+        confidence_penalty += confidence_delta
+        expected_value_penalty += ev_delta
+        execution_risk_addition += execution_delta
+        force_observar = force_observar or force
+        grade_cap = stricter_grade_cap(grade_cap, cap)
+
+    if sl_probability >= 0.55:
+        add_gate(
+            "sl_probability_gte_55",
+            "Calibracion v0.10: SL estimado >=55%, zona historicamente debil; se endurece decision.",
+            tp_delta=-0.045,
+            risk_delta=0.10,
+            quality_delta=12,
+            confidence_delta=10,
+            ev_delta=10,
+            execution_delta=10,
+            cap="D",
+            force=True,
+        )
+    elif sl_probability >= 0.50:
+        add_gate(
+            "sl_probability_gte_50",
+            "Calibracion v0.10: SL estimado >=50%, se reduce optimismo antes de simular.",
+            tp_delta=-0.025,
+            risk_delta=0.06,
+            quality_delta=8,
+            confidence_delta=6,
+            ev_delta=6,
+            execution_delta=6,
+            cap="C",
+        )
+
+    if tp_probability < 0.40:
+        add_gate(
+            "direction_score_lt_40",
+            "Calibracion v0.10: direccion probable por debajo de 40/100, grupo historicamente fragil.",
+            tp_delta=-0.025,
+            risk_delta=0.07,
+            quality_delta=8,
+            confidence_delta=8,
+            ev_delta=6,
+            execution_delta=6,
+            cap="D",
+            force=True,
+        )
+
+    if technical_rating.get("score", 50) < 40:
+        add_gate(
+            "technical_score_lt_40",
+            "Calibracion v0.10: rating tecnico <40/100, se trata como filtro de riesgo.",
+            tp_delta=-0.02,
+            risk_delta=0.07,
+            quality_delta=8,
+            confidence_delta=8,
+            ev_delta=6,
+            execution_delta=6,
+            cap="C",
+        )
+
+    ambitious_target = reward_distance >= 3.0
+    if rr_ratio >= 3.0:
+        add_gate(
+            "rr_ratio_gte_3",
+            "Calibracion v0.10: R/R >=3 no se premia por si solo; historicamente fallo cuando el TP quedaba lejano.",
+            tp_delta=-0.035 if ambitious_target else -0.02,
+            risk_delta=0.08,
+            quality_delta=15,
+            confidence_delta=5,
+            ev_delta=12,
+            execution_delta=8,
+            cap="C",
+        )
+    if ambitious_target:
+        add_gate(
+            "reward_distance_gte_3",
+            "Calibracion v0.10: TP >=3% desde entrada, se exige mas confirmacion antes de considerarlo fiable.",
+            tp_delta=-0.025,
+            risk_delta=0.07,
+            quality_delta=10,
+            confidence_delta=4,
+            ev_delta=10,
+            execution_delta=6,
+            cap="C",
+        )
+
+    if risk_distance < 0.25:
+        add_gate(
+            "risk_distance_lt_0_25",
+            "Calibracion v0.10: SL <0.25% queda expuesto a ruido y barridas.",
+            tp_delta=-0.025,
+            risk_delta=0.10,
+            quality_delta=10,
+            confidence_delta=6,
+            ev_delta=8,
+            execution_delta=12,
+            cap="C",
+        )
+    elif risk_distance >= 3.0:
+        add_gate(
+            "risk_distance_gte_3",
+            "Calibracion v0.10: SL >=3% aumenta dano esperado y baja calidad operativa.",
+            risk_delta=0.08,
+            quality_delta=10,
+            confidence_delta=4,
+            ev_delta=8,
+            execution_delta=6,
+            cap="C",
+        )
+
+    price_change_pct = ticker_24h.get("price_change_pct")
+    if side_signed_contra(proposal.side, price_change_pct, threshold=0.25):
+        add_gate(
+            "ticker_24h_contra_side",
+            "Calibracion v0.10: movimiento 24h del activo va contra el lado propuesto.",
+            tp_delta=-0.025,
+            risk_delta=0.05,
+            quality_delta=6,
+            confidence_delta=6,
+            ev_delta=4,
+            execution_delta=4,
+            cap="C",
+        )
+
+    if timeframe_contra_side(proposal.side, timeframes.get("15m", {}), require_stack=True):
+        add_gate(
+            "ema_stack_15m_contra_side",
+            "Calibracion v0.10: stack EMA 15m contrario al lado propuesto.",
+            tp_delta=-0.02,
+            risk_delta=0.04,
+            quality_delta=6,
+            confidence_delta=6,
+            ev_delta=4,
+            execution_delta=4,
+            cap="C",
+        )
+    if timeframe_contra_side(proposal.side, timeframes.get("1h", {}), require_stack=False):
+        add_gate(
+            "price_vs_ema_1h_contra_side",
+            "Calibracion v0.10: precio vs EMA21 1h contrario al lado propuesto.",
+            tp_delta=-0.02,
+            risk_delta=0.04,
+            quality_delta=6,
+            confidence_delta=6,
+            ev_delta=4,
+            execution_delta=4,
+            cap="C",
+        )
+
+    zone_adjustment = zone_probability_context.get("probability_adjustment", 0)
+    if zone_adjustment < 0:
+        add_gate(
+            "pending_zone_negative_adjustment",
+            "Calibracion v0.10: zona pendiente con ajuste negativo se degrada por alta tasa historica de fallo.",
+            tp_delta=-0.015,
+            risk_delta=0.04,
+            quality_delta=6,
+            confidence_delta=5,
+            ev_delta=4,
+            execution_delta=4,
+            cap="C",
+        )
+    if zone_analysis.get("entry_order_type") == "stop_breakdown":
+        add_gate(
+            "pending_stop_breakdown",
+            "Calibracion v0.10: stop_breakdown queda bajo vigilancia estricta hasta tener muestra positiva.",
+            tp_delta=-0.03,
+            risk_delta=0.08,
+            quality_delta=10,
+            confidence_delta=8,
+            ev_delta=8,
+            execution_delta=8,
+            cap="D",
+            force=True,
+        )
+    if zone_analysis.get("liquidity_sweep_risk") == "alto":
+        add_gate(
+            "pending_liquidity_sweep_high",
+            "Calibracion v0.10: riesgo alto de barrida en entrada pendiente.",
+            tp_delta=-0.02,
+            risk_delta=0.05,
+            quality_delta=7,
+            confidence_delta=6,
+            ev_delta=5,
+            execution_delta=6,
+            cap="C",
+        )
+    if zone_analysis.get("reaction_bias") == "falsa_ruptura_riesgo":
+        add_gate(
+            "pending_false_breakout_risk",
+            "Calibracion v0.10: sesgo de falsa ruptura historicamente fragil.",
+            tp_delta=-0.02,
+            risk_delta=0.05,
+            quality_delta=7,
+            confidence_delta=6,
+            ev_delta=5,
+            execution_delta=6,
+            cap="C",
+        )
+
+    if fibonacci_context.get("bias") == "favorable":
+        reasons.append("Calibracion v0.10: Fibonacci favorable se conserva como contexto, sin bonus directo de probabilidad.")
+
+    return {
+        "version": ENGINE_VERSION,
+        "source_audit": "auditorias_aprendizaje/2026-07-06_operaciones_cerradas_184_auditoria_profunda_motor_v0_9.md",
+        "flags": flags,
+        "tp_probability_adjustment": round(max(-0.16, tp_adjustment), 4),
+        "range_probability_adjustment": round(range_adjustment, 4),
+        "risk_score_addition": round(min(0.28, risk_addition), 4),
+        "quality_score_penalty": min(35, quality_penalty),
+        "confidence_score_penalty": min(28, confidence_penalty),
+        "expected_value_score_penalty": min(30, expected_value_penalty),
+        "execution_risk_score_addition": min(32, execution_risk_addition),
+        "grade_cap": grade_cap,
+        "force_observar": force_observar,
+        "reasons": reasons,
+        "alerts": alerts,
+    }
+
+
+def side_signed_contra(side: str, value: float | None, threshold: float) -> bool:
+    if value is None:
+        return False
+    return (side == "long" and value <= -threshold) or (side == "short" and value >= threshold)
+
+
+def timeframe_contra_side(side: str, timeframe: dict, require_stack: bool) -> bool:
+    if not timeframe:
+        return False
+    ema_stack = timeframe.get("ema_stack")
+    price_vs_ema = timeframe.get("price_vs_ema_21_pct")
+    if require_stack:
+        return (side == "long" and ema_stack == "bearish") or (side == "short" and ema_stack == "bullish")
+    if price_vs_ema is None:
+        return False
+    return side_signed_contra(side, price_vs_ema, threshold=0.08)
+
+
+def stricter_grade_cap(current: str | None, candidate: str | None) -> str | None:
+    if candidate is None:
+        return current
+    if current is None:
+        return candidate
+    order = {"A": 0, "B": 1, "C": 2, "D": 3}
+    return candidate if order[candidate] > order[current] else current
+
+
+def cap_grade(grade: str, cap: str | None) -> str:
+    if cap is None:
+        return grade
+    order = {"A": 0, "B": 1, "C": 2, "D": 3}
+    return cap if order[grade] < order[cap] else grade
 
 
 def nearest_named_price(price: float, levels: dict[str, float]) -> dict | None:
@@ -1069,6 +1406,31 @@ def build_fibonacci_metric(fibonacci_context: dict) -> dict:
     }
 
 
+def build_risk_calibration_metric(risk_calibration_context: dict) -> dict:
+    flags = risk_calibration_context.get("flags") or []
+    adjustment = risk_calibration_context.get("tp_probability_adjustment", 0)
+    risk_addition = risk_calibration_context.get("risk_score_addition", 0)
+    if flags:
+        value = f"{len(flags)} frenos · TP {adjustment:+.1%} · riesgo +{risk_addition:.2f}"
+        score = max(0, 100 - len(flags) * 10 - round(risk_addition * 100))
+        bias = "desfavorable"
+        explanation = "Aplica frenos v0.10 derivados de auditoria: " + ", ".join(flags[:5])
+    else:
+        value = "sin frenos v0.10"
+        score = 82
+        bias = "neutral"
+        explanation = "No activa los clusters de riesgo historicamente fragiles auditados en v0.10."
+    return {
+        "key": "risk_calibration",
+        "label": "Calibracion de riesgo",
+        "value": value,
+        "score": score,
+        "bias": bias,
+        "source": ENGINE_VERSION,
+        "explanation": explanation,
+    }
+
+
 def build_zone_analysis_metric(zone_analysis: dict) -> dict:
     if not zone_analysis.get("available"):
         return {
@@ -1282,7 +1644,9 @@ def build_layered_scores(
     technical_rating: dict,
     expected_value: dict,
     fibonacci_context: dict,
+    risk_calibration_context: dict | None = None,
 ) -> dict:
+    risk_calibration_context = risk_calibration_context or {}
     direction_score = round(tp_probability * 100)
     risk_design_penalty = min(22, price_risk_pct * 4.5)
     ev_design_score = score_to_percent(expected_value.get("expected_value_pct_notional", 0), -0.8, 1.2)
@@ -1299,6 +1663,7 @@ def build_layered_scores(
             ),
         )
     )
+    quality_score = max(0, quality_score - risk_calibration_context.get("quality_score_penalty", 0))
     execution_risk_score = round(
         min(
             100,
@@ -1309,6 +1674,7 @@ def build_layered_scores(
                 + level_penalty * 300
                 + fibonacci_context.get("execution_risk_addition", 0)
                 + liquidity_penalty * 250
+                + risk_calibration_context.get("execution_risk_score_addition", 0)
                 + score_to_percent(spread_pct, 0, 0.08) * 0.35,
             ),
         )
@@ -1322,8 +1688,13 @@ def build_layered_scores(
     if taker_flow_bias * cvd_bias < 0:
         alignment -= 12
     alignment += round(technical_rating.get("confidence_adjustment", 0))
+    alignment -= risk_calibration_context.get("confidence_score_penalty", 0)
     confidence_score = min(95, max(15, alignment))
-    ev_score = score_to_percent(expected_value.get("expected_value_pct_notional", 0), -1.0, 1.6)
+    ev_score = max(
+        0,
+        score_to_percent(expected_value.get("expected_value_pct_notional", 0), -1.0, 1.6)
+        - risk_calibration_context.get("expected_value_score_penalty", 0),
+    )
     return {
         "direction_score": direction_score,
         "operation_quality_score": quality_score,
@@ -1353,7 +1724,16 @@ def confidence_from_score(score: int) -> str:
     return "baja"
 
 
-def decision_from_context(setup_grade: str, risk_level: str, confidence: str, expected_value: dict) -> str:
+def decision_from_context(
+    setup_grade: str,
+    risk_level: str,
+    confidence: str,
+    expected_value: dict,
+    risk_calibration_context: dict | None = None,
+) -> str:
+    risk_calibration_context = risk_calibration_context or {}
+    if risk_calibration_context.get("force_observar"):
+        return "observar"
     if expected_value["expected_value_usdt"] < 0:
         return "observar"
     if setup_grade in {"A", "B"} and risk_level != "alto" and confidence in {"alta", "media"}:

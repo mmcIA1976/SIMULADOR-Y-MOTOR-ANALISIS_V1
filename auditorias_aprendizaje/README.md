@@ -41,6 +41,7 @@ Para una hipotesis individual:
 | Fecha | Archivo | Operaciones cerradas verificadas | Evaluaciones | Estado |
 |---|---|---:|---:|---|
 | 2026-06-26 | `2026-06-26_operaciones_verificadas_130_hipotesis_motor_v0_9.md` | 130 | 127 | Hipotesis pendientes, no aplicadas |
+| 2026-07-06 | `2026-07-06_operaciones_cerradas_184_auditoria_profunda_motor_v0_9.md` | 184 | 182 | Auditoria profunda, hipotesis v0.10 pendientes |
 
 ## Proxima revision recomendada
 
@@ -50,4 +51,3 @@ Repetir auditoria cuando se alcance al menos una de estas condiciones:
 - 230 operaciones cerradas verificadas, para una revision mas fiable;
 - 30 casos nuevos comparables para una hipotesis concreta;
 - suficientes ordenes pendientes cerradas para separar `limit_pullback`, `stop_breakout` y `stop_breakdown`.
-

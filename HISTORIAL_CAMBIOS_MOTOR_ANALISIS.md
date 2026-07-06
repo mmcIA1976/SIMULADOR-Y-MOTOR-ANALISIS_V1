@@ -2,6 +2,53 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-07-06 - rules-v0.10-risk-gated-calibration
+
+Estado: aplicado tras auditoria completa de operaciones cerradas.
+
+Origen:
+- Auditoria total: `auditorias_aprendizaje/2026-07-06_operaciones_cerradas_184_auditoria_profunda_motor_v0_9.md`.
+- Muestra revisada: 198 operaciones totales, 184 cerradas, 170 cerradas resueltas para metrica dura y 67 resueltas del motor `rules-v0.9-pending-zone-adjusted`.
+- Conclusion principal: v0.9 mejoro mucho el control de dano frente a versiones previas, pero seguia mal calibrado cuando coincidian riesgo estructural alto, TP lejano, direccion debil o zona pendiente peligrosa.
+- Decision tecnica: no conectar aprendizaje historico en tiempo real. Se convierten conclusiones auditadas en reglas explicitas, versionadas y auditables dentro del motor.
+
+Cambios realizados:
+- El motor sube a `rules-v0.10-risk-gated-calibration`.
+- Se actualiza `ENGINE_AUDIT_REFERENCE` con la auditoria de 2026-07-06 y sus tasas de fallo clave.
+- Se crea `risk_calibration_context`, guardado en el resultado y en el snapshot de cada analisis.
+- `risk_calibration_context` registra flags, ajuste neto de probabilidad TP, adicion a `risk_score`, penalizaciones de calidad/confianza/esperanza, limite de grado y si fuerza `observar`.
+- Se anade la metrica explicada `risk_calibration` para ver los frenos v0.10 en la respuesta del analisis, no solo en el JSON interno.
+- Se penalizan los clusters que la auditoria mostro mas fragiles:
+  - `sl_probability >= 0.50` y especialmente `>= 0.55`.
+  - direccion probable inicial por debajo de 40/100.
+  - `technical_rating.score < 40`.
+  - `risk_reward_ratio >= 3` y `reward_distance_pct >= 3`.
+  - `risk_distance_pct < 0.25` o `>= 3`.
+  - movimiento 24h contra el lado propuesto.
+  - EMA stack 15m contra el lado propuesto.
+  - precio vs EMA21 1h contra el lado propuesto.
+  - zona pendiente con ajuste negativo, riesgo alto de barrida, falsa ruptura y `stop_breakdown`.
+- Las penalizaciones afectan a probabilidad TP, `risk_score`, `operation_quality_score`, `confidence_score`, `expected_value_score`, `execution_risk_score`, `setup_grade` y decision final.
+- Fibonacci favorable deja de sumar bonus directo a probabilidad. Se conserva como contexto y confluencia descriptiva, pero no como senal positiva primaria.
+
+Regla vigente:
+- El motor sigue sin leer operaciones cerradas durante un analisis nuevo.
+- El aprendizaje historico solo entra al motor mediante cambios explicitos, versionados y documentados.
+- La calibracion v0.10 es conservadora: reduce optimismo en grupos fragiles; no crea nuevas bonificaciones positivas.
+- Todo analisis nuevo debe guardar `risk_calibration_context` para poder medir despues si cada flag redujo fallos o tambien filtro operaciones ganadoras.
+
+Validacion local:
+- `.\.venv\Scripts\python.exe -m py_compile analysis_engine.py tests\test_pending_zone_analysis.py`
+- `.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis`
+
+Auditoria futura requerida:
+- Comparar operaciones nuevas `rules-v0.10-risk-gated-calibration` contra la linea base v0.9:
+  - win rate, PnL medio, fallo por SL y decision final.
+  - grupos con `risk_calibration_context.flags`.
+  - operaciones forzadas a `observar` frente a resultado real si el usuario decide abrirlas igualmente.
+  - impacto de neutralizar Fibonacci favorable.
+- No relajar ni endurecer mas pesos hasta tener una muestra nueva suficiente, idealmente al menos 50 operaciones resueltas v0.10 y revision separada de operaciones abiertas contra la recomendacion.
+
 ## 2026-07-01 - Idempotencia de operaciones y sincronizacion concurso/lista
 
 Estado: aplicado tras detectar contradiccion visual en operacion `#161`.

@@ -107,6 +107,8 @@ const history = [];
 const MAX_HISTORY_POINTS = 240;
 const UPDATE_INTERVAL_MS = 120000;
 const LIVE_PRICE_INTERVAL_MS = 30000;
+const PRICE_FETCH_TIMEOUT_MS = 20000;
+const PRICE_RECORD_TIMEOUT_MS = 25000;
 const PROPOSAL_HISTORY_MINUTES = 60;
 const TIME_HORIZON_LABELS = {
   intraday_short: "Intradia corto · 30 min-4 h",
@@ -1039,6 +1041,10 @@ function updateCountdown() {
   }
 
   const remainingMs = nextUpdateAt - Date.now();
+  if (isFetching && elements.autoStatus.textContent === "Consultando") {
+    elements.nextUpdate.textContent = "Consultando...";
+    return;
+  }
   // Self-heal: if the scheduled setTimeout was throttled (background tab) or
   // never fired and we're > 2s past due with no fetch in flight, kick one now
   // so the countdown never gets visually stuck at 0:00.
@@ -1446,9 +1452,20 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
   const symbol = requestedSymbol;
   elements.autoStatus.textContent = record ? "Consultando" : "Precio vivo";
   elements.lastUpdate.textContent = record ? "Consultando precio..." : "Actualizando precio vivo...";
+  if (record) {
+    elements.nextUpdate.textContent = "Consultando...";
+  }
 
   try {
-    const data = await requestJson(`/api/price?symbol=${encodeURIComponent(symbol)}&record=${record ? "true" : "false"}`);
+    const data = await requestJson(
+      `/api/price?symbol=${encodeURIComponent(symbol)}&record=${record ? "true" : "false"}`,
+      {
+        timeout: record ? PRICE_RECORD_TIMEOUT_MS : PRICE_FETCH_TIMEOUT_MS,
+        timeoutMessage: record
+          ? "El refresco de precio y operaciones ha tardado demasiado."
+          : "La consulta de precio vivo ha tardado demasiado.",
+      }
+    );
     const fetchedPrice = Number(data.price);
     if (!Number.isFinite(fetchedPrice)) {
       throw new Error("Precio no valido.");
@@ -3787,8 +3804,7 @@ elements.refreshButton.addEventListener("click", async () => {
   button.disabled = true;
   button.textContent = "Actualizando...";
   try {
-    await fetchPrice({ record: false });
-    window.setTimeout(() => fetchPrice({ resetTimer: true, record: true }), 100);
+    await fetchPrice({ resetTimer: true, record: true });
   } finally {
     button.classList.remove("is-loading");
     button.textContent = originalLabel;

@@ -337,6 +337,25 @@ Lectura tecnica:
 - Guarda si el motor detecto riesgos, si la decision final los respeto y que contradicciones concretas estaban activas.
 - Esto permite auditar despues si v0.11 reduce fallos caros sin destruir operaciones ganadoras.
 
+## 2026-07-08 - Refresco de conclusiones antiguas de aprendizaje
+
+Estado: aplicado como correccion del cierre de aprendizaje.
+
+Problema detectado:
+- Las operaciones que ya tenian `learning_summary` guardado conservaban la conclusion antigua.
+- `refresh_learning_conclusions_with_db` solo recalculaba operaciones cerradas con `learning_summary` nulo o vacio.
+- Por eso una operacion como `#204` podia seguir mostrando el texto antiguo aunque el generador nuevo ya produjera una conclusion mas precisa.
+
+Cambios realizados:
+- Se anade `STALE_LEARNING_SUMMARY_MARKERS`.
+- Se anade `learning_summary_needs_refresh`.
+- `refresh_learning_conclusions_with_db` tambien selecciona conclusiones obsoletas que contienen `este caso debe reforzar esas senales de riesgo`.
+- Las conclusiones antiguas de fallo con advertencias se reescriben en formato estructurado para no volver a quedar marcadas como obsoletas.
+
+Regla vigente:
+- No se reescriben todas las operaciones indiscriminadamente.
+- Solo se refrescan conclusiones vacias o conclusiones antiguas con marcador obsoleto.
+
 ## 2026-07-06 - rules-v0.10-risk-gated-calibration
 
 Estado: aplicado tras auditoria completa de operaciones cerradas.

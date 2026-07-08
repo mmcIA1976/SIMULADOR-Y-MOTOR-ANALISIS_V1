@@ -15,6 +15,7 @@ from app import (
     group_signal_effectiveness,
     group_signal_pairs,
     group_underweighted_risk_cases,
+    learning_summary_needs_refresh,
     pending_zone_case_from_evaluation,
     summarize_pending_zone_cases,
     summarize_underweighted_risk_cases,
@@ -352,6 +353,18 @@ class PendingZoneLearningTests(unittest.TestCase):
         self.assertIn("Incoherencias internas", conclusion["summary"])
         self.assertIn("RSI", conclusion["summary"])
         self.assertIn("CVD", conclusion["summary"])
+        self.assertNotIn("este caso debe reforzar esas senales de riesgo", conclusion["summary"])
+
+    def test_old_learning_summary_marker_is_refreshed(self):
+        old_summary = (
+            "Aprendizaje: el plan de BTC/USDT en SHORT fallo y alcanzo STOP LOSS. "
+            "El analisis previo ya contenia advertencias (Fibonacci desfavorable); "
+            "este caso debe reforzar esas senales de riesgo."
+        )
+        new_summary = build_learning_conclusion(self._overconfident_market_failure_operation())["summary"]
+
+        self.assertTrue(learning_summary_needs_refresh(old_summary))
+        self.assertFalse(learning_summary_needs_refresh(new_summary))
 
     def test_underweighted_risk_audit_case_and_summary(self):
         risky_evaluation = build_structured_learning_evaluation(

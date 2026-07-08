@@ -38,6 +38,9 @@ VALID_OPERATION_MODES = {"training", "contest"}
 VALID_TIME_HORIZONS = {"intraday_short", "intraday_wide", "short_swing"}
 TRAINING_RECHARGE_AMOUNT = 1000.0
 LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
+STALE_LEARNING_SUMMARY_MARKERS = (
+    "este caso debe reforzar esas senales de riesgo",
+)
 
 app = FastAPI(title="Trading Trainer", version="0.1.0")
 
@@ -968,6 +971,12 @@ def refresh_learning_conclusions(existing_db=None) -> list[dict]:
         return refresh_learning_conclusions_with_db(db)
 
 
+def learning_summary_needs_refresh(summary: str | None) -> bool:
+    if summary is None or summary == "":
+        return True
+    return any(marker in summary for marker in STALE_LEARNING_SUMMARY_MARKERS)
+
+
 def refresh_learning_conclusions_with_db(db) -> list[dict]:
     rows = db.execute(
         """
@@ -991,13 +1000,19 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
             LIMIT 1
         )
         WHERE o.status = 'CLOSED'
-          AND (o.learning_summary IS NULL OR o.learning_summary = '')
+          AND (
+            o.learning_summary IS NULL
+            OR o.learning_summary = ''
+            OR o.learning_summary LIKE '%este caso debe reforzar esas senales de riesgo%'
+          )
         ORDER BY o.closed_at ASC, o.id ASC
         """
     ).fetchall()
     conclusions: list[dict] = []
     for row in rows:
         operation = row_to_dict(row)
+        if not learning_summary_needs_refresh(operation.get("learning_summary")):
+            continue
         conclusion = build_learning_conclusion(operation)
         db.execute(
             """
@@ -2651,9 +2666,15 @@ def build_learning_conclusion(operation: dict) -> dict:
             return {
                 "outcome": "plan_failure",
                 "summary": (
-                    f"Aprendizaje: el plan de {symbol} en {side} fallo y alcanzo STOP LOSS. "
-                    f"Resultado: {pnl:.2f} USDT. El analisis previo ya contenia advertencias "
-                    f"({warning_text}); este caso debe reforzar esas senales de riesgo. {pattern_text}"
+                    f"Resultado: {side} {symbol} fallo por STOP LOSS ({pnl:.2f} USDT). "
+                    f"Lectura previa: el analisis ya contenia advertencias ({warning_text}). "
+                    f"Error probable: el riesgo estaba detectado y debe reforzarse solo agregado con casos comparables, "
+                    f"sin convertir una alerta aislada en regla automatica. "
+                    f"Senales que apoyaban: {signal_details_text(signal_diagnostics.get('supporting_signals', []), limit=6)}. "
+                    f"Senales que contradecian: {signal_details_text(signal_diagnostics.get('opposing_signals', []), limit=8)}. "
+                    f"Incoherencias internas: {signal_details_text(signal_diagnostics.get('internal_inconsistencies', []), limit=5)}. "
+                    f"Aprendizaje: revisar si las advertencias se repiten en patrones equivalentes antes de ajustar pesos. "
+                    f"{pattern_text}"
                 ),
             }
         support = analysis_support_reasons(operation)

@@ -37,6 +37,7 @@ AVATAR_MIME_TO_EXT = {
 VALID_OPERATION_MODES = {"training", "contest"}
 VALID_TIME_HORIZONS = {"intraday_short", "intraday_wide", "short_swing"}
 TRAINING_RECHARGE_AMOUNT = 1000.0
+LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
 
 app = FastAPI(title="Trading Trainer", version="0.1.0")
 
@@ -1084,6 +1085,13 @@ def pending_zone_audit(session_token: str | None = Cookie(default=None, alias=SE
         return build_pending_zone_audit_report(db, int(user["id"]))
 
 
+@app.get("/api/learning/underweighted-risk-audit")
+def underweighted_risk_audit(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_underweighted_risk_audit_report(db, int(user["id"]))
+
+
 def build_fibonacci_audit_report(db, user_id: int) -> dict:
     recommendation_stats = row_to_dict(db.execute(
         """
@@ -1380,6 +1388,320 @@ def group_pending_zone_cases(cases: list[dict], key: str) -> list[dict]:
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
 
+def build_underweighted_risk_audit_report(db, user_id: int) -> dict:
+    rows = db.execute(
+        """
+        SELECT
+            o.*,
+            r.id AS recommendation_id,
+            r.engine_version AS recommendation_engine_version,
+            r.setup_grade AS recommendation_setup_grade,
+            r.risk_level AS recommendation_risk_level,
+            r.confidence AS recommendation_confidence,
+            r.training_decision AS recommendation_training_decision,
+            r.tp_probability AS recommendation_tp_probability,
+            r.sl_probability AS recommendation_sl_probability,
+            r.range_probability AS recommendation_range_probability,
+            r.snapshot_json AS recommendation_snapshot_json
+        FROM operations o
+        LEFT JOIN recommendations r ON r.id = (
+            SELECT r2.id
+            FROM recommendations r2
+            WHERE r2.operation_id = o.id
+            ORDER BY r2.created_at DESC, r2.id DESC
+            LIMIT 1
+        )
+        WHERE o.user_id = ?
+          AND o.status = 'CLOSED'
+          AND COALESCE(o.observation_status, '') != 'OBSERVING'
+        ORDER BY o.closed_at DESC, o.id DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    cases = []
+    skipped = 0
+    for row in rows:
+        operation = row_to_dict(row)
+        if not operation.get("recommendation_snapshot_json"):
+            skipped += 1
+            continue
+        ticks = [
+            row_to_dict(tick)
+            for tick in db.execute(
+                """
+                SELECT price, captured_at
+                FROM price_ticks
+                WHERE operation_id = ?
+                ORDER BY captured_at ASC
+                """,
+                (operation["id"],),
+            ).fetchall()
+        ]
+        evaluation = build_structured_learning_evaluation(operation, ticks)
+        case = underweighted_risk_case_from_evaluation(
+            evaluation,
+            engine_version=operation.get("recommendation_engine_version"),
+        )
+        if case is None:
+            skipped += 1
+            continue
+        cases.append(case)
+    resolved_cases = [
+        case for case in cases
+        if case["plan_result"] in {"plan_success", "plan_failure", "plan_would_succeed", "plan_would_fail"}
+    ]
+    risk_cases = [
+        case for case in resolved_cases
+        if case["decision_quality"] == "risk_underweighted"
+        or case["analysis_verdict"] == "analysis_warned_but_underweighted_risk"
+    ]
+    risk_cases = sorted(
+        risk_cases,
+        key=lambda item: (
+            item["failure"],
+            item["opposing_signal_count"] + item["internal_inconsistency_count"],
+            abs(float(item["final_pnl"])),
+        ),
+        reverse=True,
+    )
+    return {
+        "learning_evaluator_version": LEARNING_EVALUATOR_VERSION,
+        "user_id": user_id,
+        "sample": {
+            "closed_operations_read": len(rows),
+            "evaluated_cases": len(cases),
+            "resolved_cases": len(resolved_cases),
+            "skipped_without_snapshot_or_context": skipped,
+            "minimum_for_weight_review": 30,
+            "ready_for_weight_review": len(resolved_cases) >= 30,
+        },
+        "summary": summarize_underweighted_risk_cases(resolved_cases),
+        "by_analysis_verdict": group_underweighted_risk_cases(resolved_cases, "analysis_verdict"),
+        "by_decision_quality": group_underweighted_risk_cases(resolved_cases, "decision_quality"),
+        "by_warning_detection_quality": group_underweighted_risk_cases(resolved_cases, "warning_detection_quality"),
+        "by_engine_version": group_underweighted_risk_cases(resolved_cases, "engine_version"),
+        "by_time_horizon": group_underweighted_risk_cases(resolved_cases, "time_horizon"),
+        "by_side": group_underweighted_risk_cases(resolved_cases, "side"),
+        "by_setup_grade": group_underweighted_risk_cases(resolved_cases, "setup_grade"),
+        "by_confidence": group_underweighted_risk_cases(resolved_cases, "confidence"),
+        "opposing_signal_effectiveness": group_signal_effectiveness(resolved_cases, "opposing_signal_codes"),
+        "internal_inconsistency_effectiveness": group_signal_effectiveness(resolved_cases, "internal_inconsistency_codes"),
+        "supporting_signal_effectiveness": group_signal_effectiveness(resolved_cases, "supporting_signal_codes"),
+        "risk_underweighted_opposing_signals": group_signal_effectiveness(risk_cases, "opposing_signal_codes"),
+        "risk_underweighted_internal_inconsistencies": group_signal_effectiveness(risk_cases, "internal_inconsistency_codes"),
+        "risk_underweighted_signal_pairs": group_signal_pairs(
+            risk_cases,
+            ["opposing_signal_codes", "internal_inconsistency_codes"],
+        ),
+        "risk_cases": risk_cases[:25],
+        "recent_cases": cases[:25],
+    }
+
+
+def underweighted_risk_case_from_evaluation(evaluation: dict, engine_version: str | None = None) -> dict | None:
+    try:
+        structured = json.loads(evaluation.get("structured_json") or "{}")
+    except json.JSONDecodeError:
+        structured = {}
+    signal = structured.get("learning_signal") if isinstance(structured.get("learning_signal"), dict) else {}
+    diagnostics = structured.get("signal_diagnostics") if isinstance(structured.get("signal_diagnostics"), dict) else {}
+    analysis_context = structured.get("analysis_context") if isinstance(structured.get("analysis_context"), dict) else {}
+    if not signal and not diagnostics:
+        return None
+    plan_result = evaluation.get("plan_result")
+    success = plan_result in {"plan_success", "plan_would_succeed"}
+    failure = plan_result in {"plan_failure", "plan_would_fail"}
+    decision_quality = diagnostics.get("decision_quality") or signal.get("decision_quality") or "sin_dato"
+    warning_detection = diagnostics.get("warning_detection_quality") or signal.get("warning_detection_quality") or "sin_dato"
+    return {
+        "operation_id": int(evaluation["operation_id"]),
+        "symbol": evaluation.get("symbol"),
+        "side": evaluation.get("side"),
+        "time_horizon": evaluation.get("time_horizon"),
+        "engine_version": engine_version or "sin_version",
+        "final_pnl": round(float(evaluation.get("final_pnl") or 0), 4),
+        "plan_result": plan_result,
+        "analysis_verdict": evaluation.get("analysis_verdict"),
+        "learning_category": signal.get("category") or "sin_categoria",
+        "decision_quality": decision_quality,
+        "warning_detection_quality": warning_detection,
+        "failure_type": evaluation.get("failure_type"),
+        "resolved": success or failure,
+        "success": success,
+        "failure": failure,
+        "setup_grade": evaluation.get("setup_grade"),
+        "risk_level": evaluation.get("risk_level"),
+        "confidence": evaluation.get("confidence"),
+        "training_decision": evaluation.get("training_decision"),
+        "tp_probability": safe_float(evaluation.get("tp_probability")),
+        "sl_probability": safe_float(evaluation.get("sl_probability")),
+        "technical_label": evaluation.get("technical_label"),
+        "technical_score": safe_float(evaluation.get("technical_score")),
+        "market_regime": evaluation.get("market_regime"),
+        "direction_score": safe_float(evaluation.get("direction_score")),
+        "confidence_score": safe_float(evaluation.get("confidence_score")),
+        "risk_reward_ratio": safe_float(evaluation.get("risk_reward_ratio")),
+        "supporting_signal_count": int(diagnostics.get("supporting_signal_count") or signal.get("supporting_signal_count") or 0),
+        "opposing_signal_count": int(diagnostics.get("opposing_signal_count") or signal.get("opposing_signal_count") or 0),
+        "internal_inconsistency_count": int(diagnostics.get("internal_inconsistency_count") or signal.get("internal_inconsistency_count") or 0),
+        "supporting_signal_codes": [item.get("code") for item in diagnostics.get("supporting_signals", []) if isinstance(item, dict)],
+        "opposing_signal_codes": [item.get("code") for item in diagnostics.get("opposing_signals", []) if isinstance(item, dict)],
+        "internal_inconsistency_codes": [item.get("code") for item in diagnostics.get("internal_inconsistencies", []) if isinstance(item, dict)],
+        "fibonacci_bias": ((analysis_context.get("fibonacci") or {}).get("bias") if isinstance(analysis_context.get("fibonacci"), dict) else None),
+        "fibonacci_entry_zone": ((analysis_context.get("fibonacci") or {}).get("entry_zone") if isinstance(analysis_context.get("fibonacci"), dict) else None),
+    }
+
+
+def summarize_underweighted_risk_cases(cases: list[dict]) -> dict:
+    if not cases:
+        return {
+            "available": False,
+            "message": "Aun no hay operaciones cerradas evaluables con la taxonomia de riesgo subponderado.",
+        }
+    successes = sum(1 for case in cases if case["success"])
+    failures = sum(1 for case in cases if case["failure"])
+    underweighted = sum(1 for case in cases if case["decision_quality"] == "risk_underweighted")
+    underweighted_failures = sum(1 for case in cases if case["failure"] and case["decision_quality"] == "risk_underweighted")
+    missed_risk_failures = sum(1 for case in cases if case["failure"] and case["analysis_verdict"] == "analysis_missed_risk")
+    total_pnl = sum(float(case["final_pnl"]) for case in cases)
+    opposing_counts = [int(case["opposing_signal_count"]) for case in cases]
+    inconsistency_counts = [int(case["internal_inconsistency_count"]) for case in cases]
+    return {
+        "available": True,
+        "cases": len(cases),
+        "successes": successes,
+        "failures": failures,
+        "success_rate": round(successes / len(cases), 4),
+        "total_pnl": round(total_pnl, 4),
+        "avg_pnl": round(total_pnl / len(cases), 4),
+        "risk_underweighted_cases": underweighted,
+        "risk_underweighted_rate": round(underweighted / len(cases), 4),
+        "risk_underweighted_failures": underweighted_failures,
+        "risk_underweighted_failure_rate": round(underweighted_failures / failures, 4) if failures else 0,
+        "analysis_missed_risk_failures": missed_risk_failures,
+        "avg_opposing_signal_count": round(sum(opposing_counts) / len(opposing_counts), 4) if opposing_counts else 0,
+        "avg_internal_inconsistency_count": round(sum(inconsistency_counts) / len(inconsistency_counts), 4) if inconsistency_counts else 0,
+    }
+
+
+def group_underweighted_risk_cases(cases: list[dict], key: str) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    for case in cases:
+        groups.setdefault(str(case.get(key) or "sin_dato"), []).append(case)
+    result = []
+    for name, items in groups.items():
+        successes = sum(1 for item in items if item["success"])
+        failures = sum(1 for item in items if item["failure"])
+        underweighted = sum(1 for item in items if item["decision_quality"] == "risk_underweighted")
+        total_pnl = sum(float(item["final_pnl"]) for item in items)
+        opposing_counts = [int(item["opposing_signal_count"]) for item in items]
+        inconsistency_counts = [int(item["internal_inconsistency_count"]) for item in items]
+        result.append({
+            "name": name,
+            "cases": len(items),
+            "successes": successes,
+            "failures": failures,
+            "success_rate": round(successes / len(items), 4) if items else 0,
+            "total_pnl": round(total_pnl, 4),
+            "avg_pnl": round(total_pnl / len(items), 4) if items else 0,
+            "risk_underweighted_cases": underweighted,
+            "risk_underweighted_rate": round(underweighted / len(items), 4) if items else 0,
+            "avg_opposing_signal_count": round(sum(opposing_counts) / len(opposing_counts), 4) if opposing_counts else 0,
+            "avg_internal_inconsistency_count": round(sum(inconsistency_counts) / len(inconsistency_counts), 4) if inconsistency_counts else 0,
+        })
+    return sorted(result, key=lambda item: (-item["cases"], item["name"]))
+
+
+def signal_learning_read(cases: int, successes: int, failures: int, avg_pnl: float) -> str:
+    if cases < 3:
+        return "sample_too_small"
+    if failures > successes and avg_pnl < 0:
+        return "candidate_risk_filter"
+    if successes >= failures and avg_pnl >= 0:
+        return "ambiguous_or_winner_signal"
+    return "mixed_context_needs_review"
+
+
+def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    for case in cases:
+        for code in sorted(set(case.get(signal_key) or [])):
+            if code:
+                groups.setdefault(str(code), []).append(case)
+    result = []
+    for name, items in groups.items():
+        successes = sum(1 for item in items if item["success"])
+        failures = sum(1 for item in items if item["failure"])
+        underweighted = sum(1 for item in items if item["decision_quality"] == "risk_underweighted")
+        underweighted_failures = sum(1 for item in items if item["failure"] and item["decision_quality"] == "risk_underweighted")
+        total_pnl = sum(float(item["final_pnl"]) for item in items)
+        avg_pnl = round(total_pnl / len(items), 4) if items else 0
+        result.append({
+            "name": name,
+            "cases": len(items),
+            "successes": successes,
+            "failures": failures,
+            "success_rate": round(successes / len(items), 4) if items else 0,
+            "failure_rate": round(failures / len(items), 4) if items else 0,
+            "total_pnl": round(total_pnl, 4),
+            "avg_pnl": avg_pnl,
+            "risk_underweighted_cases": underweighted,
+            "risk_underweighted_failures": underweighted_failures,
+            "learning_read": signal_learning_read(len(items), successes, failures, avg_pnl),
+            "operation_ids": [int(item["operation_id"]) for item in items[:12]],
+        })
+    return sorted(
+        result,
+        key=lambda item: (
+            item["learning_read"] != "candidate_risk_filter",
+            -item["risk_underweighted_failures"],
+            -item["failures"],
+            item["avg_pnl"],
+            item["name"],
+        ),
+    )
+
+
+def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    for case in cases:
+        codes: list[str] = []
+        for key in signal_keys:
+            codes.extend(str(code) for code in (case.get(key) or []) if code)
+        unique_codes = sorted(set(codes))
+        for index, first in enumerate(unique_codes):
+            for second in unique_codes[index + 1:]:
+                groups.setdefault(f"{first} + {second}", []).append(case)
+    result = []
+    for name, items in groups.items():
+        successes = sum(1 for item in items if item["success"])
+        failures = sum(1 for item in items if item["failure"])
+        total_pnl = sum(float(item["final_pnl"]) for item in items)
+        avg_pnl = round(total_pnl / len(items), 4) if items else 0
+        result.append({
+            "name": name,
+            "cases": len(items),
+            "successes": successes,
+            "failures": failures,
+            "success_rate": round(successes / len(items), 4) if items else 0,
+            "failure_rate": round(failures / len(items), 4) if items else 0,
+            "total_pnl": round(total_pnl, 4),
+            "avg_pnl": avg_pnl,
+            "learning_read": signal_learning_read(len(items), successes, failures, avg_pnl),
+            "operation_ids": [int(item["operation_id"]) for item in items[:12]],
+        })
+    return sorted(
+        result,
+        key=lambda item: (
+            item["learning_read"] != "candidate_risk_filter",
+            -item["failures"],
+            item["avg_pnl"],
+            -item["cases"],
+            item["name"],
+        ),
+    )[:50]
+
+
 def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> dict:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
@@ -1403,6 +1725,7 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
     sl_probability = safe_float(operation.get("recommendation_sl_probability"))
     setup_grade = operation.get("recommendation_setup_grade")
     confidence = operation.get("recommendation_confidence")
+    signal_diagnostics = build_signal_diagnostics(operation, snapshot)
     analysis_verdict = classify_analysis_verdict(
         plan_result=plan_result,
         tp_probability=tp_probability,
@@ -1414,6 +1737,7 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         fibonacci_bias=fibonacci.get("bias"),
         zone_analysis=zone_analysis,
         zone_probability=zone_probability,
+        signal_diagnostics=signal_diagnostics,
     )
     user_decision_quality = classify_user_decision_quality(operation, manual_trigger)
     failure_type = classify_failure_type(operation, snapshot, mfe_mae, plan_result)
@@ -1440,6 +1764,8 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         "primary_lesson": primary_lesson,
         "failure_type": failure_type,
         "learning_signal": learning_signal,
+        "learning_evaluator_version": LEARNING_EVALUATOR_VERSION,
+        "signal_diagnostics": signal_diagnostics,
         "user_decision_quality": user_decision_quality,
         "excursion": mfe_mae,
         "manual_counterfactual": {
@@ -1508,6 +1834,7 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
                 zone_probability=zone_probability,
                 operation=operation,
             ),
+            "signal_diagnostics": signal_diagnostics,
         },
     }
     return {
@@ -1743,6 +2070,7 @@ def classify_analysis_verdict(
     fibonacci_bias: str | None = None,
     zone_analysis: dict | None = None,
     zone_probability: dict | None = None,
+    signal_diagnostics: dict | None = None,
 ) -> str:
     tp = tp_probability if tp_probability is not None else 0
     sl = sl_probability if sl_probability is not None else 0
@@ -1769,10 +2097,171 @@ def classify_analysis_verdict(
             return "analysis_supported_success"
         return "success_against_analysis"
     if plan_result in {"plan_failure", "plan_would_fail"}:
+        decision_quality = (signal_diagnostics or {}).get("decision_quality")
+        if analysis_warned and decision_quality == "risk_underweighted":
+            return "analysis_warned_but_underweighted_risk"
         if analysis_warned or sl >= tp:
             return "analysis_warned_risk"
         return "analysis_missed_risk"
     return "analysis_unresolved"
+
+
+def side_matches_bearish_context(side: str | None) -> bool:
+    return str(side or "").lower() == "short"
+
+
+def side_matches_bullish_context(side: str | None) -> bool:
+    return str(side or "").lower() == "long"
+
+
+def signal_text(code: str, detail: str) -> dict:
+    return {"code": code, "detail": detail}
+
+
+def signal_details_text(signals: list[dict], limit: int = 6) -> str:
+    details = [
+        str(item.get("detail"))
+        for item in signals
+        if isinstance(item, dict) and item.get("detail")
+    ]
+    return "; ".join(details[:limit]) if details else "sin senales relevantes registradas"
+
+
+def build_signal_diagnostics(operation: dict, snapshot: dict) -> dict:
+    side = str(operation.get("side") or "").lower()
+    scores = snapshot.get("layered_scores") if isinstance(snapshot.get("layered_scores"), dict) else {}
+    technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
+    regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
+    fibonacci = snapshot.get("fibonacci_context") if isinstance(snapshot.get("fibonacci_context"), dict) else {}
+    score_components = snapshot.get("score_components") if isinstance(snapshot.get("score_components"), dict) else {}
+    timeframes = snapshot.get("timeframes") if isinstance(snapshot.get("timeframes"), dict) else {}
+    expected_value = snapshot.get("expected_value") if isinstance(snapshot.get("expected_value"), dict) else {}
+
+    supporting_signals: list[dict] = []
+    opposing_signals: list[dict] = []
+    internal_inconsistencies: list[dict] = []
+
+    setup_grade = operation.get("recommendation_setup_grade")
+    confidence = str(operation.get("recommendation_confidence") or "").lower()
+    training_decision = str(operation.get("recommendation_training_decision") or "").lower()
+    tp_probability = safe_float(operation.get("recommendation_tp_probability"))
+    sl_probability = safe_float(operation.get("recommendation_sl_probability"))
+    direction_score = safe_float(scores.get("direction_score"))
+    confidence_score = safe_float(scores.get("confidence_score"))
+    quality_score = safe_float(scores.get("operation_quality_score"))
+    expected_value_score = safe_float(scores.get("expected_value_score"))
+    technical_score = safe_float(technical.get("score"))
+    fib_score = safe_float(fibonacci.get("score"))
+
+    if training_decision in {"simular", "simular con ajustes"}:
+        supporting_signals.append(signal_text("training_decision_simulate", f"decision previa {training_decision}"))
+    if setup_grade in {"A", "B"}:
+        supporting_signals.append(signal_text("strong_setup_grade", f"setup {setup_grade}"))
+    elif setup_grade == "C":
+        supporting_signals.append(signal_text("acceptable_setup_grade", "setup C"))
+    if confidence == "alta" or (confidence_score is not None and confidence_score >= 75):
+        supporting_signals.append(signal_text("high_confidence", f"confianza {confidence or confidence_score}"))
+    if tp_probability is not None and sl_probability is not None and tp_probability >= sl_probability:
+        supporting_signals.append(signal_text("tp_probability_gte_sl", "probabilidad TP igual o superior a SL"))
+    if expected_value_from_snapshot(snapshot) is not None and expected_value_from_snapshot(snapshot) >= 0:
+        supporting_signals.append(signal_text("positive_expected_value", "EV positiva"))
+    if technical.get("label") == "favorable" or (technical_score is not None and technical_score >= 65):
+        detail = f"rating tecnico {technical_score:g}/100" if technical_score is not None else "rating tecnico favorable"
+        supporting_signals.append(signal_text("favorable_technical_rating", detail))
+    regime_name = str(regime.get("name") or "").lower()
+    if ("bajista" in regime_name or "bearish" in regime_name) and side_matches_bearish_context(side):
+        supporting_signals.append(signal_text("regime_aligned", f"regimen {regime.get('name')}"))
+    if ("alcista" in regime_name or "bullish" in regime_name) and side_matches_bullish_context(side):
+        supporting_signals.append(signal_text("regime_aligned", f"regimen {regime.get('name')}"))
+    if direction_score is not None and direction_score >= 55:
+        supporting_signals.append(signal_text("direction_score_favorable", f"direccion {direction_score:g}/100"))
+
+    fib_bias = str(fibonacci.get("bias") or "").lower()
+    if fib_bias in {"alerta", "desfavorable"} or (fib_score is not None and fib_score < 35):
+        detail = f"Fibonacci {fib_bias or 'bajo'} {fib_score:g}/100" if fib_score is not None else f"Fibonacci {fib_bias}"
+        opposing_signals.append(signal_text("fibonacci_against_plan", detail))
+    if fib_score is not None and fib_score < 30:
+        opposing_signals.append(signal_text("extreme_fibonacci_risk", f"Fibonacci extremo {fib_score:g}/100"))
+    if fibonacci.get("entry_zone") == "retroceso_extremo":
+        opposing_signals.append(signal_text("extreme_fibonacci_entry_zone", "entrada en retroceso_extremo"))
+    if safe_float(score_components.get("cvd_bias")) is not None and safe_float(score_components.get("cvd_bias")) < -0.005:
+        opposing_signals.append(signal_text("cvd_against_plan", "CVD contra la direccion propuesta"))
+    if safe_float(score_components.get("taker_flow_bias")) is not None and safe_float(score_components.get("taker_flow_bias")) < -0.005:
+        opposing_signals.append(signal_text("taker_flow_against_plan", "flujo taker contra la direccion propuesta"))
+    if (safe_float(score_components.get("sentiment_penalty")) or 0) >= 0.01:
+        opposing_signals.append(signal_text("extreme_sentiment_risk", "sentimiento extremo penaliza entrada"))
+    if (safe_float(score_components.get("overextension_penalty")) or 0) >= 0.02:
+        opposing_signals.append(signal_text("price_overextension_risk", "precio extendido respecto a medias"))
+    if (safe_float(technical.get("barrier_penalty")) or 0) >= 0.02:
+        opposing_signals.append(signal_text("technical_barrier_before_target", "barrera tecnica condiciona el TP"))
+
+    rsi_timeframe = score_components.get("rsi_timeframe")
+    primary_rsi = safe_float(technical.get("primary_rsi"))
+    if rsi_timeframe and isinstance(timeframes.get(rsi_timeframe), dict):
+        primary_rsi = safe_float(timeframes[rsi_timeframe].get("rsi_14")) or primary_rsi
+    if primary_rsi is not None:
+        if side == "short" and primary_rsi <= 30:
+            opposing_signals.append(signal_text("short_into_oversold_rsi", f"RSI {primary_rsi:g} en sobreventa"))
+        if side == "long" and primary_rsi >= 70:
+            opposing_signals.append(signal_text("long_into_overbought_rsi", f"RSI {primary_rsi:g} en sobrecompra"))
+
+    if confidence_score is not None and confidence_score >= 75 and quality_score is not None and quality_score <= 55:
+        internal_inconsistencies.append(signal_text(
+            "confidence_quality_mismatch",
+            f"confianza {confidence_score:g}/100 con calidad {quality_score:g}/100",
+        ))
+    if confidence_score is not None and confidence_score >= 75 and expected_value_score is not None and expected_value_score <= 55:
+        internal_inconsistencies.append(signal_text(
+            "confidence_expected_value_mismatch",
+            f"confianza {confidence_score:g}/100 con EV score {expected_value_score:g}/100",
+        ))
+    if expected_value and expected_value_score is not None and expected_value_score <= 55:
+        internal_inconsistencies.append(signal_text(
+            "thin_expected_value_score",
+            f"EV positiva pero score ajustado {expected_value_score:g}/100",
+        ))
+
+    strong_support = sum(
+        1
+        for item in supporting_signals
+        if item["code"] in {
+            "training_decision_simulate",
+            "strong_setup_grade",
+            "high_confidence",
+            "favorable_technical_rating",
+            "regime_aligned",
+            "direction_score_favorable",
+        }
+    )
+    strong_opposition = len(opposing_signals)
+    overconfident_decision = (
+        strong_opposition >= 3
+        and strong_support >= 3
+        and (
+            confidence == "alta"
+            or setup_grade in {"A", "B"}
+            or (confidence_score is not None and confidence_score >= 75)
+        )
+    )
+    decision_quality = "risk_underweighted" if overconfident_decision else "decision_consistent_with_detected_risk"
+    if strong_opposition == 0:
+        warning_detection_quality = "no_material_warnings_detected"
+    elif strong_opposition >= 3:
+        warning_detection_quality = "detected_multiple_material_warnings"
+    else:
+        warning_detection_quality = "detected_limited_warnings"
+
+    return {
+        "version": LEARNING_EVALUATOR_VERSION,
+        "supporting_signals": supporting_signals,
+        "opposing_signals": opposing_signals,
+        "internal_inconsistencies": internal_inconsistencies,
+        "warning_detection_quality": warning_detection_quality,
+        "decision_quality": decision_quality,
+        "supporting_signal_count": len(supporting_signals),
+        "opposing_signal_count": len(opposing_signals),
+        "internal_inconsistency_count": len(internal_inconsistencies),
+    }
 
 
 def expected_value_from_snapshot(snapshot: dict) -> float | None:
@@ -1872,14 +2361,17 @@ def build_learning_signal(
         "analysis_supported_success": "reinforce_supported_success",
         "success_against_analysis": "investigate_underestimated_opportunity",
         "analysis_warned_risk": "reinforce_warned_risk",
+        "analysis_warned_but_underweighted_risk": "investigate_underweighted_detected_risk",
         "analysis_missed_risk": "investigate_underestimated_risk",
     }
     interpretation_by_verdict = {
         "analysis_supported_success": "El resultado confirma una lectura favorable previa; util solo agregado con casos comparables.",
         "success_against_analysis": "El resultado fue positivo pese a advertencias; no refuerza automaticamente el analisis, senala posible oportunidad infravalorada.",
         "analysis_warned_risk": "El resultado negativo confirma advertencias previas; util para reforzar senales de riesgo si se repite.",
+        "analysis_warned_but_underweighted_risk": "El analisis detecto riesgos, pero la recomendacion final pudo infraponderarlos; revisar sobreconfianza y acumulacion de alertas.",
         "analysis_missed_risk": "El resultado negativo ocurrio pese a apoyo del analisis; senala riesgo subestimado.",
     }
+    signal_diagnostics = build_signal_diagnostics(operation, snapshot)
     return {
         "category": category_by_verdict.get(analysis_verdict, "unresolved_context"),
         "analysis_verdict": analysis_verdict,
@@ -1891,6 +2383,11 @@ def build_learning_signal(
         ),
         "actionability": "aggregate_only",
         "minimum_comparable_cases": 30,
+        "decision_quality": signal_diagnostics.get("decision_quality"),
+        "warning_detection_quality": signal_diagnostics.get("warning_detection_quality"),
+        "supporting_signal_count": signal_diagnostics.get("supporting_signal_count"),
+        "opposing_signal_count": signal_diagnostics.get("opposing_signal_count"),
+        "internal_inconsistency_count": signal_diagnostics.get("internal_inconsistency_count"),
         "comparable_case_key": {
             "symbol": operation.get("symbol"),
             "side": operation.get("side"),
@@ -1911,6 +2408,8 @@ def build_learning_signal(
             "zone_confluence_bucket": score_bucket(safe_float(zone_analysis.get("zone_confluence_score"))),
             "zone_probability_adjustment_bucket": signed_value_bucket(safe_float(zone_probability.get("probability_adjustment"))),
             "zone_learning_category": zone_learning.get("category"),
+            "decision_quality": signal_diagnostics.get("decision_quality"),
+            "warning_detection_quality": signal_diagnostics.get("warning_detection_quality"),
         },
     }
 
@@ -2075,6 +2574,12 @@ def build_primary_lesson(
                 f"El plan {side} en {horizon} fallo pese a no estar advertido por el analisis previo. "
                 f"No debe reforzar patrones favorables; revisar que riesgo fue subestimado."
             )
+        if analysis_verdict == "analysis_warned_but_underweighted_risk":
+            return (
+                f"El plan {side} en {horizon} fallo; el analisis detecto riesgos, "
+                f"pero la decision final pudo infraponderarlos. Revisar sobreconfianza, acumulacion de alertas "
+                f"y coherencia entre confianza, calidad del setup y senales contrarias."
+            )
         return (
             f"El plan {side} en {horizon} fallo o habria fallado. "
             f"Lectura: {analysis_verdict}; causa candidata: {failure_type or 'sin clasificar'}."
@@ -2092,6 +2597,8 @@ def build_learning_conclusion(operation: dict) -> dict:
     observation_status = operation.get("observation_status")
     observation_summary = operation.get("observation_summary")
     pattern_text = build_learning_pattern_text(operation)
+    snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
+    signal_diagnostics = build_signal_diagnostics(operation, snapshot) if snapshot else {}
 
     if close_reason == "take_profit":
         warnings = analysis_warning_reasons(operation)
@@ -2118,6 +2625,29 @@ def build_learning_conclusion(operation: dict) -> dict:
         warnings = analysis_warning_reasons(operation)
         if warnings:
             warning_text = ", ".join(warnings)
+            if signal_diagnostics.get("decision_quality") == "risk_underweighted":
+                supporting = signal_details_text(signal_diagnostics.get("supporting_signals", []), limit=6)
+                opposing = signal_details_text(signal_diagnostics.get("opposing_signals", []), limit=8)
+                inconsistencies = signal_details_text(
+                    signal_diagnostics.get("internal_inconsistencies", []),
+                    limit=5,
+                )
+                return {
+                    "outcome": "plan_failure",
+                    "summary": (
+                        f"Resultado: {side} {symbol} fallo por STOP LOSS ({pnl:.2f} USDT). "
+                        f"Lectura previa: el motor recomendo mantener/simular pese a advertencias relevantes "
+                        f"({warning_text}). "
+                        f"Error probable: sobreponderacion de senales favorables frente a alertas acumuladas; "
+                        f"clasificar como riesgo detectado pero subponderado, no como simple refuerzo de una alerta aislada. "
+                        f"Senales que apoyaban: {supporting}. "
+                        f"Senales que contradecian: {opposing}. "
+                        f"Incoherencias internas: {inconsistencies}. "
+                        f"Aprendizaje: en patrones comparables, reducir confianza y limitar recomendacion cuando coincidan "
+                        f"alertas materiales de Fibonacci, flujo/CVD, RSI, sentimiento, barreras o EV/calidad justa. "
+                        f"{pattern_text}"
+                    ),
+                }
             return {
                 "outcome": "plan_failure",
                 "summary": (

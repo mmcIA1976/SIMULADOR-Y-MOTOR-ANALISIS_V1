@@ -5,25 +5,22 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.10-risk-gated-calibration"
+ENGINE_VERSION = "rules-v0.11-underweighted-risk-cluster"
 ENGINE_AUDIT_REFERENCE = {
-    "date": "2026-07-06",
-    "sample_size": 184,
-    "resolved_sample_size": 170,
-    "current_engine_resolved_sample_size": 67,
+    "date": "2026-07-08",
+    "sample_size": 98,
+    "resolved_sample_size": 93,
+    "current_engine_resolved_sample_size": 3,
     "baseline": {
-        "rules_v0_9_win_rate": "34.3%",
-        "rules_v0_9_avg_pnl": "-0.56",
-        "direction_score_lt_40_failure_rate": "79.0%",
-        "technical_score_lt_40_failure_rate": "80.0%",
-        "rr_gte_3_failure_rate": "88.9%",
-        "reward_distance_gte_3_failure_rate": "70.8%",
-        "risk_distance_lt_0_25_failure_rate": "93.8%",
-        "ticker_24h_contra_failure_rate": "82.3%",
-        "ema_15m_contra_failure_rate": "80.8%",
-        "zone_negative_adjustment_failure_rate": "90.5%",
+        "learning_v0_2_resolved_cases": "93",
+        "risk_underweighted_cases": "7.53%",
+        "analysis_warned_but_underweighted_risk_cases": "3",
+        "extreme_fib_extreme_sentiment_failures": "3/3",
+        "extreme_fib_extreme_sentiment_avg_pnl": "-53.7174",
+        "extreme_fibonacci_risk_failure_rate": "80.0%",
+        "cvd_against_plan_failure_rate": "58.8%",
     },
-    "intent": "v0.10 convierte la auditoria de 184 operaciones cerradas en frenos explicitos: penaliza riesgo historicamente fragil, no aumenta senales optimistas y deja trazabilidad por operacion.",
+    "intent": "v0.11 convierte la auditoria learning-v0.2 en un freno conservador por cluster: penaliza Fibonacci extremo con sentimiento extremo y deja trazabilidad sin bloquear automaticamente.",
 }
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
@@ -285,6 +282,9 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         zone_analysis=zone_analysis,
         zone_probability_context=zone_probability_context,
         fibonacci_context=fibonacci_context,
+        sentiment_penalty=sentiment_penalty,
+        cvd_bias=cvd_bias,
+        rsi_signal=rsi_signal,
     )
     tp_probability = min(0.74, max(0.22, tp_probability + risk_calibration_context["tp_probability_adjustment"]))
     range_probability = min(0.22, max(0.04, range_probability + risk_calibration_context["range_probability_adjustment"]))
@@ -734,6 +734,9 @@ def build_risk_calibration_context(
     zone_analysis: dict,
     zone_probability_context: dict,
     fibonacci_context: dict,
+    sentiment_penalty: float = 0.0,
+    cvd_bias: float = 0.0,
+    rsi_signal: float | None = None,
 ) -> dict:
     flags: list[str] = []
     reasons: list[str] = []
@@ -966,12 +969,73 @@ def build_risk_calibration_context(
             cap="C",
         )
 
+    fibonacci_score = fibonacci_context.get("score", 50)
+    extreme_fibonacci = (
+        fibonacci_context.get("bias") == "desfavorable"
+        and (
+            fibonacci_score < 30
+            or fibonacci_context.get("entry_zone") == "retroceso_extremo"
+        )
+    )
+    extreme_sentiment = sentiment_penalty >= 0.01
+    cvd_contra = cvd_bias < -0.005
+    rsi_extreme = rsi_extreme_against_entry(proposal.side, rsi_signal)
+    material_risk_count = sum(1 for active in (extreme_fibonacci, extreme_sentiment, cvd_contra) if active)
+    if extreme_fibonacci and extreme_sentiment:
+        add_gate(
+            "extreme_fib_extreme_sentiment_cluster",
+            "Calibracion v0.11: Fibonacci extremo + sentimiento extremo fue un cluster perdedor en auditoria learning-v0.2; se reduce sobreconfianza.",
+            tp_delta=-0.035,
+            risk_delta=0.08,
+            quality_delta=12,
+            confidence_delta=10,
+            ev_delta=9,
+            execution_delta=8,
+            cap="C",
+        )
+        if cvd_contra:
+            add_gate(
+                "extreme_fib_sentiment_cvd_contra",
+                "Calibracion v0.11: el cluster anterior aparece ademas con CVD contrario al plan; se anade freno incremental.",
+                tp_delta=-0.015,
+                risk_delta=0.03,
+                quality_delta=4,
+                confidence_delta=5,
+                ev_delta=4,
+                execution_delta=4,
+                cap="C",
+            )
+    if rsi_extreme and material_risk_count >= 2:
+        add_gate(
+            "rsi_extreme_multi_risk_cluster",
+            "Calibracion v0.11: RSI extremo contra la entrada se combina con otros riesgos materiales; se trata como agravante contextual, no como filtro aislado.",
+            tp_delta=-0.012,
+            risk_delta=0.025,
+            quality_delta=4,
+            confidence_delta=4,
+            ev_delta=3,
+            execution_delta=4,
+            cap="C",
+        )
+        if extreme_fibonacci and extreme_sentiment:
+            add_gate(
+                "rsi_extreme_with_fib_sentiment_cluster",
+                "Calibracion v0.11: RSI extremo refuerza el cluster Fibonacci extremo + sentimiento extremo detectado en fallos historicos.",
+                tp_delta=-0.008,
+                risk_delta=0.015,
+                quality_delta=3,
+                confidence_delta=3,
+                ev_delta=2,
+                execution_delta=3,
+                cap="C",
+            )
+
     if fibonacci_context.get("bias") == "favorable":
         reasons.append("Calibracion v0.10: Fibonacci favorable se conserva como contexto, sin bonus directo de probabilidad.")
 
     return {
         "version": ENGINE_VERSION,
-        "source_audit": "auditorias_aprendizaje/2026-07-06_operaciones_cerradas_184_auditoria_profunda_motor_v0_9.md",
+        "source_audit": "auditorias_aprendizaje/2026-07-06_operaciones_cerradas_184_auditoria_profunda_motor_v0_9.md + HISTORIAL_CAMBIOS_MOTOR_ANALISIS.md fase v0.11 2026-07-08",
         "flags": flags,
         "tp_probability_adjustment": round(max(-0.16, tp_adjustment), 4),
         "range_probability_adjustment": round(range_adjustment, 4),
@@ -1003,6 +1067,12 @@ def timeframe_contra_side(side: str, timeframe: dict, require_stack: bool) -> bo
     if price_vs_ema is None:
         return False
     return side_signed_contra(side, price_vs_ema, threshold=0.08)
+
+
+def rsi_extreme_against_entry(side: str, rsi_value: float | None) -> bool:
+    if rsi_value is None:
+        return False
+    return (side == "short" and rsi_value <= 30) or (side == "long" and rsi_value >= 70)
 
 
 def stricter_grade_cap(current: str | None, candidate: str | None) -> str | None:
@@ -1414,12 +1484,12 @@ def build_risk_calibration_metric(risk_calibration_context: dict) -> dict:
         value = f"{len(flags)} frenos · TP {adjustment:+.1%} · riesgo +{risk_addition:.2f}"
         score = max(0, 100 - len(flags) * 10 - round(risk_addition * 100))
         bias = "desfavorable"
-        explanation = "Aplica frenos v0.10 derivados de auditoria: " + ", ".join(flags[:5])
+        explanation = "Aplica frenos versionados derivados de auditoria: " + ", ".join(flags[:5])
     else:
-        value = "sin frenos v0.10"
+        value = "sin frenos activos"
         score = 82
         bias = "neutral"
-        explanation = "No activa los clusters de riesgo historicamente fragiles auditados en v0.10."
+        explanation = "No activa clusters de riesgo historicamente fragiles auditados para esta version."
     return {
         "key": "risk_calibration",
         "label": "Calibracion de riesgo",

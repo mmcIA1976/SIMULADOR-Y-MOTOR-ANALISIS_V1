@@ -2,6 +2,341 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-07-08 - learning-v0.2-underweighted-risk
+
+Estado: aplicado como fase 1 de mejora de la base de aprendizaje.
+
+Origen:
+- Revision manual de la operacion `#204`: el plan `BTCUSDT SHORT` cerro por `stop_loss` con `-32.45 USDT`.
+- La evaluacion anterior la clasificaba como `analysis_warned_risk` porque Fibonacci era desfavorable.
+- La conclusion era incompleta: el motor tambien habia recomendado `simular`, setup `B`, confianza `alta`, TP `61.09%`, tecnico `80/100`, direccion `61/100` y regimen `tendencia_bajista`.
+- Lectura correcta: el analisis detecto riesgos, pero la recomendacion final pudo infraponderarlos frente a senales favorables.
+
+Cambios realizados:
+- Se crea `LEARNING_EVALUATOR_VERSION = learning-v0.2-underweighted-risk`.
+- `learning_evaluations.structured_json` guarda `learning_evaluator_version` y `signal_diagnostics`.
+- `signal_diagnostics` separa:
+  - `supporting_signals`: senales que apoyaban la operacion.
+  - `opposing_signals`: senales que contradecian la operacion.
+  - `internal_inconsistencies`: incoherencias entre confianza, calidad, EV y alertas.
+  - `warning_detection_quality`: calidad de deteccion de riesgos.
+  - `decision_quality`: si la decision fue coherente o infrapondero riesgo.
+- Se anade el veredicto `analysis_warned_but_underweighted_risk`.
+- Se anade la categoria `investigate_underweighted_detected_risk`.
+- `learning_signal.comparable_case_key` incorpora `decision_quality` y `warning_detection_quality`.
+- `learning_summary` visible en operaciones futuras distingue riesgo detectado pero subponderado frente a simple refuerzo de una alerta aislada.
+
+Validacion local:
+- `.\.venv\Scripts\python.exe -m py_compile app.py tests\test_pending_zone_analysis.py`
+- `.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis`
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests`
+- Recalculo en modo lectura de la operacion real `#204`:
+  - `analysis_verdict`: `analysis_warned_but_underweighted_risk`.
+  - `learning_signal.category`: `investigate_underweighted_detected_risk`.
+  - `decision_quality`: `risk_underweighted`.
+  - `warning_detection_quality`: `detected_multiple_material_warnings`.
+  - 8 senales favorables, 8 senales contrarias, 3 incoherencias internas.
+
+Regla vigente:
+- Esta fase no cambia probabilidades del motor de analisis.
+- Primero mejora la calidad de la base de aprendizaje para que futuras auditorias no agreguen casos mal interpretados.
+- La fase siguiente debe auditar operaciones cerradas con esta nueva taxonomia antes de tocar pesos del motor.
+
+## 2026-07-08 - Auditoria read-only de riesgo subponderado
+
+Estado: aplicado como fase 2 de mejora de aprendizaje.
+
+Objetivo:
+- Recalcular en memoria las operaciones cerradas con la taxonomia `learning-v0.2-underweighted-risk`.
+- No escribir en Supabase ni sobrescribir evaluaciones historicas.
+- Medir si el patron detectado en la operacion `#204` era aislado o recurrente.
+
+Cambios realizados:
+- Se crea el endpoint protegido `/api/learning/underweighted-risk-audit`.
+- Se crea `build_underweighted_risk_audit_report`, que lee operaciones cerradas, recomendacion asociada y ticks, y reconstruye `build_structured_learning_evaluation` en memoria.
+- Se crean funciones de auditoria:
+  - `underweighted_risk_case_from_evaluation`.
+  - `summarize_underweighted_risk_cases`.
+  - `group_underweighted_risk_cases`.
+- El informe agrupa por `analysis_verdict`, `decision_quality`, `warning_detection_quality`, version del motor, marco temporal, lado, setup y confianza.
+- El informe devuelve `risk_cases` ordenados por fallo, numero de senales contrarias, incoherencias internas y tamano de PnL.
+
+Validacion local:
+- `.\.venv\Scripts\python.exe -m py_compile app.py tests\test_pending_zone_analysis.py`
+- `.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis`
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests`
+
+Primera lectura Supabase sin escritura:
+- Operaciones cerradas leidas: 98.
+- Casos evaluables: 98.
+- Casos resueltos para metrica dura: 93.
+- Win rate global recalculado: 47.31%.
+- PnL total recalculado: `-111.4915 USDT`.
+- Casos `risk_underweighted`: 7 / 93 (7.53%).
+- Fallos `risk_underweighted`: 3 / 49 fallos (6.12%).
+- Fallos `analysis_missed_risk`: 8.
+- Veredicto `analysis_warned_but_underweighted_risk`: 3 casos, 0 exitos, PnL medio `-53.7174 USDT`.
+- Casos principales detectados: operaciones `#100`, `#204`, `#142`, `#170`, `#94`, `#87`, `#34`.
+
+Lectura tecnica:
+- El patron de la `#204` no es masivo, pero si existe y merece vigilancia.
+- Los casos perdedores con `analysis_warned_but_underweighted_risk` son pocos pero caros.
+- Tambien hay ganadores con `risk_underweighted`; por tanto no se deben aplicar frenos automaticos todavia sin revisar subpatrones.
+- La siguiente fase debe estudiar los 7 casos detectados y separar que senales contrarias filtraron fallos de cuales tambien aparecieron en ganadores.
+
+## 2026-07-08 - Auditoria de efectividad por senal
+
+Estado: aplicado como fase 3 de mejora de aprendizaje.
+
+Objetivo:
+- Separar senales contrarias que filtran fallos de senales ambiguas que tambien aparecen en operaciones ganadoras.
+- Evitar convertir una alerta aislada en freno automatico si historicamente tambien acompana buenos resultados.
+- Detectar combinaciones de senales que si parecen mas peligrosas que cada senal por separado.
+
+Cambios realizados:
+- El endpoint `/api/learning/underweighted-risk-audit` incorpora:
+  - `opposing_signal_effectiveness`.
+  - `internal_inconsistency_effectiveness`.
+  - `supporting_signal_effectiveness`.
+  - `risk_underweighted_opposing_signals`.
+  - `risk_underweighted_internal_inconsistencies`.
+  - `risk_underweighted_signal_pairs`.
+- Se crean funciones:
+  - `signal_learning_read`.
+  - `group_signal_effectiveness`.
+  - `group_signal_pairs`.
+- Cada senal queda clasificada como:
+  - `candidate_risk_filter`: muestra minima, mas fallos que exitos y PnL medio negativo.
+  - `ambiguous_or_winner_signal`: aparece bastante en ganadores o PnL positivo.
+  - `mixed_context_needs_review`: lectura mixta.
+  - `sample_too_small`: muestra insuficiente.
+
+Validacion local:
+- `.\.venv\Scripts\python.exe -m py_compile app.py tests\test_pending_zone_analysis.py`
+- `.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis`
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests`
+
+Primera lectura Supabase sin escritura:
+- Senales individuales candidatas en toda la muestra:
+  - `extreme_fibonacci_risk`: 5 casos, 4 fallos, PnL medio `-28.7199`, 3 fallos `risk_underweighted`.
+  - `cvd_against_plan`: 17 casos, 10 fallos, PnL medio `-1.3642`, 2 fallos `risk_underweighted`.
+  - `extreme_fibonacci_entry_zone`: 3 casos, 3 fallos, PnL medio `-51.9494`, 2 fallos `risk_underweighted`.
+- Senales ambiguas que NO deben ser freno automatico aislado:
+  - `technical_barrier_before_target`: 52 casos, 26 exitos, 26 fallos, PnL medio positivo.
+  - `extreme_sentiment_risk`: 47 casos, 27 exitos, 20 fallos, PnL medio positivo.
+  - `price_overextension_risk`: 41 casos, 21 exitos, 20 fallos, PnL medio positivo.
+  - `short_into_oversold_rsi`: 12 casos, 8 exitos, 4 fallos, PnL medio positivo.
+- En casos `risk_underweighted`, las senales candidatas mas claras fueron:
+  - `extreme_fibonacci_risk`: 4 casos, 3 fallos, PnL medio `-32.4783`.
+  - `extreme_sentiment_risk`: 5 casos, 3 fallos, PnL medio `-20.3685`.
+  - `short_into_oversold_rsi`: 3 casos, 2 fallos, PnL medio `-17.5012`.
+  - `cvd_against_plan`: 3 casos, 2 fallos, PnL medio `-9.6697`.
+- Combinacion mas peligrosa detectada:
+  - `extreme_fibonacci_risk + extreme_sentiment_risk`: 3 casos, 3 fallos, PnL medio `-53.7174`, operaciones `#100`, `#204`, `#142`.
+
+Lectura tecnica:
+- Fibonacci extremo no debe tratarse igual que Fibonacci simplemente desfavorable.
+- CVD contrario merece vigilancia, pero como freno aislado aun es moderado; funciona mejor dentro de clusters de riesgo.
+- Sentimiento extremo, barreras, extension de precio y RSI extremo son peligrosos solo en combinacion; como senales aisladas filtran tambien operaciones ganadoras.
+- La fase siguiente puede preparar una regla candidata conservadora para el motor: penalizar mas cuando coincidan Fibonacci extremo + sentimiento extremo, especialmente si ademas existe sobreconfianza o CVD contrario.
+
+## 2026-07-08 - rules-v0.11-underweighted-risk-cluster
+
+Estado: aplicado como fase 4 de mejora del motor de analisis.
+
+Objetivo:
+- Convertir la evidencia mas solida de fase 3 en un freno conservador del motor.
+- No penalizar alertas aisladas que tambien aparecen en operaciones ganadoras.
+- Mantener trazabilidad en `risk_calibration_context.flags`, `alerts`, scores y version del motor.
+
+Origen:
+- Auditoria `learning-v0.2-underweighted-risk`, 93 casos resueltos recalculados.
+- Cluster mas peligroso:
+  - `extreme_fibonacci_risk + extreme_sentiment_risk`.
+  - 3 casos, 3 fallos.
+  - PnL medio `-53.7174 USDT`.
+  - Operaciones `#100`, `#204`, `#142`.
+- Senales aisladas consideradas ambiguas y NO usadas como freno fuerte independiente:
+  - `technical_barrier_before_target`.
+  - `extreme_sentiment_risk`.
+  - `price_overextension_risk`.
+  - `short_into_oversold_rsi`.
+
+Cambios realizados:
+- El motor sube a `rules-v0.11-underweighted-risk-cluster`.
+- `build_risk_calibration_context` recibe `sentiment_penalty` y `cvd_bias`.
+- Se anade flag `extreme_fib_extreme_sentiment_cluster` cuando:
+  - `fibonacci_context.bias == desfavorable`, y
+  - `fibonacci_context.score < 30` o `entry_zone == retroceso_extremo`, y
+  - `sentiment_penalty >= 0.01`.
+- Penalizacion del cluster principal:
+  - TP probability adjustment `-0.035`.
+  - `risk_score_addition +0.08`.
+  - `quality_score_penalty +12`.
+  - `confidence_score_penalty +10`.
+  - `expected_value_score_penalty +9`.
+  - `execution_risk_score_addition +8`.
+  - `grade_cap = C`.
+  - No fuerza `observar`.
+- Se anade flag incremental `extreme_fib_sentiment_cvd_contra` cuando el cluster anterior aparece con `cvd_bias < -0.005`.
+- Penalizacion incremental:
+  - TP probability adjustment `-0.015`.
+  - `risk_score_addition +0.03`.
+  - `quality_score_penalty +4`.
+  - `confidence_score_penalty +5`.
+  - `expected_value_score_penalty +4`.
+  - `execution_risk_score_addition +4`.
+  - `grade_cap = C`.
+- La metrica visible `risk_calibration` deja de mostrar texto fijo v0.10 y usa lenguaje versionado generico.
+
+Regla vigente:
+- Fibonacci simplemente desfavorable no activa este freno v0.11.
+- Sentimiento extremo aislado no activa este freno v0.11.
+- CVD contrario aislado no activa este freno v0.11.
+- El freno aparece solo por cluster y queda registrado en `risk_calibration_context.flags`.
+
+Validacion local:
+- `.\.venv\Scripts\python.exe -m py_compile analysis_engine.py app.py tests\test_pending_zone_analysis.py`
+- `.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis`
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests`
+- Tests nuevos:
+  - El patron tipo operacion `#204` activa `extreme_fib_extreme_sentiment_cluster` y `extreme_fib_sentiment_cvd_contra`.
+  - Un Fibonacci desfavorable no extremo con sentimiento extremo no activa el freno v0.11.
+
+Auditoria futura requerida:
+- Comparar operaciones nuevas `rules-v0.11-underweighted-risk-cluster` contra v0.10.
+- Medir si el cluster reduce fallos caros sin filtrar demasiados ganadores.
+- No endurecer a `force_observar` hasta tener mas casos cerrados del motor v0.11.
+
+## 2026-07-08 - RSI como agravante contextual v0.11
+
+Estado: aplicado como fase 5 de mejora del motor de analisis.
+
+Objetivo:
+- Incorporar el RSI con peso real cuando se combina con otras senales relevantes.
+- Evitar penalizar RSI extremo como senal aislada, porque la auditoria mostro que tambien aparece en operaciones ganadoras.
+- Registrar el peso del RSI en `risk_calibration_context.flags` para auditarlo despues.
+
+Lectura Supabase sin escritura:
+- `short_into_oversold_rsi` en toda la muestra:
+  - 12 casos.
+  - 8 exitos, 4 fallos.
+  - PnL medio `+8.9426`.
+  - Lectura: no debe ser freno aislado.
+- `short_into_oversold_rsi` dentro de `risk_underweighted`:
+  - 3 casos.
+  - 1 exito, 2 fallos.
+  - PnL medio `-17.5012`.
+  - Operaciones `#100`, `#204`, `#34`.
+- Pares `risk_underweighted` con RSI que salieron candidatos:
+  - `extreme_sentiment_risk + short_into_oversold_rsi`: 3 casos, PnL medio `-17.5012`.
+  - `price_overextension_risk + short_into_oversold_rsi`: 3 casos, PnL medio `-17.5012`.
+  - `short_into_oversold_rsi + technical_barrier_before_target`: 3 casos, PnL medio `-17.5012`.
+  - `short_into_oversold_rsi + thin_expected_value_score`: 3 casos, PnL medio `-17.5012`.
+- Pares con muestra menor pero todos perdedores:
+  - `cvd_against_plan + short_into_oversold_rsi`: 2 casos, 2 fallos, PnL medio `-43.3556`.
+  - `extreme_fibonacci_risk + short_into_oversold_rsi`: 2 casos, 2 fallos, PnL medio `-43.3556`.
+
+Cambios realizados:
+- `build_risk_calibration_context` recibe `rsi_signal`.
+- Se crea helper `rsi_extreme_against_entry`.
+- Se anade flag `rsi_extreme_multi_risk_cluster` cuando:
+  - RSI esta extremo contra la entrada (`short` con RSI <= 30 o `long` con RSI >= 70), y
+  - existen al menos dos riesgos materiales entre Fibonacci extremo, sentimiento extremo y CVD contrario.
+- Penalizacion:
+  - TP probability adjustment `-0.012`.
+  - `risk_score_addition +0.025`.
+  - `quality_score_penalty +4`.
+  - `confidence_score_penalty +4`.
+  - `expected_value_score_penalty +3`.
+  - `execution_risk_score_addition +4`.
+  - `grade_cap = C`.
+- Se anade flag adicional `rsi_extreme_with_fib_sentiment_cluster` cuando el RSI extremo aparece dentro del cluster Fibonacci extremo + sentimiento extremo.
+- Penalizacion adicional:
+  - TP probability adjustment `-0.008`.
+  - `risk_score_addition +0.015`.
+  - `quality_score_penalty +3`.
+  - `confidence_score_penalty +3`.
+  - `expected_value_score_penalty +2`.
+  - `execution_risk_score_addition +3`.
+  - `grade_cap = C`.
+
+Regla vigente:
+- RSI extremo aislado no activa ningun freno.
+- RSI + sentimiento extremo aislado no activa el freno si no hay otro riesgo material.
+- RSI + sentimiento extremo + CVD contrario si activa `rsi_extreme_multi_risk_cluster`.
+- RSI + Fibonacci extremo + sentimiento extremo activa el agravante principal y el flag adicional de cluster.
+
+Validacion local:
+- `.\.venv\Scripts\python.exe -m py_compile analysis_engine.py app.py tests\test_pending_zone_analysis.py`
+- `.\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis`
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests`
+- Tests nuevos:
+  - El patron tipo operacion `#204` activa los flags de Fibonacci/sentimiento/CVD y tambien los flags RSI contextuales.
+  - RSI extremo aislado no se penaliza.
+  - RSI + sentimiento + CVD se penaliza aunque Fibonacci no sea extremo.
+  - Fibonacci no extremo + sentimiento + RSI sin CVD no activa el freno RSI.
+
+## 2026-07-08 - Cierre fase 5: regla general de acumulacion descartada
+
+Estado: auditado y no aplicado al motor.
+
+Objetivo:
+- Evaluar la regla propuesta de penalizar cuando existan 3 o mas alertas fuertes acumuladas.
+- Aplicarla solo si mejora de verdad el motor actual.
+
+Alertas evaluadas:
+- Fibonacci desfavorable extremo.
+- CVD contrario.
+- RSI extremo contra entrada.
+- Sentimiento extremo.
+- Barrera tecnica antes del TP.
+- Mismatch confianza/calidad.
+- Expected value score justo o mismatch confianza/EV.
+
+Lectura Supabase sin escritura:
+- Muestra: 93 operaciones resueltas.
+- Resultado global: 44 exitos, 49 fallos, win rate `47.31%`, PnL medio `-1.1988 USDT`.
+- Casos con `>= 3` alertas fuertes: 46 operaciones, 25 exitos, 21 fallos, win rate `54.35%`, PnL medio `+3.6264 USDT`.
+- Casos con `>= 4` alertas fuertes: 25 operaciones, 16 exitos, 9 fallos, win rate `64.00%`, PnL medio `+12.4547 USDT`.
+- Casos con `>= 5` alertas fuertes: 12 operaciones, 7 exitos, 5 fallos, win rate `58.33%`, PnL medio `+16.7460 USDT`.
+- Casos con `>= 6` alertas fuertes: 5 operaciones, 1 exito, 4 fallos, PnL medio `-27.6591 USDT`.
+
+Decision tecnica:
+- No se implementa la regla general `>= 3 alertas fuertes`.
+- Motivo: habria penalizado demasiadas operaciones ganadoras y, con la muestra actual, empeoraria la precision del motor.
+- La unica zona claramente negativa fue `>= 6` alertas, pero la muestra es demasiado pequena para endurecer reglas y varios casos ya quedan cubiertos por los clusters v0.11.
+
+Regla vigente:
+- Mantener penalizaciones por clusters concretos con evidencia.
+- No penalizar por conteo bruto de alertas.
+- Reauditar cuando existan suficientes operaciones nuevas generadas por `rules-v0.11-underweighted-risk-cluster`.
+
+## 2026-07-08 - Cierre trazabilidad de aprendizaje estructurado
+
+Estado: aplicado como cierre del plan de mejora de aprendizaje.
+
+Objetivo:
+- Evitar conclusiones decorativas tipo "reforzar Fibonacci".
+- Guardar una conclusion util para auditorias futuras, especialmente en casos `analysis_warned_but_underweighted_risk`.
+
+Cambios realizados:
+- La conclusion de fallos por riesgo detectado pero subponderado queda estructurada en texto con:
+  - Resultado.
+  - Lectura previa.
+  - Error probable.
+  - Senales que apoyaban.
+  - Senales que contradecian.
+  - Incoherencias internas.
+  - Aprendizaje accionable.
+- Se mantiene el esquema actual de base de datos: el cambio mejora `learning_summary` sin requerir migracion.
+- Se anade helper `signal_details_text` para reutilizar detalles de `signal_diagnostics`.
+
+Lectura tecnica:
+- El aprendizaje ya no guarda solo que una alerta existia.
+- Guarda si el motor detecto riesgos, si la decision final los respeto y que contradicciones concretas estaban activas.
+- Esto permite auditar despues si v0.11 reduce fallos caros sin destruir operaciones ganadoras.
+
 ## 2026-07-06 - rules-v0.10-risk-gated-calibration
 
 Estado: aplicado tras auditoria completa de operaciones cerradas.

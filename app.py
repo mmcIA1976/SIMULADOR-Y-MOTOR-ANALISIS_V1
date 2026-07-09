@@ -1003,10 +1003,11 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
           AND (
             o.learning_summary IS NULL
             OR o.learning_summary = ''
-            OR o.learning_summary LIKE '%este caso debe reforzar esas senales de riesgo%'
+            OR o.learning_summary LIKE ?
           )
         ORDER BY o.closed_at ASC, o.id ASC
-        """
+        """,
+        (f"%{STALE_LEARNING_SUMMARY_MARKERS[0]}%",),
     ).fetchall()
     conclusions: list[dict] = []
     for row in rows:

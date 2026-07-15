@@ -153,9 +153,60 @@ Campos derivados:
 - `target_path_quality`
 - `invalidation_quality`
 
+## Liquidaciones Hyperliquid en modo observacion
+
+La version `rules-v0.12.1-liquidations-readable` consulta el endpoint publico de
+HyperPerps para BTC, ETH y SOL. La fuente agrega posiciones publicas de
+Hyperliquid y entrega niveles de liquidacion antes de que el precio los alcance.
+
+Datos guardados en cada snapshot:
+
+- `clusters_above`: liquidaciones de posiciones short por encima del precio;
+- `clusters_below`: liquidaciones de posiciones long por debajo del precio;
+- precio, nocional USD, numero de wallets y distancia por cluster;
+- masa de cascada dentro de 1%, 2% y 5%;
+- precio de referencia, antiguedad, esquema, muestra y estado de frescura;
+- proximidad del TP y SL propuestos a los clusteres relevantes.
+- lectura favorable, mixta o desfavorable respecto a la direccion propuesta;
+- relacion entre masa adversa y masa favorable dentro del 2%;
+- riesgo de squeeze bajo, medio o alto;
+- cluster adverso dominante situado entre el precio actual y el stop.
+
+Controles:
+
+- alcance etiquetado siempre como `hyperliquid`, nunca como Binance;
+- cache en memoria para limitar peticiones;
+- rechazo del dato obsoleto o con precio de referencia desacoplado;
+- fallo degradable: el analisis continua si el proveedor no responde;
+- `mode=observation` y `affects_scoring=false` hasta completar una auditoria.
+
+Lectura operativa:
+
+- En un `SHORT`, las liquidaciones de longs por debajo son masa potencialmente
+  favorable hacia el TP y las liquidaciones de shorts por encima son masa adversa.
+- En un `LONG`, la interpretacion se invierte.
+- Una coincidencia del TP con un cluster objetivo es favorable; una coincidencia
+  del SL con un cluster adverso indica peligro, no confirmacion.
+- La clasificacion visible facilita la lectura, pero todavia no cambia la
+  probabilidad, la decision ni el tamano de la operacion.
+
+Puerta para la siguiente fase:
+
+- reunir al menos 30 operaciones cerradas vinculadas a analisis v0.12;
+- ejecutar primero una calibracion en sombra que no altere la recomendacion visible;
+- comparar precision, primer cluster tocado, PnL, lado y horizonte;
+- limitar cualquier prueba posterior a ajustes iniciales de `+/-2-3` puntos;
+- no cambiar automaticamente TP ni SL por esta capa.
+
+Fuente:
+
+- https://trade.hyperperps.app/api/public/heatmap/BTC
+- https://hyperperps.app/hyperliquid-liquidation-heatmap
+
 Limitaciones conocidas:
 
-- no hay heatmap real de liquidaciones multi-exchange;
+- no hay heatmap real de liquidaciones multi-exchange ni posiciones publicas de Binance;
+- el mapa incorporado representa solo posiciones observables de Hyperliquid;
 - no hay volumen historico por precio;
 - no hay order book historico profundo;
 - no hay slippage multi-exchange;

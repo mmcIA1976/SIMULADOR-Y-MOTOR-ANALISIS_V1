@@ -11,6 +11,26 @@ from psycopg_pool import ConnectionPool
 
 
 _PG_POOL: ConnectionPool | None = None
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_local_env() -> None:
+    for filename in (".env.local", ".env"):
+        path = os.path.join(APP_DIR, filename)
+        if not os.path.exists(path):
+            continue
+        with open(path, "r", encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                os.environ.setdefault(key, value)
+
+
+load_local_env()
 
 
 def database_url() -> str:

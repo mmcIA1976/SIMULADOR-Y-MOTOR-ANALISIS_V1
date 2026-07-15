@@ -1108,6 +1108,230 @@ def underweighted_risk_audit(session_token: str | None = Cookie(default=None, al
         return build_underweighted_risk_audit_report(db, int(user["id"]))
 
 
+@app.get("/api/learning/liquidation-audit")
+def liquidation_audit(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_liquidation_audit_report(db, int(user["id"]))
+
+
+def build_liquidation_audit_report(db, user_id: int) -> dict:
+    recommendation_stats = row_to_dict(db.execute(
+        """
+        SELECT
+            COUNT(*) AS total_analyses,
+            COUNT(CASE WHEN operation_id IS NULL THEN 1 END) AS unlinked_analyses,
+            COUNT(CASE WHEN operation_id IS NOT NULL THEN 1 END) AS linked_operations
+        FROM recommendations
+        WHERE user_id = ?
+          AND engine_version LIKE ?
+        """,
+        (user_id, "rules-v0.12%"),
+    ).fetchone()) or {}
+    rows = db.execute(
+        """
+        SELECT
+            o.*,
+            r.id AS recommendation_id,
+            r.engine_version AS recommendation_engine_version,
+            r.snapshot_json AS recommendation_snapshot_json
+        FROM operations o
+        JOIN recommendations r ON r.id = (
+            SELECT r2.id
+            FROM recommendations r2
+            WHERE r2.operation_id = o.id
+              AND r2.engine_version LIKE ?
+            ORDER BY r2.created_at DESC, r2.id DESC
+            LIMIT 1
+        )
+        WHERE o.user_id = ?
+          AND o.status = 'CLOSED'
+        ORDER BY o.closed_at DESC, o.id DESC
+        """,
+        ("rules-v0.12%", user_id),
+    ).fetchall()
+    cases = []
+    for row in rows:
+        operation = row_to_dict(row)
+        ticks = [
+            row_to_dict(tick)
+            for tick in db.execute(
+                """
+                SELECT price, captured_at
+                FROM price_ticks
+                WHERE operation_id = ?
+                ORDER BY captured_at ASC
+                """,
+                (operation["id"],),
+            ).fetchall()
+        ]
+        case = liquidation_case_from_operation(operation, ticks)
+        if case is not None:
+            cases.append(case)
+    resolved = [case for case in cases if case["resolved"]]
+    return {
+        "audit_version": "liquidations-audit-v0.1",
+        "user_id": user_id,
+        "recommendations": {
+            "total_analyses": int(recommendation_stats.get("total_analyses") or 0),
+            "unlinked_analyses": int(recommendation_stats.get("unlinked_analyses") or 0),
+            "linked_operations": int(recommendation_stats.get("linked_operations") or 0),
+        },
+        "sample": {
+            "closed_cases": len(cases),
+            "resolved_cases": len(resolved),
+            "minimum_for_weight_review": 30,
+            "ready_for_weight_review": len(resolved) >= 30,
+        },
+        "summary": summarize_liquidation_cases(resolved),
+        "by_map_read": group_liquidation_cases(resolved, "map_read"),
+        "by_squeeze_risk": group_liquidation_cases(resolved, "adverse_squeeze_risk"),
+        "by_first_touch": group_liquidation_cases(resolved, "first_touch"),
+        "by_side": group_liquidation_cases(resolved, "side"),
+        "recent_cases": cases[:20],
+    }
+
+
+def liquidation_case_from_operation(operation: dict, ticks: list[dict]) -> dict | None:
+    snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
+    observation = snapshot.get("liquidation_observation")
+    if not isinstance(observation, dict) or not observation.get("available"):
+        return None
+    target_cluster = observation.get("target_cluster_near_tp")
+    adverse_cluster = observation.get("dominant_adverse_cluster_before_sl") or observation.get("adverse_cluster_near_sl")
+    target_price = safe_float(target_cluster.get("price")) if isinstance(target_cluster, dict) else None
+    adverse_price = safe_float(adverse_cluster.get("price")) if isinstance(adverse_cluster, dict) else None
+    target_mass = safe_float(observation.get("target_cascade_mass_2pct"))
+    adverse_mass = safe_float(observation.get("adverse_cascade_mass_2pct"))
+    ratio = safe_float(observation.get("adverse_to_target_mass_ratio_2pct"))
+    if ratio is None and target_mass not in {None, 0} and adverse_mass is not None:
+        ratio = round(adverse_mass / target_mass, 4)
+    map_read = observation.get("map_read")
+    if map_read is None and ratio is not None:
+        map_read = "desfavorable" if ratio >= 1.5 else "favorable" if ratio <= (1 / 1.5) else "mixto"
+    squeeze_risk = observation.get("adverse_squeeze_risk")
+    if squeeze_risk is None:
+        squeeze_risk = "alto" if ratio is not None and ratio >= 3 else "medio" if ratio is not None and ratio >= 1.25 else "bajo"
+    path = liquidation_path_points(operation, ticks)
+    target_touch = first_liquidation_touch(path, operation.get("side"), "target", target_price)
+    adverse_touch = first_liquidation_touch(path, operation.get("side"), "adverse", adverse_price)
+    if target_touch and adverse_touch:
+        first_touch = "objetivo_primero" if target_touch["index"] < adverse_touch["index"] else "adverso_primero" if adverse_touch["index"] < target_touch["index"] else "ambos_mismo_tick"
+    elif target_touch:
+        first_touch = "solo_objetivo"
+    elif adverse_touch:
+        first_touch = "solo_adverso"
+    else:
+        first_touch = "ninguno"
+    plan_result = plan_result_from_operation(operation)
+    success = plan_result in {"plan_success", "plan_would_succeed"}
+    failure = plan_result in {"plan_failure", "plan_would_fail"}
+    forecast_correct = None
+    if map_read == "favorable" and (success or failure):
+        forecast_correct = success
+    elif map_read == "desfavorable" and (success or failure):
+        forecast_correct = failure
+    return {
+        "operation_id": int(operation["id"]),
+        "recommendation_id": operation.get("recommendation_id"),
+        "engine_version": operation.get("recommendation_engine_version"),
+        "symbol": operation.get("symbol"),
+        "side": operation.get("side"),
+        "time_horizon": operation.get("time_horizon"),
+        "plan_result": plan_result,
+        "resolved": success or failure,
+        "success": success,
+        "failure": failure,
+        "final_pnl": round(float(operation.get("final_pnl") or 0), 4),
+        "map_read": map_read or "sin_datos",
+        "adverse_squeeze_risk": squeeze_risk,
+        "adverse_to_target_mass_ratio_2pct": ratio,
+        "target_cluster_price": target_price,
+        "adverse_cluster_price": adverse_price,
+        "target_touched": target_touch is not None,
+        "adverse_touched": adverse_touch is not None,
+        "target_touch_at": target_touch.get("captured_at") if target_touch else None,
+        "adverse_touch_at": adverse_touch.get("captured_at") if adverse_touch else None,
+        "first_touch": first_touch,
+        "forecast_correct": forecast_correct,
+    }
+
+
+def liquidation_path_points(operation: dict, ticks: list[dict]) -> list[dict]:
+    started_at = parse_timestamp(operation.get("started_at"))
+    closed_at = parse_timestamp(operation.get("closed_at"))
+    points = []
+    for tick in ticks:
+        captured_at = parse_timestamp(str(tick.get("captured_at")) if tick.get("captured_at") is not None else None)
+        if started_at and captured_at and captured_at < started_at:
+            continue
+        if closed_at and captured_at and captured_at > closed_at:
+            continue
+        price = safe_float(tick.get("price"))
+        if price is not None:
+            points.append({"price": price, "captured_at": str(tick.get("captured_at") or "")})
+    close_price = safe_float(operation.get("close_price"))
+    if close_price is not None:
+        points.append({"price": close_price, "captured_at": str(operation.get("closed_at") or "cierre")})
+    return points
+
+
+def first_liquidation_touch(path: list[dict], side: str | None, kind: str, level: float | None) -> dict | None:
+    if level is None or side not in {"long", "short"}:
+        return None
+    for index, point in enumerate(path):
+        price = float(point["price"])
+        reached = (
+            price >= level
+            if (side == "long" and kind == "target") or (side == "short" and kind == "adverse")
+            else price <= level
+        )
+        if reached:
+            return {"index": index, "price": price, "captured_at": point.get("captured_at")}
+    return None
+
+
+def summarize_liquidation_cases(cases: list[dict]) -> dict:
+    if not cases:
+        return {"available": False, "message": "Aun no hay operaciones cerradas con mapa de liquidaciones."}
+    forecast_cases = [case for case in cases if case.get("forecast_correct") is not None]
+    correct = sum(1 for case in forecast_cases if case["forecast_correct"])
+    target_touched = sum(1 for case in cases if case["target_touched"])
+    adverse_touched = sum(1 for case in cases if case["adverse_touched"])
+    return {
+        "available": True,
+        "cases": len(cases),
+        "forecast_evaluable_cases": len(forecast_cases),
+        "forecast_correct_cases": correct,
+        "forecast_accuracy": round(correct / len(forecast_cases), 4) if forecast_cases else None,
+        "target_touch_rate": round(target_touched / len(cases), 4),
+        "adverse_touch_rate": round(adverse_touched / len(cases), 4),
+        "target_first_cases": sum(1 for case in cases if case["first_touch"] in {"objetivo_primero", "solo_objetivo"}),
+        "adverse_first_cases": sum(1 for case in cases if case["first_touch"] in {"adverso_primero", "solo_adverso"}),
+    }
+
+
+def group_liquidation_cases(cases: list[dict], key: str) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    for case in cases:
+        groups.setdefault(str(case.get(key) or "sin_dato"), []).append(case)
+    result = []
+    for name, items in groups.items():
+        forecast_cases = [item for item in items if item.get("forecast_correct") is not None]
+        correct = sum(1 for item in forecast_cases if item["forecast_correct"])
+        result.append({
+            "name": name,
+            "cases": len(items),
+            "successes": sum(1 for item in items if item["success"]),
+            "failures": sum(1 for item in items if item["failure"]),
+            "forecast_evaluable_cases": len(forecast_cases),
+            "forecast_accuracy": round(correct / len(forecast_cases), 4) if forecast_cases else None,
+            "target_touch_rate": round(sum(1 for item in items if item["target_touched"]) / len(items), 4),
+            "adverse_touch_rate": round(sum(1 for item in items if item["adverse_touched"]) / len(items), 4),
+        })
+    return sorted(result, key=lambda item: (-item["cases"], item["name"]))
+
+
 def build_fibonacci_audit_report(db, user_id: int) -> dict:
     recommendation_stats = row_to_dict(db.execute(
         """

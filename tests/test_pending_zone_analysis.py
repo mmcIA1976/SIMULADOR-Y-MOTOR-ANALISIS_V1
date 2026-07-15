@@ -11,12 +11,15 @@ from analysis_engine import (
 from app import (
     build_learning_conclusion,
     build_structured_learning_evaluation,
+    group_liquidation_cases,
     group_pending_zone_cases,
     group_signal_effectiveness,
     group_signal_pairs,
     group_underweighted_risk_cases,
     learning_summary_needs_refresh,
+    liquidation_case_from_operation,
     pending_zone_case_from_evaluation,
+    summarize_liquidation_cases,
     summarize_pending_zone_cases,
     summarize_underweighted_risk_cases,
     underweighted_risk_case_from_evaluation,
@@ -24,6 +27,59 @@ from app import (
 
 
 class PendingZoneAnalysisTests(unittest.TestCase):
+    def test_liquidation_audit_detects_adverse_cluster_before_target(self):
+        operation = {
+            "id": 205,
+            "recommendation_id": 789,
+            "recommendation_engine_version": "rules-v0.12.1-liquidations-readable",
+            "symbol": "BTCUSDT",
+            "side": "short",
+            "time_horizon": "short_swing",
+            "entry": 64957.2,
+            "started_at": "2026-07-15T21:05:00+00:00",
+            "closed_at": "2026-07-15T21:20:00+00:00",
+            "close_price": 65950,
+            "close_reason": "stop_loss",
+            "final_pnl": -15.0,
+            "recommendation_snapshot_json": json.dumps({
+                "liquidation_observation": {
+                    "available": True,
+                    "map_read": "desfavorable",
+                    "adverse_squeeze_risk": "alto",
+                    "adverse_to_target_mass_ratio_2pct": 5.7,
+                    "target_cascade_mass_2pct": 12_000_000,
+                    "adverse_cascade_mass_2pct": 68_400_000,
+                    "target_cluster_near_tp": {"price": 63824.67},
+                    "dominant_adverse_cluster_before_sl": {"price": 65935.92},
+                }
+            }),
+        }
+        ticks = [
+            {"price": 65200, "captured_at": "2026-07-15T21:10:00+00:00"},
+            {"price": 65940, "captured_at": "2026-07-15T21:19:00+00:00"},
+        ]
+
+        case = liquidation_case_from_operation(operation, ticks)
+
+        self.assertEqual(case["first_touch"], "solo_adverso")
+        self.assertTrue(case["adverse_touched"])
+        self.assertFalse(case["target_touched"])
+        self.assertTrue(case["forecast_correct"])
+
+    def test_liquidation_audit_summary_and_groups(self):
+        cases = [
+            {"map_read": "desfavorable", "success": False, "failure": True, "forecast_correct": True, "target_touched": False, "adverse_touched": True, "first_touch": "solo_adverso"},
+            {"map_read": "desfavorable", "success": True, "failure": False, "forecast_correct": False, "target_touched": True, "adverse_touched": False, "first_touch": "solo_objetivo"},
+        ]
+
+        summary = summarize_liquidation_cases(cases)
+        groups = group_liquidation_cases(cases, "map_read")
+
+        self.assertEqual(summary["forecast_accuracy"], 0.5)
+        self.assertEqual(summary["target_touch_rate"], 0.5)
+        self.assertEqual(summary["adverse_touch_rate"], 0.5)
+        self.assertEqual(groups[0]["cases"], 2)
+
     def test_favorable_limit_pullback_gets_small_positive_adjustment(self):
         proposal = TradeProposal(
             symbol="BTCUSDT",

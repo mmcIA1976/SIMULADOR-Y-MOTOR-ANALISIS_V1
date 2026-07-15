@@ -82,6 +82,7 @@ const elements = {
   analysisInterpretation: document.querySelector("#analysisInterpretation"),
   explainedMetrics: document.querySelector("#explainedMetrics"),
   dataSourcesBox: document.querySelector("#dataSourcesBox"),
+  liquidationAuditBox: document.querySelector("#liquidationAuditBox"),
   fibonacciAuditBox: document.querySelector("#fibonacciAuditBox"),
   analysisReasons: document.querySelector("#analysisReasons"),
   operationSelector: document.querySelector("#operationSelector"),
@@ -886,6 +887,7 @@ function clearPrivateSessionView() {
   elements.explainedMetrics.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
   renderFibonacciAudit(null);
+  renderLiquidationAudit(null);
   elements.analysisReasons.innerHTML = "";
   drawChart();
 }
@@ -1829,14 +1831,19 @@ function renderAnalysisKeypoints(analysis) {
   const fibonacci = analysis.fibonacci_context || analysis.snapshot?.fibonacci_context || null;
   const zone = analysis.zone_analysis || analysis.snapshot?.zone_analysis || null;
   const zoneProbability = analysis.zone_probability_context || analysis.snapshot?.zone_probability_context || null;
+  const liquidations = analysis.liquidation_observation || analysis.snapshot?.liquidation_observation || null;
   const fibPoint = fibonacci?.available
     ? `Fibonacci: ${fibBiasLabel(fibonacci.bias)} (${Number(fibonacci.score ?? 50).toFixed(0)}/100); zona entrada ${String(fibonacci.entry_zone || "n/d").replaceAll("_", " ")}.`
     : "";
   const zonePoint = zone?.available
     ? `Orden pendiente: ${entryOrderLabel(zone.entry_order_type)} en ${String(zone.entry_zone_type || "zona pendiente").replaceAll("_", " ")}; confluencia ${Number(zone.zone_confluence_score ?? 50).toFixed(0)}/100, activacion ${percent(Number(zone.activation_probability || 0))}, barrida ${zoneSweepLabel(zone.liquidity_sweep_risk)}, ajuste ${formatSignedPercent(Number(zoneProbability?.probability_adjustment || 0))}.`
     : "";
+  const liquidationPoint = liquidations?.available
+    ? liquidations.summary || `Mapa de liquidaciones ${String(liquidations.map_read || "mixto").replaceAll("_", " ")} para la propuesta; no modifica el scoring.`
+    : "";
   const combined = [
     zonePoint,
+    liquidationPoint,
     fibPoint,
     ...(analysis.alerts || []),
     ...(analysis.reasons || []),
@@ -1864,6 +1871,7 @@ function renderAnalysisHighlights(analysis) {
   const entryContext = analysis.entry_order_context || snapshot.entry_order_context || null;
   const zone = analysis.zone_analysis || snapshot.zone_analysis || null;
   const zoneProbability = analysis.zone_probability_context || snapshot.zone_probability_context || null;
+  const liquidations = analysis.liquidation_observation || snapshot.liquidation_observation || null;
   const horizon = analysis.time_horizon || snapshot.time_horizon;
   const rrRatio = snapshot.risk_reward_ratio;
   const marginRisk = snapshot.margin_risk_pct;
@@ -1896,6 +1904,27 @@ function renderAnalysisHighlights(analysis) {
         label: "Ajuste zona",
         value: `${formatSignedPercent(Number(zoneProbability?.probability_adjustment || 0))} TP · ${formatSignedPercent(Number(zoneProbability?.range_probability_adjustment || 0))} rango`,
         tone: Number(zoneProbability?.probability_adjustment || 0) > 0 ? "positive" : Number(zoneProbability?.probability_adjustment || 0) < 0 ? "negative" : "neutral",
+      },
+    ] : []),
+    ...(liquidations?.available ? [
+      {
+        label: "Mapa liquidaciones",
+        value: `${String(liquidations.map_read || "mixto").replaceAll("_", " ")} · squeeze ${String(liquidations.adverse_squeeze_risk || "n/d").replaceAll("_", " ")}${liquidations.adverse_to_target_mass_ratio_2pct != null ? ` · ${Number(liquidations.adverse_to_target_mass_ratio_2pct).toFixed(1)}x adversa` : ""}`,
+        tone: liquidations.map_read === "desfavorable" ? "negative" : liquidations.map_read === "favorable" ? "positive" : "neutral",
+      },
+      {
+        label: "Objetivo liquidaciones",
+        value: liquidations.target_cluster_near_tp
+          ? `${String(liquidations.target_read || "contexto").replaceAll("_", " ")} · ${priceText(Number(liquidations.target_cluster_near_tp.price))} · ${money(Number(liquidations.target_cluster_near_tp.notional_usd || 0))}`
+          : "Sin cluster comparable cerca del TP",
+        tone: liquidations.target_read === "favorable" ? "positive" : "neutral",
+      },
+      {
+        label: "Riesgo antes del SL",
+        value: liquidations.dominant_adverse_cluster_before_sl
+          ? `${priceText(Number(liquidations.dominant_adverse_cluster_before_sl.price))} · ${money(Number(liquidations.dominant_adverse_cluster_before_sl.notional_usd || 0))}`
+          : "Sin cluster adverso dominante",
+        tone: liquidations.dominant_adverse_cluster_before_sl ? "negative" : "neutral",
       },
     ] : []),
     {
@@ -2043,6 +2072,7 @@ function renderDataSources(availability, sources) {
     open_interest: "Open interest",
     long_short_ratio: "Long/short",
     taker_futures_ratio: "Taker futuros",
+    liquidation_heatmap: "Liquidaciones Hyperliquid",
     fear_greed: "Fear & Greed",
     global_crypto_market: "Mercado global",
   };
@@ -2094,6 +2124,43 @@ function renderFibonacciAudit(report) {
     <p>${escapeHtml(readinessText)}</p>
     ${topBias ? `<p>Sesgo con mas muestra: ${escapeHtml(topBias.name)} · ${topBias.cases} caso${topBias.cases === 1 ? "" : "s"} · exito ${percent(Number(topBias.success_rate || 0))}.</p>` : ""}
     ${topZone ? `<p>Zona mas frecuente: ${escapeHtml(String(topZone.name).replaceAll("_", " "))} · ${topZone.cases} caso${topZone.cases === 1 ? "" : "s"}.</p>` : ""}
+  `;
+}
+
+function renderLiquidationAudit(report) {
+  if (!elements.liquidationAuditBox) {
+    return;
+  }
+  if (!report) {
+    elements.liquidationAuditBox.innerHTML = `
+      <span class="label">Auditoria liquidaciones</span>
+      <p>Inicia sesion para ver la muestra acumulada.</p>
+    `;
+    return;
+  }
+  const sample = report.sample || {};
+  const recommendations = report.recommendations || {};
+  const summary = report.summary || {};
+  const resolved = Number(sample.resolved_cases || 0);
+  const minimum = Number(sample.minimum_for_weight_review || 30);
+  const progress = minimum > 0 ? Math.min(100, (resolved / minimum) * 100) : 0;
+  const accuracy = summary.forecast_accuracy;
+  const readinessText = sample.ready_for_weight_review
+    ? "Muestra lista para revisar si el mapa debe influir en el motor."
+    : `Faltan ${Math.max(0, minimum - resolved)} cierres evaluables antes de revisar pesos.`;
+  elements.liquidationAuditBox.innerHTML = `
+    <span class="label">Auditoria liquidaciones Hyperliquid</span>
+    <div class="learning-grid">
+      <article><span>Analisis guardados</span><strong>${Number(recommendations.total_analyses || 0)}</strong></article>
+      <article><span>En operaciones</span><strong>${Number(recommendations.linked_operations || 0)}</strong></article>
+      <article><span>Cierres evaluables</span><strong>${resolved}/${minimum}</strong></article>
+      <article><span>Acierto del mapa</span><strong>${accuracy == null ? "--" : percent(Number(accuracy))}</strong></article>
+      <article><span>Objetivo tocado</span><strong>${summary.available ? percent(Number(summary.target_touch_rate || 0)) : "--"}</strong></article>
+      <article><span>Adverso tocado</span><strong>${summary.available ? percent(Number(summary.adverse_touch_rate || 0)) : "--"}</strong></article>
+    </div>
+    <div class="audit-progress" aria-label="Progreso auditoria liquidaciones"><span style="width: ${progress.toFixed(1)}%"></span></div>
+    <p>${escapeHtml(readinessText)}</p>
+    <p>Se mide con el mapa guardado antes de operar y el primer toque posterior registrado en los ticks.</p>
   `;
 }
 
@@ -2870,14 +2937,15 @@ async function loadOperations() {
 async function loadFibonacciAudit() {
   if (!currentUser) {
     renderFibonacciAudit(null);
+    renderLiquidationAudit(null);
     return;
   }
-  try {
-    const report = await requestJson("/api/learning/fibonacci-audit");
-    renderFibonacciAudit(report);
-  } catch {
-    renderFibonacciAudit(null);
-  }
+  const [fibonacciResult, liquidationResult] = await Promise.allSettled([
+    requestJson("/api/learning/fibonacci-audit"),
+    requestJson("/api/learning/liquidation-audit"),
+  ]);
+  renderFibonacciAudit(fibonacciResult.status === "fulfilled" ? fibonacciResult.value : null);
+  renderLiquidationAudit(liquidationResult.status === "fulfilled" ? liquidationResult.value : null);
 }
 
 async function loadOperationTicks(operation, { force = false } = {}) {

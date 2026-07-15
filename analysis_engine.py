@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import data_engine
 
 
-ENGINE_VERSION = "rules-v0.11-underweighted-risk-cluster"
+ENGINE_VERSION = "rules-v0.12.1-liquidations-readable"
 ENGINE_AUDIT_REFERENCE = {
-    "date": "2026-07-08",
+    "date": "2026-07-15",
     "sample_size": 98,
     "resolved_sample_size": 93,
     "current_engine_resolved_sample_size": 3,
@@ -20,7 +20,7 @@ ENGINE_AUDIT_REFERENCE = {
         "extreme_fibonacci_risk_failure_rate": "80.0%",
         "cvd_against_plan_failure_rate": "58.8%",
     },
-    "intent": "v0.11 convierte la auditoria learning-v0.2 en un freno conservador por cluster: penaliza Fibonacci extremo con sentimiento extremo y deja trazabilidad sin bloquear automaticamente.",
+    "intent": "v0.12.1 conserva los frenos v0.11 y presenta el mapa Hyperliquid con lectura operativa clara, sin modificar probabilidades, riesgo ni decision.",
 }
 TIME_HORIZON_PROFILES = {
     "intraday_short": {
@@ -133,6 +133,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     trade_flow = market_snapshot["trade_flow"]
     ticker_24h = market_snapshot["ticker_24h"]
     derivatives = market_snapshot["derivatives"]
+    liquidations = market_snapshot.get("liquidations", {})
     levels = market_snapshot["levels"]
     fibonacci = market_snapshot.get("fibonacci", {})
     sentiment = market_snapshot["sentiment"]
@@ -156,6 +157,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
     recent_range_pct = tf_volatility["recent_range_pct"]
     volume_ratio = tf_volume["volume_ratio"]
     atr_pct = tf_volatility["atr_pct"]
+    liquidation_observation = build_liquidation_observation(proposal, liquidations, atr_pct)
     order_book_imbalance = order_book["imbalance"]
     spread_pct = order_book["spread_pct"]
     rsi_signal = tf_momentum["rsi_14"]
@@ -498,6 +500,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         tf_volatility=tf_volatility,
     )
     explained_metrics = build_score_metrics(layered_scores, expected_value, market_regime, probability_ranges) + [
+        build_liquidation_metric(liquidation_observation, liquidations),
         build_fibonacci_metric(fibonacci_context),
         build_zone_analysis_metric(zone_analysis),
         build_risk_calibration_metric(risk_calibration_context),
@@ -520,6 +523,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
         "layered_scores": layered_scores,
         "market_regime": market_regime,
         "technical_rating": technical_rating,
+        "liquidation_observation": liquidation_observation,
         "fibonacci_context": fibonacci_context,
         "zone_analysis": zone_analysis,
         "zone_probability_context": zone_probability_context,
@@ -555,6 +559,7 @@ def analyze_trade(proposal: TradeProposal) -> dict:
             "layered_scores": layered_scores,
             "market_regime": market_regime,
             "technical_rating": technical_rating,
+            "liquidation_observation": liquidation_observation,
             "fibonacci_context": fibonacci_context,
             "zone_analysis": zone_analysis,
             "zone_probability_context": zone_probability_context,
@@ -1461,6 +1466,210 @@ def pct_between(price_a: float, price_b: float) -> float:
 
 def clamp_float(value: float, low: float, high: float) -> float:
     return min(high, max(low, value))
+
+
+def nearest_liquidation_cluster(clusters: list[dict], price: float) -> dict | None:
+    valid = [item for item in clusters if item.get("price") is not None]
+    if not valid:
+        return None
+    return min(valid, key=lambda item: abs(float(item["price"]) - price))
+
+
+def liquidation_cluster_distance_pct(cluster: dict | None, price: float) -> float | None:
+    if not cluster or not price:
+        return None
+    return abs((float(cluster["price"]) - price) / price) * 100
+
+
+def liquidation_proximity(distance: float | None, tolerance_pct: float) -> str:
+    if distance is None:
+        return "sin_datos"
+    if distance <= tolerance_pct:
+        return "coincide"
+    if distance <= tolerance_pct * 2:
+        return "cercana"
+    return "lejana"
+
+
+def dominant_cluster_before_stop(
+    clusters: list[dict],
+    market_price: float,
+    stop_loss: float,
+    side: str,
+) -> dict | None:
+    if side == "short":
+        candidates = [
+            item
+            for item in clusters
+            if market_price < float(item.get("price", 0)) <= stop_loss
+        ]
+    else:
+        candidates = [
+            item
+            for item in clusters
+            if stop_loss <= float(item.get("price", 0)) < market_price
+        ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: float(item.get("notional_usd") or 0))
+
+
+def build_liquidation_observation(
+    proposal: TradeProposal,
+    liquidations: dict,
+    atr_pct: float = 0,
+) -> dict:
+    status = liquidations.get("status", "unavailable")
+    if not liquidations.get("available"):
+        return {
+            "available": False,
+            "mode": "observation",
+            "status": status,
+            "reason": liquidations.get("reason"),
+            "source_scope": liquidations.get("scope", "hyperliquid"),
+            "affects_scoring": False,
+            "summary": f"Mapa de liquidaciones no utilizable ({status}); no altera el analisis.",
+        }
+
+    clusters_above = liquidations.get("clusters_above") or []
+    clusters_below = liquidations.get("clusters_below") or []
+    if proposal.side == "short":
+        target_clusters = clusters_below
+        adverse_clusters = clusters_above
+        target_side = "longs_below"
+        adverse_side = "shorts_above"
+        target_mass_side = "long"
+        adverse_mass_side = "short"
+    else:
+        target_clusters = clusters_above
+        adverse_clusters = clusters_below
+        target_side = "shorts_above"
+        adverse_side = "longs_below"
+        target_mass_side = "short"
+        adverse_mass_side = "long"
+
+    target_cluster = nearest_liquidation_cluster(target_clusters, proposal.take_profit)
+    adverse_cluster = nearest_liquidation_cluster(adverse_clusters, proposal.stop_loss)
+    tp_distance = liquidation_cluster_distance_pct(target_cluster, proposal.take_profit)
+    sl_distance = liquidation_cluster_distance_pct(adverse_cluster, proposal.stop_loss)
+    tolerance_pct = clamp_float(max(0.2, atr_pct * 0.5), 0.2, 0.75)
+    cascade_mass = liquidations.get("cascade_mass") or {}
+    target_mass_2pct = (cascade_mass.get(target_mass_side) or {}).get("within_2pct")
+    adverse_mass_2pct = (cascade_mass.get(adverse_mass_side) or {}).get("within_2pct")
+    adverse_to_target_ratio = (
+        float(adverse_mass_2pct) / float(target_mass_2pct)
+        if target_mass_2pct not in {None, 0} and adverse_mass_2pct is not None
+        else None
+    )
+    market_price = float(liquidations.get("market_price") or proposal.entry)
+    adverse_before_sl = dominant_cluster_before_stop(
+        adverse_clusters,
+        market_price,
+        proposal.stop_loss,
+        proposal.side,
+    )
+    if adverse_to_target_ratio is None:
+        map_read = "sin_datos"
+    elif adverse_to_target_ratio >= 1.5:
+        map_read = "desfavorable"
+    elif adverse_to_target_ratio <= (1 / 1.5):
+        map_read = "favorable"
+    else:
+        map_read = "mixto"
+    if adverse_to_target_ratio is not None and adverse_to_target_ratio >= 3:
+        squeeze_risk = "alto"
+    elif (adverse_to_target_ratio is not None and adverse_to_target_ratio >= 1.25) or adverse_before_sl:
+        squeeze_risk = "medio"
+    else:
+        squeeze_risk = "bajo"
+
+    target_text = (
+        f"TP a {tp_distance:.2f}% de cluster {target_side} en {target_cluster['price']:.2f}"
+        if target_cluster and tp_distance is not None
+        else "sin cluster de objetivo comparable"
+    )
+    adverse_text = (
+        f"SL a {sl_distance:.2f}% de cluster adverso {adverse_side} en {adverse_cluster['price']:.2f}"
+        if adverse_cluster and sl_distance is not None
+        else "sin cluster adverso comparable"
+    )
+    ratio_text = f"{adverse_to_target_ratio:.1f}x" if adverse_to_target_ratio is not None else "n/d"
+    dominant_text = (
+        f"cluster adverso dominante antes del SL en {adverse_before_sl['price']:.2f} "
+        f"({format_liquidation_mass(adverse_before_sl.get('notional_usd'))})"
+        if adverse_before_sl
+        else "sin cluster adverso dominante antes del SL"
+    )
+    return {
+        "available": True,
+        "mode": "observation",
+        "status": status,
+        "source_scope": liquidations.get("scope", "hyperliquid"),
+        "affects_scoring": False,
+        "proposal_side": proposal.side,
+        "target_liquidation_side": target_side,
+        "adverse_liquidation_side": adverse_side,
+        "target_cluster_near_tp": target_cluster,
+        "adverse_cluster_near_sl": adverse_cluster,
+        "tp_cluster_distance_pct": round(tp_distance, 4) if tp_distance is not None else None,
+        "sl_cluster_distance_pct": round(sl_distance, 4) if sl_distance is not None else None,
+        "tp_alignment": liquidation_proximity(tp_distance, tolerance_pct),
+        "sl_cluster_proximity": liquidation_proximity(sl_distance, tolerance_pct),
+        "comparison_tolerance_pct": round(tolerance_pct, 4),
+        "target_cascade_mass_2pct": target_mass_2pct,
+        "adverse_cascade_mass_2pct": adverse_mass_2pct,
+        "adverse_to_target_mass_ratio_2pct": round(adverse_to_target_ratio, 4) if adverse_to_target_ratio is not None else None,
+        "map_read": map_read,
+        "adverse_squeeze_risk": squeeze_risk,
+        "dominant_adverse_cluster_before_sl": adverse_before_sl,
+        "target_read": "favorable" if liquidation_proximity(tp_distance, tolerance_pct) in {"coincide", "cercana"} else "sin_alineacion_clara",
+        "sl_read": "peligroso" if adverse_before_sl or liquidation_proximity(sl_distance, tolerance_pct) in {"coincide", "cercana"} else "sin_cluster_cercano",
+        "summary": (
+            f"Mapa {map_read} para {proposal.side.upper()}: riesgo de squeeze {squeeze_risk}, "
+            f"masa adversa {ratio_text} frente a la masa objetivo. {target_text}; {dominant_text}. "
+            "Solo observacion, sin impacto en scoring."
+        ),
+    }
+
+
+def format_liquidation_mass(value: float | None) -> str:
+    if value is None:
+        return "n/d"
+    if value >= 1_000_000:
+        return f"${value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"${value / 1_000:.1f}K"
+    return f"${value:.0f}"
+
+
+def build_liquidation_metric(observation: dict, liquidations: dict) -> dict:
+    if not observation.get("available"):
+        return {
+            "key": "liquidation_heatmap",
+            "label": "Mapa de liquidaciones",
+            "value": observation.get("status", "no disponible"),
+            "score": 50,
+            "bias": "contexto",
+            "source": "HyperPerps · posiciones publicas de Hyperliquid",
+            "explanation": observation.get("summary", "Fuente no disponible; el analisis continua sin esta capa."),
+        }
+    map_read = observation.get("map_read", "mixto")
+    squeeze_risk = observation.get("adverse_squeeze_risk", "n/d")
+    ratio = observation.get("adverse_to_target_mass_ratio_2pct")
+    ratio_text = f"{ratio:.1f}x adversa" if ratio is not None else "desequilibrio n/d"
+    age = liquidations.get("age_seconds")
+    age_text = f" · edad {age:.0f}s" if age is not None else ""
+    bias = "desfavorable" if map_read == "desfavorable" else "favorable" if map_read == "favorable" else "contexto"
+    score = 25 if bias == "desfavorable" else 75 if bias == "favorable" else 50
+    return {
+        "key": "liquidation_heatmap",
+        "label": "Liquidaciones Hyperliquid",
+        "value": f"{map_read} · squeeze {squeeze_risk} · {ratio_text}{age_text}",
+        "score": score,
+        "bias": bias,
+        "source": "HyperPerps · posiciones publicas de Hyperliquid",
+        "explanation": observation["summary"],
+    }
 
 
 def build_fibonacci_metric(fibonacci_context: dict) -> dict:

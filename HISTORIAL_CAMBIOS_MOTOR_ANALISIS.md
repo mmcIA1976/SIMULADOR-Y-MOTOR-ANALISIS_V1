@@ -2,6 +2,76 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-07-15 - liquidations-audit-v0.1
+
+Estado: aplicada fase de validacion historica, sin influencia en scoring.
+
+Cambios realizados:
+- Nuevo endpoint `/api/learning/liquidation-audit`.
+- Compara el mapa guardado antes de operar con los ticks posteriores.
+- Registra si se toca primero el cluster objetivo o el cluster adverso.
+- Mide acierto del sesgo del mapa, tasa de toque objetivo y tasa de toque adverso.
+- Agrupa resultados por lectura del mapa, riesgo de squeeze, primer toque y lado.
+- Panel visible con progreso minimo de 30 cierres evaluables.
+
+Regla vigente:
+- No se revisaran pesos hasta alcanzar al menos 30 operaciones cerradas vinculadas.
+- La auditoria es de solo lectura y no modifica recomendaciones historicas.
+
+Siguiente fase acordada:
+- Activar `liquidations-shadow-calibration-v0.1` al alcanzar 30 cierres evaluables.
+- Calcular en paralelo la recomendacion actual y una recomendacion hipotetica con
+  liquidaciones, sin aplicar esta ultima al usuario.
+- Comparar acierto, calibracion, primer cluster tocado, PnL, lado y horizonte.
+- Solo si la evidencia mejora el motor, probar ajustes conservadores limitados
+  inicialmente a `+/-2-3` puntos de probabilidad o riesgo.
+- Mantener interruptor de desactivacion y no modificar directamente TP ni SL.
+
+## 2026-07-15 - rules-v0.12.1-liquidations-readable
+
+Estado: aplicada mejora de interpretacion, todavia sin influencia en scoring.
+
+Objetivo:
+- Evitar la lectura ambigua `TP coincide / SL coincide`.
+- Traducir el mapa a riesgo operativo respecto a la direccion propuesta.
+
+Cambios realizados:
+- Clasificacion del mapa como favorable, mixto o desfavorable.
+- Relacion visible entre masa adversa y masa favorable dentro del 2%.
+- Riesgo de squeeze bajo, medio o alto.
+- Identificacion del cluster adverso dominante antes del stop.
+- Separacion visual entre objetivo favorable y riesgo adverso antes del SL.
+
+Regla vigente:
+- `mode=observation` y `affects_scoring=false`.
+- Los valores 25/50/75 de la metrica sirven solo para su presentacion visual.
+- No modifica TP, SL, probabilidades, riesgo, setup, confianza ni decision.
+
+## 2026-07-15 - rules-v0.12-liquidations-observation
+
+Estado: aplicada la primera fase, sin influencia en scoring.
+
+Objetivo:
+- Incorporar zonas de liquidacion conocidas antes del movimiento usando posiciones
+  publicas de Hyperliquid, sin presentar esos datos como posiciones de Binance.
+- Guardar evidencia suficiente para medir si mejora la lectura de TP, SL y squeezes.
+
+Cambios realizados:
+- Nuevo cliente `liquidation_data.py` para el endpoint publico de HyperPerps.
+- Soporte inicial para BTC, ETH y SOL.
+- Normalizacion de clusteres short arriba y long abajo, nocional, wallets y distancia.
+- Registro de masa de cascada dentro de 1%, 2% y 5%.
+- Cache, timeout, control de antiguedad y control de diferencia de precio.
+- Nuevo `liquidation_observation` que compara TP y SL contra los clusteres.
+- Nueva metrica y fuente visibles en el analisis.
+- El contexto queda dentro de `snapshot_json` de cada recomendacion.
+
+Regla vigente:
+- `mode=observation`.
+- `affects_scoring=false`.
+- No modifica TP, SL, probabilidades, riesgo, setup, confianza ni decision.
+- La fuente se etiqueta como Hyperliquid y se ignora si esta obsoleta o no disponible.
+
 ## 2026-07-08 - learning-v0.2-underweighted-risk
 
 Estado: aplicado como fase 1 de mejora de la base de aprendizaje.

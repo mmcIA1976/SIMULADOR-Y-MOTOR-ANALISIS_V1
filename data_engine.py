@@ -4,6 +4,7 @@ import statistics
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
+import liquidation_data
 import market_data
 
 
@@ -514,6 +515,7 @@ def availability(snapshot: dict) -> dict:
         "funding_history": derivatives.get("funding_avg_recent_pct") is not None,
         "long_short_ratio": derivatives.get("global_long_short_ratio") is not None,
         "taker_futures_ratio": derivatives.get("taker_buy_sell_ratio") is not None,
+        "liquidation_heatmap": snapshot.get("liquidations", {}).get("available", False),
         "fear_greed": sentiment.get("fear_greed_value") is not None,
         "global_crypto_market": global_market.get("total_market_cap_usd") is not None,
         "market_breadth": market_breadth.get("advancers_24h_pct") is not None,
@@ -529,6 +531,7 @@ def build_market_snapshot(symbol: str) -> dict:
             "trades": executor.submit(market_data.get_agg_trades, symbol, 500),
             "ticker_24h": executor.submit(market_data.get_24h_ticker, symbol),
             "derivatives": executor.submit(summarize_derivatives, symbol),
+            "liquidations": executor.submit(liquidation_data.get_liquidation_context, symbol, current_price),
             "global_market": executor.submit(summarize_global_market),
             "market_breadth": executor.submit(summarize_market_breadth, 100),
             "sentiment": executor.submit(summarize_sentiment),
@@ -544,6 +547,19 @@ def build_market_snapshot(symbol: str) -> dict:
     trades = future_value(futures["trades"], [])
     ticker_24h = future_value(futures["ticker_24h"], {})
     derivatives = future_value(futures["derivatives"], {})
+    liquidations = future_value(
+        futures["liquidations"],
+        {
+            "available": False,
+            "mode": "observation",
+            "status": "unavailable",
+            "reason": "snapshot_collection_failed",
+            "provider": "hyperperps",
+            "scope": "hyperliquid",
+            "clusters_above": [],
+            "clusters_below": [],
+        },
+    )
     global_market = future_value(futures["global_market"], {})
     market_breadth = future_value(futures["market_breadth"], {})
     sentiment = future_value(futures["sentiment"], {})
@@ -557,6 +573,7 @@ def build_market_snapshot(symbol: str) -> dict:
             "trade_flow": "binance_usdm_futures_agg_trades",
             "ticker_24h": "binance_usdm_futures_24hr",
             "derivatives": "binance_usdm_futures_public",
+            "liquidations": "hyperperps_hyperliquid_public_positions_observation",
             "global_market": "coingecko_global",
             "market_breadth": "coingecko_top_markets",
             "sentiment": "alternative_me_fear_greed",
@@ -584,6 +601,7 @@ def build_market_snapshot(symbol: str) -> dict:
             "low": float(ticker_24h.get("lowPrice", 0)),
         },
         "derivatives": derivatives,
+        "liquidations": liquidations,
         "global_market": global_market,
         "market_breadth": market_breadth,
         "sentiment": sentiment,

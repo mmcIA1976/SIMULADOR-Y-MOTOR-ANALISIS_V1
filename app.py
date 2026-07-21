@@ -927,9 +927,17 @@ def trigger_time_from_closing_note(operation: dict) -> str | None:
 
 def finalize_due_observations(existing_db=None) -> list[dict]:
     if existing_db is not None:
-        return finalize_due_observations_with_db(existing_db)
+        finalized = finalize_due_observations_with_db(existing_db)
+        if finalized:
+            refresh_learning_conclusions(existing_db)
+            refresh_learning_evaluations(existing_db)
+        return finalized
     with connect() as db:
-        return finalize_due_observations_with_db(db)
+        finalized = finalize_due_observations_with_db(db)
+        if finalized:
+            refresh_learning_conclusions(db)
+            refresh_learning_evaluations(db)
+        return finalized
 
 
 def finalize_due_observations_with_db(db) -> list[dict]:

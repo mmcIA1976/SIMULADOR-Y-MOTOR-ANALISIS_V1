@@ -134,7 +134,7 @@ Criterio de salida:
 
 ### Fase 2 - Contratos de datos y versionado
 
-Estado: EN CURSO - VERIFICACION DE DESPLIEGUE
+Estado: COMPLETADA
 
 Objetivo:
 
@@ -331,8 +331,8 @@ Criterio de salida:
 |---|---|---|---|---|
 | 0 | Completada | Commit documental de fase 0 | `2026-07-23_fase_0_baseline_gobernanza_resultado.md` | Aprobada |
 | 1 | Completada | `50e1ce0` | `2026-07-23_fase_1_madurez_senales_resultado.md` | Aprobada |
-| 2 | En curso | Pendiente de publicar | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Verificacion local completada |
-| 3 | Bloqueada por fase 2 | - | - | - |
+| 2 | Completada | `814755f` | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Pendiente de aceptar cierre |
+| 3 | Preparada | - | - | Pendiente de inicio |
 | 4 | Bloqueada por fase 3 | - | - | - |
 | 5 | Bloqueada por fase 4 | - | - | - |
 | 6 | Bloqueada por fase 5 | - | - | - |

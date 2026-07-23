@@ -1,9 +1,9 @@
 # Fase 2 - Contratos de datos y versionado
 
 Fecha: 2026-07-23  
-Estado: EN VERIFICACION DE DESPLIEGUE  
+Estado: COMPLETADA
 Commit de entrada: `50e1ce0737370c774d0694f1d6288769e0d28b5b`  
-Commit funcional: pendiente de publicar
+Commit funcional: `814755fea5f37cc8cf0123a6a350149cfed98b31`
 
 ## 1. Objetivo autorizado
 
@@ -108,6 +108,18 @@ Prueba local:
 | `/api/diagnostics/binance-futures?symbol=BTCUSDT` | 200 |
 | Precio Binance no obsoleto | Correcto |
 
+Prueba online de Railway:
+
+| Componente | Resultado |
+|---|---|
+| Commit servido por `/api/version` | `814755fea5f37cc8cf0123a6a350149cfed98b31` |
+| Entorno | `production` |
+| Servicio | `SIMULADOR-Y-MOTOR-ANALISIS_V1` |
+| Portada | 200 |
+| `/api/version` | 200 |
+| Precio BTC Binance Futures | 200, no obsoleto |
+| Diagnostico Binance Futures | 200 |
+
 ## 7. Casos excluidos
 
 - No se reetiquetaron las 857 recomendaciones antiguas.
@@ -140,10 +152,12 @@ comportamiento anterior.
 | Registros existentes legibles | Cumplido |
 | Sin backfill destructivo | Cumplido |
 | Suite completa verde | Cumplido |
-| Railway verificado | Pendiente |
+| Railway verificado | Cumplido |
 
 ## 11. Decision de cierre
 
-Decision: pendiente de verificar commit y despliegue en `main`.  
-Siguiente fase bloqueada hasta completar Railway: Fase 3 - Reconstruccion
-MFE/MAE.
+Decision: COMPLETADA.
+
+Siguiente fase desbloqueada, pero no iniciada: Fase 3 - Reconstruccion MFE/MAE.
+
+Aprobacion del usuario para iniciar la fase 3: pendiente.

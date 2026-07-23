@@ -1860,13 +1860,21 @@ def group_underweighted_risk_cases(cases: list[dict], key: str) -> list[dict]:
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
 
-def signal_learning_read(cases: int, successes: int, failures: int, avg_pnl: float) -> str:
-    if cases < 3:
-        return "sample_too_small"
+def signal_learning_read(cases: int, successes: int, failures: int) -> str:
+    if cases < 10:
+        return "early_observation"
+    if cases < 30:
+        return "signal_to_monitor"
+    if cases < 50 or successes < 10 or failures < 10:
+        return "candidate_for_formal_review"
+    return "eligible_for_validation"
+
+
+def signal_pattern_read(successes: int, failures: int, avg_pnl: float) -> str:
     if failures > successes and avg_pnl < 0:
-        return "candidate_risk_filter"
+        return "observed_risk_pattern"
     if successes >= failures and avg_pnl >= 0:
-        return "ambiguous_or_winner_signal"
+        return "observed_winner_pattern"
     return "mixed_context_needs_review"
 
 
@@ -1895,13 +1903,26 @@ def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]
             "avg_pnl": avg_pnl,
             "risk_underweighted_cases": underweighted,
             "risk_underweighted_failures": underweighted_failures,
-            "learning_read": signal_learning_read(len(items), successes, failures, avg_pnl),
+            "learning_read": signal_learning_read(len(items), successes, failures),
+            "pattern_read": signal_pattern_read(successes, failures, avg_pnl),
+            "validation_gate": {
+                "minimum_cases": 50,
+                "minimum_successes": 10,
+                "minimum_failures": 10,
+                "eligible": len(items) >= 50 and successes >= 10 and failures >= 10,
+            },
             "operation_ids": [int(item["operation_id"]) for item in items[:12]],
         })
     return sorted(
         result,
         key=lambda item: (
-            item["learning_read"] != "candidate_risk_filter",
+            {
+                "eligible_for_validation": 0,
+                "candidate_for_formal_review": 1,
+                "signal_to_monitor": 2,
+                "early_observation": 3,
+            }.get(item["learning_read"], 4),
+            item["pattern_read"] != "observed_risk_pattern",
             -item["risk_underweighted_failures"],
             -item["failures"],
             item["avg_pnl"],
@@ -1935,13 +1956,26 @@ def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
             "failure_rate": round(failures / len(items), 4) if items else 0,
             "total_pnl": round(total_pnl, 4),
             "avg_pnl": avg_pnl,
-            "learning_read": signal_learning_read(len(items), successes, failures, avg_pnl),
+            "learning_read": signal_learning_read(len(items), successes, failures),
+            "pattern_read": signal_pattern_read(successes, failures, avg_pnl),
+            "validation_gate": {
+                "minimum_cases": 50,
+                "minimum_successes": 10,
+                "minimum_failures": 10,
+                "eligible": len(items) >= 50 and successes >= 10 and failures >= 10,
+            },
             "operation_ids": [int(item["operation_id"]) for item in items[:12]],
         })
     return sorted(
         result,
         key=lambda item: (
-            item["learning_read"] != "candidate_risk_filter",
+            {
+                "eligible_for_validation": 0,
+                "candidate_for_formal_review": 1,
+                "signal_to_monitor": 2,
+                "early_observation": 3,
+            }.get(item["learning_read"], 4),
+            item["pattern_read"] != "observed_risk_pattern",
             -item["failures"],
             item["avg_pnl"],
             -item["cases"],

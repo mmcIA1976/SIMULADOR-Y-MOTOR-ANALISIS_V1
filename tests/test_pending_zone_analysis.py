@@ -19,6 +19,7 @@ from app import (
     learning_summary_needs_refresh,
     liquidation_case_from_operation,
     pending_zone_case_from_evaluation,
+    signal_learning_read,
     summarize_liquidation_cases,
     summarize_pending_zone_cases,
     summarize_underweighted_risk_cases,
@@ -452,7 +453,7 @@ class PendingZoneLearningTests(unittest.TestCase):
             {"risk_underweighted": 1, "decision_consistent_with_detected_risk": 1},
         )
 
-    def test_signal_effectiveness_separates_candidate_filters_from_winner_signals(self):
+    def test_signal_effectiveness_separates_maturity_from_observed_pattern(self):
         cases = [
             {
                 "operation_id": 1,
@@ -494,14 +495,26 @@ class PendingZoneLearningTests(unittest.TestCase):
         opposing = {item["name"]: item for item in group_signal_effectiveness(cases, "opposing_signal_codes")}
         pairs = {item["name"]: item for item in group_signal_pairs(cases, ["opposing_signal_codes", "internal_inconsistency_codes"])}
 
-        self.assertEqual(opposing["cvd_against_plan"]["learning_read"], "candidate_risk_filter")
+        self.assertEqual(opposing["cvd_against_plan"]["learning_read"], "early_observation")
+        self.assertEqual(opposing["cvd_against_plan"]["pattern_read"], "observed_risk_pattern")
+        self.assertFalse(opposing["cvd_against_plan"]["validation_gate"]["eligible"])
         self.assertEqual(opposing["cvd_against_plan"]["failures"], 3)
-        self.assertEqual(opposing["extreme_fibonacci_risk"]["learning_read"], "sample_too_small")
+        self.assertEqual(opposing["extreme_fibonacci_risk"]["learning_read"], "early_observation")
+        self.assertEqual(opposing["extreme_fibonacci_risk"]["pattern_read"], "observed_winner_pattern")
         self.assertIn("confidence_quality_mismatch + cvd_against_plan", pairs)
         self.assertEqual(
             pairs["confidence_quality_mismatch + cvd_against_plan"]["learning_read"],
-            "sample_too_small",
+            "early_observation",
         )
+
+    def test_signal_maturity_boundaries_require_balanced_validation_sample(self):
+        self.assertEqual(signal_learning_read(9, 4, 5), "early_observation")
+        self.assertEqual(signal_learning_read(10, 5, 5), "signal_to_monitor")
+        self.assertEqual(signal_learning_read(29, 14, 15), "signal_to_monitor")
+        self.assertEqual(signal_learning_read(30, 15, 15), "candidate_for_formal_review")
+        self.assertEqual(signal_learning_read(49, 24, 25), "candidate_for_formal_review")
+        self.assertEqual(signal_learning_read(50, 9, 41), "candidate_for_formal_review")
+        self.assertEqual(signal_learning_read(50, 40, 10), "eligible_for_validation")
 
     def test_structured_learning_classifies_warned_zone_failure(self):
         operation = self._operation_with_snapshot(

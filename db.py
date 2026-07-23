@@ -242,6 +242,11 @@ def init_db() -> None:
                 snapshot_json TEXT NOT NULL,
                 analysis_json TEXT,
                 engine_version TEXT NOT NULL,
+                app_version TEXT,
+                scoring_version TEXT,
+                learning_schema_version TEXT,
+                data_source_version TEXT,
+                data_contract_version TEXT,
                 created_at {text_timestamp},
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE SET NULL,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -341,6 +346,12 @@ def init_db() -> None:
                 risk_margin_pct REAL,
                 reward_margin_pct REAL,
                 leverage_bucket TEXT,
+                app_version TEXT,
+                scoring_version TEXT,
+                learning_evaluator_version TEXT,
+                learning_schema_version TEXT,
+                data_source_version TEXT,
+                data_contract_version TEXT,
                 structured_json TEXT NOT NULL,
                 created_at {text_timestamp},
                 updated_at {text_timestamp},
@@ -375,6 +386,17 @@ def init_db() -> None:
         ensure_column(db, "contest_seasons", "final_leaderboard_json", "TEXT")
         ensure_column(db, "recommendations", "analysis_json", "TEXT")
         ensure_column(db, "recommendations", "time_horizon", "TEXT NOT NULL DEFAULT 'intraday_short'")
+        ensure_column(db, "recommendations", "app_version", "TEXT")
+        ensure_column(db, "recommendations", "scoring_version", "TEXT")
+        ensure_column(db, "recommendations", "learning_schema_version", "TEXT")
+        ensure_column(db, "recommendations", "data_source_version", "TEXT")
+        ensure_column(db, "recommendations", "data_contract_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "app_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "scoring_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "learning_evaluator_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "learning_schema_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "data_source_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "data_contract_version", "TEXT")
         ensure_column(db, "learning_evaluations", "updated_at", text_timestamp)
         db.execute("UPDATE users SET starting_balance = 1000 WHERE starting_balance IS NULL")
         db.execute("UPDATE users SET cash_balance = 1000 WHERE cash_balance IS NULL")

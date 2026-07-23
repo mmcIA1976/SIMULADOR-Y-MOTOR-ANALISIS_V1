@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -12,10 +13,23 @@ from pydantic import BaseModel, Field
 
 import market_data
 import data_engine
-from analysis_engine import ENGINE_VERSION, TradeProposal, analyze_trade, build_explained_metrics
+from analysis_engine import TradeProposal, analyze_trade, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import close_pool, connect, init_db, row_to_dict
 from security import create_token, hash_password, read_token, verify_password
+from versioning import (
+    APP_SEMVER,
+    APP_VERSION,
+    DATA_CONTRACT_VERSION,
+    DATA_SOURCE_VERSION,
+    ENGINE_VERSION,
+    LEARNING_EVALUATOR_VERSION,
+    LEARNING_SCHEMA_VERSION,
+    SCORING_VERSION,
+    build_data_contract,
+    current_version_contract,
+    scoring_version_for_legacy_engine,
+)
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -37,12 +51,11 @@ AVATAR_MIME_TO_EXT = {
 VALID_OPERATION_MODES = {"training", "contest"}
 VALID_TIME_HORIZONS = {"intraday_short", "intraday_wide", "short_swing"}
 TRAINING_RECHARGE_AMOUNT = 1000.0
-LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
 STALE_LEARNING_SUMMARY_MARKERS = (
     "este caso debe reforzar esas senales de riesgo",
 )
 
-app = FastAPI(title="Trading Trainer", version="0.1.0")
+app = FastAPI(title="Trading Trainer", version=APP_SEMVER)
 
 
 class AuthPayload(BaseModel):
@@ -275,6 +288,22 @@ def ensure_pending_entry_columns() -> None:
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(APP_DIR / "index.html")
+
+
+@app.get("/api/version")
+def version_info() -> dict:
+    return {
+        **current_version_contract(),
+        "deployment": {
+            "git_commit_sha": (
+                os.getenv("RAILWAY_GIT_COMMIT_SHA")
+                or os.getenv("GIT_COMMIT_SHA")
+                or os.getenv("SOURCE_COMMIT")
+            ),
+            "railway_environment": os.getenv("RAILWAY_ENVIRONMENT_NAME"),
+            "railway_service": os.getenv("RAILWAY_SERVICE_NAME"),
+        },
+    }
 
 
 @app.get("/static/{asset_name}")
@@ -1048,6 +1077,12 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
         SELECT
             o.*,
             r.id AS recommendation_id,
+            r.engine_version AS recommendation_engine_version,
+            r.app_version AS recommendation_app_version,
+            r.scoring_version AS recommendation_scoring_version,
+            r.learning_schema_version AS recommendation_learning_schema_version,
+            r.data_source_version AS recommendation_data_source_version,
+            r.data_contract_version AS recommendation_data_contract_version,
             r.setup_grade AS recommendation_setup_grade,
             r.risk_level AS recommendation_risk_level,
             r.confidence AS recommendation_confidence,
@@ -1643,6 +1678,11 @@ def build_underweighted_risk_audit_report(db, user_id: int) -> dict:
             o.*,
             r.id AS recommendation_id,
             r.engine_version AS recommendation_engine_version,
+            r.app_version AS recommendation_app_version,
+            r.scoring_version AS recommendation_scoring_version,
+            r.learning_schema_version AS recommendation_learning_schema_version,
+            r.data_source_version AS recommendation_data_source_version,
+            r.data_contract_version AS recommendation_data_contract_version,
             r.setup_grade AS recommendation_setup_grade,
             r.risk_level AS recommendation_risk_level,
             r.confidence AS recommendation_confidence,
@@ -1984,6 +2024,34 @@ def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
     )[:50]
 
 
+def recommendation_version_contract(operation: dict, snapshot: dict) -> dict:
+    snapshot_versions = snapshot.get("version_contract")
+    if not isinstance(snapshot_versions, dict):
+        snapshot_versions = {}
+    engine_version = (
+        operation.get("recommendation_engine_version")
+        or snapshot_versions.get("engine_version")
+        or snapshot.get("engine_version")
+    )
+    scoring_version = (
+        operation.get("recommendation_scoring_version")
+        or snapshot_versions.get("scoring_version")
+        or scoring_version_for_legacy_engine(engine_version)
+    )
+    return {
+        "app_version": operation.get("recommendation_app_version") or snapshot_versions.get("app_version"),
+        "engine_version": engine_version,
+        "scoring_version": scoring_version,
+        "learning_evaluator_version": LEARNING_EVALUATOR_VERSION,
+        "learning_schema_version": LEARNING_SCHEMA_VERSION,
+        "data_source_version": (
+            operation.get("recommendation_data_source_version")
+            or snapshot_versions.get("data_source_version")
+        ),
+        "data_contract_version": DATA_CONTRACT_VERSION,
+    }
+
+
 def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> dict:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
@@ -2039,6 +2107,112 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         technical_label=technical.get("label"),
         market_regime=regime.get("name"),
     )
+    version_contract = recommendation_version_contract(operation, snapshot)
+    analysis_context = {
+        "setup_grade": setup_grade,
+        "risk_level": operation.get("recommendation_risk_level"),
+        "confidence": confidence,
+        "training_decision": operation.get("recommendation_training_decision"),
+        "tp_probability": tp_probability,
+        "sl_probability": sl_probability,
+        "range_probability": safe_float(operation.get("recommendation_range_probability")),
+        "technical_label": technical.get("label"),
+        "technical_score": safe_float(technical.get("score")),
+        "market_regime": regime.get("name"),
+        "direction_score": safe_float(scores.get("direction_score")),
+        "confidence_score": safe_float(scores.get("confidence_score")),
+        "risk_reward_ratio": rr_ratio,
+        "risk_margin_pct": risk_margin_pct,
+        "reward_margin_pct": reward_margin_pct,
+        "fibonacci": {
+            "bias": fibonacci.get("bias"),
+            "score": safe_float(fibonacci.get("score")),
+            "entry_zone": fibonacci.get("entry_zone"),
+            "target_zone": fibonacci.get("target_zone"),
+            "stop_zone": fibonacci.get("stop_zone"),
+            "probability_adjustment": safe_float(fibonacci.get("probability_adjustment")),
+        },
+        "zone": {
+            "available": bool(zone_analysis.get("available")),
+            "entry_order_type": zone_analysis.get("entry_order_type") or entry_context.get("entry_order_type"),
+            "entry_zone_type": zone_analysis.get("entry_zone_type"),
+            "reaction_bias": zone_analysis.get("reaction_bias"),
+            "liquidity_sweep_risk": zone_analysis.get("liquidity_sweep_risk"),
+            "zone_confluence_score": safe_float(zone_analysis.get("zone_confluence_score")),
+            "activation_probability": safe_float(zone_analysis.get("activation_probability")),
+            "pullback_quality": safe_float(zone_analysis.get("pullback_quality")),
+            "breakout_quality": safe_float(zone_analysis.get("breakout_quality")),
+            "invalidation_quality": safe_float(zone_analysis.get("invalidation_quality")),
+            "target_path_quality": safe_float(zone_analysis.get("target_path_quality")),
+            "probability_adjustment": safe_float(zone_probability.get("probability_adjustment")),
+            "range_probability_adjustment": safe_float(zone_probability.get("range_probability_adjustment")),
+            "risk_score_addition": safe_float(zone_probability.get("risk_score_addition")),
+            "zone_summary": zone_analysis.get("zone_summary"),
+            "probability_summary": zone_probability.get("summary"),
+        },
+    }
+    pre_trade_entry_context = {
+        "entry_type": entry_context.get("entry_type"),
+        "trigger_condition": entry_context.get("trigger_condition"),
+        "entry_order_type": entry_context.get("entry_order_type"),
+        "requested_entry": safe_float(entry_context.get("requested_entry")),
+    }
+    zone_learning = build_zone_learning_context(
+        plan_result=plan_result,
+        zone_analysis=zone_analysis,
+        zone_probability=zone_probability,
+        operation=operation,
+    )
+    post_trade_outcomes = {
+        "operation_id": int(operation["id"]),
+        "plan_result": plan_result,
+        "close_reason": close_reason,
+        "final_pnl": round(float(operation.get("final_pnl") or 0), 4),
+        "excursion": mfe_mae,
+        "time_to_close_minutes": time_to_close,
+        "entry_activation": {
+            "activated": bool(operation.get("triggered_at") or operation.get("activation_evidence_json")),
+            "triggered_at": operation.get("triggered_at"),
+            "trigger_price": safe_float(operation.get("trigger_price")),
+        },
+        "manual_counterfactual": {
+            "would_hit_tp_after_manual": would_hit_tp_after_manual,
+            "would_hit_sl_after_manual": would_hit_sl_after_manual,
+            "first_plan_trigger_after_close": {
+                "reason": manual_trigger[0],
+                "price": manual_trigger[1],
+                "captured_at": manual_trigger[2],
+            } if manual_trigger else None,
+        },
+    }
+    diagnostic_labels = {
+        "analysis_verdict": analysis_verdict,
+        "primary_lesson": primary_lesson,
+        "failure_type": failure_type,
+        "learning_signal": learning_signal,
+        "signal_diagnostics": signal_diagnostics,
+        "user_decision_quality": user_decision_quality,
+        "zone_learning": zone_learning,
+    }
+    data_contract = build_data_contract(
+        pre_trade_features={
+            "version_contract": version_contract,
+            "trade_plan": {
+                "symbol": operation.get("symbol"),
+                "side": operation.get("side"),
+                "time_horizon": operation.get("time_horizon") or "intraday_short",
+                "entry": safe_float(operation.get("entry")),
+                "margin": safe_float(operation.get("margin")),
+                "leverage": safe_float(operation.get("leverage")),
+                "stop_loss": safe_float(operation.get("stop_loss")),
+                "take_profit": safe_float(operation.get("take_profit")),
+            },
+            "entry_order_context": pre_trade_entry_context,
+            "analysis_context": analysis_context,
+        },
+        post_trade_outcomes=post_trade_outcomes,
+        diagnostic_labels=diagnostic_labels,
+    )
     structured = {
         "operation_id": int(operation["id"]),
         "plan_result": plan_result,
@@ -2060,64 +2234,18 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
             } if manual_trigger else None,
         },
         "pending_entry_context": {
-            "entry_type": entry_context.get("entry_type"),
-            "trigger_condition": entry_context.get("trigger_condition"),
-            "entry_order_type": entry_context.get("entry_order_type"),
-            "requested_entry": safe_float(entry_context.get("requested_entry")),
+            **pre_trade_entry_context,
             "activated": bool(operation.get("triggered_at") or operation.get("activation_evidence_json")),
             "triggered_at": operation.get("triggered_at"),
             "trigger_price": safe_float(operation.get("trigger_price")),
         },
         "analysis_context": {
-            "setup_grade": setup_grade,
-            "risk_level": operation.get("recommendation_risk_level"),
-            "confidence": confidence,
-            "training_decision": operation.get("recommendation_training_decision"),
-            "tp_probability": tp_probability,
-            "sl_probability": sl_probability,
-            "range_probability": safe_float(operation.get("recommendation_range_probability")),
-            "technical_label": technical.get("label"),
-            "technical_score": safe_float(technical.get("score")),
-            "market_regime": regime.get("name"),
-            "direction_score": safe_float(scores.get("direction_score")),
-            "confidence_score": safe_float(scores.get("confidence_score")),
-            "risk_reward_ratio": rr_ratio,
-            "risk_margin_pct": risk_margin_pct,
-            "reward_margin_pct": reward_margin_pct,
-            "fibonacci": {
-                "bias": fibonacci.get("bias"),
-                "score": safe_float(fibonacci.get("score")),
-                "entry_zone": fibonacci.get("entry_zone"),
-                "target_zone": fibonacci.get("target_zone"),
-                "stop_zone": fibonacci.get("stop_zone"),
-                "probability_adjustment": safe_float(fibonacci.get("probability_adjustment")),
-            },
-            "zone": {
-                "available": bool(zone_analysis.get("available")),
-                "entry_order_type": zone_analysis.get("entry_order_type") or entry_context.get("entry_order_type"),
-                "entry_zone_type": zone_analysis.get("entry_zone_type"),
-                "reaction_bias": zone_analysis.get("reaction_bias"),
-                "liquidity_sweep_risk": zone_analysis.get("liquidity_sweep_risk"),
-                "zone_confluence_score": safe_float(zone_analysis.get("zone_confluence_score")),
-                "activation_probability": safe_float(zone_analysis.get("activation_probability")),
-                "pullback_quality": safe_float(zone_analysis.get("pullback_quality")),
-                "breakout_quality": safe_float(zone_analysis.get("breakout_quality")),
-                "invalidation_quality": safe_float(zone_analysis.get("invalidation_quality")),
-                "target_path_quality": safe_float(zone_analysis.get("target_path_quality")),
-                "probability_adjustment": safe_float(zone_probability.get("probability_adjustment")),
-                "range_probability_adjustment": safe_float(zone_probability.get("range_probability_adjustment")),
-                "risk_score_addition": safe_float(zone_probability.get("risk_score_addition")),
-                "zone_summary": zone_analysis.get("zone_summary"),
-                "probability_summary": zone_probability.get("summary"),
-            },
-            "zone_learning": build_zone_learning_context(
-                plan_result=plan_result,
-                zone_analysis=zone_analysis,
-                zone_probability=zone_probability,
-                operation=operation,
-            ),
+            **analysis_context,
+            "zone_learning": zone_learning,
             "signal_diagnostics": signal_diagnostics,
         },
+        "version_contract": version_contract,
+        **data_contract,
     }
     return {
         "operation_id": int(operation["id"]),
@@ -2157,6 +2285,12 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         "risk_margin_pct": risk_margin_pct,
         "reward_margin_pct": reward_margin_pct,
         "leverage_bucket": leverage_bucket(float(operation.get("leverage") or 0)),
+        "app_version": version_contract["app_version"],
+        "scoring_version": version_contract["scoring_version"],
+        "learning_evaluator_version": version_contract["learning_evaluator_version"],
+        "learning_schema_version": version_contract["learning_schema_version"],
+        "data_source_version": version_contract["data_source_version"],
+        "data_contract_version": version_contract["data_contract_version"],
         "structured_json": json.dumps(structured, ensure_ascii=True),
     }
 
@@ -2172,10 +2306,16 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             would_hit_tp_after_manual, would_hit_sl_after_manual, setup_grade, risk_level,
             confidence, training_decision, tp_probability, sl_probability, range_probability,
             technical_label, technical_score, market_regime, direction_score, confidence_score,
-            risk_reward_ratio, risk_margin_pct, reward_margin_pct, leverage_bucket, structured_json,
+            risk_reward_ratio, risk_margin_pct, reward_margin_pct, leverage_bucket,
+            app_version, scoring_version, learning_evaluator_version, learning_schema_version,
+            data_source_version, data_contract_version, structured_json,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            CURRENT_TIMESTAMP
+        )
         ON CONFLICT (operation_id) DO UPDATE SET
             recommendation_id = EXCLUDED.recommendation_id,
             close_reason = EXCLUDED.close_reason,
@@ -2208,6 +2348,12 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             risk_margin_pct = EXCLUDED.risk_margin_pct,
             reward_margin_pct = EXCLUDED.reward_margin_pct,
             leverage_bucket = EXCLUDED.leverage_bucket,
+            app_version = EXCLUDED.app_version,
+            scoring_version = EXCLUDED.scoring_version,
+            learning_evaluator_version = EXCLUDED.learning_evaluator_version,
+            learning_schema_version = EXCLUDED.learning_schema_version,
+            data_source_version = EXCLUDED.data_source_version,
+            data_contract_version = EXCLUDED.data_contract_version,
             structured_json = EXCLUDED.structured_json,
             updated_at = CURRENT_TIMESTAMP
         """,
@@ -2249,6 +2395,12 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             evaluation["risk_margin_pct"],
             evaluation["reward_margin_pct"],
             evaluation["leverage_bucket"],
+            evaluation["app_version"],
+            evaluation["scoring_version"],
+            evaluation["learning_evaluator_version"],
+            evaluation["learning_schema_version"],
+            evaluation["data_source_version"],
+            evaluation["data_contract_version"],
             evaluation["structured_json"],
         ),
     )
@@ -3422,6 +3574,10 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     }
     result["entry_order_context"] = entry_context
     result.setdefault("snapshot", {})["entry_order_context"] = entry_context
+    version_contract = current_version_contract()
+    result["version_contract"] = version_contract
+    result["snapshot"]["version_contract"] = version_contract
+    result["data_contract"] = build_data_contract(pre_trade_features=result["snapshot"])
     with connect() as db:
         cursor = db.execute(
             """
@@ -3429,9 +3585,11 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 operation_id, user_id, analysis_type, symbol, side,
                 tp_probability, sl_probability, range_probability, risk_level,
                 setup_grade, confidence, training_decision, time_horizon, parameter_advice_json,
-                reasons_json, alerts_json, snapshot_json, analysis_json, engine_version
+                reasons_json, alerts_json, snapshot_json, analysis_json, engine_version,
+                app_version, scoring_version, learning_schema_version, data_source_version,
+                data_contract_version
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 None,
@@ -3453,6 +3611,11 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 json.dumps(result["snapshot"]),
                 json.dumps(result),
                 ENGINE_VERSION,
+                APP_VERSION,
+                SCORING_VERSION,
+                LEARNING_SCHEMA_VERSION,
+                DATA_SOURCE_VERSION,
+                DATA_CONTRACT_VERSION,
             ),
         )
         recommendation_id = int(cursor.lastrowid)

@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import data_engine
+from versioning import ENGINE_VERSION, SCORING_VERSION
 
 
-ENGINE_VERSION = "rules-v0.12.1-liquidations-readable"
 ENGINE_AUDIT_REFERENCE = {
     "date": "2026-07-15",
     "sample_size": 98,

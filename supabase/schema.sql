@@ -65,6 +65,11 @@ CREATE TABLE IF NOT EXISTS recommendations (
     snapshot_json TEXT NOT NULL,
     analysis_json TEXT,
     engine_version TEXT NOT NULL,
+    app_version TEXT,
+    scoring_version TEXT,
+    learning_schema_version TEXT,
+    data_source_version TEXT,
+    data_contract_version TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -156,6 +161,12 @@ CREATE TABLE IF NOT EXISTS learning_evaluations (
     risk_margin_pct DOUBLE PRECISION,
     reward_margin_pct DOUBLE PRECISION,
     leverage_bucket TEXT,
+    app_version TEXT,
+    scoring_version TEXT,
+    learning_evaluator_version TEXT,
+    learning_schema_version TEXT,
+    data_source_version TEXT,
+    data_contract_version TEXT,
     structured_json TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

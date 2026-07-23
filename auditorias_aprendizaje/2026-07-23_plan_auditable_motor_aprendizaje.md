@@ -134,6 +134,8 @@ Criterio de salida:
 
 ### Fase 2 - Contratos de datos y versionado
 
+Estado: EN CURSO - VERIFICACION DE DESPLIEGUE
+
 Objetivo:
 
 - Separar datos disponibles antes de operar de etiquetas posteriores.
@@ -328,8 +330,8 @@ Criterio de salida:
 | Fase | Estado | Commit | Informe | Aprobacion |
 |---|---|---|---|---|
 | 0 | Completada | Commit documental de fase 0 | `2026-07-23_fase_0_baseline_gobernanza_resultado.md` | Aprobada |
-| 1 | Completada | Commit funcional de fase 1 | `2026-07-23_fase_1_madurez_senales_resultado.md` | Pendiente de aceptar cierre |
-| 2 | Preparada | - | - | Pendiente de inicio |
+| 1 | Completada | `50e1ce0` | `2026-07-23_fase_1_madurez_senales_resultado.md` | Aprobada |
+| 2 | En curso | Pendiente de publicar | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Verificacion local completada |
 | 3 | Bloqueada por fase 2 | - | - | - |
 | 4 | Bloqueada por fase 3 | - | - | - |
 | 5 | Bloqueada por fase 4 | - | - | - |

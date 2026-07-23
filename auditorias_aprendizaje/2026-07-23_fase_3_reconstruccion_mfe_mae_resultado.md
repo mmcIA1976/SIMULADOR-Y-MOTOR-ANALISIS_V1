@@ -1,8 +1,9 @@
 # Fase 3 - Reconstruccion historica MFE/MAE
 
 Fecha: 2026-07-23
-Estado: EN CURSO - PENDIENTE DE DESPLIEGUE
+Estado: COMPLETADA
 Commit de entrada: `4f2fdade5359305a0534f5809779330b10c7d62c`
+Commit funcional: `ed3cfa39d3f6385fcf7d7127b74f2b837f3c94b1`
 
 ## 1. Objetivo autorizado
 
@@ -154,6 +155,27 @@ Prueba local:
 | `/api/price?symbol=BTCUSDT&record=false` | 200, fuente USD-M Futures no obsoleta |
 | `/api/diagnostics/binance-futures?symbol=BTCUSDT` | 200 |
 
+Prueba online de Railway:
+
+| Componente | Resultado |
+|---|---|
+| Commit servido por `/api/version` | `ed3cfa39d3f6385fcf7d7127b74f2b837f3c94b1` |
+| Entorno | `production` |
+| Servicio | `SIMULADOR-Y-MOTOR-ANALISIS_V1` |
+| Portada | 200 |
+| `/api/version` | 200, app 0.14 y evidencia 0.1 |
+| Precio BTC Binance Futures | 200, no obsoleto |
+| Diagnostico Binance Futures | 200 |
+| Ruta protegida `/api/operations` sin sesion | 401 esperado |
+
+Reconciliacion posterior al arranque online:
+
+- 232 evaluaciones versionadas.
+- 232 evaluaciones con fuente y calidad.
+- 232 recorridos legacy preservados.
+- 232 registros de auditoria para 232 operaciones.
+- Distribucion sin cambios: 211 resueltos, 20 sin toque y 1 ambiguo.
+
 ## 8. Riesgos y limitaciones
 
 - Una vela de un minuto no revela el orden entre su maximo y minimo.
@@ -185,11 +207,12 @@ Prueba local:
 | Etiquetas originales preservadas | Cumplido |
 | Suite completa verde | Cumplido |
 | Verificacion local | Cumplido |
-| Commit publicado en `main` | Pendiente |
-| Railway sirve el commit exacto | Pendiente |
+| Commit publicado en `main` | Cumplido |
+| Railway sirve el commit exacto | Cumplido |
 
 ## 11. Decision de cierre
 
-Decision provisional: RECONSTRUCCION VALIDADA; DESPLIEGUE PENDIENTE.
+Decision: COMPLETADA.
 
-La Fase 4 no se inicia hasta completar y aprobar este cierre.
+Siguiente fase preparada, pero no iniciada: Fase 4 - Metricas economicas
+normalizadas.

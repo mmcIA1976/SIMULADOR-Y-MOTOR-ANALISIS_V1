@@ -1,0 +1,300 @@
+{
+  "mode": "dry_run",
+  "reconstruction_version": "evidence-v0.1-binance-usdm-1m",
+  "candidate_operations": 5,
+  "processed": 5,
+  "applied": 0,
+  "skipped_idempotent": 0,
+  "errors": 0,
+  "quality_counts": {
+    "complete_1m_with_boundary_approximation": 5
+  },
+  "status_counts": {
+    "complete": 5
+  },
+  "path_resolution_counts": {
+    "resolved": 5
+  },
+  "consistency_counts": {
+    "consistent": 3,
+    "mismatch": 2
+  },
+  "evaluation_consistency_counts": {
+    "consistent": 2,
+    "mismatch": 3
+  },
+  "metric_change_counts": {
+    "changed": 5
+  },
+  "operations": [
+    {
+      "operation_id": 1,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "close_reason": "stop_loss",
+      "quality": "complete_1m_with_boundary_approximation",
+      "status": "complete",
+      "path_resolution": "resolved",
+      "recorded_result_consistency": "consistent",
+      "reconstructed_plan_result": "plan_failure",
+      "evaluation_plan_result_consistency": "consistent",
+      "candle_count": 113,
+      "expected_candle_count": 113,
+      "coverage_ratio": 1.0,
+      "metric_status": "changed",
+      "changed_metrics": [
+        "max_favorable_pct",
+        "max_adverse_pct",
+        "max_favorable_pnl",
+        "max_adverse_pnl"
+      ],
+      "before": {
+        "max_favorable_pct": -0.2461,
+        "max_adverse_pct": -0.2461,
+        "max_favorable_pnl": -4.9214,
+        "max_adverse_pnl": -4.9214,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "excessive_leverage"
+      },
+      "after": {
+        "max_favorable_pct": 0.1355,
+        "max_adverse_pct": -1.4928,
+        "max_favorable_pnl": 2.7095,
+        "max_adverse_pnl": -29.857,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "excessive_leverage",
+        "reconstructed_plan_result": "plan_failure"
+      },
+      "first_plan_touch": {
+        "status": "resolved",
+        "reason": "stop_loss",
+        "price": 76000.0,
+        "touched_at": "2026-05-22T19:30:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "first_post_close_plan_touch": null,
+      "error": null
+    },
+    {
+      "operation_id": 81,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "close_reason": "take_profit",
+      "quality": "complete_1m_with_boundary_approximation",
+      "status": "complete",
+      "path_resolution": "resolved",
+      "recorded_result_consistency": "consistent",
+      "reconstructed_plan_result": "plan_success",
+      "evaluation_plan_result_consistency": "mismatch",
+      "candle_count": 10882,
+      "expected_candle_count": 10882,
+      "coverage_ratio": 1.0,
+      "metric_status": "changed",
+      "changed_metrics": [
+        "max_favorable_pct",
+        "max_adverse_pct",
+        "max_favorable_pnl",
+        "max_adverse_pnl"
+      ],
+      "before": {
+        "max_favorable_pct": 1.1891,
+        "max_adverse_pct": -1.8272,
+        "max_favorable_pnl": 23.7824,
+        "max_adverse_pnl": -36.5448,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "direction_against_structure"
+      },
+      "after": {
+        "max_favorable_pct": 7.3765,
+        "max_adverse_pct": -1.7015,
+        "max_favorable_pnl": 147.5291,
+        "max_adverse_pnl": -34.0291,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "direction_against_structure",
+        "reconstructed_plan_result": "plan_success"
+      },
+      "first_plan_touch": {
+        "status": "resolved",
+        "reason": "take_profit",
+        "price": 1750.0,
+        "touched_at": "2026-06-15T10:54:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "first_post_close_plan_touch": null,
+      "error": null
+    },
+    {
+      "operation_id": 114,
+      "symbol": "INJUSDT",
+      "side": "short",
+      "close_reason": "manual",
+      "quality": "complete_1m_with_boundary_approximation",
+      "status": "complete",
+      "path_resolution": "resolved",
+      "recorded_result_consistency": "mismatch",
+      "reconstructed_plan_result": "plan_would_succeed",
+      "evaluation_plan_result_consistency": "mismatch",
+      "candle_count": 2960,
+      "expected_candle_count": 2960,
+      "coverage_ratio": 1.0,
+      "metric_status": "changed",
+      "changed_metrics": [
+        "max_favorable_pct",
+        "max_adverse_pct",
+        "max_favorable_pnl",
+        "max_adverse_pnl"
+      ],
+      "before": {
+        "max_favorable_pct": 1.4336,
+        "max_adverse_pct": 1.4336,
+        "max_favorable_pnl": 28.6713,
+        "max_adverse_pnl": 28.6713,
+        "plan_result": "plan_unresolved",
+        "analysis_verdict": "analysis_unresolved",
+        "failure_type": null
+      },
+      "after": {
+        "max_favorable_pct": 2.6399,
+        "max_adverse_pct": -2.465,
+        "max_favorable_pnl": 52.7972,
+        "max_adverse_pnl": -49.3007,
+        "plan_result": "plan_unresolved",
+        "analysis_verdict": "analysis_unresolved",
+        "failure_type": null,
+        "reconstructed_plan_result": "plan_would_succeed"
+      },
+      "first_plan_touch": {
+        "status": "resolved",
+        "reason": "take_profit",
+        "price": 5.2,
+        "touched_at": "2026-06-18T05:04:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "first_post_close_plan_touch": {
+        "status": "resolved",
+        "reason": "take_profit",
+        "price": 5.2,
+        "touched_at": "2026-06-18T05:04:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "error": null
+    },
+    {
+      "operation_id": 204,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "close_reason": "stop_loss",
+      "quality": "complete_1m_with_boundary_approximation",
+      "status": "complete",
+      "path_resolution": "resolved",
+      "recorded_result_consistency": "consistent",
+      "reconstructed_plan_result": "plan_failure",
+      "evaluation_plan_result_consistency": "consistent",
+      "candle_count": 120,
+      "expected_candle_count": 120,
+      "coverage_ratio": 1.0,
+      "metric_status": "changed",
+      "changed_metrics": [
+        "max_favorable_pct",
+        "max_adverse_pct",
+        "max_favorable_pnl",
+        "max_adverse_pnl"
+      ],
+      "before": {
+        "max_favorable_pct": 0.1744,
+        "max_adverse_pct": -1.1679,
+        "max_favorable_pnl": 6.9749,
+        "max_adverse_pnl": -46.7154,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "unclassified_risk"
+      },
+      "after": {
+        "max_favorable_pct": 0.2107,
+        "max_adverse_pct": -0.8641,
+        "max_favorable_pnl": 8.4282,
+        "max_adverse_pnl": -34.5629,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "unclassified_risk",
+        "reconstructed_plan_result": "plan_failure"
+      },
+      "first_plan_touch": {
+        "status": "resolved",
+        "reason": "stop_loss",
+        "price": 62150.0,
+        "touched_at": "2026-07-08T17:20:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "first_post_close_plan_touch": null,
+      "error": null
+    },
+    {
+      "operation_id": 227,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "close_reason": "manual",
+      "quality": "complete_1m_with_boundary_approximation",
+      "status": "complete",
+      "path_resolution": "resolved",
+      "recorded_result_consistency": "mismatch",
+      "reconstructed_plan_result": "plan_would_succeed",
+      "evaluation_plan_result_consistency": "mismatch",
+      "candle_count": 6360,
+      "expected_candle_count": 6360,
+      "coverage_ratio": 1.0,
+      "metric_status": "changed",
+      "changed_metrics": [
+        "max_favorable_pct",
+        "max_adverse_pct",
+        "max_favorable_pnl",
+        "max_adverse_pnl"
+      ],
+      "before": {
+        "max_favorable_pct": 3.5561,
+        "max_adverse_pct": -1.2967,
+        "max_favorable_pnl": 71.122,
+        "max_adverse_pnl": -25.9341,
+        "plan_result": "plan_unresolved",
+        "analysis_verdict": "analysis_unresolved",
+        "failure_type": null
+      },
+      "after": {
+        "max_favorable_pct": 2.7066,
+        "max_adverse_pct": -1.4645,
+        "max_favorable_pnl": 54.1315,
+        "max_adverse_pnl": -29.2907,
+        "plan_result": "plan_unresolved",
+        "analysis_verdict": "analysis_unresolved",
+        "failure_type": null,
+        "reconstructed_plan_result": "plan_would_succeed"
+      },
+      "first_plan_touch": {
+        "status": "resolved",
+        "reason": "take_profit",
+        "price": 1910.0,
+        "touched_at": "2026-07-20T18:01:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "first_post_close_plan_touch": {
+        "status": "resolved",
+        "reason": "take_profit",
+        "price": 1910.0,
+        "touched_at": "2026-07-20T18:01:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "error": null
+    }
+  ]
+}

@@ -167,9 +167,44 @@ CREATE TABLE IF NOT EXISTS learning_evaluations (
     learning_schema_version TEXT,
     data_source_version TEXT,
     data_contract_version TEXT,
+    evidence_version TEXT,
+    evidence_source TEXT,
+    evidence_quality TEXT,
+    evidence_status TEXT,
+    evidence_path_resolution TEXT,
+    evidence_start_at TEXT,
+    evidence_end_at TEXT,
+    evidence_candle_count INTEGER,
+    evidence_expected_candles INTEGER,
+    evidence_coverage_ratio DOUBLE PRECISION,
+    first_plan_touch TEXT,
+    first_plan_touch_at TEXT,
+    first_post_close_touch TEXT,
+    first_post_close_touch_at TEXT,
+    reconstructed_plan_result TEXT,
+    plan_result_consistency TEXT,
+    evidence_reconstructed_at TIMESTAMPTZ,
+    evidence_json TEXT,
     structured_json TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS learning_evidence_reconstructions (
+    id BIGSERIAL PRIMARY KEY,
+    operation_id BIGINT NOT NULL REFERENCES operations(id) ON DELETE CASCADE,
+    evaluation_id BIGINT NOT NULL REFERENCES learning_evaluations(id) ON DELETE CASCADE,
+    reconstruction_version TEXT NOT NULL,
+    status TEXT NOT NULL,
+    evidence_source TEXT NOT NULL,
+    evidence_quality TEXT NOT NULL,
+    path_resolution TEXT NOT NULL,
+    before_json TEXT,
+    after_json TEXT NOT NULL,
+    evidence_json TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(operation_id, reconstruction_version)
 );
 
 DO $$
@@ -193,6 +228,7 @@ CREATE INDEX IF NOT EXISTS idx_wallet_events_user_mode ON wallet_events(user_id,
 CREATE INDEX IF NOT EXISTS idx_contest_entries_season ON contest_entries(season_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_learning_evaluations_user_horizon ON learning_evaluations(user_id, time_horizon, side);
 CREATE INDEX IF NOT EXISTS idx_learning_evaluations_pattern ON learning_evaluations(symbol, side, time_horizon, plan_result);
+CREATE INDEX IF NOT EXISTS idx_learning_evidence_status ON learning_evidence_reconstructions(status, evidence_quality);
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operations ENABLE ROW LEVEL SECURITY;

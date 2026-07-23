@@ -1,0 +1,16 @@
+{
+  "mode": "dry_run",
+  "reconstruction_version": "evidence-v0.1-binance-usdm-1m",
+  "candidate_operations": 232,
+  "processed": 0,
+  "applied": 0,
+  "skipped_idempotent": 232,
+  "errors": 0,
+  "quality_counts": {},
+  "status_counts": {},
+  "path_resolution_counts": {},
+  "consistency_counts": {},
+  "evaluation_consistency_counts": {},
+  "metric_change_counts": {},
+  "operations": []
+}

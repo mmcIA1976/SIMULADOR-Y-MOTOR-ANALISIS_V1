@@ -1,0 +1,80 @@
+{
+  "mode": "apply",
+  "reconstruction_version": "evidence-v0.1-binance-usdm-1m",
+  "candidate_operations": 1,
+  "processed": 1,
+  "applied": 1,
+  "skipped_idempotent": 0,
+  "errors": 0,
+  "quality_counts": {
+    "complete_1m_with_boundary_approximation": 1
+  },
+  "status_counts": {
+    "complete": 1
+  },
+  "path_resolution_counts": {
+    "resolved": 1
+  },
+  "consistency_counts": {
+    "consistent": 1
+  },
+  "evaluation_consistency_counts": {
+    "consistent": 1
+  },
+  "metric_change_counts": {
+    "changed": 1
+  },
+  "operations": [
+    {
+      "operation_id": 1,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "close_reason": "stop_loss",
+      "quality": "complete_1m_with_boundary_approximation",
+      "status": "complete",
+      "path_resolution": "resolved",
+      "recorded_result_consistency": "consistent",
+      "reconstructed_plan_result": "plan_failure",
+      "evaluation_plan_result_consistency": "consistent",
+      "candle_count": 113,
+      "expected_candle_count": 113,
+      "coverage_ratio": 1.0,
+      "metric_status": "changed",
+      "changed_metrics": [
+        "max_favorable_pct",
+        "max_adverse_pct",
+        "max_favorable_pnl",
+        "max_adverse_pnl"
+      ],
+      "before": {
+        "max_favorable_pct": -0.2461,
+        "max_adverse_pct": -0.2461,
+        "max_favorable_pnl": -4.9214,
+        "max_adverse_pnl": -4.9214,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "excessive_leverage"
+      },
+      "after": {
+        "max_favorable_pct": 0.1355,
+        "max_adverse_pct": -1.4928,
+        "max_favorable_pnl": 2.7095,
+        "max_adverse_pnl": -29.857,
+        "plan_result": "plan_failure",
+        "analysis_verdict": "analysis_warned_risk",
+        "failure_type": "excessive_leverage",
+        "reconstructed_plan_result": "plan_failure"
+      },
+      "first_plan_touch": {
+        "status": "resolved",
+        "reason": "stop_loss",
+        "price": 76000.0,
+        "touched_at": "2026-05-22T19:30:00+00:00",
+        "time_precision": "minute",
+        "source": "binance_usdm_futures_klines_1m"
+      },
+      "first_post_close_plan_touch": null,
+      "error": null
+    }
+  ]
+}

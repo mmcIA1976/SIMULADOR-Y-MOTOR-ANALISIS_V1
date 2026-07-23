@@ -16,6 +16,10 @@ import data_engine
 from analysis_engine import TradeProposal, analyze_trade, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import close_pool, connect, init_db, row_to_dict
+from learning_evidence import (
+    build_historical_evidence,
+    reconstruction_window,
+)
 from security import create_token, hash_password, read_token, verify_password
 from versioning import (
     APP_SEMVER,
@@ -1071,6 +1075,86 @@ def refresh_learning_evaluations(existing_db=None) -> list[dict]:
         return refresh_learning_evaluations_with_db(db)
 
 
+def reconstruct_operation_historical_evidence(operation: dict) -> dict:
+    window = reconstruction_window(operation)
+    start_ms = window.get("start_ms")
+    plan_end_ms = window.get("plan_end_ms")
+    raw_klines: list[list] = []
+    fetch_error = None
+    if start_ms is not None and plan_end_ms is not None and plan_end_ms >= start_ms:
+        try:
+            raw_klines = get_operation_klines_1m(
+                operation["symbol"],
+                int(start_ms) - (int(start_ms) % ONE_MINUTE_MS),
+                int(plan_end_ms),
+            )
+        except Exception as exc:
+            fetch_error = str(exc)
+
+    def trade_loader(trade_start_ms: int, trade_end_ms: int) -> list[dict]:
+        return market_data.get_agg_trades(
+            operation["symbol"],
+            1000,
+            start_time_ms=trade_start_ms,
+            end_time_ms=trade_end_ms,
+        )
+
+    evidence = build_historical_evidence(
+        operation,
+        raw_klines,
+        trade_loader=trade_loader,
+    )
+    if fetch_error:
+        evidence["fetch_error"] = fetch_error
+    return evidence
+
+
+def save_learning_evidence_audit(
+    db,
+    operation_id: int,
+    evidence: dict,
+    before_payload: dict | None,
+    after_payload: dict,
+) -> None:
+    evaluation = db.execute(
+        "SELECT id FROM learning_evaluations WHERE operation_id = ?",
+        (operation_id,),
+    ).fetchone()
+    if evaluation is None:
+        return
+    db.execute(
+        """
+        INSERT INTO learning_evidence_reconstructions (
+            operation_id, evaluation_id, reconstruction_version, status,
+            evidence_source, evidence_quality, path_resolution,
+            before_json, after_json, evidence_json, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT (operation_id, reconstruction_version) DO UPDATE SET
+            evaluation_id = EXCLUDED.evaluation_id,
+            status = EXCLUDED.status,
+            evidence_source = EXCLUDED.evidence_source,
+            evidence_quality = EXCLUDED.evidence_quality,
+            path_resolution = EXCLUDED.path_resolution,
+            after_json = EXCLUDED.after_json,
+            evidence_json = EXCLUDED.evidence_json,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            operation_id,
+            int(evaluation["id"]),
+            evidence["version"],
+            evidence["status"],
+            evidence["source"],
+            evidence["quality"],
+            evidence["path_resolution"],
+            json.dumps(before_payload, ensure_ascii=True) if before_payload is not None else None,
+            json.dumps(after_payload, ensure_ascii=True),
+            json.dumps(evidence, ensure_ascii=True),
+        ),
+    )
+
+
 def refresh_learning_evaluations_with_db(db) -> list[dict]:
     rows = db.execute(
         """
@@ -1124,8 +1208,28 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
                 (operation["id"],),
             ).fetchall()
         ]
-        evaluation = build_structured_learning_evaluation(operation, ticks)
+        historical_evidence = reconstruct_operation_historical_evidence(operation)
+        evaluation = build_structured_learning_evaluation(
+            operation,
+            ticks,
+            historical_evidence=historical_evidence,
+        )
         save_learning_evaluation(db, evaluation)
+        save_learning_evidence_audit(
+            db,
+            int(operation["id"]),
+            historical_evidence,
+            before_payload=None,
+            after_payload={
+                "max_favorable_pct": evaluation["max_favorable_pct"],
+                "max_adverse_pct": evaluation["max_adverse_pct"],
+                "max_favorable_pnl": evaluation["max_favorable_pnl"],
+                "max_adverse_pnl": evaluation["max_adverse_pnl"],
+                "plan_result": evaluation["plan_result"],
+                "analysis_verdict": evaluation["analysis_verdict"],
+                "failure_type": evaluation["failure_type"],
+            },
+        )
         evaluations.append(evaluation)
     return evaluations
 
@@ -2052,7 +2156,11 @@ def recommendation_version_contract(operation: dict, snapshot: dict) -> dict:
     }
 
 
-def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> dict:
+def build_structured_learning_evaluation(
+    operation: dict,
+    ticks: list[dict],
+    historical_evidence: dict | None = None,
+) -> dict:
     snapshot = parse_snapshot_json(operation.get("recommendation_snapshot_json"))
     technical = snapshot.get("technical_rating") if isinstance(snapshot.get("technical_rating"), dict) else {}
     regime = snapshot.get("market_regime") if isinstance(snapshot.get("market_regime"), dict) else {}
@@ -2066,10 +2174,36 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
     reward_margin_pct = safe_float(snapshot.get("reward_margin_pct"))
     close_reason = operation.get("close_reason")
     plan_result = plan_result_from_operation(operation)
-    manual_trigger = first_plan_trigger_after_close(operation, ticks_after_close(operation, ticks))
+    evidence_post_close_touch = (
+        historical_evidence.get("first_post_close_plan_touch")
+        if isinstance(historical_evidence, dict)
+        and isinstance(historical_evidence.get("first_post_close_plan_touch"), dict)
+        else None
+    )
+    if evidence_post_close_touch and evidence_post_close_touch.get("status") == "resolved":
+        manual_trigger = (
+            evidence_post_close_touch["reason"],
+            float(evidence_post_close_touch["price"]),
+            str(evidence_post_close_touch["touched_at"]),
+        )
+    elif evidence_post_close_touch and evidence_post_close_touch.get("status") in {
+        "no_plan_touch",
+        "ambiguous_same_candle",
+        "ambiguous_boundary_candle",
+    }:
+        manual_trigger = None
+    else:
+        manual_trigger = first_plan_trigger_after_close(operation, ticks_after_close(operation, ticks))
     would_hit_sl_after_manual = bool(manual_trigger and manual_trigger[0] == "stop_loss")
     would_hit_tp_after_manual = bool(manual_trigger and manual_trigger[0] == "take_profit")
-    mfe_mae = excursion_metrics(operation, ticks)
+    reconstructed_excursion = (
+        historical_evidence.get("trade_excursion")
+        if isinstance(historical_evidence, dict)
+        and str(historical_evidence.get("quality") or "").startswith("complete")
+        and isinstance(historical_evidence.get("trade_excursion"), dict)
+        else None
+    )
+    mfe_mae = reconstructed_excursion or excursion_metrics(operation, ticks)
     time_to_close = minutes_between(operation.get("started_at"), operation.get("closed_at"))
     tp_probability = safe_float(operation.get("recommendation_tp_probability"))
     sl_probability = safe_float(operation.get("recommendation_sl_probability"))
@@ -2184,6 +2318,7 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
                 "captured_at": manual_trigger[2],
             } if manual_trigger else None,
         },
+        "historical_evidence": historical_evidence,
     }
     diagnostic_labels = {
         "analysis_verdict": analysis_verdict,
@@ -2246,7 +2381,28 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         },
         "version_contract": version_contract,
         **data_contract,
+        "historical_evidence": historical_evidence,
     }
+    evidence = historical_evidence or {}
+    evidence_window = evidence.get("requested_window") if isinstance(evidence.get("requested_window"), dict) else {}
+    first_touch = evidence.get("first_plan_touch") if isinstance(evidence.get("first_plan_touch"), dict) else {}
+    first_post_close_touch = (
+        evidence.get("first_post_close_plan_touch")
+        if isinstance(evidence.get("first_post_close_plan_touch"), dict)
+        else {}
+    )
+    first_touch_label = first_touch.get("reason") or first_touch.get("status")
+    first_post_close_label = first_post_close_touch.get("reason") or first_post_close_touch.get("status")
+    reconstructed_result = evidence.get("reconstructed_plan_result")
+    plan_result_consistency = (
+        "ambiguous"
+        if reconstructed_result == "ambiguous_same_candle"
+        else "consistent"
+        if reconstructed_result == plan_result
+        else "mismatch"
+        if reconstructed_result
+        else None
+    )
     return {
         "operation_id": int(operation["id"]),
         "user_id": int(operation["user_id"]),
@@ -2291,6 +2447,24 @@ def build_structured_learning_evaluation(operation: dict, ticks: list[dict]) -> 
         "learning_schema_version": version_contract["learning_schema_version"],
         "data_source_version": version_contract["data_source_version"],
         "data_contract_version": version_contract["data_contract_version"],
+        "evidence_version": evidence.get("version"),
+        "evidence_source": evidence.get("source"),
+        "evidence_quality": evidence.get("quality"),
+        "evidence_status": evidence.get("status"),
+        "evidence_path_resolution": evidence.get("path_resolution"),
+        "evidence_start_at": evidence_window.get("started_at"),
+        "evidence_end_at": evidence_window.get("plan_end_at"),
+        "evidence_candle_count": evidence.get("candle_count"),
+        "evidence_expected_candles": evidence.get("expected_candle_count"),
+        "evidence_coverage_ratio": evidence.get("coverage_ratio"),
+        "first_plan_touch": first_touch_label,
+        "first_plan_touch_at": first_touch.get("touched_at"),
+        "first_post_close_touch": first_post_close_label,
+        "first_post_close_touch_at": first_post_close_touch.get("touched_at"),
+        "reconstructed_plan_result": reconstructed_result,
+        "plan_result_consistency": plan_result_consistency,
+        "evidence_reconstructed_at": evidence.get("reconstructed_at"),
+        "evidence_json": json.dumps(evidence, ensure_ascii=True) if evidence else None,
         "structured_json": json.dumps(structured, ensure_ascii=True),
     }
 
@@ -2308,12 +2482,21 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             technical_label, technical_score, market_regime, direction_score, confidence_score,
             risk_reward_ratio, risk_margin_pct, reward_margin_pct, leverage_bucket,
             app_version, scoring_version, learning_evaluator_version, learning_schema_version,
-            data_source_version, data_contract_version, structured_json,
+            data_source_version, data_contract_version,
+            evidence_version, evidence_source, evidence_quality, evidence_status,
+            evidence_path_resolution, evidence_start_at, evidence_end_at,
+            evidence_candle_count, evidence_expected_candles, evidence_coverage_ratio,
+            first_plan_touch, first_plan_touch_at, first_post_close_touch,
+            first_post_close_touch_at, reconstructed_plan_result,
+            plan_result_consistency, evidence_reconstructed_at, evidence_json,
+            structured_json,
             updated_at
         )
         VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (operation_id) DO UPDATE SET
@@ -2354,6 +2537,24 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             learning_schema_version = EXCLUDED.learning_schema_version,
             data_source_version = EXCLUDED.data_source_version,
             data_contract_version = EXCLUDED.data_contract_version,
+            evidence_version = EXCLUDED.evidence_version,
+            evidence_source = EXCLUDED.evidence_source,
+            evidence_quality = EXCLUDED.evidence_quality,
+            evidence_status = EXCLUDED.evidence_status,
+            evidence_path_resolution = EXCLUDED.evidence_path_resolution,
+            evidence_start_at = EXCLUDED.evidence_start_at,
+            evidence_end_at = EXCLUDED.evidence_end_at,
+            evidence_candle_count = EXCLUDED.evidence_candle_count,
+            evidence_expected_candles = EXCLUDED.evidence_expected_candles,
+            evidence_coverage_ratio = EXCLUDED.evidence_coverage_ratio,
+            first_plan_touch = EXCLUDED.first_plan_touch,
+            first_plan_touch_at = EXCLUDED.first_plan_touch_at,
+            first_post_close_touch = EXCLUDED.first_post_close_touch,
+            first_post_close_touch_at = EXCLUDED.first_post_close_touch_at,
+            reconstructed_plan_result = EXCLUDED.reconstructed_plan_result,
+            plan_result_consistency = EXCLUDED.plan_result_consistency,
+            evidence_reconstructed_at = EXCLUDED.evidence_reconstructed_at,
+            evidence_json = EXCLUDED.evidence_json,
             structured_json = EXCLUDED.structured_json,
             updated_at = CURRENT_TIMESTAMP
         """,
@@ -2401,6 +2602,24 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             evaluation["learning_schema_version"],
             evaluation["data_source_version"],
             evaluation["data_contract_version"],
+            evaluation["evidence_version"],
+            evaluation["evidence_source"],
+            evaluation["evidence_quality"],
+            evaluation["evidence_status"],
+            evaluation["evidence_path_resolution"],
+            evaluation["evidence_start_at"],
+            evaluation["evidence_end_at"],
+            evaluation["evidence_candle_count"],
+            evaluation["evidence_expected_candles"],
+            evaluation["evidence_coverage_ratio"],
+            evaluation["first_plan_touch"],
+            evaluation["first_plan_touch_at"],
+            evaluation["first_post_close_touch"],
+            evaluation["first_post_close_touch_at"],
+            evaluation["reconstructed_plan_result"],
+            evaluation["plan_result_consistency"],
+            evaluation["evidence_reconstructed_at"],
+            evaluation["evidence_json"],
             evaluation["structured_json"],
         ),
     )

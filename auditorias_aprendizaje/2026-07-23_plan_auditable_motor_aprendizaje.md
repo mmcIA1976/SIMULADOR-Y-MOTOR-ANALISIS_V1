@@ -166,6 +166,8 @@ Criterio de salida:
 
 ### Fase 3 - Reconstruccion MFE/MAE
 
+Estado: EN CURSO - RECONSTRUCCION APLICADA; PENDIENTE DE DESPLIEGUE
+
 Objetivo:
 
 - Sustituir recorridos incompletos por evidencia reproducible de Binance

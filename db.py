@@ -352,12 +352,49 @@ def init_db() -> None:
                 learning_schema_version TEXT,
                 data_source_version TEXT,
                 data_contract_version TEXT,
+                evidence_version TEXT,
+                evidence_source TEXT,
+                evidence_quality TEXT,
+                evidence_status TEXT,
+                evidence_path_resolution TEXT,
+                evidence_start_at TEXT,
+                evidence_end_at TEXT,
+                evidence_candle_count INTEGER,
+                evidence_expected_candles INTEGER,
+                evidence_coverage_ratio REAL,
+                first_plan_touch TEXT,
+                first_plan_touch_at TEXT,
+                first_post_close_touch TEXT,
+                first_post_close_touch_at TEXT,
+                reconstructed_plan_result TEXT,
+                plan_result_consistency TEXT,
+                evidence_reconstructed_at TIMESTAMPTZ,
+                evidence_json TEXT,
                 structured_json TEXT NOT NULL,
                 created_at {text_timestamp},
                 updated_at {text_timestamp},
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY(recommendation_id) REFERENCES recommendations(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS learning_evidence_reconstructions (
+                id {id_type},
+                operation_id {fk_type} NOT NULL,
+                evaluation_id {fk_type} NOT NULL,
+                reconstruction_version TEXT NOT NULL,
+                status TEXT NOT NULL,
+                evidence_source TEXT NOT NULL,
+                evidence_quality TEXT NOT NULL,
+                path_resolution TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT NOT NULL,
+                evidence_json TEXT NOT NULL,
+                created_at {text_timestamp},
+                updated_at {text_timestamp},
+                UNIQUE(operation_id, reconstruction_version),
+                FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
+                FOREIGN KEY(evaluation_id) REFERENCES learning_evaluations(id) ON DELETE CASCADE
             );
             """
         )
@@ -397,6 +434,24 @@ def init_db() -> None:
         ensure_column(db, "learning_evaluations", "learning_schema_version", "TEXT")
         ensure_column(db, "learning_evaluations", "data_source_version", "TEXT")
         ensure_column(db, "learning_evaluations", "data_contract_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_source", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_quality", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_status", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_path_resolution", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_start_at", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_end_at", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_candle_count", "INTEGER")
+        ensure_column(db, "learning_evaluations", "evidence_expected_candles", "INTEGER")
+        ensure_column(db, "learning_evaluations", "evidence_coverage_ratio", "REAL")
+        ensure_column(db, "learning_evaluations", "first_plan_touch", "TEXT")
+        ensure_column(db, "learning_evaluations", "first_plan_touch_at", "TEXT")
+        ensure_column(db, "learning_evaluations", "first_post_close_touch", "TEXT")
+        ensure_column(db, "learning_evaluations", "first_post_close_touch_at", "TEXT")
+        ensure_column(db, "learning_evaluations", "reconstructed_plan_result", "TEXT")
+        ensure_column(db, "learning_evaluations", "plan_result_consistency", "TEXT")
+        ensure_column(db, "learning_evaluations", "evidence_reconstructed_at", "TIMESTAMPTZ")
+        ensure_column(db, "learning_evaluations", "evidence_json", "TEXT")
         ensure_column(db, "learning_evaluations", "updated_at", text_timestamp)
         db.execute("UPDATE users SET starting_balance = 1000 WHERE starting_balance IS NULL")
         db.execute("UPDATE users SET cash_balance = 1000 WHERE cash_balance IS NULL")
@@ -432,6 +487,7 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_contest_entries_season ON contest_entries(season_id, user_id);
         CREATE INDEX IF NOT EXISTS idx_learning_evaluations_user_horizon ON learning_evaluations(user_id, time_horizon, side);
         CREATE INDEX IF NOT EXISTS idx_learning_evaluations_pattern ON learning_evaluations(symbol, side, time_horizon, plan_result);
+        CREATE INDEX IF NOT EXISTS idx_learning_evidence_status ON learning_evidence_reconstructions(status, evidence_quality);
         """
     )
 

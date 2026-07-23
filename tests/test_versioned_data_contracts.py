@@ -204,7 +204,7 @@ class VersionedDataContractTests(unittest.TestCase):
 
         values_clause = db.query.split("ON CONFLICT", 1)[0]
         self.assertEqual(values_clause.count("?"), len(db.params))
-        self.assertEqual(len(db.params), 44)
+        self.assertEqual(len(db.params), 62)
 
     @patch("app.analyze_trade")
     @patch("app.current_user", return_value={"id": 7})

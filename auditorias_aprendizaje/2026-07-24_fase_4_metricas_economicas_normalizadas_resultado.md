@@ -1,8 +1,9 @@
 # Fase 4 - Metricas economicas normalizadas
 
 Fecha: 2026-07-24
-Estado: EN CURSO - PENDIENTE DE DESPLIEGUE
+Estado: COMPLETADA
 Commit de entrada: `42596ef79efd961124e93aa238ae5fcf9c3ad9de`
+Commit funcional: `5295690fe6dea499feb2866c383a689bb338c37b`
 
 ## 1. Objetivo autorizado
 
@@ -227,6 +228,22 @@ Prueba local:
 | Usuario de prueba | 117 evaluaciones, 117 normalizadas, 0 excluidas |
 | Roles del informe | Economia principal, PnL secundario |
 
+Prueba online del commit funcional:
+
+| Componente | Resultado |
+|---|---|
+| SHA servido por Railway | `5295690fe6dea499feb2866c383a689bb338c37b` |
+| Version de aplicacion | `app-v0.15.0-economic-normalization` |
+| Version economica | `economics-v0.1-risk-normalized` |
+| Portada | 200 |
+| Precio BTC | 200, USD-M Futures no obsoleto |
+| Diagnostico Binance Futures | 200 |
+| Auditoria economica sin sesion | 401 esperado |
+
+La sesion local no se reutilizo online porque Railway emplea un secreto de firma
+distinto. La respuesta autenticada se verifico localmente contra la misma base
+de datos; el despliegue online confirma que la ruta existe y protege el acceso.
+
 ## 11. Riesgos y limitaciones
 
 - R evalua el resultado real frente al stop inicial; no convierte cierres
@@ -258,11 +275,11 @@ Prueba local:
 | Scoring champion congelado | Cumplido |
 | Suite completa verde | Cumplido |
 | Verificacion local | Cumplido |
-| Commit publicado en `main` | Pendiente |
-| Railway sirve el commit exacto | Pendiente |
+| Commit publicado en `main` | Cumplido; `5295690fe6dea499feb2866c383a689bb338c37b` |
+| Railway sirve el commit exacto | Cumplido |
 
 ## 14. Decision de cierre
 
-Decision provisional: IMPLEMENTACION Y DATOS VALIDADOS; DESPLIEGUE PENDIENTE.
+Decision final: FASE 4 COMPLETADA.
 
 La Fase 5 no se inicia hasta completar y aprobar este cierre.

@@ -193,7 +193,7 @@ Criterio de salida:
 
 ### Fase 4 - Metricas economicas normalizadas
 
-Estado: EN CURSO - IMPLEMENTACION Y BACKFILL COMPLETADOS; PENDIENTE DE DESPLIEGUE
+Estado: COMPLETADA - NORMALIZACION, BACKFILL Y DESPLIEGUE VERIFICADOS
 
 Objetivo:
 

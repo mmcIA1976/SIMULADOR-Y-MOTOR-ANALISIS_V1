@@ -2,6 +2,14 @@
 
 Fecha: 2026-06-29
 
+## Precedencia de Fase 1
+
+Para cualquier trabajo sobre datos, reglas, probabilidades, trazabilidad o
+aprendizaje del motor de analisis prevalece
+`CONTRATO_FASE_1_MOTOR_ANALISIS.md`, formalizado el 2026-07-24. Este documento
+conserva la vision general, pero no autoriza formulas, indicadores o features
+concretas por el mero hecho de enumerarlas.
+
 Este documento fija el sentido del proyecto para que cada cambio futuro se mida contra el objetivo real. No es una nota de producto ni una lista de deseos: es el criterio operativo que debe guiar el desarrollo.
 
 ## Vision

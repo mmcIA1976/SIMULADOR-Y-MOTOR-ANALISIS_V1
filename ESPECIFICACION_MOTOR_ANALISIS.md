@@ -1,5 +1,11 @@
 # Motor de analisis y aprendizaje
 
+> Documento historico de especificacion funcional. Para cualquier conflicto
+> sobre el objetivo, las probabilidades, las reglas, su respaldo, la
+> trazabilidad o el aprendizaje prevalece
+> `CONTRATO_FASE_1_MOTOR_ANALISIS.md`. Ningun ejemplo o regla de este documento
+> autoriza por si solo una implementacion.
+
 El sistema debe evitar una pantalla saturada de graficas. La interfaz principal debe mostrar una conclusion operativa clara basada en un analisis profundo y registrable.
 
 No debe funcionar como recomendacion financiera, sino como entrenador de decisiones en operaciones simuladas.

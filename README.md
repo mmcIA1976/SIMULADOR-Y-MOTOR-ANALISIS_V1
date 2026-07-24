@@ -8,6 +8,13 @@ El documento [`NORTE_ESTRATEGICO_AUTONOMIA.md`](NORTE_ESTRATEGICO_AUTONOMIA.md) 
 
 Antes de priorizar nuevas mejoras, contrastar la tarea contra ese documento. La prioridad actual es fiabilidad operativa autonoma, auditoria historica y aprendizaje limpio.
 
+Para cualquier cambio del motor de analisis prevalece el
+[`CONTRATO_FASE_1_MOTOR_ANALISIS.md`](CONTRATO_FASE_1_MOTOR_ANALISIS.md).
+Define el objetivo TP/SL, la ficha obligatoria de cada regla, la trazabilidad por
+analisis, las reglas combinadas y la funcion exacta del aprendizaje. La
+[`COBERTURA_ANALITICA_FASE_1.md`](COBERTURA_ANALITICA_FASE_1.md) registra los 34
+bloques de analisis objetivo y el estado real de los datos actuales.
+
 ## Estado actual
 
 - Registro/login local con cookie de sesion.

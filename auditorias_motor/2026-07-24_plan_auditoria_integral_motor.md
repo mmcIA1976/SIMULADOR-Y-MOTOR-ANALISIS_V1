@@ -6,6 +6,15 @@ Motor congelado: `rules-v0.12.1-liquidations-readable`
 Scoring congelado: `scoring-v0.11-underweighted-risk-cluster`
 Commit de partida: `ac16ccdd1d2a71bd5214ab3bcc8151e44adb8350`
 
+## 0. Contrato rector
+
+Desde el 2026-07-24, cualquier conclusion, correccion o challenger de esta
+auditoria debe cumplir `CONTRATO_FASE_1_MOTOR_ANALISIS.md`.
+
+`COBERTURA_ANALITICA_FASE_1.md` registra los 34 bloques de analisis objetivo,
+su prioridad y el estado real de los datos. Enumerar un bloque no autoriza su
+incorporacion: cada variable y regla debe superar individualmente el contrato.
+
 ## 1. Motivo
 
 Los analisis 872 y 873 demostraron que una regla binaria de timing podia

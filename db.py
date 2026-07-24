@@ -370,6 +370,20 @@ def init_db() -> None:
                 plan_result_consistency TEXT,
                 evidence_reconstructed_at TIMESTAMPTZ,
                 evidence_json TEXT,
+                economic_normalization_version TEXT,
+                economic_normalization_status TEXT,
+                economic_exclusion_reason TEXT,
+                economic_normalized_at TIMESTAMPTZ,
+                closure_type TEXT,
+                notional_amount DOUBLE PRECISION,
+                initial_risk_pct DOUBLE PRECISION,
+                initial_risk_amount DOUBLE PRECISION,
+                unleveraged_return_pct DOUBLE PRECISION,
+                margin_return_pct DOUBLE PRECISION,
+                r_multiple DOUBLE PRECISION,
+                economic_plan_outcome TEXT,
+                economic_final_pnl DOUBLE PRECISION,
+                economic_metrics_json TEXT,
                 structured_json TEXT NOT NULL,
                 created_at {text_timestamp},
                 updated_at {text_timestamp},
@@ -393,6 +407,23 @@ def init_db() -> None:
                 created_at {text_timestamp},
                 updated_at {text_timestamp},
                 UNIQUE(operation_id, reconstruction_version),
+                FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
+                FOREIGN KEY(evaluation_id) REFERENCES learning_evaluations(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS learning_economic_normalizations (
+                id {id_type},
+                operation_id {fk_type} NOT NULL,
+                evaluation_id {fk_type} NOT NULL,
+                normalization_version TEXT NOT NULL,
+                status TEXT NOT NULL,
+                exclusion_reason TEXT,
+                before_json TEXT,
+                after_json TEXT NOT NULL,
+                metrics_json TEXT NOT NULL,
+                created_at {text_timestamp},
+                updated_at {text_timestamp},
+                UNIQUE(operation_id, normalization_version),
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
                 FOREIGN KEY(evaluation_id) REFERENCES learning_evaluations(id) ON DELETE CASCADE
             );
@@ -452,6 +483,20 @@ def init_db() -> None:
         ensure_column(db, "learning_evaluations", "plan_result_consistency", "TEXT")
         ensure_column(db, "learning_evaluations", "evidence_reconstructed_at", "TIMESTAMPTZ")
         ensure_column(db, "learning_evaluations", "evidence_json", "TEXT")
+        ensure_column(db, "learning_evaluations", "economic_normalization_version", "TEXT")
+        ensure_column(db, "learning_evaluations", "economic_normalization_status", "TEXT")
+        ensure_column(db, "learning_evaluations", "economic_exclusion_reason", "TEXT")
+        ensure_column(db, "learning_evaluations", "economic_normalized_at", "TIMESTAMPTZ")
+        ensure_column(db, "learning_evaluations", "closure_type", "TEXT")
+        ensure_column(db, "learning_evaluations", "notional_amount", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "initial_risk_pct", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "initial_risk_amount", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "unleveraged_return_pct", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "margin_return_pct", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "r_multiple", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "economic_plan_outcome", "TEXT")
+        ensure_column(db, "learning_evaluations", "economic_final_pnl", "DOUBLE PRECISION")
+        ensure_column(db, "learning_evaluations", "economic_metrics_json", "TEXT")
         ensure_column(db, "learning_evaluations", "updated_at", text_timestamp)
         db.execute("UPDATE users SET starting_balance = 1000 WHERE starting_balance IS NULL")
         db.execute("UPDATE users SET cash_balance = 1000 WHERE cash_balance IS NULL")
@@ -459,6 +504,8 @@ def init_db() -> None:
         db.execute("UPDATE operations SET time_horizon = 'intraday_short' WHERE time_horizon IS NULL OR time_horizon = ''")
         db.execute("UPDATE recommendations SET time_horizon = 'intraday_short' WHERE time_horizon IS NULL OR time_horizon = ''")
         create_indexes(db)
+        ensure_economic_metric_precision(db)
+        secure_internal_learning_tables(db)
         backfill_recommendation_links(db)
 
 
@@ -488,8 +535,53 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_learning_evaluations_user_horizon ON learning_evaluations(user_id, time_horizon, side);
         CREATE INDEX IF NOT EXISTS idx_learning_evaluations_pattern ON learning_evaluations(symbol, side, time_horizon, plan_result);
         CREATE INDEX IF NOT EXISTS idx_learning_evidence_status ON learning_evidence_reconstructions(status, evidence_quality);
+        CREATE INDEX IF NOT EXISTS idx_learning_evidence_evaluation ON learning_evidence_reconstructions(evaluation_id);
+        CREATE INDEX IF NOT EXISTS idx_learning_economic_status ON learning_economic_normalizations(status, exclusion_reason);
+        CREATE INDEX IF NOT EXISTS idx_learning_economic_evaluation ON learning_economic_normalizations(evaluation_id);
+        CREATE INDEX IF NOT EXISTS idx_learning_evaluations_economics ON learning_evaluations(economic_normalization_status, closure_type);
         """
     )
+
+
+def secure_internal_learning_tables(db: DbSession) -> None:
+    db.executescript(
+        """
+        ALTER TABLE learning_evidence_reconstructions ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE learning_economic_normalizations ENABLE ROW LEVEL SECURITY;
+        REVOKE ALL PRIVILEGES ON TABLE learning_evidence_reconstructions FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE learning_economic_normalizations FROM anon, authenticated;
+        """
+    )
+
+
+def ensure_economic_metric_precision(db: DbSession) -> None:
+    for column in (
+        "notional_amount",
+        "initial_risk_pct",
+        "initial_risk_amount",
+        "unleveraged_return_pct",
+        "margin_return_pct",
+        "r_multiple",
+        "economic_final_pnl",
+    ):
+        current = db.execute(
+            """
+            SELECT data_type
+            FROM information_schema.columns
+            WHERE table_name = %s AND column_name = %s
+            LIMIT 1
+            """,
+            ("learning_evaluations", column),
+        ).fetchone()
+        if current and current["data_type"] == "double precision":
+            continue
+        db.execute(
+            f"""
+            ALTER TABLE learning_evaluations
+            ALTER COLUMN {column} TYPE DOUBLE PRECISION
+            USING {column}::DOUBLE PRECISION
+            """
+        )
 
 
 def backfill_recommendation_links(db: DbSession) -> None:

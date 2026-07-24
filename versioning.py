@@ -3,15 +3,16 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.14.0-historical-evidence"
-APP_SEMVER = "0.14.0"
+APP_VERSION = "app-v0.15.0-economic-normalization"
+APP_SEMVER = "0.15.0"
 ENGINE_VERSION = "rules-v0.12.1-liquidations-readable"
 SCORING_VERSION = "scoring-v0.11-underweighted-risk-cluster"
 LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
-LEARNING_SCHEMA_VERSION = "learning-schema-v0.4-historical-evidence"
+LEARNING_SCHEMA_VERSION = "learning-schema-v0.5-economic-normalization"
 DATA_SOURCE_VERSION = "data-sources-v0.12.1-binance-hyperperps"
-DATA_CONTRACT_VERSION = "data-contract-v0.2-historical-evidence"
+DATA_CONTRACT_VERSION = "data-contract-v0.3-economic-normalization"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.1-binance-usdm-1m"
+ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 
 
 def current_version_contract() -> dict:
@@ -24,6 +25,7 @@ def current_version_contract() -> dict:
         "data_source_version": DATA_SOURCE_VERSION,
         "data_contract_version": DATA_CONTRACT_VERSION,
         "evidence_reconstruction_version": EVIDENCE_RECONSTRUCTION_VERSION,
+        "economic_normalization_version": ECONOMIC_NORMALIZATION_VERSION,
     }
 
 

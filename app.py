@@ -16,6 +16,14 @@ import data_engine
 from analysis_engine import TradeProposal, analyze_trade, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import close_pool, connect, init_db, row_to_dict
+from economic_metrics import (
+    economic_case_fields,
+    economic_metrics_case_fields,
+    group_economic_cases,
+    normalize_operation_economics,
+    signal_pattern_read,
+    summarize_economic_cases,
+)
 from learning_evidence import (
     build_historical_evidence,
     reconstruction_window,
@@ -26,6 +34,7 @@ from versioning import (
     APP_VERSION,
     DATA_CONTRACT_VERSION,
     DATA_SOURCE_VERSION,
+    ECONOMIC_NORMALIZATION_VERSION,
     ENGINE_VERSION,
     LEARNING_EVALUATOR_VERSION,
     LEARNING_SCHEMA_VERSION,
@@ -1155,6 +1164,51 @@ def save_learning_evidence_audit(
     )
 
 
+def save_learning_economic_audit(
+    db,
+    operation_id: int,
+    metrics: dict,
+    before_payload: dict | None,
+    after_payload: dict,
+) -> None:
+    evaluation = db.execute(
+        "SELECT id FROM learning_evaluations WHERE operation_id = ?",
+        (operation_id,),
+    ).fetchone()
+    if evaluation is None:
+        return
+    db.execute(
+        """
+        INSERT INTO learning_economic_normalizations (
+            operation_id, evaluation_id, normalization_version, status,
+            exclusion_reason, before_json, after_json, metrics_json, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT (operation_id, normalization_version) DO UPDATE SET
+            evaluation_id = EXCLUDED.evaluation_id,
+            status = EXCLUDED.status,
+            exclusion_reason = EXCLUDED.exclusion_reason,
+            after_json = EXCLUDED.after_json,
+            metrics_json = EXCLUDED.metrics_json,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            operation_id,
+            int(evaluation["id"]),
+            metrics["version"],
+            metrics["status"],
+            metrics.get("exclusion_reason"),
+            (
+                json.dumps(before_payload, ensure_ascii=True, default=str)
+                if before_payload is not None
+                else None
+            ),
+            json.dumps(after_payload, ensure_ascii=True, default=str),
+            json.dumps(metrics, ensure_ascii=True, default=str),
+        ),
+    )
+
+
 def refresh_learning_evaluations_with_db(db) -> list[dict]:
     rows = db.execute(
         """
@@ -1230,6 +1284,19 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
                 "failure_type": evaluation["failure_type"],
             },
         )
+        save_learning_economic_audit(
+            db,
+            int(operation["id"]),
+            evaluation["economic_metrics"],
+            before_payload=None,
+            after_payload={
+                "r_multiple": evaluation["r_multiple"],
+                "unleveraged_return_pct": evaluation["unleveraged_return_pct"],
+                "margin_return_pct": evaluation["margin_return_pct"],
+                "initial_risk_amount": evaluation["initial_risk_amount"],
+                "economic_plan_outcome": evaluation["economic_plan_outcome"],
+            },
+        )
         evaluations.append(evaluation)
     return evaluations
 
@@ -1262,6 +1329,93 @@ def liquidation_audit(session_token: str | None = Cookie(default=None, alias=SES
         return build_liquidation_audit_report(db, int(user["id"]))
 
 
+@app.get("/api/learning/economic-audit")
+def economic_audit(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_economic_audit_report(db, int(user["id"]))
+
+
+def build_economic_audit_report(db, user_id: int) -> dict:
+    rows = db.execute(
+        """
+        SELECT
+            le.*,
+            o.entry,
+            o.margin,
+            o.leverage,
+            o.stop_loss,
+            o.take_profit,
+            o.close_price,
+            o.closed_at,
+            r.engine_version
+        FROM learning_evaluations le
+        JOIN operations o ON o.id = le.operation_id
+        LEFT JOIN recommendations r ON r.id = le.recommendation_id
+        WHERE le.user_id = ?
+        ORDER BY o.closed_at ASC, le.operation_id ASC
+        """,
+        (user_id,),
+    ).fetchall()
+    cases = []
+    for raw_row in rows:
+        row = row_to_dict(raw_row)
+        fields = economic_case_fields(row)
+        if not fields.get("economic_normalization_status"):
+            metrics = normalize_operation_economics(
+                row,
+                effective_plan_result=(
+                    row.get("reconstructed_plan_result")
+                    or row.get("plan_result")
+                ),
+            )
+            fields = economic_metrics_case_fields(metrics)
+        cases.append(
+            {
+                "operation_id": int(row["operation_id"]),
+                "user_id": int(row["user_id"]),
+                "mode": row.get("mode") or "training",
+                "symbol": row.get("symbol"),
+                "side": row.get("side"),
+                "time_horizon": row.get("time_horizon"),
+                "scoring_version": (
+                    row.get("scoring_version")
+                    or scoring_version_for_legacy_engine(row.get("engine_version"))
+                    or "unknown"
+                ),
+                "close_reason": row.get("close_reason"),
+                "final_pnl": round(float(row.get("final_pnl") or 0), 4),
+                "plan_result": row.get("plan_result"),
+                "reconstructed_plan_result": row.get("reconstructed_plan_result"),
+                **fields,
+            }
+        )
+    return {
+        "normalization_version": ECONOMIC_NORMALIZATION_VERSION,
+        "user_id": user_id,
+        "sample": {
+            "evaluations": len(cases),
+            "normalized": sum(
+                1
+                for case in cases
+                if case.get("economic_normalization_status") == "included"
+            ),
+            "excluded": sum(
+                1
+                for case in cases
+                if case.get("economic_normalization_status") != "included"
+            ),
+        },
+        "summary": summarize_economic_cases(cases),
+        "by_mode": group_economic_cases(cases, "mode"),
+        "by_closure_type": group_economic_cases(cases, "closure_type"),
+        "by_side": group_economic_cases(cases, "side"),
+        "by_time_horizon": group_economic_cases(cases, "time_horizon"),
+        "by_scoring_version": group_economic_cases(cases, "scoring_version"),
+        "recent_cases": list(reversed(cases[-25:])),
+    }
+
+
 def build_liquidation_audit_report(db, user_id: int) -> dict:
     recommendation_stats = row_to_dict(db.execute(
         """
@@ -1281,7 +1435,18 @@ def build_liquidation_audit_report(db, user_id: int) -> dict:
             o.*,
             r.id AS recommendation_id,
             r.engine_version AS recommendation_engine_version,
-            r.snapshot_json AS recommendation_snapshot_json
+            r.snapshot_json AS recommendation_snapshot_json,
+            le.reconstructed_plan_result AS learning_reconstructed_plan_result,
+            le.economic_normalization_version,
+            le.economic_normalization_status,
+            le.economic_exclusion_reason,
+            le.closure_type,
+            le.initial_risk_amount,
+            le.unleveraged_return_pct,
+            le.margin_return_pct,
+            le.r_multiple,
+            le.economic_plan_outcome,
+            le.economic_final_pnl
         FROM operations o
         JOIN recommendations r ON r.id = (
             SELECT r2.id
@@ -1291,6 +1456,7 @@ def build_liquidation_audit_report(db, user_id: int) -> dict:
             ORDER BY r2.created_at DESC, r2.id DESC
             LIMIT 1
         )
+        LEFT JOIN learning_evaluations le ON le.operation_id = o.id
         WHERE o.user_id = ?
           AND o.status = 'CLOSED'
         ORDER BY o.closed_at DESC, o.id DESC
@@ -1370,7 +1536,19 @@ def liquidation_case_from_operation(operation: dict, ticks: list[dict]) -> dict 
         first_touch = "solo_adverso"
     else:
         first_touch = "ninguno"
-    plan_result = plan_result_from_operation(operation)
+    plan_result = (
+        operation.get("learning_reconstructed_plan_result")
+        or plan_result_from_operation(operation)
+    )
+    persisted_economics = economic_case_fields(operation)
+    if persisted_economics.get("economic_normalization_status"):
+        economic_fields = persisted_economics
+    else:
+        metrics = normalize_operation_economics(
+            operation,
+            effective_plan_result=plan_result,
+        )
+        economic_fields = economic_metrics_case_fields(metrics)
     success = plan_result in {"plan_success", "plan_would_succeed"}
     failure = plan_result in {"plan_failure", "plan_would_fail"}
     forecast_correct = None
@@ -1401,6 +1579,7 @@ def liquidation_case_from_operation(operation: dict, ticks: list[dict]) -> dict 
         "adverse_touch_at": adverse_touch.get("captured_at") if adverse_touch else None,
         "first_touch": first_touch,
         "forecast_correct": forecast_correct,
+        **economic_fields,
     }
 
 
@@ -1455,6 +1634,7 @@ def summarize_liquidation_cases(cases: list[dict]) -> dict:
         "adverse_touch_rate": round(adverse_touched / len(cases), 4),
         "target_first_cases": sum(1 for case in cases if case["first_touch"] in {"objetivo_primero", "solo_objetivo"}),
         "adverse_first_cases": sum(1 for case in cases if case["first_touch"] in {"adverso_primero", "solo_adverso"}),
+        **summarize_economic_cases(cases),
     }
 
 
@@ -1475,6 +1655,7 @@ def group_liquidation_cases(cases: list[dict], key: str) -> list[dict]:
             "forecast_accuracy": round(correct / len(forecast_cases), 4) if forecast_cases else None,
             "target_touch_rate": round(sum(1 for item in items if item["target_touched"]) / len(items), 4),
             "adverse_touch_rate": round(sum(1 for item in items if item["adverse_touched"]) / len(items), 4),
+            **summarize_economic_cases(items),
         })
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
@@ -1503,8 +1684,19 @@ def build_fibonacci_audit_report(db, user_id: int) -> dict:
             le.plan_result,
             le.analysis_verdict,
             le.structured_json,
+            le.economic_normalization_version,
+            le.economic_normalization_status,
+            le.economic_exclusion_reason,
+            le.closure_type,
+            le.initial_risk_amount,
+            le.unleveraged_return_pct,
+            le.margin_return_pct,
+            le.r_multiple,
+            le.economic_plan_outcome,
+            o.closed_at,
             r.engine_version
         FROM learning_evaluations le
+        JOIN operations o ON o.id = le.operation_id
         LEFT JOIN recommendations r ON r.id = le.recommendation_id
         WHERE le.user_id = ?
           AND r.engine_version = 'rules-v0.7-fibonacci-confluence'
@@ -1567,6 +1759,7 @@ def fibonacci_case_from_evaluation(row: dict) -> dict | None:
         "target_zone": fibonacci.get("target_zone") or "sin_zona",
         "stop_zone": fibonacci.get("stop_zone") or "sin_zona",
         "probability_adjustment": safe_float(fibonacci.get("probability_adjustment")),
+        **economic_case_fields(row),
     }
 
 
@@ -1578,15 +1771,13 @@ def summarize_fibonacci_cases(cases: list[dict]) -> dict:
         }
     successes = sum(1 for case in cases if case["success"])
     failures = sum(1 for case in cases if case["failure"])
-    total_pnl = sum(float(case["final_pnl"]) for case in cases)
     return {
         "available": True,
         "cases": len(cases),
         "successes": successes,
         "failures": failures,
         "success_rate": round(successes / len(cases), 4),
-        "total_pnl": round(total_pnl, 4),
-        "avg_pnl": round(total_pnl / len(cases), 4),
+        **summarize_economic_cases(cases),
     }
 
 
@@ -1597,7 +1788,6 @@ def group_fibonacci_cases(cases: list[dict], key: str) -> list[dict]:
     result = []
     for name, items in groups.items():
         successes = sum(1 for item in items if item["success"])
-        total_pnl = sum(float(item["final_pnl"]) for item in items)
         scores = [float(item["score"]) for item in items if item.get("score") is not None]
         result.append({
             "name": name,
@@ -1605,9 +1795,8 @@ def group_fibonacci_cases(cases: list[dict], key: str) -> list[dict]:
             "successes": successes,
             "failures": sum(1 for item in items if item["failure"]),
             "success_rate": round(successes / len(items), 4) if items else 0,
-            "total_pnl": round(total_pnl, 4),
-            "avg_pnl": round(total_pnl / len(items), 4) if items else 0,
             "avg_fibonacci_score": round(sum(scores) / len(scores), 4) if scores else None,
+            **summarize_economic_cases(items),
         })
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
@@ -1636,8 +1825,19 @@ def build_pending_zone_audit_report(db, user_id: int) -> dict:
             le.plan_result,
             le.analysis_verdict,
             le.structured_json,
+            le.economic_normalization_version,
+            le.economic_normalization_status,
+            le.economic_exclusion_reason,
+            le.closure_type,
+            le.initial_risk_amount,
+            le.unleveraged_return_pct,
+            le.margin_return_pct,
+            le.r_multiple,
+            le.economic_plan_outcome,
+            o.closed_at,
             r.engine_version
         FROM learning_evaluations le
+        JOIN operations o ON o.id = le.operation_id
         LEFT JOIN recommendations r ON r.id = le.recommendation_id
         WHERE le.user_id = ?
           AND r.engine_version = 'rules-v0.9-pending-zone-adjusted'
@@ -1718,6 +1918,7 @@ def pending_zone_case_from_evaluation(row: dict) -> dict | None:
         "probability_adjustment_bucket": signed_value_bucket(probability_adjustment),
         "risk_score_addition": safe_float(zone.get("risk_score_addition")),
         "range_probability_adjustment": safe_float(zone.get("range_probability_adjustment")),
+        **economic_case_fields(row),
     }
 
 
@@ -1730,7 +1931,6 @@ def summarize_pending_zone_cases(cases: list[dict]) -> dict:
     successes = sum(1 for case in cases if case["success"])
     failures = sum(1 for case in cases if case["failure"])
     activated = sum(1 for case in cases if case["activated"])
-    total_pnl = sum(float(case["final_pnl"]) for case in cases)
     confluence_scores = [float(case["zone_confluence_score"]) for case in cases if case.get("zone_confluence_score") is not None]
     activation_probabilities = [float(case["activation_probability"]) for case in cases if case.get("activation_probability") is not None]
     return {
@@ -1741,10 +1941,9 @@ def summarize_pending_zone_cases(cases: list[dict]) -> dict:
         "success_rate": round(successes / len(cases), 4),
         "activated_cases": activated,
         "activation_rate": round(activated / len(cases), 4),
-        "total_pnl": round(total_pnl, 4),
-        "avg_pnl": round(total_pnl / len(cases), 4),
         "avg_zone_confluence_score": round(sum(confluence_scores) / len(confluence_scores), 4) if confluence_scores else None,
         "avg_activation_probability": round(sum(activation_probabilities) / len(activation_probabilities), 4) if activation_probabilities else None,
+        **summarize_economic_cases(cases),
     }
 
 
@@ -1756,7 +1955,6 @@ def group_pending_zone_cases(cases: list[dict], key: str) -> list[dict]:
     for name, items in groups.items():
         successes = sum(1 for item in items if item["success"])
         activated = sum(1 for item in items if item["activated"])
-        total_pnl = sum(float(item["final_pnl"]) for item in items)
         confluence_scores = [float(item["zone_confluence_score"]) for item in items if item.get("zone_confluence_score") is not None]
         activation_probabilities = [float(item["activation_probability"]) for item in items if item.get("activation_probability") is not None]
         result.append({
@@ -1767,10 +1965,9 @@ def group_pending_zone_cases(cases: list[dict], key: str) -> list[dict]:
             "success_rate": round(successes / len(items), 4) if items else 0,
             "activated_cases": activated,
             "activation_rate": round(activated / len(items), 4) if items else 0,
-            "total_pnl": round(total_pnl, 4),
-            "avg_pnl": round(total_pnl / len(items), 4) if items else 0,
             "avg_zone_confluence_score": round(sum(confluence_scores) / len(confluence_scores), 4) if confluence_scores else None,
             "avg_activation_probability": round(sum(activation_probabilities) / len(activation_probabilities), 4) if activation_probabilities else None,
+            **summarize_economic_cases(items),
         })
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
@@ -1794,7 +1991,17 @@ def build_underweighted_risk_audit_report(db, user_id: int) -> dict:
             r.tp_probability AS recommendation_tp_probability,
             r.sl_probability AS recommendation_sl_probability,
             r.range_probability AS recommendation_range_probability,
-            r.snapshot_json AS recommendation_snapshot_json
+            r.snapshot_json AS recommendation_snapshot_json,
+            le.economic_normalization_version,
+            le.economic_normalization_status,
+            le.economic_exclusion_reason,
+            le.closure_type,
+            le.initial_risk_amount,
+            le.unleveraged_return_pct,
+            le.margin_return_pct,
+            le.r_multiple,
+            le.economic_plan_outcome,
+            le.economic_final_pnl
         FROM operations o
         LEFT JOIN recommendations r ON r.id = (
             SELECT r2.id
@@ -1803,6 +2010,7 @@ def build_underweighted_risk_audit_report(db, user_id: int) -> dict:
             ORDER BY r2.created_at DESC, r2.id DESC
             LIMIT 1
         )
+        LEFT JOIN learning_evaluations le ON le.operation_id = o.id
         WHERE o.user_id = ?
           AND o.status = 'CLOSED'
           AND COALESCE(o.observation_status, '') != 'OBSERVING'
@@ -1830,6 +2038,9 @@ def build_underweighted_risk_audit_report(db, user_id: int) -> dict:
             ).fetchall()
         ]
         evaluation = build_structured_learning_evaluation(operation, ticks)
+        persisted_economics = economic_case_fields(operation)
+        if persisted_economics.get("economic_normalization_status"):
+            evaluation.update(persisted_economics)
         case = underweighted_risk_case_from_evaluation(
             evaluation,
             engine_version=operation.get("recommendation_engine_version"),
@@ -1852,6 +2063,7 @@ def build_underweighted_risk_audit_report(db, user_id: int) -> dict:
         key=lambda item: (
             item["failure"],
             item["opposing_signal_count"] + item["internal_inconsistency_count"],
+            abs(float(item["r_multiple"])) if item.get("r_multiple") is not None else 0,
             abs(float(item["final_pnl"])),
         ),
         reverse=True,
@@ -1941,6 +2153,7 @@ def underweighted_risk_case_from_evaluation(evaluation: dict, engine_version: st
         "internal_inconsistency_codes": [item.get("code") for item in diagnostics.get("internal_inconsistencies", []) if isinstance(item, dict)],
         "fibonacci_bias": ((analysis_context.get("fibonacci") or {}).get("bias") if isinstance(analysis_context.get("fibonacci"), dict) else None),
         "fibonacci_entry_zone": ((analysis_context.get("fibonacci") or {}).get("entry_zone") if isinstance(analysis_context.get("fibonacci"), dict) else None),
+        **economic_case_fields(evaluation),
     }
 
 
@@ -1955,7 +2168,6 @@ def summarize_underweighted_risk_cases(cases: list[dict]) -> dict:
     underweighted = sum(1 for case in cases if case["decision_quality"] == "risk_underweighted")
     underweighted_failures = sum(1 for case in cases if case["failure"] and case["decision_quality"] == "risk_underweighted")
     missed_risk_failures = sum(1 for case in cases if case["failure"] and case["analysis_verdict"] == "analysis_missed_risk")
-    total_pnl = sum(float(case["final_pnl"]) for case in cases)
     opposing_counts = [int(case["opposing_signal_count"]) for case in cases]
     inconsistency_counts = [int(case["internal_inconsistency_count"]) for case in cases]
     return {
@@ -1964,8 +2176,6 @@ def summarize_underweighted_risk_cases(cases: list[dict]) -> dict:
         "successes": successes,
         "failures": failures,
         "success_rate": round(successes / len(cases), 4),
-        "total_pnl": round(total_pnl, 4),
-        "avg_pnl": round(total_pnl / len(cases), 4),
         "risk_underweighted_cases": underweighted,
         "risk_underweighted_rate": round(underweighted / len(cases), 4),
         "risk_underweighted_failures": underweighted_failures,
@@ -1973,6 +2183,7 @@ def summarize_underweighted_risk_cases(cases: list[dict]) -> dict:
         "analysis_missed_risk_failures": missed_risk_failures,
         "avg_opposing_signal_count": round(sum(opposing_counts) / len(opposing_counts), 4) if opposing_counts else 0,
         "avg_internal_inconsistency_count": round(sum(inconsistency_counts) / len(inconsistency_counts), 4) if inconsistency_counts else 0,
+        **summarize_economic_cases(cases),
     }
 
 
@@ -1985,7 +2196,6 @@ def group_underweighted_risk_cases(cases: list[dict], key: str) -> list[dict]:
         successes = sum(1 for item in items if item["success"])
         failures = sum(1 for item in items if item["failure"])
         underweighted = sum(1 for item in items if item["decision_quality"] == "risk_underweighted")
-        total_pnl = sum(float(item["final_pnl"]) for item in items)
         opposing_counts = [int(item["opposing_signal_count"]) for item in items]
         inconsistency_counts = [int(item["internal_inconsistency_count"]) for item in items]
         result.append({
@@ -1994,12 +2204,11 @@ def group_underweighted_risk_cases(cases: list[dict], key: str) -> list[dict]:
             "successes": successes,
             "failures": failures,
             "success_rate": round(successes / len(items), 4) if items else 0,
-            "total_pnl": round(total_pnl, 4),
-            "avg_pnl": round(total_pnl / len(items), 4) if items else 0,
             "risk_underweighted_cases": underweighted,
             "risk_underweighted_rate": round(underweighted / len(items), 4) if items else 0,
             "avg_opposing_signal_count": round(sum(opposing_counts) / len(opposing_counts), 4) if opposing_counts else 0,
             "avg_internal_inconsistency_count": round(sum(inconsistency_counts) / len(inconsistency_counts), 4) if inconsistency_counts else 0,
+            **summarize_economic_cases(items),
         })
     return sorted(result, key=lambda item: (-item["cases"], item["name"]))
 
@@ -2014,14 +2223,6 @@ def signal_learning_read(cases: int, successes: int, failures: int) -> str:
     return "eligible_for_validation"
 
 
-def signal_pattern_read(successes: int, failures: int, avg_pnl: float) -> str:
-    if failures > successes and avg_pnl < 0:
-        return "observed_risk_pattern"
-    if successes >= failures and avg_pnl >= 0:
-        return "observed_winner_pattern"
-    return "mixed_context_needs_review"
-
-
 def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]:
     groups: dict[str, list[dict]] = {}
     for case in cases:
@@ -2034,8 +2235,8 @@ def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]
         failures = sum(1 for item in items if item["failure"])
         underweighted = sum(1 for item in items if item["decision_quality"] == "risk_underweighted")
         underweighted_failures = sum(1 for item in items if item["failure"] and item["decision_quality"] == "risk_underweighted")
-        total_pnl = sum(float(item["final_pnl"]) for item in items)
-        avg_pnl = round(total_pnl / len(items), 4) if items else 0
+        economic_summary = summarize_economic_cases(items)
+        avg_r_multiple = economic_summary["avg_r_multiple"]
         result.append({
             "name": name,
             "cases": len(items),
@@ -2043,12 +2244,10 @@ def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]
             "failures": failures,
             "success_rate": round(successes / len(items), 4) if items else 0,
             "failure_rate": round(failures / len(items), 4) if items else 0,
-            "total_pnl": round(total_pnl, 4),
-            "avg_pnl": avg_pnl,
             "risk_underweighted_cases": underweighted,
             "risk_underweighted_failures": underweighted_failures,
             "learning_read": signal_learning_read(len(items), successes, failures),
-            "pattern_read": signal_pattern_read(successes, failures, avg_pnl),
+            "pattern_read": signal_pattern_read(successes, failures, avg_r_multiple),
             "validation_gate": {
                 "minimum_cases": 50,
                 "minimum_successes": 10,
@@ -2056,6 +2255,7 @@ def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]
                 "eligible": len(items) >= 50 and successes >= 10 and failures >= 10,
             },
             "operation_ids": [int(item["operation_id"]) for item in items[:12]],
+            **economic_summary,
         })
     return sorted(
         result,
@@ -2069,7 +2269,7 @@ def group_signal_effectiveness(cases: list[dict], signal_key: str) -> list[dict]
             item["pattern_read"] != "observed_risk_pattern",
             -item["risk_underweighted_failures"],
             -item["failures"],
-            item["avg_pnl"],
+            item["avg_r_multiple"] if item["avg_r_multiple"] is not None else 0,
             item["name"],
         ),
     )
@@ -2089,8 +2289,8 @@ def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
     for name, items in groups.items():
         successes = sum(1 for item in items if item["success"])
         failures = sum(1 for item in items if item["failure"])
-        total_pnl = sum(float(item["final_pnl"]) for item in items)
-        avg_pnl = round(total_pnl / len(items), 4) if items else 0
+        economic_summary = summarize_economic_cases(items)
+        avg_r_multiple = economic_summary["avg_r_multiple"]
         result.append({
             "name": name,
             "cases": len(items),
@@ -2098,10 +2298,8 @@ def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
             "failures": failures,
             "success_rate": round(successes / len(items), 4) if items else 0,
             "failure_rate": round(failures / len(items), 4) if items else 0,
-            "total_pnl": round(total_pnl, 4),
-            "avg_pnl": avg_pnl,
             "learning_read": signal_learning_read(len(items), successes, failures),
-            "pattern_read": signal_pattern_read(successes, failures, avg_pnl),
+            "pattern_read": signal_pattern_read(successes, failures, avg_r_multiple),
             "validation_gate": {
                 "minimum_cases": 50,
                 "minimum_successes": 10,
@@ -2109,6 +2307,7 @@ def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
                 "eligible": len(items) >= 50 and successes >= 10 and failures >= 10,
             },
             "operation_ids": [int(item["operation_id"]) for item in items[:12]],
+            **economic_summary,
         })
     return sorted(
         result,
@@ -2121,7 +2320,7 @@ def group_signal_pairs(cases: list[dict], signal_keys: list[str]) -> list[dict]:
             }.get(item["learning_read"], 4),
             item["pattern_read"] != "observed_risk_pattern",
             -item["failures"],
-            item["avg_pnl"],
+            item["avg_r_multiple"] if item["avg_r_multiple"] is not None else 0,
             -item["cases"],
             item["name"],
         ),
@@ -2297,6 +2496,12 @@ def build_structured_learning_evaluation(
         zone_probability=zone_probability,
         operation=operation,
     )
+    evidence = historical_evidence or {}
+    reconstructed_result = evidence.get("reconstructed_plan_result")
+    economic_metrics = normalize_operation_economics(
+        operation,
+        effective_plan_result=reconstructed_result or plan_result,
+    )
     post_trade_outcomes = {
         "operation_id": int(operation["id"]),
         "plan_result": plan_result,
@@ -2319,6 +2524,7 @@ def build_structured_learning_evaluation(
             } if manual_trigger else None,
         },
         "historical_evidence": historical_evidence,
+        "economic_metrics": economic_metrics,
     }
     diagnostic_labels = {
         "analysis_verdict": analysis_verdict,
@@ -2382,8 +2588,8 @@ def build_structured_learning_evaluation(
         "version_contract": version_contract,
         **data_contract,
         "historical_evidence": historical_evidence,
+        "economic_metrics": economic_metrics,
     }
-    evidence = historical_evidence or {}
     evidence_window = evidence.get("requested_window") if isinstance(evidence.get("requested_window"), dict) else {}
     first_touch = evidence.get("first_plan_touch") if isinstance(evidence.get("first_plan_touch"), dict) else {}
     first_post_close_touch = (
@@ -2393,7 +2599,6 @@ def build_structured_learning_evaluation(
     )
     first_touch_label = first_touch.get("reason") or first_touch.get("status")
     first_post_close_label = first_post_close_touch.get("reason") or first_post_close_touch.get("status")
-    reconstructed_result = evidence.get("reconstructed_plan_result")
     plan_result_consistency = (
         "ambiguous"
         if reconstructed_result == "ambiguous_same_candle"
@@ -2465,6 +2670,21 @@ def build_structured_learning_evaluation(
         "plan_result_consistency": plan_result_consistency,
         "evidence_reconstructed_at": evidence.get("reconstructed_at"),
         "evidence_json": json.dumps(evidence, ensure_ascii=True) if evidence else None,
+        "economic_normalization_version": economic_metrics["version"],
+        "economic_normalization_status": economic_metrics["status"],
+        "economic_exclusion_reason": economic_metrics.get("exclusion_reason"),
+        "economic_normalized_at": economic_metrics["normalized_at"],
+        "closure_type": economic_metrics["closure_type"],
+        "notional_amount": economic_metrics.get("notional_amount"),
+        "initial_risk_pct": economic_metrics.get("initial_risk_pct"),
+        "initial_risk_amount": economic_metrics.get("initial_risk_amount"),
+        "unleveraged_return_pct": economic_metrics.get("unleveraged_return_pct"),
+        "margin_return_pct": economic_metrics.get("margin_return_pct"),
+        "r_multiple": economic_metrics.get("r_multiple"),
+        "economic_plan_outcome": economic_metrics["economic_plan_outcome"],
+        "economic_final_pnl": economic_metrics.get("final_pnl_secondary"),
+        "economic_metrics_json": json.dumps(economic_metrics, ensure_ascii=True),
+        "economic_metrics": economic_metrics,
         "structured_json": json.dumps(structured, ensure_ascii=True),
     }
 
@@ -2489,6 +2709,11 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             first_plan_touch, first_plan_touch_at, first_post_close_touch,
             first_post_close_touch_at, reconstructed_plan_result,
             plan_result_consistency, evidence_reconstructed_at, evidence_json,
+            economic_normalization_version, economic_normalization_status,
+            economic_exclusion_reason, economic_normalized_at, closure_type,
+            notional_amount, initial_risk_pct, initial_risk_amount,
+            unleveraged_return_pct, margin_return_pct, r_multiple,
+            economic_plan_outcome, economic_final_pnl, economic_metrics_json,
             structured_json,
             updated_at
         )
@@ -2496,7 +2721,7 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (operation_id) DO UPDATE SET
@@ -2555,6 +2780,20 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             plan_result_consistency = EXCLUDED.plan_result_consistency,
             evidence_reconstructed_at = EXCLUDED.evidence_reconstructed_at,
             evidence_json = EXCLUDED.evidence_json,
+            economic_normalization_version = EXCLUDED.economic_normalization_version,
+            economic_normalization_status = EXCLUDED.economic_normalization_status,
+            economic_exclusion_reason = EXCLUDED.economic_exclusion_reason,
+            economic_normalized_at = EXCLUDED.economic_normalized_at,
+            closure_type = EXCLUDED.closure_type,
+            notional_amount = EXCLUDED.notional_amount,
+            initial_risk_pct = EXCLUDED.initial_risk_pct,
+            initial_risk_amount = EXCLUDED.initial_risk_amount,
+            unleveraged_return_pct = EXCLUDED.unleveraged_return_pct,
+            margin_return_pct = EXCLUDED.margin_return_pct,
+            r_multiple = EXCLUDED.r_multiple,
+            economic_plan_outcome = EXCLUDED.economic_plan_outcome,
+            economic_final_pnl = EXCLUDED.economic_final_pnl,
+            economic_metrics_json = EXCLUDED.economic_metrics_json,
             structured_json = EXCLUDED.structured_json,
             updated_at = CURRENT_TIMESTAMP
         """,
@@ -2620,6 +2859,20 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
             evaluation["plan_result_consistency"],
             evaluation["evidence_reconstructed_at"],
             evaluation["evidence_json"],
+            evaluation["economic_normalization_version"],
+            evaluation["economic_normalization_status"],
+            evaluation["economic_exclusion_reason"],
+            evaluation["economic_normalized_at"],
+            evaluation["closure_type"],
+            evaluation["notional_amount"],
+            evaluation["initial_risk_pct"],
+            evaluation["initial_risk_amount"],
+            evaluation["unleveraged_return_pct"],
+            evaluation["margin_return_pct"],
+            evaluation["r_multiple"],
+            evaluation["economic_plan_outcome"],
+            evaluation["economic_final_pnl"],
+            evaluation["economic_metrics_json"],
             evaluation["structured_json"],
         ),
     )

@@ -13,6 +13,7 @@ from app import (
 from versioning import (
     APP_VERSION,
     DATA_CONTRACT_VERSION,
+    ECONOMIC_NORMALIZATION_VERSION,
     ENGINE_VERSION,
     LEARNING_SCHEMA_VERSION,
     SCORING_VERSION,
@@ -133,6 +134,10 @@ class VersionedDataContractTests(unittest.TestCase):
         self.assertEqual(versions["learning_schema_version"], LEARNING_SCHEMA_VERSION)
         self.assertNotEqual(versions["app_version"], versions["scoring_version"])
         self.assertEqual(public["data_contract_version"], DATA_CONTRACT_VERSION)
+        self.assertEqual(
+            public["economic_normalization_version"],
+            ECONOMIC_NORMALIZATION_VERSION,
+        )
         self.assertIn("deployment", public)
 
     def test_predictive_reader_exposes_only_pre_trade_features(self):
@@ -161,6 +166,9 @@ class VersionedDataContractTests(unittest.TestCase):
         self.assertIn("diagnostic_labels", structured)
         self.assertFalse(RETROSPECTIVE_KEYS & nested_keys(structured["pre_trade_features"]))
         self.assertEqual(structured["post_trade_outcomes"]["plan_result"], "plan_success")
+        self.assertIn("economic_metrics", structured["post_trade_outcomes"])
+        self.assertNotIn("economic_metrics", structured["pre_trade_features"])
+        self.assertEqual(evaluation["economic_normalization_status"], "included")
         self.assertEqual(
             structured["diagnostic_labels"]["analysis_verdict"],
             evaluation["analysis_verdict"],
@@ -204,7 +212,7 @@ class VersionedDataContractTests(unittest.TestCase):
 
         values_clause = db.query.split("ON CONFLICT", 1)[0]
         self.assertEqual(values_clause.count("?"), len(db.params))
-        self.assertEqual(len(db.params), 62)
+        self.assertEqual(len(db.params), 76)
 
     @patch("app.analyze_trade")
     @patch("app.current_user", return_value={"id": 7})

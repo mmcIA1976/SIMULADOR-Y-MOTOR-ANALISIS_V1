@@ -193,6 +193,8 @@ Criterio de salida:
 
 ### Fase 4 - Metricas economicas normalizadas
 
+Estado: EN CURSO - IMPLEMENTACION Y BACKFILL COMPLETADOS; PENDIENTE DE DESPLIEGUE
+
 Objetivo:
 
 - Separar calidad de senal de margen, apalancamiento y usuario.

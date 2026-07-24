@@ -185,6 +185,20 @@ CREATE TABLE IF NOT EXISTS learning_evaluations (
     plan_result_consistency TEXT,
     evidence_reconstructed_at TIMESTAMPTZ,
     evidence_json TEXT,
+    economic_normalization_version TEXT,
+    economic_normalization_status TEXT,
+    economic_exclusion_reason TEXT,
+    economic_normalized_at TIMESTAMPTZ,
+    closure_type TEXT,
+    notional_amount DOUBLE PRECISION,
+    initial_risk_pct DOUBLE PRECISION,
+    initial_risk_amount DOUBLE PRECISION,
+    unleveraged_return_pct DOUBLE PRECISION,
+    margin_return_pct DOUBLE PRECISION,
+    r_multiple DOUBLE PRECISION,
+    economic_plan_outcome TEXT,
+    economic_final_pnl DOUBLE PRECISION,
+    economic_metrics_json TEXT,
     structured_json TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -205,6 +219,21 @@ CREATE TABLE IF NOT EXISTS learning_evidence_reconstructions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(operation_id, reconstruction_version)
+);
+
+CREATE TABLE IF NOT EXISTS learning_economic_normalizations (
+    id BIGSERIAL PRIMARY KEY,
+    operation_id BIGINT NOT NULL REFERENCES operations(id) ON DELETE CASCADE,
+    evaluation_id BIGINT NOT NULL REFERENCES learning_evaluations(id) ON DELETE CASCADE,
+    normalization_version TEXT NOT NULL,
+    status TEXT NOT NULL,
+    exclusion_reason TEXT,
+    before_json TEXT,
+    after_json TEXT NOT NULL,
+    metrics_json TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(operation_id, normalization_version)
 );
 
 DO $$
@@ -229,6 +258,10 @@ CREATE INDEX IF NOT EXISTS idx_contest_entries_season ON contest_entries(season_
 CREATE INDEX IF NOT EXISTS idx_learning_evaluations_user_horizon ON learning_evaluations(user_id, time_horizon, side);
 CREATE INDEX IF NOT EXISTS idx_learning_evaluations_pattern ON learning_evaluations(symbol, side, time_horizon, plan_result);
 CREATE INDEX IF NOT EXISTS idx_learning_evidence_status ON learning_evidence_reconstructions(status, evidence_quality);
+CREATE INDEX IF NOT EXISTS idx_learning_evidence_evaluation ON learning_evidence_reconstructions(evaluation_id);
+CREATE INDEX IF NOT EXISTS idx_learning_economic_status ON learning_economic_normalizations(status, exclusion_reason);
+CREATE INDEX IF NOT EXISTS idx_learning_economic_evaluation ON learning_economic_normalizations(evaluation_id);
+CREATE INDEX IF NOT EXISTS idx_learning_evaluations_economics ON learning_evaluations(economic_normalization_status, closure_type);
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operations ENABLE ROW LEVEL SECURITY;
@@ -238,6 +271,8 @@ ALTER TABLE public.contest_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_evaluations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.price_ticks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contest_seasons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.learning_evidence_reconstructions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.learning_economic_normalizations ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operations FROM anon, authenticated;
@@ -247,6 +282,8 @@ REVOKE ALL PRIVILEGES ON TABLE public.contest_entries FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.learning_evaluations FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.price_ticks FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.contest_seasons FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.learning_evidence_reconstructions FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.learning_economic_normalizations FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
 

@@ -1,0 +1,38 @@
+{
+  "mode": "dry_run",
+  "normalization_version": "economics-v0.1-risk-normalized",
+  "candidate_operations": 234,
+  "processed": 0,
+  "applied": 0,
+  "skipped_idempotent": 234,
+  "errors": 0,
+  "status_counts": {},
+  "exclusion_counts": {},
+  "closure_type_counts": {},
+  "outcome_counts": {},
+  "operations": [],
+  "economic_summary": {
+    "economic_metric_role": "primary",
+    "normalized_cases": 0,
+    "excluded_cases": 0,
+    "exclusion_reasons": {},
+    "avg_r_multiple": null,
+    "median_r_multiple": null,
+    "total_r_multiple": null,
+    "avg_unleveraged_return_pct": null,
+    "avg_margin_return_pct": null,
+    "max_cumulative_r_drawdown": null,
+    "economic_plan_outcomes": {},
+    "pnl_metric_role": "secondary",
+    "total_pnl": 0,
+    "avg_pnl": null
+  },
+  "cohorts": {
+    "mode": [],
+    "closure_type": [],
+    "user_id": [],
+    "side": [],
+    "time_horizon": [],
+    "scoring_version": []
+  }
+}

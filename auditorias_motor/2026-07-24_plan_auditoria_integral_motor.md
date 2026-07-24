@@ -68,7 +68,7 @@ Cada regla recibira:
 
 ### E1.1 - Inventario ejecutable
 
-Estado: COMPLETADA LOCALMENTE; PENDIENTE DE PUBLICACION
+Estado: COMPLETADA
 
 - Extraer funciones, constantes, formulas, umbrales y dependencias.
 - Generar huellas SHA-256 de cada modulo.
@@ -83,7 +83,7 @@ Criterio de salida:
 
 ### E1.2 - Procedencia y fundamento
 
-Estado: PENDIENTE
+Estado: SIGUIENTE - NO INICIADA
 
 - Vincular cada regla a teoria y fuentes primarias o manuales reconocidos.
 - Distinguir definiciones estandar de interpretaciones discutibles.

@@ -1,8 +1,9 @@
 # E1.1 - Inventario ejecutable del motor
 
 Fecha: 2026-07-24
-Estado: COMPLETADA LOCALMENTE; PENDIENTE DE PUBLICACION
+Estado: COMPLETADA
 Commit de entrada: `ac16ccdd1d2a71bd5214ab3bcc8151e44adb8350`
+Commit funcional: `8bb7b930cec1569619bd66b34a4a8c6b703ad0e0`
 Motor congelado: `rules-v0.12.1-liquidations-readable`
 Scoring congelado: `scoring-v0.11-underweighted-risk-cluster`
 
@@ -122,6 +123,8 @@ Estos hallazgos no modifican el motor; abren pruebas obligatorias para E1.3.
 - Presencia de funciones criticas: comprobada.
 - Huellas contra fuentes actuales: comprobadas.
 - Repeticion determinista: comprobada.
+- Railway sirve el commit funcional exacto: comprobado.
+- Motor y scoring publicados sin cambios: comprobado.
 
 ## 9. Criterios de salida
 
@@ -133,7 +136,7 @@ Estos hallazgos no modifican el motor; abren pruebas obligatorias para E1.3.
 | Formulas y umbrales extraibles | Cumplido |
 | Comando reproducible | Cumplido |
 | Scoring sin cambios | Cumplido |
-| Publicacion y despliegue | Pendiente |
+| Publicacion y despliegue | Cumplido |
 
 ## 10. Siguiente subfase
 

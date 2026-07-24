@@ -370,7 +370,7 @@ Criterio de salida:
 | 2 | Completada | `814755f` | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Aprobada |
 | 3 | Completada | `ed3cfa3` | `2026-07-23_fase_3_reconstruccion_mfe_mae_resultado.md` | Aprobada |
 | 4 | Completada | `5295690` | `2026-07-24_fase_4_metricas_economicas_normalizadas_resultado.md` | Aprobada |
-| E1 | En curso | - | `auditorias_motor/2026-07-24_plan_auditoria_integral_motor.md` | Autorizada |
+| E1 | En curso; E1.1 completada | `8bb7b93` | `auditorias_motor/2026-07-24_plan_auditoria_integral_motor.md` | Autorizada |
 | 5 | Pausada por E1 | - | - | - |
 | 6 | Bloqueada por fase 5 | - | - | - |
 | 7 | Bloqueada por fase 6 | - | - | - |

@@ -219,7 +219,39 @@ Criterio de salida:
 - Ninguna comparacion de senales depende solo de PnL absoluto.
 - Casos sin riesgo inicial valido quedan excluidos con motivo explicito.
 
+### Fase extraordinaria E1 - Auditoria integral del motor
+
+Estado: EN CURSO - FASE 5 PAUSADA
+
+Motivo:
+
+- Los analisis 872 y 873 revelaron que una regla binaria de timing podia
+  modificar cinco puntos la salida denominada `tp_probability`.
+- La distancia especifica al TP no participa de forma suficiente en esa
+  salida, que actualmente es un score heuristico no calibrado.
+
+Objetivo:
+
+- Inventariar y documentar todas las reglas, datos, formulas, pesos, umbrales,
+  caps, teorias, fuentes y evidencias del motor.
+- Auditar coherencia matematica e impacto historico antes de modificar el
+  champion.
+- Definir un challenger interpretable para TP antes que SL dentro del
+  horizonte.
+
+Plan detallado:
+
+- `auditorias_motor/2026-07-24_plan_auditoria_integral_motor.md`
+
+Prohibido:
+
+- Cambiar silenciosamente el scoring actual.
+- Presentar un score heuristico como probabilidad calibrada.
+- Reanudar la Fase 5 antes de cerrar esta auditoria.
+
 ### Fase 5 - Reevaluacion legacy append-only
+
+Estado: PAUSADA POR FASE EXTRAORDINARIA E1
 
 Objetivo:
 
@@ -335,10 +367,11 @@ Criterio de salida:
 |---|---|---|---|---|
 | 0 | Completada | Commit documental de fase 0 | `2026-07-23_fase_0_baseline_gobernanza_resultado.md` | Aprobada |
 | 1 | Completada | `50e1ce0` | `2026-07-23_fase_1_madurez_senales_resultado.md` | Aprobada |
-| 2 | Completada | `814755f` | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Pendiente de aceptar cierre |
-| 3 | Preparada | - | - | Pendiente de inicio |
-| 4 | Bloqueada por fase 3 | - | - | - |
-| 5 | Bloqueada por fase 4 | - | - | - |
+| 2 | Completada | `814755f` | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Aprobada |
+| 3 | Completada | `ed3cfa3` | `2026-07-23_fase_3_reconstruccion_mfe_mae_resultado.md` | Aprobada |
+| 4 | Completada | `5295690` | `2026-07-24_fase_4_metricas_economicas_normalizadas_resultado.md` | Aprobada |
+| E1 | En curso | - | `auditorias_motor/2026-07-24_plan_auditoria_integral_motor.md` | Autorizada |
+| 5 | Pausada por E1 | - | - | - |
 | 6 | Bloqueada por fase 5 | - | - | - |
 | 7 | Bloqueada por fase 6 | - | - | - |
 | 8 | Bloqueada por fase 7 | - | - | - |

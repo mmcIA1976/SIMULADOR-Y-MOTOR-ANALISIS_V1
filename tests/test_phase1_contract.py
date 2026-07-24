@@ -12,8 +12,8 @@ class Phase1ContractTests(unittest.TestCase):
     def test_contract_preserves_non_negotiable_requirements(self):
         text = CONTRACT.read_text(encoding="utf-8")
         required = (
-            "probabilidad de TP",
-            "probabilidad de SL",
+            "probabilidad preoperacion de alcanzar el TP",
+            "probabilidad preoperacion de alcanzar el SL",
             "Contrato obligatorio de cada regla",
             "Traza obligatoria por analisis",
             "Funcion exacta del motor de aprendizaje",
@@ -45,12 +45,15 @@ class Phase1ContractTests(unittest.TestCase):
                 text = (ROOT / relative_path).read_text(encoding="utf-8")
                 self.assertIn("CONTRATO_FASE_1_MOTOR_ANALISIS.md", text)
 
-    def test_open_product_decisions_remain_explicit(self):
+    def test_confirmed_product_decisions_remain_explicit(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
-        self.assertIn("Semantica exacta de los dos porcentajes", text)
-        self.assertIn("Horizonte operativo definitivo", text)
-        self.assertIn("Universo inicial de activos", text)
+        self.assertIn("El analisis se realiza antes de abrir la operacion.", text)
+        self.assertIn("intraday_short", text)
+        self.assertIn("intraday_wide", text)
+        self.assertIn("short_swing", text)
+        self.assertIn("El motor debe ser valido para todos los pares", text)
+        self.assertIn("No quedan dudas abiertas sobre estos tres puntos.", text)
 
 
 if __name__ == "__main__":

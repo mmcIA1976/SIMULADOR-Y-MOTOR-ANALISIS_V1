@@ -34,8 +34,8 @@ La aplicacion recoge los datos disponibles en ese instante, aplica diferentes
 metodos de analisis mediante reglas documentadas y devuelve dos porcentajes
 principales:
 
-- probabilidad de TP;
-- probabilidad de SL.
+- probabilidad preoperacion de alcanzar el TP;
+- probabilidad preoperacion de alcanzar el SL.
 
 La Fase 1 no elige todavia la operacion por el usuario y no ejecuta dinero real.
 
@@ -80,6 +80,46 @@ proceda, de:
 - condiciones adicionales demostrablemente utiles.
 
 No se permite presentar como probabilidad una suma arbitraria de puntos.
+
+### Naturaleza preoperacion
+
+El analisis se realiza antes de abrir la operacion. En ese instante no se ha
+alcanzado TP ni SL. Los dos porcentajes son estimaciones sobre acontecimientos
+futuros del plan propuesto, calculadas exclusivamente con informacion
+disponible hasta el momento del analisis.
+
+El resultado real solo existe posteriormente. Cuando el mercado alcance TP,
+alcance SL o finalice el horizonte sin resolver el plan, ese outcome se
+vinculara al analisis original para aprendizaje. La observacion posterior no
+puede alterar retrospectivamente los datos ni las reglas preoperacion.
+
+### Marcos temporales vigentes
+
+La Fase 1 conserva los tres marcos temporales actuales:
+
+- `intraday_short`: intradia corto, 30 minutos-4 horas;
+- `intraday_wide`: intradia amplio, 4-24 horas;
+- `short_swing`: swing corto, 1-7 dias.
+
+Cada regla debe declarar en cuales de estos marcos es valida. No se adopta un
+horizonte general de 3-60 horas.
+
+### Universo de pares
+
+El motor debe ser valido para todos los pares admitidos por la aplicacion. No
+se construira un modelo exclusivamente para BTC.
+
+Toda regla activa debe:
+
+- utilizar unidades comparables entre pares;
+- declarar cualquier normalizacion necesaria;
+- demostrar validez en los pares donde se aplique;
+- bloquearse de forma explicita cuando falten datos fiables;
+- evitar parametros ocultos especificos de BTC.
+
+Una regla contextual puede comportarse de forma distinta por mercado si esa
+diferencia esta documentada, versionada y validada. No puede presentarse como
+regla general si solo ha sido comprobada en un par.
 
 ## 4. Flujo obligatorio del analisis
 
@@ -396,14 +436,13 @@ Si alguna respuesta falta, el desarrollo queda bloqueado.
   apariencia de precision.
 - Las fuentes de pago quedan fuera mientras no exista autorizacion expresa.
 
-## 18. Decisiones pendientes de confirmacion
+## 18. Decisiones de producto confirmadas
 
-Solo quedan abiertas estas definiciones de producto:
+1. El analisis es previo a la operacion. TP y SL son estimaciones sobre
+   acontecimientos futuros, no resultados ya observados.
+2. Se mantienen `intraday_short`, `intraday_wide` y `short_swing` con sus
+   duraciones actuales.
+3. Las reglas deben ser validas para todos los pares con los que trabaja la
+   aplicacion; no se limitan a BTC.
 
-1. Semantica exacta de los dos porcentajes cuando no se toca TP ni SL dentro del
-   horizonte.
-2. Horizonte operativo definitivo de la Fase 1.
-3. Universo inicial de activos para construir y validar el primer modelo.
-
-Estas decisiones deben resolverse antes de definir el modelo probabilistico
-challenger. No autorizan desviaciones mientras permanecen abiertas.
+No quedan dudas abiertas sobre estos tres puntos.

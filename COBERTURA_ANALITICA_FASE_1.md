@@ -45,7 +45,7 @@ Prioridades:
 | 14 | Opciones | ausente | P2 | Evaluar API publica Deribit para IV, skew, term structure y OI; contexto, no disparador inicial |
 | 15 | Spot contra futuros | ausente | P0 | Incorporar spot real y CVD spot antes de afirmar divergencias spot-futures |
 | 16 | Cross-exchange y arbitraje | ausente | P3 | Requiere normalizacion y sincronizacion estrictas; no es nucleo inicial |
-| 17 | On-chain | ausente | P2 | Solo fuentes gratuitas fiables; contexto para 3-60h, no disparador |
+| 17 | On-chain | ausente | P2 | Solo fuentes gratuitas fiables; contexto por marco temporal, no disparador |
 | 18 | Tokenomics y fundamental | ausente | P2 | Prioridad mayor para altcoins; necesita eventos versionados y fuentes verificables |
 | 19 | Macroeconomia | ausente | P1 | Calendario, sorpresa, DXY, yields e indices; controlar timestamps y revisiones |
 | 20 | Intermercado | ausente | P1 | Correlaciones moviles y por regimen; nunca relaciones fijas |
@@ -175,3 +175,8 @@ El objetivo no es implementar el mayor numero de indicadores. El objetivo es
 incorporar todos los puntos de vista para los que existan datos fiables,
 formulas defendibles y evidencia medible, conservando solo los que mejoren el
 motor.
+
+La cobertura se disena para todos los pares soportados por la aplicacion y para
+los tres marcos vigentes: `intraday_short`, `intraday_wide` y `short_swing`.
+Cada dato, variable y regla debe declarar su disponibilidad y validez por par y
+marco temporal.

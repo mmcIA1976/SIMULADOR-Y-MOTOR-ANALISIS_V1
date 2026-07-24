@@ -83,7 +83,7 @@ Criterio de salida:
 
 ### E1.2 - Procedencia y fundamento
 
-Estado: SIGUIENTE - NO INICIADA
+Estado: COMPLETADA
 
 - Vincular cada regla a teoria y fuentes primarias o manuales reconocidos.
 - Distinguir definiciones estandar de interpretaciones discutibles.
@@ -93,9 +93,26 @@ Criterio de salida:
 
 - Ninguna regla queda sin una procedencia explicita o la marca `sin_respaldo`.
 
+Resultado:
+
+- Catalogo humano de datos, indicadores, scoring, riesgo, decision y aprendizaje.
+- Matriz reproducible de 185/185 funciones con procedencia, estado y fuentes.
+- Se preservan 1.528 apariciones numericas y 3.317 fragmentos de formula.
+- Ningun peso exacto del score direccional queda presentado como validado
+  externamente.
+- La salida `tp_probability` queda dictaminada como score heuristico no
+  calibrado; su incoherencia matematica se probara formalmente en E1.3.
+
+Artefactos:
+
+- `catalogo_reglas_motor.md`
+- `matriz_fuentes_y_teorias.md`
+- `matriz_procedencia_funciones_v0_1.json`
+- `audit_rule_provenance.py`
+
 ### E1.3 - Coherencia matematica y semantica
 
-Estado: PENDIENTE
+Estado: SIGUIENTE - NO INICIADA
 
 - Auditar monotonicidad, continuidad, unidades, doble conteo y caps.
 - Separar score direccional, alcanzabilidad y calidad de ejecucion.

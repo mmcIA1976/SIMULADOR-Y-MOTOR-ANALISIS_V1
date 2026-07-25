@@ -1,0 +1,63 @@
+{
+  "mode": "apply",
+  "reevaluation_version": "legacy-review-v0.1-modern-taxonomy",
+  "legacy_candidates": 1,
+  "processed": 1,
+  "applied": 1,
+  "skipped_idempotent": 0,
+  "errors": 0,
+  "review_status_counts": {
+    "reviewed_descriptive_only": 1
+  },
+  "outcome_counts": {
+    "sl_first": 1
+  },
+  "outcome_status_counts": {
+    "descriptive_only": 1
+  },
+  "predictive_eligibility_counts": {
+    "not_eligible": 1
+  },
+  "missing_field_counts": {
+    "pre_trade_features.analysis_context.confidence_score": 1,
+    "pre_trade_features.analysis_context.direction_score": 1,
+    "pre_trade_features.analysis_context.market_regime": 1,
+    "pre_trade_features.analysis_context.technical_label": 1,
+    "pre_trade_features.analysis_context.technical_score": 1,
+    "pre_trade_features.entry_order_context.entry_order_type": 1,
+    "pre_trade_features.entry_order_context.entry_type": 1,
+    "pre_trade_features.entry_order_context.requested_entry": 1,
+    "pre_trade_features.entry_order_context.trigger_condition": 1,
+    "pre_trade_features.provenance.recorded_app_version": 1,
+    "pre_trade_features.provenance.recorded_data_source_version": 1,
+    "pre_trade_features.provenance.recorded_scoring_version": 1,
+    "pre_trade_features.trade_plan.horizon_seconds": 1,
+    "pre_trade_features.trade_plan.time_horizon": 1
+  },
+  "source_integrity_before": {
+    "evaluation_rows": 234,
+    "legacy_rows": 232,
+    "evaluations_md5": "9d66cc74e6cdf435291e69597895178e",
+    "legacy_review_rows": 0
+  },
+  "operations": [
+    {
+      "operation_id": 1,
+      "evaluation_id": 3,
+      "source_engine_version": "rules-v0.1",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 14,
+      "source_bundle_sha256": "e03130ae1f186c483a806f0b9bad412534f85ec654f141f3a0aefc02e467a911"
+    }
+  ],
+  "reconciled": true,
+  "source_integrity_after": {
+    "evaluation_rows": 234,
+    "legacy_rows": 232,
+    "evaluations_md5": "9d66cc74e6cdf435291e69597895178e",
+    "legacy_review_rows": 1
+  },
+  "source_evaluations_unchanged": true
+}

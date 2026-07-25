@@ -252,12 +252,22 @@ Prohibido:
 
 ### Fase 5 - Reevaluacion legacy append-only
 
-Estado: SIGUIENTE - DESBLOQUEADA, NO INICIADA
+Estado: COMPLETADA EL 2026-07-25
 
 Objetivo:
 
-- Aplicar la taxonomia moderna a las 190 evaluaciones antiguas sin destruir la
-  interpretacion original.
+- Aplicar la taxonomia moderna a todas las evaluaciones antiguas sin destruir
+  la interpretacion original.
+
+Resultado:
+
+- La cifra de 190 era una estimacion previa. La auditoria F5.1 identifico 232
+  evaluaciones legacy y las 232 quedaron reevaluadas.
+- 231 casos quedaron disponibles para uso descriptivo y 1 caso ambiguo quedo
+  excluido.
+- Ningun caso se habilito para calibracion predictiva directa porque no
+  registraba una duracion concreta del horizonte pre-trade.
+- La segunda ejecucion omitio los 232 casos por idempotencia, sin duplicados.
 
 Alcance:
 
@@ -272,7 +282,7 @@ Prohibido:
 
 Criterio de salida:
 
-- 190 casos procesados o justificados individualmente.
+- Todos los casos legacy procesados o justificados individualmente.
 - Conteos antes/despues reconciliados.
 - Reejecucion sin duplicados.
 
@@ -372,8 +382,8 @@ Criterio de salida:
 | 3 | Completada | `ed3cfa3` | `2026-07-23_fase_3_reconstruccion_mfe_mae_resultado.md` | Aprobada |
 | 4 | Completada | `5295690` | `2026-07-24_fase_4_metricas_economicas_normalizadas_resultado.md` | Aprobada |
 | E1 | Completada; E1.1-E1.5 cerradas | `8066f24` | `auditorias_motor/2026-07-25_E1_5_contrato_challenger_resultado.md` | Autorizada |
-| 5 | Siguiente; desbloqueada, no iniciada | - | - | Pendiente |
-| 6 | Bloqueada por fase 5 | - | - | - |
+| 5 | Completada | Pendiente de commit de cierre | `2026-07-25_fase_5_reevaluacion_legacy_resultado.md` | Autorizada |
+| 6 | Siguiente; desbloqueada, no iniciada | - | - | Pendiente |
 | 7 | Bloqueada por fase 6 | - | - | - |
 | 8 | Bloqueada por fase 7 | - | - | - |
 

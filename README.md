@@ -24,8 +24,12 @@ E1.4 midio su impacto historico mediante
 E1.5 separo datos calculables de afirmaciones predictivas, fijo el contrato
 probabilistico y dejo un challenger aislado que se bloquea sin modelo calibrado:
 [`auditorias_motor/contrato_challenger_alcanzabilidad.md`](auditorias_motor/contrato_challenger_alcanzabilidad.md).
-La auditoria E1 esta completada. La siguiente fase, aun no iniciada, es la Fase
-5 de reevaluacion legacy append-only.
+La auditoria E1 esta completada. La Fase 5 tambien esta cerrada: las 232
+evaluaciones legacy se conservaron y reinterpretaron en revisiones append-only
+sin autorizar su uso para calibracion predictiva directa. El resultado esta en
+[`auditorias_aprendizaje/2026-07-25_fase_5_reevaluacion_legacy_resultado.md`](auditorias_aprendizaje/2026-07-25_fase_5_reevaluacion_legacy_resultado.md).
+La siguiente fase, aun no iniciada, es la Fase 6 de ejecucion paralela
+champion/challenger con reversion.
 
 ## Estado actual
 
@@ -39,6 +43,7 @@ La auditoria E1 esta completada. La siguiente fase, aun no iniciada, es la Fase
 - Ordenes pendientes simuladas con activacion por nivel: pullback limite, ruptura y breakdown.
 - Motor v0.9 con analisis de zonas pendientes, aprendizaje estructurado y auditoria agregada.
 - Registro de recomendaciones, ticks de precio, cierres, observacion y conclusiones de aprendizaje.
+- Reevaluacion legacy append-only con 232 revisiones historicas separadas de las evaluaciones fuente.
 - La app online usa Supabase PostgreSQL. El entorno local se usa solo para desarrollo y puede conectar con Supabase si esta configurado.
 
 ## Desarrollo local

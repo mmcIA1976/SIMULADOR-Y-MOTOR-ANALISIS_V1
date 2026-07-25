@@ -1,0 +1,29 @@
+{
+  "mode": "apply",
+  "reevaluation_version": "legacy-review-v0.1-modern-taxonomy",
+  "legacy_candidates": 232,
+  "processed": 0,
+  "applied": 0,
+  "skipped_idempotent": 232,
+  "errors": 0,
+  "review_status_counts": {},
+  "outcome_counts": {},
+  "outcome_status_counts": {},
+  "predictive_eligibility_counts": {},
+  "missing_field_counts": {},
+  "source_integrity_before": {
+    "evaluation_rows": 234,
+    "legacy_rows": 232,
+    "evaluations_md5": "9d66cc74e6cdf435291e69597895178e",
+    "legacy_review_rows": 232
+  },
+  "operations": [],
+  "reconciled": true,
+  "source_integrity_after": {
+    "evaluation_rows": 234,
+    "legacy_rows": 232,
+    "evaluations_md5": "9d66cc74e6cdf435291e69597895178e",
+    "legacy_review_rows": 232
+  },
+  "source_evaluations_unchanged": true
+}

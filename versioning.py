@@ -3,8 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.15.0-economic-normalization"
-APP_SEMVER = "0.15.0"
+APP_VERSION = "app-v0.16.0-legacy-append-only"
+APP_SEMVER = "0.16.0"
 ENGINE_VERSION = "rules-v0.12.1-liquidations-readable"
 SCORING_VERSION = "scoring-v0.11-underweighted-risk-cluster"
 LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
@@ -13,6 +13,7 @@ DATA_SOURCE_VERSION = "data-sources-v0.12.1-binance-hyperperps"
 DATA_CONTRACT_VERSION = "data-contract-v0.3-economic-normalization"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.1-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
+LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 
 
 def current_version_contract() -> dict:
@@ -26,6 +27,7 @@ def current_version_contract() -> dict:
         "data_contract_version": DATA_CONTRACT_VERSION,
         "evidence_reconstruction_version": EVIDENCE_RECONSTRUCTION_VERSION,
         "economic_normalization_version": ECONOMIC_NORMALIZATION_VERSION,
+        "legacy_reevaluation_version": LEGACY_REEVALUATION_VERSION,
     }
 
 

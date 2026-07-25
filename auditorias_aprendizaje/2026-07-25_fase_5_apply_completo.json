@@ -1,0 +1,2368 @@
+{
+  "mode": "apply",
+  "reevaluation_version": "legacy-review-v0.1-modern-taxonomy",
+  "legacy_candidates": 232,
+  "processed": 231,
+  "applied": 231,
+  "skipped_idempotent": 1,
+  "errors": 0,
+  "review_status_counts": {
+    "reviewed_descriptive_only": 230,
+    "reviewed_excluded": 1
+  },
+  "outcome_counts": {
+    "sl_first": 126,
+    "tp_first": 84,
+    "expiry_unresolved": 20,
+    "ambiguous": 1
+  },
+  "outcome_status_counts": {
+    "descriptive_only": 230,
+    "excluded": 1
+  },
+  "predictive_eligibility_counts": {
+    "not_eligible": 231
+  },
+  "missing_field_counts": {
+    "pre_trade_features.analysis_context.confidence_score": 5,
+    "pre_trade_features.analysis_context.direction_score": 5,
+    "pre_trade_features.analysis_context.market_regime": 5,
+    "pre_trade_features.analysis_context.technical_label": 11,
+    "pre_trade_features.analysis_context.technical_score": 11,
+    "pre_trade_features.entry_order_context.entry_order_type": 200,
+    "pre_trade_features.entry_order_context.entry_type": 105,
+    "pre_trade_features.entry_order_context.requested_entry": 105,
+    "pre_trade_features.entry_order_context.trigger_condition": 200,
+    "pre_trade_features.provenance.recorded_app_version": 231,
+    "pre_trade_features.provenance.recorded_data_source_version": 231,
+    "pre_trade_features.provenance.recorded_scoring_version": 231,
+    "pre_trade_features.trade_plan.horizon_seconds": 231,
+    "pre_trade_features.trade_plan.time_horizon": 8
+  },
+  "source_integrity_before": {
+    "evaluation_rows": 234,
+    "legacy_rows": 232,
+    "evaluations_md5": "9d66cc74e6cdf435291e69597895178e",
+    "legacy_review_rows": 1
+  },
+  "operations": [
+    {
+      "operation_id": 2,
+      "evaluation_id": 1,
+      "source_engine_version": "rules-v0.1",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 14,
+      "source_bundle_sha256": "28df282ba055abac7d0b76858274e496c37e37226649de6914bcbda56f84b786"
+    },
+    {
+      "operation_id": 3,
+      "evaluation_id": 2,
+      "source_engine_version": "rules-v0.2-market-snapshot",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 14,
+      "source_bundle_sha256": "1f57f4c4170a64df64668a1dee1ba40cb7bbe03775297159bc38fd885ed082ab"
+    },
+    {
+      "operation_id": 4,
+      "evaluation_id": 4,
+      "source_engine_version": "rules-v0.2-market-snapshot",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 14,
+      "source_bundle_sha256": "ebb38d6d49d8ceddfb335f0aa9c0731ce2381da15bb486b7e836c46f17f8ebe1"
+    },
+    {
+      "operation_id": 5,
+      "evaluation_id": 5,
+      "source_engine_version": "rules-v0.2-market-snapshot",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 14,
+      "source_bundle_sha256": "f9e6a1c6f68d2967802ffd39b674713e1216a2681cd5d85b2ea21acd0fde493b"
+    },
+    {
+      "operation_id": 6,
+      "evaluation_id": 6,
+      "source_engine_version": "rules-v0.3-free-data-expansion",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 14,
+      "source_bundle_sha256": "0e6cd2b7078586ec6a33a432d2233fa2c634774b461b93c628dedcbe5f7cb557"
+    },
+    {
+      "operation_id": 7,
+      "evaluation_id": 7,
+      "source_engine_version": "rules-v0.4-layered-probability-ev",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 11,
+      "source_bundle_sha256": "802404d203fd58c2ba14a64ac4ef8e5b13dd88bd1ea4c878d498494b82f68393"
+    },
+    {
+      "operation_id": 8,
+      "evaluation_id": 8,
+      "source_engine_version": "rules-v0.4-layered-probability-ev",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 11,
+      "source_bundle_sha256": "234764cae400be44ac60b307f6000907e9aa019c70bcc7982deb803af0a3945c"
+    },
+    {
+      "operation_id": 9,
+      "evaluation_id": 12,
+      "source_engine_version": "rules-v0.4-layered-probability-ev",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 11,
+      "source_bundle_sha256": "805e992c8f4782719518c87d86b4fec54c4cd959e8f467e965933b639b37ddce"
+    },
+    {
+      "operation_id": 10,
+      "evaluation_id": 11,
+      "source_engine_version": "rules-v0.4-layered-probability-ev",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 10,
+      "source_bundle_sha256": "2c7f23d8ed4458b247fd0b5108bae94f4da96053641e8f578bfe9dbb90e36938"
+    },
+    {
+      "operation_id": 11,
+      "evaluation_id": 9,
+      "source_engine_version": "rules-v0.4-layered-probability-ev",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 10,
+      "source_bundle_sha256": "189ff8538760b88a35dff9dba4e1b99e2bee7e84ce37481b4e024e608b833587"
+    },
+    {
+      "operation_id": 12,
+      "evaluation_id": 10,
+      "source_engine_version": "rules-v0.4-layered-probability-ev",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 10,
+      "source_bundle_sha256": "58351f9d8453f8a0a42e95a7501f80debc29a63ba8215bc16f1694ddbc03a6ae"
+    },
+    {
+      "operation_id": 13,
+      "evaluation_id": 13,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "87bf5262a47459ea71babdaa36c93ca1a46b35b1481d38abad98dc96e4c32a9a"
+    },
+    {
+      "operation_id": 14,
+      "evaluation_id": 15,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "ca7e403a8acdd299f54d6e72bbe287a460e8e10483f28dc8be8a4517db018767"
+    },
+    {
+      "operation_id": 15,
+      "evaluation_id": 16,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3b513b018684e8549df790dcce101fbd3cf7eff636fb010b36d0e8a88ab58904"
+    },
+    {
+      "operation_id": 16,
+      "evaluation_id": 14,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "9deaa1f0169fa180fced2d9d9651fcb8c70819e16a5f0e828b0ba84394d8f868"
+    },
+    {
+      "operation_id": 17,
+      "evaluation_id": 19,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "6fd56afecf73d4eae249068fa6512fafb182ce061f9f1fa2ab5e8ad347182a31"
+    },
+    {
+      "operation_id": 18,
+      "evaluation_id": 27,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3a830248072ab10e1ac2466464856904eb833335af8ae1f1e9370c2e868dea03"
+    },
+    {
+      "operation_id": 19,
+      "evaluation_id": 17,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3266e9fbf0b40eb3a43c495b8dfac6a9e12e6433e1984ab79f4a422e566b8086"
+    },
+    {
+      "operation_id": 20,
+      "evaluation_id": 20,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "304165ed7dc8827f100457df901ea32b5514b6e8820cd04b12b72081b17764b7"
+    },
+    {
+      "operation_id": 21,
+      "evaluation_id": 18,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "7e28d555a5f5e68bbf95f4f91dbf71419be3730bbb3e0d3fbe83363203ff1165"
+    },
+    {
+      "operation_id": 22,
+      "evaluation_id": 25,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3db4327e8644d61dbee683ee8a2b0210a5d505414beced7f6c3e7d2d022c2a31"
+    },
+    {
+      "operation_id": 23,
+      "evaluation_id": 21,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "e66339a1991c18d5c79a7f0bb154dbb69bf244103a2dc97496f07bba2e851ead"
+    },
+    {
+      "operation_id": 24,
+      "evaluation_id": 23,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "9cd33542081bf8dc1e999960f1e5af6c1cf58584ff4469b1b79c06f7525d6e0d"
+    },
+    {
+      "operation_id": 25,
+      "evaluation_id": 22,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "328413db6b8ff8247738026fcb88c8b166534cabab7cc292994063a338ad4308"
+    },
+    {
+      "operation_id": 26,
+      "evaluation_id": 29,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3df4a322ed77ae01cb13cbf7b6d576a1b64ae427ebf99edd6836bbe7bcd654f2"
+    },
+    {
+      "operation_id": 27,
+      "evaluation_id": 24,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "44f560a218c0edbaa1793cd7da6645f1bfd3ad6e3a81966051d50069d8f757df"
+    },
+    {
+      "operation_id": 28,
+      "evaluation_id": 26,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "d4008d07b1c96e337f3b35f148f47f686d3e528fc7450e3832be57f72b7fb711"
+    },
+    {
+      "operation_id": 29,
+      "evaluation_id": 30,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "1f8a715b129d55b1854c051dac36e523315800aba78cf6a9501c7ae0ce26b536"
+    },
+    {
+      "operation_id": 30,
+      "evaluation_id": 28,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "71f74eb0e9d7c24fce6457418ac377c3391998b7b46c00d02f7ec7e5389f2a7d"
+    },
+    {
+      "operation_id": 31,
+      "evaluation_id": 31,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "7690d85b9920f83236c0d91106b496e59c86c242c6d8989e885ac3f95ed37b45"
+    },
+    {
+      "operation_id": 32,
+      "evaluation_id": 32,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "cc087e55861a1c89900c5b8a62ef2816f1451d5183d278dccffd50db343264dd"
+    },
+    {
+      "operation_id": 33,
+      "evaluation_id": 33,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "99f72e50a4da95e1e6b46b02beff94f324d7b885fb79d251deb127b55383a767"
+    },
+    {
+      "operation_id": 34,
+      "evaluation_id": 34,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "638c1e430aa3aa01d8136f952c9e371f3074cfa4b49db0d6b2dfc07f43b82f4b"
+    },
+    {
+      "operation_id": 35,
+      "evaluation_id": 35,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "fde51cda8b7fa54521dd0e654e6c45fee9ddf6a1fb8425a3b1b48391d13cf1f5"
+    },
+    {
+      "operation_id": 36,
+      "evaluation_id": 56102,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f2d5b2de2e4361ba09f9258d345c973fdd060f4a9bed907a9c0130b91b9a66fd"
+    },
+    {
+      "operation_id": 37,
+      "evaluation_id": 56309,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "309af92de34246e035b74955518f518f2d7fbc552c6b4f4524136839263bfcaa"
+    },
+    {
+      "operation_id": 38,
+      "evaluation_id": 34175,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "5a75ae9fd8986a82f4e05cda2aa0574c9f24a4de61effcbe00090a9b9f0e24dc"
+    },
+    {
+      "operation_id": 39,
+      "evaluation_id": 15961,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "4a5ba7c277e175449458c235c0b9d9b151adbf249cf3c0278ea57550b321671a"
+    },
+    {
+      "operation_id": 40,
+      "evaluation_id": 27698,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "542e2674bcc7353acb6534385cb252ff08f57aa3695416abe9bddc2d0d2c442f"
+    },
+    {
+      "operation_id": 41,
+      "evaluation_id": 56103,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "db7595ce9755d2bf58e92837b724b6a025bbac50c154675160cab9d032b81200"
+    },
+    {
+      "operation_id": 42,
+      "evaluation_id": 56144,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f9c16fc2cec27a25a46f59c811ecdeee63065f49ff17b63c22fc51191d33ff64"
+    },
+    {
+      "operation_id": 43,
+      "evaluation_id": 69922,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "0244fcf420a7fb0d7bebea86ea792f5e2f8c9174c7fe57440d4c245338014832"
+    },
+    {
+      "operation_id": 44,
+      "evaluation_id": 62610,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "45801a7fd100c16e689c76296f57387fc505552b54f3b06900cd3c956945947d"
+    },
+    {
+      "operation_id": 45,
+      "evaluation_id": 60006,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f326c8a334ea581fd58631c4d71a2d3cb7463887c60940a21c7a8cc20f340b06"
+    },
+    {
+      "operation_id": 46,
+      "evaluation_id": 62384,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "888d1a69f1cf47f729e9f07f24959a8d0e0c9a405a2bd23186b03e6f5bc70c86"
+    },
+    {
+      "operation_id": 47,
+      "evaluation_id": 62841,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "0e6f51ed07c19447f7394a867c8879b93f571d8e33d74935903d5de67a3b7452"
+    },
+    {
+      "operation_id": 48,
+      "evaluation_id": 60007,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "201187ec84e9f041b7225520807e0ba404147dcf5bfb38911a0f2fa750c0eb64"
+    },
+    {
+      "operation_id": 49,
+      "evaluation_id": 86696,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f41d6dcb904ef3a156b503d927da4f677a569bbbac161d2e549ccae61fd955b8"
+    },
+    {
+      "operation_id": 50,
+      "evaluation_id": 69578,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "eda59b26c1dd95df31ed35a64cdb91d92b98c0f7cc5d984af65d87c38f52b754"
+    },
+    {
+      "operation_id": 51,
+      "evaluation_id": 68905,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "a55187da1bc521ac784c7b056ba5b17b1a1b69db47cba037e5534412b2906b1b"
+    },
+    {
+      "operation_id": 52,
+      "evaluation_id": 69923,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "45c7ce589899b52ac11694097eb3a31a0010cf8f414f7e16fc2744645d19708e"
+    },
+    {
+      "operation_id": 53,
+      "evaluation_id": 76838,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f3c001bd216068a5b632145bd21e97733948fe4f43911136781895111c29d4b7"
+    },
+    {
+      "operation_id": 54,
+      "evaluation_id": 72729,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "6b445371b232fffc7711f47c0846f7c97e666475f32bba1ee4c3c5a5af37cfd7"
+    },
+    {
+      "operation_id": 55,
+      "evaluation_id": 88721,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "e20a2c587bf656b4a1d0cd93a29ddaf2c7e04b1b1d527f067d2ccb2e1984a3e8"
+    },
+    {
+      "operation_id": 56,
+      "evaluation_id": 87231,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "b000fc1a3ddf1a3b25c712c4b21fff4947cd2c575cddd8b9bda7a8e6755162fc"
+    },
+    {
+      "operation_id": 57,
+      "evaluation_id": 76839,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "539f01ea84bf1c523dd3ad35d85a625962c2d7c9b397aecc417457158619abc8"
+    },
+    {
+      "operation_id": 58,
+      "evaluation_id": 77272,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "db3e5025d97181ebcf35ae63dd96215d85b5555fa08832efdde8b38910547eb0"
+    },
+    {
+      "operation_id": 59,
+      "evaluation_id": 87232,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "513b58acc867017e0f811455ae4a483a3827f19eb0d4e7407a09f6cf1c3deb5a"
+    },
+    {
+      "operation_id": 60,
+      "evaluation_id": 87050,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "d0e7800508341ec4227ad8e9df1bedfd249db62138bcb4631526401ceae9bde6"
+    },
+    {
+      "operation_id": 61,
+      "evaluation_id": 78864,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "e7a9fef6f61b3d380a17b7e7ed49d47be570b1f4406d072730808a9bc757ec55"
+    },
+    {
+      "operation_id": 62,
+      "evaluation_id": 94646,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "d95e2d6afc0fd51c7e52fada0887873cd5268b691cceb9e01141d1a02534e1a3"
+    },
+    {
+      "operation_id": 63,
+      "evaluation_id": 77552,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "fddf13a8a09f67760677bf309a19e53c43690a36684252506de79ca6586896e8"
+    },
+    {
+      "operation_id": 64,
+      "evaluation_id": 77383,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3969fe62c4a004d97e93fc0ad2f5998f008436e8de3164943937239c059b0e2c"
+    },
+    {
+      "operation_id": 65,
+      "evaluation_id": 97548,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "7a9e7f6d7e62045a30a95e5d69bd246806661faf5cd412e1a252e8098b06e063"
+    },
+    {
+      "operation_id": 66,
+      "evaluation_id": 96402,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "e178dd31ba506341f830dde57e364b4775d8033f19ef430583973b53050dc5ec"
+    },
+    {
+      "operation_id": 67,
+      "evaluation_id": 96973,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "9c1fa75c26bb3d2353eb03ce1e85f225468ac288eeb5f12d7c0a622612d54dac"
+    },
+    {
+      "operation_id": 68,
+      "evaluation_id": 98054,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "dc37b512edda7abfdbc779510a142096a9e395f40b56bd174eb10a5682321fdf"
+    },
+    {
+      "operation_id": 69,
+      "evaluation_id": 94581,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "ab315166b7e45f840e78a5f1ec45c1f7d57a2eec9354bbba3ad08df679d3fac4"
+    },
+    {
+      "operation_id": 70,
+      "evaluation_id": 96972,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f99090272612caa6af083c4794765fa3b5f9d21d0e7599a5b26cc60e7eb22ab2"
+    },
+    {
+      "operation_id": 71,
+      "evaluation_id": 96903,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3a6eb5b0be70a2af179d9685a70059607de072dc6aafa3e0b4340f0c433f20dc"
+    },
+    {
+      "operation_id": 72,
+      "evaluation_id": 98043,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "2e6f0e0a0ff12ee758634390f4a095368d7ee8793a373b5db0bfba0da353d3a1"
+    },
+    {
+      "operation_id": 73,
+      "evaluation_id": 96971,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "b79af9da24dcf2d346bc3ab263c4fbd7bb800926f7fdff4f27bab639dd267bc7"
+    },
+    {
+      "operation_id": 74,
+      "evaluation_id": 97044,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "a958578c9d669b93577de4149b7923153b13f3048d077afae5883aa88ea0bcb0"
+    },
+    {
+      "operation_id": 75,
+      "evaluation_id": 97329,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "b394685947c4641327548a28c553df48d25cd6d750fc406d85e603fd9ac3eecd"
+    },
+    {
+      "operation_id": 76,
+      "evaluation_id": 97625,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "a5af8da97a03a9303fef5dd774c81d6e07e23f5a76e32c78f9015a7386e80130"
+    },
+    {
+      "operation_id": 77,
+      "evaluation_id": 98038,
+      "source_engine_version": "rules-v0.5-technical-ratings",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "0015173b0cc81bc3546b590d75a59cf409bf3c989bc990b99bde7de91608374f"
+    },
+    {
+      "operation_id": 78,
+      "evaluation_id": 97474,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "13be3d96a0691487bd23e9a7a7c133e42736eec6762c0183daadead5df4a29fd"
+    },
+    {
+      "operation_id": 79,
+      "evaluation_id": 97623,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f1b0f0c5c8316725505fe667aa51a30057abff228f2080bee35143074fcf94f2"
+    },
+    {
+      "operation_id": 80,
+      "evaluation_id": 97624,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "69ef871497faafc14ad2e36dc74baab8610383200cd21f8dea03237d8d42925e"
+    },
+    {
+      "operation_id": 81,
+      "evaluation_id": 98086,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "81a360b9f9a13de16080400ad8a69020fcfeb0d286827599907373d214fa9096"
+    },
+    {
+      "operation_id": 82,
+      "evaluation_id": 97782,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "579419381913afe88cd217147cef29b102dcf89815ffd2552bf213ed0b8bd884"
+    },
+    {
+      "operation_id": 83,
+      "evaluation_id": 97703,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "c1989e569d5906cc3940da3b8d942049846e0c2e9c03ff158633a4bbc76825b1"
+    },
+    {
+      "operation_id": 84,
+      "evaluation_id": 98023,
+      "source_engine_version": "rules-v0.6-audit-calibrated",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "21d01ba0494be4fff8c40eee935b4f8d29f28854266a96198303497c5853234a"
+    },
+    {
+      "operation_id": 85,
+      "evaluation_id": 98022,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "73ba49749771815d76302b8965f04e5a8e5d36babb14d2e6d4e85b228a9c3e48"
+    },
+    {
+      "operation_id": 86,
+      "evaluation_id": 98035,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "b7e38e5ee794db4a5618411609d0263460ae5cdcfdc99c3cb6964c32ba6f84ff"
+    },
+    {
+      "operation_id": 87,
+      "evaluation_id": 98020,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "4c32f947969833ae3c88ed9d1887eeaa14b873070f250eef2df04eb350eb9f00"
+    },
+    {
+      "operation_id": 88,
+      "evaluation_id": 98044,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "4ffc2e81fd07b25d25e6eea5cdae493c3a102ebb760fb99b77722eb8201ebc16"
+    },
+    {
+      "operation_id": 89,
+      "evaluation_id": 98037,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "8ee82c972f0f999233af1650eabd238b5938444362cb29dedccd78de366b853c"
+    },
+    {
+      "operation_id": 90,
+      "evaluation_id": 98024,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3e0ba9cbccc899ed55de2f625ea6a36a2acf314459b3284528ebfde2a9f96e70"
+    },
+    {
+      "operation_id": 91,
+      "evaluation_id": 98025,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "d3c1ded64df072ad85e64bf06e0bbc5ef8698ac846d669f1e49179f754362d5c"
+    },
+    {
+      "operation_id": 92,
+      "evaluation_id": 98083,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "db2b987304ff76fd7149b356b5891ffe3fa9f29ae96e9716aefce4d754b69be8"
+    },
+    {
+      "operation_id": 93,
+      "evaluation_id": 98030,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "558498e79ecee3a88cd05d01ed2229f2f0d3d07f445a3608effc3a5560223227"
+    },
+    {
+      "operation_id": 94,
+      "evaluation_id": 98029,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "fb1ee1bc1bbb8122e8148bd743e7582268d21c1f02b93e7e2bb84f72bb4d268d"
+    },
+    {
+      "operation_id": 95,
+      "evaluation_id": 98026,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "56fa16df7b108166f17bae311787e6cab696457122bc4a20f091c90b64127c2f"
+    },
+    {
+      "operation_id": 96,
+      "evaluation_id": 98046,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "cf83e3d94efae0fd33563fc458b35ab9ec74ab62646de19bc6a9e367290fb397"
+    },
+    {
+      "operation_id": 97,
+      "evaluation_id": 98034,
+      "source_engine_version": "rules-v0.7-fibonacci-confluence",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "e64bafe8b33e49b340217865115b28b9e52f23ad95355aabd3af626d8bd18f43"
+    },
+    {
+      "operation_id": 98,
+      "evaluation_id": 98027,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "d2e6382501f406f6d53784fdff848a88c0dda2fa44cd09bd443a27d7f71321ef"
+    },
+    {
+      "operation_id": 99,
+      "evaluation_id": 98028,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "812e13562d172ff1314b37e4f1a27e1e54e7ab8a78781d6f23604527e6786d72"
+    },
+    {
+      "operation_id": 100,
+      "evaluation_id": 98032,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "04367dc243277f8c142e9ce860b66791ff1ebd391c813bbcc42aa6ca5a6f96da"
+    },
+    {
+      "operation_id": 101,
+      "evaluation_id": 98031,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "3691a5db6726003d5b7c3c0627e67ab50ef24064b10a5c1415e291176887ee87"
+    },
+    {
+      "operation_id": 102,
+      "evaluation_id": 98042,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "f8f90a917cca21b643aac82fddd824c142ffaabb8264f04a30eddc968bbb7752"
+    },
+    {
+      "operation_id": 103,
+      "evaluation_id": 98033,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "8284a853a7f4e847cd4bfbc04f0c512e6a180f82fa7462ae15729984fb5a4a00"
+    },
+    {
+      "operation_id": 104,
+      "evaluation_id": 98036,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "82fb01b8ddbaace392d6bcab75393d5f23b17830aa990b4514e29f3923a6d867"
+    },
+    {
+      "operation_id": 105,
+      "evaluation_id": 98039,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "05e4f1407e7d3eb5fc1a8faeae26a56038f318036886786a8b39485d1bc05dd0"
+    },
+    {
+      "operation_id": 106,
+      "evaluation_id": 98040,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "4065ec42bfeabe1c32e75d436b17d1b17418f95bfee4e15b9cbb06782a635329"
+    },
+    {
+      "operation_id": 107,
+      "evaluation_id": 98041,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 8,
+      "source_bundle_sha256": "81d33d759257482543ff55713b67e5420a5cee8ed3051c6a4511442c136c338a"
+    },
+    {
+      "operation_id": 108,
+      "evaluation_id": 98051,
+      "source_engine_version": "rules-v0.8-leverage-neutral-analysis",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "c6897aa798ce2d2cbb642814891313bc6409fdd8f61d4216ce98aa6155a0e814"
+    },
+    {
+      "operation_id": 109,
+      "evaluation_id": 98045,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "490331b35d712c95c3ef7d76503b4b12b26cc5aa2647e8e51152f1a0baea2d65"
+    },
+    {
+      "operation_id": 110,
+      "evaluation_id": 98068,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "29c6f7db4a7d933f0bb6244238989bbec6ccc1a5d0b7bcdf17496971eb10ff9e"
+    },
+    {
+      "operation_id": 111,
+      "evaluation_id": 98057,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "f37d20a69394ab1fefb578bc7fbb3b6b90489ef7508ae5a736fe68503c00499c"
+    },
+    {
+      "operation_id": 112,
+      "evaluation_id": 98065,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "2e2562c6f3799a15d34250914871ebeb577dab6946b9a87ad9a7409b7480dc1d"
+    },
+    {
+      "operation_id": 113,
+      "evaluation_id": 98066,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "921d1db163a07ffa9f3414895bbd91bd29e0fee7868b83544685a24045fe212d"
+    },
+    {
+      "operation_id": 114,
+      "evaluation_id": 98056,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d5e6fbe0d40b4066f6c34e36f5f80b8ae4135fa11afd43d26f0d5d54c59f5f7a"
+    },
+    {
+      "operation_id": 116,
+      "evaluation_id": 98053,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "6ae5ee79e9dbbd34cab2998b413c674321d50a5909e530ea095222c7e4a4ec41"
+    },
+    {
+      "operation_id": 117,
+      "evaluation_id": 98049,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "de05199b20c396f610504b4305b67d334c3f56e501bf67732bd33399ed0a475a"
+    },
+    {
+      "operation_id": 118,
+      "evaluation_id": 98047,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "8e730538dba8a285d475fa900aee788d7c9b76a183a86eeadeb060a2b76ee3a0"
+    },
+    {
+      "operation_id": 119,
+      "evaluation_id": 98048,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "bad155f31952c17f9e8d6d664fd90eb598147ac5c9d278cbd90206f7992976a6"
+    },
+    {
+      "operation_id": 120,
+      "evaluation_id": 98050,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "90e36f9ffcb180618bb655e07ca9e75e1e142e4d44415ad50ce4316f6f328588"
+    },
+    {
+      "operation_id": 121,
+      "evaluation_id": 98052,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_excluded",
+      "outcome_class": "ambiguous",
+      "outcome_status": "excluded",
+      "missing_fields": 4,
+      "source_bundle_sha256": "c7345bbc8398991a8babb16f68313d5b5f2d78722ccbf39f2294edd929328465"
+    },
+    {
+      "operation_id": 122,
+      "evaluation_id": 98055,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "a593c00e46a935eb208372afd0ae8f145d5424fb9c66cea01f6f404b8ad1a45a"
+    },
+    {
+      "operation_id": 123,
+      "evaluation_id": 98062,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "5ad9cb36194e55e95e39bf376733da9f3331e7a0bff7af1b031b2f682ba99111"
+    },
+    {
+      "operation_id": 124,
+      "evaluation_id": 98059,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "6e6aa6a1fae1794a6b2e9baa3a1585632ee410e17d9a8f0b87ac94c583595de3"
+    },
+    {
+      "operation_id": 125,
+      "evaluation_id": 98058,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "8f1fd5c7c9e7c1133392848808ffc5f3173484af98101a9737d2cff46f55cb6a"
+    },
+    {
+      "operation_id": 126,
+      "evaluation_id": 98063,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "f4631b4ce76605eb4c673c32ac160a3d38d0966b7357940d5bb95f3ebe6eb1e4"
+    },
+    {
+      "operation_id": 128,
+      "evaluation_id": 98060,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "ea73b5afc73be908de6914d92b1ab677e59cf9dd0a3b4fe30dca6bdb5d7c8555"
+    },
+    {
+      "operation_id": 129,
+      "evaluation_id": 98061,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "eda17c5b6504edca042bf45c8bb669eab840703f79a0d45e33a41931f35b95cf"
+    },
+    {
+      "operation_id": 130,
+      "evaluation_id": 98064,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "d1879732545ce6e0724a3b3c1d34d9fecd4b665a412ec37d0b79b3e7c28223ea"
+    },
+    {
+      "operation_id": 132,
+      "evaluation_id": 98084,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "c12e8144b2cb6c0c2731b0781969fe42efa2054d9760825ea98ec25bdad0f20a"
+    },
+    {
+      "operation_id": 135,
+      "evaluation_id": 98069,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "9a03ad6ce5d0f5b2524eaf6c11f2aefb375f1f9254fba2c857e695210d3e6bfb"
+    },
+    {
+      "operation_id": 136,
+      "evaluation_id": 98067,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "6dcbb6371eeadef732a4d19decd28c8a91f1d40ea999fbe327b161071b1f1d77"
+    },
+    {
+      "operation_id": 137,
+      "evaluation_id": 98070,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "af93eecbcc0f323959535ad382bf7b0c8a5da983a640aad38de6a8ecf9e13cb5"
+    },
+    {
+      "operation_id": 138,
+      "evaluation_id": 98075,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "f996366b4e736c73f7e5fdee4712c2ce8c57f70abe360f5754aa4972b9796f03"
+    },
+    {
+      "operation_id": 140,
+      "evaluation_id": 98074,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "9e54163d94e4f1b2c37ff9297a711335483887d68ab2c26317ac723923777c97"
+    },
+    {
+      "operation_id": 141,
+      "evaluation_id": 98073,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "3cfb3aeebadc3d095f56d9d873a16abc5d1f99ab264dede483d76ca67ee8dbcf"
+    },
+    {
+      "operation_id": 142,
+      "evaluation_id": 98098,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "85f0d6f59600dab29950a859160a8fd1bfa31f6e8e61040b6c4b0dcc571e74b7"
+    },
+    {
+      "operation_id": 143,
+      "evaluation_id": 98078,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "eb87f5b4558974a3ae9bcb981d48ea4fedbb84f628fdd76a248223fbfd9247d1"
+    },
+    {
+      "operation_id": 144,
+      "evaluation_id": 98072,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "61858b5bca036d0b89b0abefca98b9d2964d91d33090624ee3d0f0b0fa1bc929"
+    },
+    {
+      "operation_id": 145,
+      "evaluation_id": 98071,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "559400c55bbb8b53a31369467f96baf03ecb1ae3a35cfb11fb304f92f8346fd5"
+    },
+    {
+      "operation_id": 146,
+      "evaluation_id": 98082,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "11568e203b4e16a72236cbbaae0fdd0ee5d81c87dcc65ba1bff1c61a2c952708"
+    },
+    {
+      "operation_id": 147,
+      "evaluation_id": 98088,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "1d27f7e13ec61c9c1fd0d26a00b5b0ad270a7f0e3c0b5e43a8ea05d93ca79d74"
+    },
+    {
+      "operation_id": 148,
+      "evaluation_id": 98102,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "870796f9b4de5bdce033b50fd846d09e83f073d27cdabc1ce72aece3e6a59eac"
+    },
+    {
+      "operation_id": 149,
+      "evaluation_id": 98132,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "04832527fd62fb00f620f98a333b319122405de088de73f9aea4863f015f5f57"
+    },
+    {
+      "operation_id": 150,
+      "evaluation_id": 98079,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "7e0ddd9dd290e7cac32927e219478380a9f58bba1d191c091f651eb878b50665"
+    },
+    {
+      "operation_id": 151,
+      "evaluation_id": 98076,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "c3be83612c8b82e5bd57709fde84641a9d0aca219426544f33e579ab17be4672"
+    },
+    {
+      "operation_id": 152,
+      "evaluation_id": 98081,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "320534fdce104d8173e11e6cc21c5b6a900e2b08bc8c249d6892ec1ab6f4b5a6"
+    },
+    {
+      "operation_id": 153,
+      "evaluation_id": 98077,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "edc3ffc35cee19bb8bbd596fcfaa695bbf34b69050b8c47555b578af0bcdb1b6"
+    },
+    {
+      "operation_id": 154,
+      "evaluation_id": 98080,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "fb2358fc812605cdf111e8d87910fc50ccbe58f9d9a2466a9a9bad28b88d2f33"
+    },
+    {
+      "operation_id": 155,
+      "evaluation_id": 98085,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "e4d105fa35b5f552d0d2573a6c68ac0620c5a9d7d7da539d890923d32a3228e1"
+    },
+    {
+      "operation_id": 156,
+      "evaluation_id": 98097,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "d7aa7b7b4409db3917636a226d30a2149d2fa3343c81691a4d3c7fe62844cc6a"
+    },
+    {
+      "operation_id": 157,
+      "evaluation_id": 98087,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "120fd32972819f6432d60f841bd193b89a24cfc50c8d14cc09077781804f171f"
+    },
+    {
+      "operation_id": 158,
+      "evaluation_id": 98089,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "e4dda3cebdb8afd9b65d52968cc6abfcd1e81dfc218908b6eba2c67e30f3b1a7"
+    },
+    {
+      "operation_id": 159,
+      "evaluation_id": 98090,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "990d5eee4a36dbc3b827f8d7ebf00ff1891aed1d4a81cc2471c909eb8c2f86a8"
+    },
+    {
+      "operation_id": 160,
+      "evaluation_id": 98111,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "0303d448fef462c47171cdb7a1b0fdec647ec78d63fc3aa4fc5bbfc09467cbf7"
+    },
+    {
+      "operation_id": 161,
+      "evaluation_id": 98091,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "a85a6a3f0aa6c69c2e4a9678abf5384f9d6073d5cda126e4492f6e4b472d233c"
+    },
+    {
+      "operation_id": 162,
+      "evaluation_id": 98099,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "c2a9faef2f6f0c710ddcd45226b2c35642cea0014cc091ed9a07594ffdfe6f03"
+    },
+    {
+      "operation_id": 163,
+      "evaluation_id": 98094,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "a8c834963bd1b6f9495c7add58283eb99d12561947a6d4ada2f95611faf1d37b"
+    },
+    {
+      "operation_id": 164,
+      "evaluation_id": 98120,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "56af9aafe429b3e17c3fd225c0fd4c25d337be502ca497ba4ff07c5b2f0d6b6c"
+    },
+    {
+      "operation_id": 165,
+      "evaluation_id": 98092,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "aa98b5fefe157d7993dc5e588fd0f0afdaf6a67f9c7797b49b7f8acacdc9cef5"
+    },
+    {
+      "operation_id": 166,
+      "evaluation_id": 98093,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "edb5b3facb152fd8e7b5b643d68cd7fce0c51a9960729ec1faca0d38cafc366a"
+    },
+    {
+      "operation_id": 167,
+      "evaluation_id": 98105,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d8415b7d6dc810cb9be74b01fe47e565e2e8f8ca2f95603614f80d53d5e0d188"
+    },
+    {
+      "operation_id": 168,
+      "evaluation_id": 98096,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "9717669557197d681901f4a4a14c5e6a25aa74bc09922c10d92c3424c5643dbf"
+    },
+    {
+      "operation_id": 169,
+      "evaluation_id": 98095,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "4e4777dcd4e380bf2ece27af7383d107e92de5a7cf7808bac900c4334996cba9"
+    },
+    {
+      "operation_id": 170,
+      "evaluation_id": 98101,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "daea48418c26b632460ca2115506064c55ab697d572c14c44a52055678a59e0a"
+    },
+    {
+      "operation_id": 171,
+      "evaluation_id": 98103,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "b1379b685e363a3d20fa0ff3548db000b14a51da6460f8c725e1b20ac1791015"
+    },
+    {
+      "operation_id": 172,
+      "evaluation_id": 98116,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "583ea35a951ec4bae9a9fc59b15f5a726a36e34258ea77a60b798c26318b0342"
+    },
+    {
+      "operation_id": 174,
+      "evaluation_id": 98100,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "33f7dbb0b406297da5f4ef26bc407bcbff4beaef41b22d799d12dab6dbdfc4f0"
+    },
+    {
+      "operation_id": 175,
+      "evaluation_id": 98115,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "ff3a8af48507d39315c5e387ec167bdedd242a4881cae0c9ded3d610873154f3"
+    },
+    {
+      "operation_id": 176,
+      "evaluation_id": 98104,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "477e82bf285dce60775acb0ba0e0f0901c0631eade3be3df9641c6eb671af0d8"
+    },
+    {
+      "operation_id": 177,
+      "evaluation_id": 98117,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "56493ff2a05274abf88877df59cf1cfdaeb4a18c9f11ef6a89659ae455396ae6"
+    },
+    {
+      "operation_id": 178,
+      "evaluation_id": 98106,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "bfbe56eb30ef2509d6245eaf606ef1a0e9da7dfe85c380010f49e08ec42392ff"
+    },
+    {
+      "operation_id": 179,
+      "evaluation_id": 98107,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "48329b57ad0bc9e5f588d36eb7c2608a9b3c458de96c4cea64e37c3eff463555"
+    },
+    {
+      "operation_id": 180,
+      "evaluation_id": 98113,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "3946f657c83d4b428fa26339649c356498122f923c8caea6be9f636095bee868"
+    },
+    {
+      "operation_id": 181,
+      "evaluation_id": 98108,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "a05dc234f06b9c4e4dec7430c6e31e6fb7cf555639d5ff425183cca6ca846ba1"
+    },
+    {
+      "operation_id": 182,
+      "evaluation_id": 98112,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "6e3573fe7bbec992520380970472a4a121bcb6edb5ae1e436102828e2ad878ca"
+    },
+    {
+      "operation_id": 183,
+      "evaluation_id": 98109,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "ca032a65ce3b565d4c418837bba8f4b3187dc62236f4d6c622046a05a0eaf57e"
+    },
+    {
+      "operation_id": 184,
+      "evaluation_id": 98110,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "1a0b4e605f55ab981ae3673414f88bd172abd4dae5bcf26ee7f8773544a1f277"
+    },
+    {
+      "operation_id": 185,
+      "evaluation_id": 98130,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "9ada92fbb0d9887f11f0d5088d991e901fb918ef68ea869373dd69b9108c2bcc"
+    },
+    {
+      "operation_id": 186,
+      "evaluation_id": 98137,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "4e94f9d40dbaae40105a82adc3ef3f78d71eae829b4833fad00fb0bc40bb1a10"
+    },
+    {
+      "operation_id": 187,
+      "evaluation_id": 98118,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "facd2709275e938eed5ad9ea6b0f122a8d2ddf2f7f31c4bb8955134159338615"
+    },
+    {
+      "operation_id": 189,
+      "evaluation_id": 98114,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "2bb91821dccf29d5d83c9ac49a83ce1ff0673981a3fe7ec6585e0aee0c3e0420"
+    },
+    {
+      "operation_id": 190,
+      "evaluation_id": 98127,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "b286ab56e146294b640cb517c6e84a077eb7fee984b87b2040c20c89d94ab6d1"
+    },
+    {
+      "operation_id": 191,
+      "evaluation_id": 98119,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "8af54e3f72911d5fa46ed7ae3f8f34ecf898a09d7076ed922f99011f7c063072"
+    },
+    {
+      "operation_id": 192,
+      "evaluation_id": 98121,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "9ce6978eddc5c6f3372816df9fa2afb94624eeb66a75a3e837b8220c0a036f98"
+    },
+    {
+      "operation_id": 193,
+      "evaluation_id": 98122,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "da59e49fdee65fc6438b0b746d7ac4630c0afb2ae0ad4e03e9f93cf5b9369885"
+    },
+    {
+      "operation_id": 194,
+      "evaluation_id": 98123,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "66bc3ccbead0750623d544d46d8aa2b4d9a31c49abf97270873910abaf4e4f59"
+    },
+    {
+      "operation_id": 195,
+      "evaluation_id": 98149,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "ff8890a46d52e9703dafb6ab9e1d281f29fc7e36bf46f4ba9cca92599619af25"
+    },
+    {
+      "operation_id": 196,
+      "evaluation_id": 98128,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "f3eb4e395a6246d51e57eae4b5cc71ed240f1b0004605c4729ecf0299fc70ef4"
+    },
+    {
+      "operation_id": 197,
+      "evaluation_id": 98125,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "6748e2ba73ee37cf35a5f29537598a18be6a15ff15bd1c369eefdcd7953a1a90"
+    },
+    {
+      "operation_id": 198,
+      "evaluation_id": 98124,
+      "source_engine_version": "rules-v0.9-pending-zone-adjusted",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "f9a61dbee0d9c415f1da4d4e99a799262b09d1dc1a3a6b3ab2bd74bf0436b261"
+    },
+    {
+      "operation_id": 199,
+      "evaluation_id": 98126,
+      "source_engine_version": "rules-v0.10-risk-gated-calibration",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "4cd12f3031d28935ecab53d39f1e183f0ab794f8900032213545f3b355b04d1b"
+    },
+    {
+      "operation_id": 200,
+      "evaluation_id": 98138,
+      "source_engine_version": "rules-v0.10-risk-gated-calibration",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "2c9e374915c34b73742348717d29de9f6bb9c2ab28aa1069975e075b67fc153a"
+    },
+    {
+      "operation_id": 201,
+      "evaluation_id": 98164,
+      "source_engine_version": "rules-v0.10-risk-gated-calibration",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "8b78fc630a51634895422962a0ecca99f383c87a73d26079d80ac033203f6c64"
+    },
+    {
+      "operation_id": 202,
+      "evaluation_id": 98129,
+      "source_engine_version": "rules-v0.10-risk-gated-calibration",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "21092355a0e3d5396f335350247429df3952c8a0a8a9a355930f6da58cd7b193"
+    },
+    {
+      "operation_id": 204,
+      "evaluation_id": 98131,
+      "source_engine_version": "rules-v0.10-risk-gated-calibration",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "c6a800320ed737f8757f8b1f97baf41d0d1a30784ebb79d7c509a5ecf7633813"
+    },
+    {
+      "operation_id": 205,
+      "evaluation_id": 98133,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d88b82f42e6753fdfd14aece1d7882e52e2ecf4688977cad337c51e8b798781d"
+    },
+    {
+      "operation_id": 206,
+      "evaluation_id": 98134,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "295da421869864786ef05d073703586a9d088c114e5aa2413ba67a5054cb7f0e"
+    },
+    {
+      "operation_id": 207,
+      "evaluation_id": 98140,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d65a43f79e13a77a2690f35c2e2266973f102c5e126df67cb42be99be78d19ba"
+    },
+    {
+      "operation_id": 208,
+      "evaluation_id": 98135,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "23919608208f63e8b2b2b8a45a9a3a9acbaf7c1b93afe45252541aaf517e9df6"
+    },
+    {
+      "operation_id": 209,
+      "evaluation_id": 98141,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "expiry_unresolved",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "43da48b4825921425d28acca9b1c216bd35327fb82eb3d0f3e37de0b95eb06fd"
+    },
+    {
+      "operation_id": 210,
+      "evaluation_id": 98136,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "3cee9b7efbb4a38828eb61e5a58ccdae9c5c4a25eed87d115c436ef337304725"
+    },
+    {
+      "operation_id": 211,
+      "evaluation_id": 98139,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d8d9d86c471205ca055eaf5c03fad6ec02e1d2dbcd831c1abe82eecc5066d610"
+    },
+    {
+      "operation_id": 212,
+      "evaluation_id": 98142,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "8acc883b6aae686a274c7602d6677ff19c20e49ef01974f7910fd0ab1e3e2d7c"
+    },
+    {
+      "operation_id": 213,
+      "evaluation_id": 98143,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "ef033183b5a76b5fc82291b0ea148195add60a397c7d8d2b7a63428df693e6e3"
+    },
+    {
+      "operation_id": 214,
+      "evaluation_id": 98144,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "f8ef1ca1f7d7c71bcfcd726e9cbfd6e330f65a72480eb9594c9dbad91093e61d"
+    },
+    {
+      "operation_id": 215,
+      "evaluation_id": 98147,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "66b83ac4285ea56dda94e1ee08285698983351e3a2d2188f1080333dfe1477c0"
+    },
+    {
+      "operation_id": 216,
+      "evaluation_id": 98145,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "12765f654ee26763b66a7a352048dd0dce8f814d7c77684837e2d541cdd8a147"
+    },
+    {
+      "operation_id": 217,
+      "evaluation_id": 98151,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "0d3ff3f28d423ea69ec4fb24c38727f15ca3cb158b3f4602718a5e6682f6cae7"
+    },
+    {
+      "operation_id": 218,
+      "evaluation_id": 98146,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "95f2a2cf11fb2237e37cf00810cd82696574ffbff1161b141892cbd0013de65a"
+    },
+    {
+      "operation_id": 219,
+      "evaluation_id": 98148,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "448cdb57772a407366a6c0755e5cbfe1373ffe7b41ba02b8b4deef57c11e2955"
+    },
+    {
+      "operation_id": 220,
+      "evaluation_id": 98165,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "95a783065a9df5f784efe76b3f3e07c5a8430a69102b3339e762c4c514ed4bd5"
+    },
+    {
+      "operation_id": 221,
+      "evaluation_id": 98153,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "93d19dfc9dd07e8d94f6e37e004814a629922f84a2b11429c190ea1e94a79906"
+    },
+    {
+      "operation_id": 222,
+      "evaluation_id": 98150,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "39d6edcb2cd8032bd52482e472a7e2a7e7f013a3d502310370f0002cd16b29e2"
+    },
+    {
+      "operation_id": 223,
+      "evaluation_id": 98152,
+      "source_engine_version": "rules-v0.11-underweighted-risk-cluster",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "81a09fbc0b9155608f540e6400297c280e74093a8f45fff3717c305b841c32d0"
+    },
+    {
+      "operation_id": 224,
+      "evaluation_id": 98154,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "b9a0e966c8878564ac42ae32be5f9559651993b77db3ae5ccbf7dd5bc2142652"
+    },
+    {
+      "operation_id": 225,
+      "evaluation_id": 98155,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "18b54a97452f205840d78d351596ae7406b614c0f7375429b5c7d53733869681"
+    },
+    {
+      "operation_id": 226,
+      "evaluation_id": 98160,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "feb454dd67cbc6c406d99e4a531e02f9bfd290f1c7b75b81f5ad124b786b95e2"
+    },
+    {
+      "operation_id": 227,
+      "evaluation_id": 98169,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "526439746042399cad420bd1756fcf10654fc193f6559bad681f0562d40ebb47"
+    },
+    {
+      "operation_id": 228,
+      "evaluation_id": 98156,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "f98e5327f9395e437c622f9422a576479d6f5f0e37bcc21bdecedff02f480ad4"
+    },
+    {
+      "operation_id": 229,
+      "evaluation_id": 98157,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "5e1b09fd6e917f87452983acee85a34c07cea5b8b3cb99c8d6a5ac8949ea24cb"
+    },
+    {
+      "operation_id": 230,
+      "evaluation_id": 98158,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "a41f452adf859f1241365d4d3e2d76a107c94b849cc50db89719a39582567aa0"
+    },
+    {
+      "operation_id": 231,
+      "evaluation_id": 98159,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "5d937913d7e720af7ae1fb3334d7aeb294ca8fde6b41d8292eb088f7a84b46be"
+    },
+    {
+      "operation_id": 232,
+      "evaluation_id": 98163,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "b3b426d996f1aa306e1525fc952e418032fcc0eeaccb9034446ad03e6cd3df51"
+    },
+    {
+      "operation_id": 233,
+      "evaluation_id": 98162,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d221acd3acdd2b68e7894f6d6fc01f532e10dba35e53c6cb945b3323190accab"
+    },
+    {
+      "operation_id": 234,
+      "evaluation_id": 98161,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "c34ad602a9b5003b9b1bb91c137e0457a708c22c0063a9e581747a6d7159f4a0"
+    },
+    {
+      "operation_id": 235,
+      "evaluation_id": 98166,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "5a71c1f74e40ac21386ac3de941d596a6ff1ee9b54935c198f506bc202626a8d"
+    },
+    {
+      "operation_id": 236,
+      "evaluation_id": 98167,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 4,
+      "source_bundle_sha256": "aa6325cc3789c2e6f0eb455a39c32c6569aacaa83d647db0757137ce4ad11187"
+    },
+    {
+      "operation_id": 237,
+      "evaluation_id": 98168,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "d86aa3f739ee92b1980edddafcf240b140ad0f72281a565fb0475fcf05dfceea"
+    },
+    {
+      "operation_id": 238,
+      "evaluation_id": 98172,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "ffd7bfc7739cf0541c7e8bd39522cca8f84fd6a84e4ce1f468c96e4b8f1281b9"
+    },
+    {
+      "operation_id": 239,
+      "evaluation_id": 98170,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "tp_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "43c1acc5ea9e0176f1d0c1e6328342f3fe9bfddf75a61c0046f0a796c781a8c2"
+    },
+    {
+      "operation_id": 240,
+      "evaluation_id": 98171,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "50d7a32356fcf2b90f32be4ef1de44ca47b9b740d20e82ac477597a1b6e1659a"
+    },
+    {
+      "operation_id": 241,
+      "evaluation_id": 98173,
+      "source_engine_version": "rules-v0.12.1-liquidations-readable",
+      "review_status": "reviewed_descriptive_only",
+      "outcome_class": "sl_first",
+      "outcome_status": "descriptive_only",
+      "missing_fields": 6,
+      "source_bundle_sha256": "06a57214d209910869ac5bc256123a6852a3e97f09c6d62876be91e126736f0b"
+    }
+  ],
+  "reconciled": true,
+  "source_integrity_after": {
+    "evaluation_rows": 234,
+    "legacy_rows": 232,
+    "evaluations_md5": "9d66cc74e6cdf435291e69597895178e",
+    "legacy_review_rows": 232
+  },
+  "source_evaluations_unchanged": true
+}

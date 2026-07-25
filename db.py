@@ -427,6 +427,32 @@ def init_db() -> None:
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
                 FOREIGN KEY(evaluation_id) REFERENCES learning_evaluations(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS learning_legacy_reevaluations (
+                id {id_type},
+                operation_id {fk_type} NOT NULL,
+                evaluation_id {fk_type} NOT NULL,
+                reevaluation_version TEXT NOT NULL,
+                review_schema_version TEXT NOT NULL,
+                review_status TEXT NOT NULL,
+                source_engine_version TEXT,
+                source_learning_schema_version TEXT,
+                source_data_contract_version TEXT,
+                source_evaluation_created_at TIMESTAMPTZ,
+                source_evaluation_updated_at TIMESTAMPTZ,
+                source_bundle_sha256 TEXT NOT NULL,
+                original_interpretation_json TEXT NOT NULL,
+                reevaluated_contract_json TEXT NOT NULL,
+                missing_fields_json TEXT NOT NULL,
+                predictive_eligibility_json TEXT NOT NULL,
+                outcome_class TEXT NOT NULL,
+                outcome_status TEXT NOT NULL,
+                reviewed_at TIMESTAMPTZ NOT NULL,
+                created_at {text_timestamp},
+                UNIQUE(operation_id, reevaluation_version),
+                FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
+                FOREIGN KEY(evaluation_id) REFERENCES learning_evaluations(id) ON DELETE CASCADE
+            );
             """
         )
         ensure_column(db, "operations", "observation_until", "TEXT")
@@ -506,6 +532,7 @@ def init_db() -> None:
         create_indexes(db)
         ensure_economic_metric_precision(db)
         secure_internal_learning_tables(db)
+        ensure_legacy_reevaluations_append_only(db)
         backfill_recommendation_links(db)
 
 
@@ -539,6 +566,8 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_learning_economic_status ON learning_economic_normalizations(status, exclusion_reason);
         CREATE INDEX IF NOT EXISTS idx_learning_economic_evaluation ON learning_economic_normalizations(evaluation_id);
         CREATE INDEX IF NOT EXISTS idx_learning_evaluations_economics ON learning_evaluations(economic_normalization_status, closure_type);
+        CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_status ON learning_legacy_reevaluations(review_status, outcome_class);
+        CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_evaluation ON learning_legacy_reevaluations(evaluation_id);
         """
     )
 
@@ -548,10 +577,47 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         """
         ALTER TABLE learning_evidence_reconstructions ENABLE ROW LEVEL SECURITY;
         ALTER TABLE learning_economic_normalizations ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE learning_legacy_reevaluations ENABLE ROW LEVEL SECURITY;
         REVOKE ALL PRIVILEGES ON TABLE learning_evidence_reconstructions FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_economic_normalizations FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE learning_legacy_reevaluations FROM anon, authenticated;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE learning_legacy_reevaluations FROM service_role;
+        GRANT SELECT, INSERT ON TABLE learning_legacy_reevaluations TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE learning_legacy_reevaluations_id_seq TO service_role;
         """
     )
+
+
+def ensure_legacy_reevaluations_append_only(db: DbSession) -> None:
+    rules = {
+        row_to_dict(row)["rulename"]
+        for row in db.execute(
+            """
+            SELECT rulename
+            FROM pg_rules
+            WHERE schemaname = 'public'
+              AND tablename = 'learning_legacy_reevaluations'
+            """
+        ).fetchall()
+    }
+    if "learning_legacy_reevaluations_no_update" not in rules:
+        db.execute(
+            """
+            CREATE RULE learning_legacy_reevaluations_no_update AS
+            ON UPDATE TO learning_legacy_reevaluations
+            DO INSTEAD NOTHING
+            """
+        )
+    if "learning_legacy_reevaluations_no_delete" not in rules:
+        db.execute(
+            """
+            CREATE RULE learning_legacy_reevaluations_no_delete AS
+            ON DELETE TO learning_legacy_reevaluations
+            DO INSTEAD NOTHING
+            """
+        )
 
 
 def ensure_economic_metric_precision(db: DbSession) -> None:

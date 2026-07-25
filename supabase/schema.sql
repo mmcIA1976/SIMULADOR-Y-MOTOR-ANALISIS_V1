@@ -236,6 +236,30 @@ CREATE TABLE IF NOT EXISTS learning_economic_normalizations (
     UNIQUE(operation_id, normalization_version)
 );
 
+CREATE TABLE IF NOT EXISTS learning_legacy_reevaluations (
+    id BIGSERIAL PRIMARY KEY,
+    operation_id BIGINT NOT NULL REFERENCES operations(id) ON DELETE CASCADE,
+    evaluation_id BIGINT NOT NULL REFERENCES learning_evaluations(id) ON DELETE CASCADE,
+    reevaluation_version TEXT NOT NULL,
+    review_schema_version TEXT NOT NULL,
+    review_status TEXT NOT NULL,
+    source_engine_version TEXT,
+    source_learning_schema_version TEXT,
+    source_data_contract_version TEXT,
+    source_evaluation_created_at TIMESTAMPTZ,
+    source_evaluation_updated_at TIMESTAMPTZ,
+    source_bundle_sha256 TEXT NOT NULL,
+    original_interpretation_json TEXT NOT NULL,
+    reevaluated_contract_json TEXT NOT NULL,
+    missing_fields_json TEXT NOT NULL,
+    predictive_eligibility_json TEXT NOT NULL,
+    outcome_class TEXT NOT NULL,
+    outcome_status TEXT NOT NULL,
+    reviewed_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(operation_id, reevaluation_version)
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -262,6 +286,8 @@ CREATE INDEX IF NOT EXISTS idx_learning_evidence_evaluation ON learning_evidence
 CREATE INDEX IF NOT EXISTS idx_learning_economic_status ON learning_economic_normalizations(status, exclusion_reason);
 CREATE INDEX IF NOT EXISTS idx_learning_economic_evaluation ON learning_economic_normalizations(evaluation_id);
 CREATE INDEX IF NOT EXISTS idx_learning_evaluations_economics ON learning_evaluations(economic_normalization_status, closure_type);
+CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_status ON learning_legacy_reevaluations(review_status, outcome_class);
+CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_evaluation ON learning_legacy_reevaluations(evaluation_id);
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operations ENABLE ROW LEVEL SECURITY;
@@ -273,6 +299,7 @@ ALTER TABLE public.price_ticks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contest_seasons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_evidence_reconstructions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_economic_normalizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.learning_legacy_reevaluations ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operations FROM anon, authenticated;
@@ -284,9 +311,42 @@ REVOKE ALL PRIVILEGES ON TABLE public.price_ticks FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.contest_seasons FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.learning_evidence_reconstructions FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.learning_economic_normalizations FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.learning_legacy_reevaluations FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
 
 GRANT USAGE ON SCHEMA public TO postgres, service_role;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres, service_role;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres, service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.learning_legacy_reevaluations FROM service_role;
+GRANT SELECT, INSERT
+    ON TABLE public.learning_legacy_reevaluations TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.learning_legacy_reevaluations_id_seq TO service_role;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'learning_legacy_reevaluations'
+          AND rulename = 'learning_legacy_reevaluations_no_update'
+    ) THEN
+        CREATE RULE learning_legacy_reevaluations_no_update AS
+        ON UPDATE TO public.learning_legacy_reevaluations
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'learning_legacy_reevaluations'
+          AND rulename = 'learning_legacy_reevaluations_no_delete'
+    ) THEN
+        CREATE RULE learning_legacy_reevaluations_no_delete AS
+        ON DELETE TO public.learning_legacy_reevaluations
+        DO INSTEAD NOTHING;
+    END IF;
+END $$;

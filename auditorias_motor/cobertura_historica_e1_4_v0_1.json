@@ -1,0 +1,62 @@
+{
+  "audit_version": "E1.4-v0.1",
+  "captured_at_utc": "2026-07-25T17:52:42.550522+00:00",
+  "database_mode": "supabase_read_only",
+  "project_id": "hfjygvdcmdgnjqugegfg",
+  "production_rows_modified": 0,
+  "recommendations": {
+    "total": 875,
+    "with_full_analysis_output": 844,
+    "without_full_analysis_output": 31,
+    "target_engine_version": 86,
+    "older_engine_versions_excluded": 789,
+    "explicit_target_scoring_version": 18,
+    "same_engine_without_scoring_version": 68
+  },
+  "target_cohort": {
+    "engine_version": "rules-v0.12.1-liquidations-readable",
+    "scoring_version": "scoring-v0.11-underweighted-risk-cluster",
+    "cases": 86,
+    "linked_operations": 21,
+    "closed_or_observed_operations": 21,
+    "learning_evaluations": 20,
+    "complete_reconstructed_outcomes": 20,
+    "economic_normalization_included": 20,
+    "symbols": {
+      "BTCUSDT": 79,
+      "ETHUSDT": 7
+    },
+    "sides": {
+      "long": 32,
+      "short": 54
+    },
+    "time_horizons": {
+      "intraday_short": 19,
+      "intraday_wide": 40,
+      "short_swing": 27
+    }
+  },
+  "engine_cohorts": {
+    "rules-v0.1": 8,
+    "rules-v0.2-market-snapshot": 13,
+    "rules-v0.3-free-data-expansion": 9,
+    "rules-v0.4-layered-probability-ev": 19,
+    "rules-v0.5-technical-ratings": 147,
+    "rules-v0.6-audit-calibrated": 30,
+    "rules-v0.7-fibonacci-confluence": 35,
+    "rules-v0.8-leverage-neutral-analysis": 36,
+    "rules-v0.9-pending-zone-adjusted": 399,
+    "rules-v0.10-risk-gated-calibration": 18,
+    "rules-v0.11-underweighted-risk-cluster": 74,
+    "rules-v0.12-liquidations-observation": 1,
+    "rules-v0.12.1-liquidations-readable": 86
+  },
+  "classification": {
+    "exact_contract": 18,
+    "formula_compatible_legacy_contract": 68,
+    "older_engine_not_comparable": 789,
+    "reason_formula_compatible": "Los 68 casos reproducen TP, SL, rango, grado, riesgo y decision con el codigo congelado, pero no guardaron scoring_version.",
+    "cross_pair_validity": "not_demonstrated",
+    "outcome_sample_sufficiency": "insufficient_for_rule_changes"
+  }
+}

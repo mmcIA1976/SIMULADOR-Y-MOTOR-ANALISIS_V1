@@ -19,8 +19,9 @@ La auditoria extraordinaria mantiene congelado el champion mientras se
 documenta y prueba. E1.1 inventario sus reglas, E1.2 registro su procedencia y
 E1.3 demostro sus incoherencias matematicas mediante
 [`auditorias_motor/informe_coherencia_motor.md`](auditorias_motor/informe_coherencia_motor.md).
-La siguiente fase es E1.4: medir el impacto historico de cada regla sin
-sobrescribir recomendaciones antiguas.
+E1.4 midio su impacto historico mediante
+[`auditorias_motor/informe_impacto_historico_reglas.md`](auditorias_motor/informe_impacto_historico_reglas.md).
+La siguiente fase es E1.5: definir el challenger probabilistico en sombra.
 
 ## Estado actual
 

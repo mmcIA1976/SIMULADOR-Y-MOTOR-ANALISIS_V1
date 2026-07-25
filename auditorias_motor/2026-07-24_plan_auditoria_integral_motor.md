@@ -155,7 +155,7 @@ Artefactos:
 
 ### E1.4 - Impacto historico
 
-Estado: SIGUIENTE - NO INICIADA
+Estado: COMPLETADA
 
 - Reejecutar reglas sobre snapshots preservados.
 - Medir contribucion a probabilidad, grado, EV y decision.
@@ -165,9 +165,30 @@ Criterio de salida:
 
 - Impacto cuantificado sin sobrescribir recomendaciones historicas.
 
+Resultado:
+
+- 875 recomendaciones inventariadas y separadas por version.
+- 86 snapshots del engine congelado reproducidos de forma exacta.
+- Paridad 86/86 para TP, SL, rango, grado, riesgo y decision.
+- 29 contribuciones directas y 3 grupos compuestos auditados por ablation.
+- Impacto cuantificado sobre probabilidad, EV, grado y decision.
+- 789 recomendaciones de motores anteriores excluidas del replay actual.
+- Solo 20 outcomes completos y 7 casos ETH: no existe muestra suficiente para
+  autorizar cambios de reglas ni afirmar validez entre pares.
+- Ninguna recomendacion historica ni fila de produccion fue modificada.
+
+Artefactos:
+
+- `audit_historical_rule_impact.py`
+- `e1_4_export_query.sql`
+- `cobertura_historica_e1_4_v0_1.json`
+- `impacto_historico_reglas_v0_1.json`
+- `informe_impacto_historico_reglas.md`
+- `tests/test_historical_rule_impact.py`
+
 ### E1.5 - Contrato del challenger
 
-Estado: PENDIENTE
+Estado: SIGUIENTE - NO INICIADA
 
 - Definir arquitectura interpretable de alcanzabilidad.
 - Crear challenger en sombra.

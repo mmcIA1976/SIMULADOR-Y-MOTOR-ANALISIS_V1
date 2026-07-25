@@ -371,7 +371,7 @@ Criterio de salida:
 | 2 | Completada | `814755f` | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Aprobada |
 | 3 | Completada | `ed3cfa3` | `2026-07-23_fase_3_reconstruccion_mfe_mae_resultado.md` | Aprobada |
 | 4 | Completada | `5295690` | `2026-07-24_fase_4_metricas_economicas_normalizadas_resultado.md` | Aprobada |
-| E1 | Completada; E1.1-E1.5 cerradas | Pendiente commit de cierre | `auditorias_motor/2026-07-25_E1_5_contrato_challenger_resultado.md` | Autorizada |
+| E1 | Completada; E1.1-E1.5 cerradas | `8066f24` | `auditorias_motor/2026-07-25_E1_5_contrato_challenger_resultado.md` | Autorizada |
 | 5 | Siguiente; desbloqueada, no iniciada | - | - | Pendiente |
 | 6 | Bloqueada por fase 5 | - | - | - |
 | 7 | Bloqueada por fase 6 | - | - | - |

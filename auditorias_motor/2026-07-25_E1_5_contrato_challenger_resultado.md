@@ -5,6 +5,7 @@ Decision: COMPLETADA
 Champion: `rules-v0.12.1-liquidations-readable`
 Scoring: `scoring-v0.11-underweighted-risk-cluster`
 Challenger: `challenger-v0.1-contract-only`
+Commit de implementacion y cierre: `8066f24`
 
 ## 1. Objetivo alcanzado
 

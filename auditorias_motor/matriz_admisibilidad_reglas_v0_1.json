@@ -1,0 +1,5151 @@
+{
+  "audit_version": "E1.5.1-v0.1",
+  "coverage": {
+    "calibration_flags_expected": 19,
+    "calibration_flags_missing": [],
+    "direct_ablation_units_expected": 29,
+    "direct_ablation_units_missing": [],
+    "predictive_functions_expected": 36,
+    "predictive_functions_missing": []
+  },
+  "mandatory_predictive_gates": [
+    "bounded_source_claim",
+    "implementation_fidelity",
+    "mathematical_coherence",
+    "complete_trace",
+    "incremental_ablation",
+    "temporal_holdout",
+    "cross_pair_validation",
+    "horizon_validation",
+    "probability_calibration",
+    "sufficient_sample"
+  ],
+  "matrix_sha256": "a59cb1e2b941e2ae989a402e6a1ed8b6aaad75f3a50ea730f50241675837e2b2",
+  "production_modified": false,
+  "purpose": "Separar definicion de dato, formula estandar, hipotesis, parametro exacto y validacion predictiva antes de admitir reglas al challenger.",
+  "reliability_tiers": {
+    "R0_data_definition": "Dato con definicion oficial; no implica poder predictivo.",
+    "R1_standard_calculation": "Calculo estandar fiel; no implica senal predictiva.",
+    "R2_research_hypothesis": "Hipotesis investigable con respaldo conceptual externo.",
+    "R3_internal_provisional": "Indicio interno no independiente y aun insuficiente.",
+    "R4_temporally_validated": "Supera validacion temporal independiente.",
+    "R5_production_authorized": "Validada, calibrada y autorizada para produccion.",
+    "RX_blocked": "Formula actual bloqueada por incoherencia, duplicidad o falta de respaldo."
+  },
+  "rules": [
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Campos oficiales de ticker y klines.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-PRICE-KLINES",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "market_data.py:get_price",
+        "market_data.py:get_klines",
+        "data_engine.py:parse_klines"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Precio y velas Binance USD-M",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Define precio, OHLCV e intervalos.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "No acredita ninguna senal, ventana o probabilidad TP/SL."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Campos oficiales de depth y operaciones agregadas.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-DEPTH-TRADES",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "market_data.py:get_depth",
+        "market_data.py:get_agg_trades"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Depth y aggTrades Binance USD-M",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Define bids, asks, cantidades, precios y trades.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "No valida imbalance top-20, CVD de 500 trades ni sus pesos."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Campos oficiales de funding, open interest y ratios.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-DERIVATIVES",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "data_engine.py:summarize_derivatives",
+        "analysis_engine.py:derivatives_for_horizon"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Funding, OI y ratios Binance USD-M",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Define los campos de derivados y sus periodos publicados.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "No valida ventanas internas, thresholds, signo predictivo ni pesos."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Variaciones publicadas para el universo consultado.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-BREADTH",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "data_engine.py:summarize_market_breadth"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Mercados CoinGecko para breadth",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Define variaciones y datos de los activos devueltos.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "COINGECKO_MARKETS_API"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "No valida top-100, cortes 58/42 ni efecto sobre un par."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Capitalizacion, volumen y dominancia global.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-GLOBAL",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "data_engine.py:summarize_global_market"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Mercado global CoinGecko",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Define agregados del mercado crypto.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "COINGECKO_GLOBAL_API"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "No valida interpretacion direccional."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Escala y metodologia del indicador externo.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-SENTIMENT",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "data_engine.py:summarize_sentiment"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Fear and Greed de Alternative.me",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Define escala, componentes y API.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "ALTERNATIVE_FNG"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "El proveedor no valida decisiones de trading ni cortes 75/25."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "data_allowed_not_predictive",
+      "coherence": "pass_as_data",
+      "current_decision": "allow_as_input_with_freshness_checks",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "official_field_definition",
+      "formula": "Posiciones publicas normalizadas como clusters observacionales.",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "DATA-LIQUIDATIONS",
+      "implementation_fidelity": "transport_verified",
+      "implementation_refs": [
+        "liquidation_data.py:normalize_heatmap",
+        "analysis_engine.py:build_liquidation_observation"
+      ],
+      "kind": "data_definition",
+      "layer": "market_data",
+      "name": "Mapa Hyperliquid observado",
+      "pair_scope": "provider_supported_pairs",
+      "predictive_validation": "not_applicable_data_only",
+      "published_support": "Permite conservar una observacion versionada del proveedor gratuito.",
+      "reliability_tier": "R0_data_definition",
+      "source_ids": [
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "source_and_availability_recorded",
+      "transfer_limit": "No es mapa agregado multi-exchange ni tiene poder predictivo validado."
+    },
+    {
+      "blockers": [
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "calculation_allowed_nonpredictive",
+      "coherence": "pass_positive_and_side_symmetric",
+      "current_decision": "allow_feature_calculation_only",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "financial_identity_only",
+      "formula": "long: ln(TP/entry); short: ln(entry/TP)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "PLAN-TP-LOG-DISTANCE",
+      "implementation_fidelity": "pass",
+      "implementation_refs": [
+        "challenger_engine.py:derive_plan_features"
+      ],
+      "kind": "deterministic_plan_calculation",
+      "layer": "feature_transform",
+      "name": "Distancia logaritmica de entrada a TP",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated_as_predictor",
+      "published_support": "Es una transformacion matematica dimensionless del plan.",
+      "reliability_tier": "R1_standard_calculation",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "raw_and_transformed_values_recorded",
+      "transfer_limit": "La identidad no acredita signo, magnitud ni linealidad predictiva."
+    },
+    {
+      "blockers": [
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "calculation_allowed_nonpredictive",
+      "coherence": "pass_positive_and_side_symmetric",
+      "current_decision": "allow_feature_calculation_only",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "financial_identity_only",
+      "formula": "long: ln(entry/SL); short: ln(SL/entry)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "PLAN-SL-LOG-DISTANCE",
+      "implementation_fidelity": "pass",
+      "implementation_refs": [
+        "challenger_engine.py:derive_plan_features"
+      ],
+      "kind": "deterministic_plan_calculation",
+      "layer": "feature_transform",
+      "name": "Distancia logaritmica de entrada a SL",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated_as_predictor",
+      "published_support": "Es una transformacion matematica dimensionless del plan.",
+      "reliability_tier": "R1_standard_calculation",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "raw_and_transformed_values_recorded",
+      "transfer_limit": "La identidad no acredita signo, magnitud ni linealidad predictiva."
+    },
+    {
+      "blockers": [
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "calculation_allowed_nonpredictive",
+      "coherence": "pass_with_explicit_positive_duration",
+      "current_decision": "allow_feature_calculation_only",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "financial_identity_only",
+      "formula": "ln(horizon_seconds)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "PLAN-LOG-HORIZON-SECONDS",
+      "implementation_fidelity": "pass",
+      "implementation_refs": [
+        "challenger_engine.py:derive_plan_features"
+      ],
+      "kind": "deterministic_plan_calculation",
+      "layer": "feature_transform",
+      "name": "Duracion logaritmica del horizonte",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated_as_predictor",
+      "published_support": "Es una transformacion matematica de la duracion declarada.",
+      "reliability_tier": "R1_standard_calculation",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "raw_and_transformed_values_recorded",
+      "transfer_limit": "No acredita como cambia la alcanzabilidad con el tiempo."
+    },
+    {
+      "blockers": [
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "calculation_allowed_nonpredictive",
+      "coherence": "pass",
+      "current_decision": "allow_feature_calculation_only",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "internal_only",
+      "formula": "long=+1; short=-1",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "PLAN-SIDE-SIGN",
+      "implementation_fidelity": "pass",
+      "implementation_refs": [
+        "challenger_engine.py:derive_plan_features"
+      ],
+      "kind": "deterministic_plan_calculation",
+      "layer": "feature_transform",
+      "name": "Codificacion simetrica del lado",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated_as_predictor",
+      "published_support": "Es una codificacion reproducible del plan del usuario.",
+      "reliability_tier": "R1_standard_calculation",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "raw_and_transformed_values_recorded",
+      "transfer_limit": "La codificacion no acredita diferencias predictivas entre lados."
+    },
+    {
+      "blockers": [
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "calculation_allowed_nonpredictive",
+      "coherence": "pass_as_feature",
+      "current_decision": "allow_feature_calculation_only",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "standard_formula",
+      "formula": "EMA_t = alpha*x_t + (1-alpha)*EMA_(t-1), alpha=2/(period+1)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-EMA-CORE",
+      "implementation_fidelity": "pass_for_available_history",
+      "implementation_refs": [
+        "data_engine.py:ema"
+      ],
+      "kind": "standard_calculation",
+      "layer": "feature_transform",
+      "name": "EMA estandar con historia suficiente",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated_as_predictor",
+      "published_support": "La media exponencial es una transformacion tecnica reconocida.",
+      "reliability_tier": "R1_standard_calculation",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS"
+      ],
+      "traceability": "feature_value_recorded",
+      "transfer_limit": "No acredita que stacks EMA predigan TP/SL ni sus pesos."
+    },
+    {
+      "blockers": [
+        "mislabeled_period",
+        "missing_explicit_availability"
+      ],
+      "challenger_admission": "blocked_current_implementation",
+      "coherence": "semantic_fail",
+      "current_decision": "rename_or_block_when_history_insufficient",
+      "e1_3_findings": [
+        "E1.3-F15"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "if len(closes)<200: ema(closes, min(80,len(closes))) etiquetada ema_200",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": false,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-EMA200-FALLBACK",
+      "implementation_fidelity": "fail_mislabeled_period",
+      "implementation_refs": [
+        "data_engine.py:summarize_timeframe"
+      ],
+      "kind": "implementation_variant",
+      "layer": "feature_transform",
+      "name": "Fallback EMA200 con hasta 80 cierres",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "La EMA tiene definicion reconocida.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS"
+      ],
+      "traceability": "fallback_not_explicit_in_snapshot",
+      "transfer_limit": "La fuente no permite llamar EMA200 a una EMA de hasta 80 datos."
+    },
+    {
+      "blockers": [
+        "formula_fidelity",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "blocked_current_implementation",
+      "coherence": "calculation_variant",
+      "current_decision": "correct_or_rename_before_research",
+      "e1_3_findings": [
+        "E1.3-F14"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "implementation_variant",
+      "formula": "RSI sobre media simple de los ultimos 14 cambios",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": false,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-RSI14-CURRENT",
+      "implementation_fidelity": "fail_against_named_standard",
+      "implementation_refs": [
+        "data_engine.py:rsi"
+      ],
+      "kind": "implementation_variant",
+      "layer": "feature_transform",
+      "name": "RSI14 variante de media simple",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Wilder define RSI y su suavizado original.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "WILDER_1978"
+      ],
+      "traceability": "value_recorded_but_variant_not_labeled",
+      "transfer_limit": "La implementacion actual no replica todo el suavizado de Wilder."
+    },
+    {
+      "blockers": [
+        "formula_fidelity",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "blocked_current_implementation",
+      "coherence": "calculation_variant",
+      "current_decision": "correct_or_rename_before_research",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "implementation_variant",
+      "formula": "Media simple de true ranges recientes",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": false,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-ATR14-CURRENT",
+      "implementation_fidelity": "fail_against_named_standard",
+      "implementation_refs": [
+        "data_engine.py:atr"
+      ],
+      "kind": "implementation_variant",
+      "layer": "feature_transform",
+      "name": "ATR14 variante de media simple",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Wilder define true range y ATR.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "WILDER_1978"
+      ],
+      "traceability": "value_recorded_but_variant_not_labeled",
+      "transfer_limit": "La implementacion no replica todo el suavizado original."
+    },
+    {
+      "blockers": [
+        "double_counting",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "research_only_not_shadow",
+      "coherence": "duplicated_across_paths",
+      "current_decision": "research_single_structural_feature",
+      "e1_3_findings": [
+        "E1.3-F11"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "bullish/bearish/mixed por orden EMA9, EMA21 y EMA50",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-EMA-STACK",
+      "implementation_fidelity": "internal_definition_reproducible",
+      "implementation_refs": [
+        "data_engine.py:classify_ema_stack",
+        "analysis_engine.py:trend_score"
+      ],
+      "kind": "research_hypothesis",
+      "layer": "feature_transform",
+      "name": "Stack EMA multi-temporalidad",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Las medias y algunas reglas simples merecen investigacion empirica.",
+      "reliability_tier": "R2_research_hypothesis",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS",
+        "BROCK_LAKONISHOK_LEBARON"
+      ],
+      "traceability": "value_recorded_but_multiple_effects",
+      "transfer_limit": "No valida este stack, activos crypto, horizontes ni pesos."
+    },
+    {
+      "blockers": [
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "research_only_not_shadow",
+      "coherence": "pass_as_candidate_feature",
+      "current_decision": "compare_detectors_in_research",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Cluster de extremos recientes y distancia porcentual al nivel",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-SUPPORT-RESISTANCE",
+      "implementation_fidelity": "internal_proxy_reproducible",
+      "implementation_refs": [
+        "data_engine.py:detect_levels",
+        "data_engine.py:cluster_level"
+      ],
+      "kind": "research_hypothesis",
+      "layer": "feature_transform",
+      "name": "Detector interno de soportes y resistencias",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Existe evidencia parcial de interrupciones cerca de ciertos niveles en FX.",
+      "reliability_tier": "R2_research_hypothesis",
+      "source_ids": [
+        "OSLER_SUPPORT_RESISTANCE"
+      ],
+      "traceability": "levels_and_distances_recorded",
+      "transfer_limit": "No valida el detector interno, BTC ni sus umbrales."
+    },
+    {
+      "blockers": [
+        "non_supportive_evidence",
+        "double_counting",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "blocked_as_predictor",
+      "coherence": "duplicated_with_zone_and_calibration",
+      "current_decision": "retire_predictive_effect_keep_research_only",
+      "e1_3_findings": [
+        "E1.3-F12"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Swings internos + retracements 0.236/0.382/0.5/0.618/0.786 y extensiones",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-FIBONACCI",
+      "implementation_fidelity": "internal_detector_reproducible",
+      "implementation_refs": [
+        "data_engine.py:summarize_fibonacci",
+        "analysis_engine.py:build_fibonacci_trade_context"
+      ],
+      "kind": "research_hypothesis",
+      "layer": "feature_transform",
+      "name": "Swing y niveles Fibonacci automaticos",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "external_evidence_non_supportive",
+      "published_support": "La fuente evalua identificacion automatica de retrocesos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "FIBONACCI_2022"
+      ],
+      "traceability": "context_recorded_multiple_paths",
+      "transfer_limit": "No encontro ventaja estadistica y no valida nuestros swings ni pesos."
+    },
+    {
+      "blockers": [
+        "proxy_transfer_gap",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "research_only_not_shadow",
+      "coherence": "pass_as_distinct_proxy",
+      "current_decision": "research_proxy_without_weight",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "(bid_notional_top20-ask_notional_top20)/(bid+ask)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": false,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-ORDERBOOK-PROXY",
+      "implementation_fidelity": "different_proxy",
+      "implementation_refs": [
+        "data_engine.py:summarize_order_book"
+      ],
+      "kind": "proxy_hypothesis",
+      "layer": "feature_transform",
+      "name": "Imbalance estatico top-20",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "OFI dinamico en mejor bid/ask mostro relacion de corto plazo con precio.",
+      "reliability_tier": "R2_research_hypothesis",
+      "source_ids": [
+        "CONT_KUKANOV_STOIKOV"
+      ],
+      "traceability": "proxy_value_recorded",
+      "transfer_limit": "Top-20 estatico no es el OFI del estudio ni hereda coeficientes."
+    },
+    {
+      "blockers": [
+        "correlated_features",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_incremental_predictive_validation"
+      ],
+      "challenger_admission": "research_only_not_shadow",
+      "coherence": "correlated_with_taker_and_orderbook",
+      "current_decision": "research_with_correlation_control",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "(buy_notional-sell_notional)/(buy+sell) sobre muestra reciente",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-CVD-PROXY",
+      "implementation_fidelity": "internal_proxy_reproducible",
+      "implementation_refs": [
+        "data_engine.py:summarize_trade_flow"
+      ],
+      "kind": "proxy_hypothesis",
+      "layer": "feature_transform",
+      "name": "CVD proxy de 500 aggTrades",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Binance define trades; la literatura permite investigar order flow.",
+      "reliability_tier": "R2_research_hypothesis",
+      "source_ids": [
+        "BINANCE_USDM_API",
+        "CONT_KUKANOV_STOIKOV"
+      ],
+      "traceability": "proxy_value_recorded",
+      "transfer_limit": "No valida esta ventana, clasificacion ni peso."
+    },
+    {
+      "blockers": [
+        "double_counting",
+        "no_incremental_ablation",
+        "small_sample",
+        "no_holdout"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "reuses_parent_scores",
+      "current_decision": "keep_observational_rebuild_as_declared_interaction",
+      "e1_3_findings": [
+        "E1.3-F12",
+        "E1.3-F13"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "internal_only",
+      "formula": "Confluencia, activacion, sweep, rechazo/ruptura y calidad de camino",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "IND-PENDING-ZONE",
+      "implementation_fidelity": "internal_reproducible",
+      "implementation_refs": [
+        "analysis_engine.py:build_zone_analysis",
+        "analysis_engine.py:build_target_path_quality",
+        "analysis_engine.py:build_zone_probability_context"
+      ],
+      "kind": "internal_composite_hypothesis",
+      "layer": "feature_transform",
+      "name": "Zona de entrada pendiente",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Niveles pueden investigarse; la zona concreta es diseno interno.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_ENGINE_HISTORY",
+        "OSLER_SUPPORT_RESISTANCE"
+      ],
+      "traceability": "aggregate_outputs_recorded",
+      "transfer_limit": "No existe fuente para formulas, thresholds ni probabilidades de zona."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "duplicated",
+      "current_decision": "rebuild_single_feature",
+      "e1_3_findings": [
+        "E1.3-F11"
+      ],
+      "e1_4_impact": {
+        "active_cases": 75,
+        "cases": 86,
+        "decision_changed_cases": 5,
+        "ev_sign_changed_cases": 11,
+        "grade_changed_cases": 6,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 9.87557,
+        "max_abs_tp_delta": 0.1,
+        "mean_abs_ev_delta_usdt": 1.96091,
+        "mean_abs_tp_delta_active": 0.053121,
+        "mean_abs_tp_delta_all": 0.046327,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 57,
+        "status": "local_ablation",
+        "tp_changed_cases": 57,
+        "unit": "trend_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "EMA stacks ponderados; cortes +/-0.2 y +/-0.55; efecto +0.10/+0.05/-0.05/-0.09",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-TREND_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:trend_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Tendencia EMA multi-TF",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "family_evidence_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS",
+        "BROCK_LAKONISHOK_LEBARON"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "duplicated",
+      "current_decision": "rebuild_without_manual_points",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F14"
+      ],
+      "e1_4_impact": {
+        "active_cases": 70,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 2,
+        "grade_changed_cases": 2,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 3.45645,
+        "max_abs_tp_delta": 0.04,
+        "mean_abs_ev_delta_usdt": 0.717936,
+        "mean_abs_tp_delta_active": 0.019857,
+        "mean_abs_tp_delta_all": 0.016163,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 48,
+        "status": "local_ablation",
+        "tp_changed_cases": 48,
+        "unit": "technical_direction_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Score EMA+precio/EMA+RSI; cortes +/-0.15 y +/-0.45; efecto +0.035/+0.015/-0.02/-0.04",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-TECHNICAL_DIRECTION_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_technical_rating",
+        "analysis_engine.py:technical_timeframe_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Rating tecnico direccional",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "definitions_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS",
+        "WILDER_1978"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "incoherent_discontinuity",
+      "current_decision": "retire_current_formula",
+      "e1_3_findings": [
+        "E1.3-F04"
+      ],
+      "e1_4_impact": {
+        "active_cases": 86,
+        "cases": 86,
+        "decision_changed_cases": 5,
+        "ev_sign_changed_cases": 3,
+        "grade_changed_cases": 5,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 3.836379,
+        "max_abs_tp_delta": 0.03,
+        "mean_abs_ev_delta_usdt": 0.808828,
+        "mean_abs_tp_delta_active": 0.018477,
+        "mean_abs_tp_delta_all": 0.018477,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 62,
+        "status": "local_ablation",
+        "tp_changed_cases": 62,
+        "unit": "price_vs_entry_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Long: +0.03 si price<=entry, si no -0.02; short simetrico",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-PRICE_VS_ENTRY_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Precio actual frente a entrada",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "none",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "threshold_discontinuity",
+      "current_decision": "research_continuous_transform",
+      "e1_3_findings": [
+        "E1.3-F14"
+      ],
+      "e1_4_impact": {
+        "active_cases": 69,
+        "cases": 86,
+        "decision_changed_cases": 1,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 1,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 1.359565,
+        "max_abs_tp_delta": 0.015,
+        "mean_abs_ev_delta_usdt": 0.244445,
+        "mean_abs_tp_delta_active": 0.007196,
+        "mean_abs_tp_delta_all": 0.005773,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 49,
+        "status": "local_ablation",
+        "tp_changed_cases": 49,
+        "unit": "volume_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "+0.025 si volume_ratio>1.25; -0.015 si <0.65; ponderado por micro_weight",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-VOLUME_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ratio de volumen",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "correlated_proxy",
+      "current_decision": "research_without_current_threshold",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 74,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 2,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.86905,
+        "max_abs_tp_delta": 0.016,
+        "mean_abs_ev_delta_usdt": 0.213763,
+        "mean_abs_tp_delta_active": 0.006519,
+        "mean_abs_tp_delta_all": 0.005609,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 52,
+        "status": "local_ablation",
+        "tp_changed_cases": 52,
+        "unit": "order_book_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Umbral +/-0.12; efecto +/-0.016 por lado y micro_weight",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-ORDER_BOOK_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Imbalance order book",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "different_proxy",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CONT_KUKANOV_STOIKOV",
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "implementation_variant_and_discontinuous",
+      "current_decision": "retire_current_thresholds",
+      "e1_3_findings": [
+        "E1.3-F14"
+      ],
+      "e1_4_impact": {
+        "active_cases": 34,
+        "cases": 86,
+        "decision_changed_cases": 1,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 1,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.984728,
+        "max_abs_tp_delta": 0.025,
+        "mean_abs_ev_delta_usdt": 0.181826,
+        "mean_abs_tp_delta_active": 0.013654,
+        "mean_abs_tp_delta_all": 0.005398,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 32,
+        "status": "local_ablation",
+        "tp_changed_cases": 32,
+        "unit": "momentum_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Bandas RSI discretas por lado; efecto +0.02 o -0.025 por micro_weight",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-MOMENTUM_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Momentum RSI",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "indicator_definition_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "WILDER_1978"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "duplicated",
+      "current_decision": "rebuild_regime_as_single_context",
+      "e1_3_findings": [
+        "E1.3-F11"
+      ],
+      "e1_4_impact": {
+        "active_cases": 66,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 4,
+        "grade_changed_cases": 2,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 5.837065,
+        "max_abs_tp_delta": 0.0322,
+        "mean_abs_ev_delta_usdt": 0.555587,
+        "mean_abs_tp_delta_active": 0.015583,
+        "mean_abs_tp_delta_all": 0.011959,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 44,
+        "status": "local_ablation",
+        "tp_changed_cases": 44,
+        "unit": "market_regime_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Efectos 0.024/-0.028/-0.018 con multiplicador por horizonte",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-MARKET_REGIME_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:classify_market_regime",
+        "analysis_engine.py:market_regime_direction_bias",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Sesgo de regimen",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "concept_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "duplicated",
+      "current_decision": "retire_predictive_adjustment",
+      "e1_3_findings": [
+        "E1.3-F12"
+      ],
+      "e1_4_impact": {
+        "active_cases": 52,
+        "cases": 86,
+        "decision_changed_cases": 1,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 2,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 1.812753,
+        "max_abs_tp_delta": 0.02,
+        "mean_abs_ev_delta_usdt": 0.308338,
+        "mean_abs_tp_delta_active": 0.011346,
+        "mean_abs_tp_delta_all": 0.00686,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 36,
+        "status": "local_ablation",
+        "tp_changed_cases": 36,
+        "unit": "fibonacci_probability_adjustment"
+      },
+      "exact_formula_support": "none",
+      "formula": "Ajuste actual 0 para favorable y negativo para contextos adversos",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-FIBONACCI_PROBABILITY_ADJUSTMENT",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_fibonacci_trade_context",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ajuste Fibonacci",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "non_supportive_external_evidence",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "FIBONACCI_2022"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "duplicated_composite",
+      "current_decision": "rebuild_as_preregistered_interaction",
+      "e1_3_findings": [
+        "E1.3-F12"
+      ],
+      "e1_4_impact": {
+        "active_cases": 5,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.860794,
+        "max_abs_tp_delta": 0.035,
+        "mean_abs_ev_delta_usdt": 0.035028,
+        "mean_abs_tp_delta_active": 0.028,
+        "mean_abs_tp_delta_all": 0.001628,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 4,
+        "status": "local_ablation",
+        "tp_changed_cases": 4,
+        "unit": "zone_probability_adjustment"
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "Ajustes discretos de zona hasta +0.025/-0.035",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-ZONE_PROBABILITY_ADJUSTMENT",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_zone_probability_context",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ajuste de zona pendiente",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "small_internal_sample",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "correlated_proxy",
+      "current_decision": "research_continuous_feature",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 34,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 2,
+        "grade_changed_cases": 2,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 1.975114,
+        "max_abs_tp_delta": 0.022,
+        "mean_abs_ev_delta_usdt": 0.229846,
+        "mean_abs_tp_delta_active": 0.015471,
+        "mean_abs_tp_delta_all": 0.006116,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 28,
+        "status": "local_ablation",
+        "tp_changed_cases": 28,
+        "unit": "taker_flow_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Umbrales 1.12/0.88; efecto +/-0.02 por lado y derivatives_weight",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-TAKER_FLOW_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:taker_flow_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ratio taker buy/sell",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_and_family_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API",
+        "CONT_KUKANOV_STOIKOV"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "correlated_proxy",
+      "current_decision": "research_with_correlation_control",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 67,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.887075,
+        "max_abs_tp_delta": 0.018,
+        "mean_abs_ev_delta_usdt": 0.21281,
+        "mean_abs_tp_delta_active": 0.00724,
+        "mean_abs_tp_delta_all": 0.005641,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 47,
+        "status": "local_ablation",
+        "tp_changed_cases": 47,
+        "unit": "cvd_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Umbral +/-0.12; efecto +/-0.018 por lado y micro_weight",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-CVD_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:cvd_flow_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "CVD proxy",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "different_proxy",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API",
+        "CONT_KUKANOV_STOIKOV"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_interpretation",
+      "current_decision": "research_by_horizon",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 57,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 2,
+        "grade_changed_cases": 2,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 3.988057,
+        "max_abs_tp_delta": 0.022,
+        "mean_abs_ev_delta_usdt": 0.454312,
+        "mean_abs_tp_delta_active": 0.013667,
+        "mean_abs_tp_delta_all": 0.009058,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 39,
+        "status": "local_ablation",
+        "tp_changed_cases": 39,
+        "unit": "oi_trend_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "OI change >=0.2 y signo precio 24h; efecto +/-0.02",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-OI_TREND_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:open_interest_trend_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Tendencia precio-OI",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_universe_and_thresholds",
+      "current_decision": "research_or_retire",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 73,
+        "cases": 86,
+        "decision_changed_cases": 1,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 1,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 3.08168,
+        "max_abs_tp_delta": 0.017,
+        "mean_abs_ev_delta_usdt": 0.321508,
+        "mean_abs_tp_delta_active": 0.007863,
+        "mean_abs_tp_delta_all": 0.006674,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 49,
+        "status": "local_ablation",
+        "tp_changed_cases": 49,
+        "unit": "breadth_bias"
+      },
+      "exact_formula_support": "none",
+      "formula": "Advancers 58/42 y mediana; efecto +/-0.02 por macro_weight",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-BREADTH_BIAS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:market_breadth_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Breadth crypto",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "COINGECKO_MARKETS_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_threshold",
+      "current_decision": "replace_with_barrier_model",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 42,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 3,
+        "grade_changed_cases": 3,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 6.271146,
+        "max_abs_tp_delta": 0.07,
+        "mean_abs_ev_delta_usdt": 0.565064,
+        "mean_abs_tp_delta_active": 0.043319,
+        "mean_abs_tp_delta_all": 0.021156,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 27,
+        "status": "local_ablation",
+        "tp_changed_cases": 27,
+        "unit": "volatility_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.07 si risk_distance < max(range,ATR)*0.35",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-VOLATILITY_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "SL frente a volatilidad",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "atr_definition_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "WILDER_1978"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_threshold",
+      "current_decision": "model_execution_separately",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 0,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0,
+        "max_abs_tp_delta": 0,
+        "mean_abs_ev_delta_usdt": 0.0,
+        "mean_abs_tp_delta_active": null,
+        "mean_abs_tp_delta_all": 0.0,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 0,
+        "status": "local_ablation",
+        "sum_abs_tp_delta_active": 0,
+        "tp_changed_cases": 0,
+        "unit": "liquidity_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.03 si spread_pct>0.04",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-LIQUIDITY_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Penalizacion de spread",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_combination",
+      "current_decision": "research_continuous_interaction",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 24,
+        "cases": 86,
+        "decision_changed_cases": 2,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 3,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 2.468893,
+        "max_abs_tp_delta": 0.025,
+        "mean_abs_ev_delta_usdt": 0.230014,
+        "mean_abs_tp_delta_active": 0.020833,
+        "mean_abs_tp_delta_all": 0.005814,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 20,
+        "status": "local_ablation",
+        "tp_changed_cases": 20,
+        "unit": "overextension_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.025 si abs(price_vs_ema21)>max(0.5,ATR*1.8)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-OVEREXTENSION_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Extension frente a EMA21",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "definitions_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS",
+        "WILDER_1978"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_threshold",
+      "current_decision": "research_by_contract_and_horizon",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 0,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0,
+        "max_abs_tp_delta": 0,
+        "mean_abs_ev_delta_usdt": 0.0,
+        "mean_abs_tp_delta_active": null,
+        "mean_abs_tp_delta_all": 0.0,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 0,
+        "status": "local_ablation",
+        "sum_abs_tp_delta_active": 0,
+        "tp_changed_cases": 0,
+        "unit": "funding_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.025 si long funding>0.03 o short funding<-0.03",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-FUNDING_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:funding_context_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Funding extremo por lado",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_window_and_threshold",
+      "current_decision": "research_by_contract_and_horizon",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 3,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.390862,
+        "max_abs_tp_delta": 0.0075,
+        "mean_abs_ev_delta_usdt": 0.010537,
+        "mean_abs_tp_delta_active": 0.0075,
+        "mean_abs_tp_delta_all": 0.000262,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 3,
+        "status": "local_ablation",
+        "tp_changed_cases": 3,
+        "unit": "funding_relative_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "Thresholds internos de funding actual frente a media reciente",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-FUNDING_RELATIVE_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:funding_relative_context_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Funding frente a media",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_threshold",
+      "current_decision": "research_by_pair",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 4,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 1.123848,
+        "max_abs_tp_delta": 0.015,
+        "mean_abs_ev_delta_usdt": 0.042466,
+        "mean_abs_tp_delta_active": 0.015,
+        "mean_abs_tp_delta_all": 0.000698,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 4,
+        "status": "local_ablation",
+        "tp_changed_cases": 4,
+        "unit": "crowding_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.015 si long ratio>2.0 o short ratio<0.5",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-CROWDING_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:crowding_penalty_score",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Crowding long/short",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_detector_and_threshold",
+      "current_decision": "compare_level_models",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 55,
+        "cases": 86,
+        "decision_changed_cases": 4,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 5,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 2.468893,
+        "max_abs_tp_delta": 0.025,
+        "mean_abs_ev_delta_usdt": 0.56998,
+        "mean_abs_tp_delta_active": 0.021818,
+        "mean_abs_tp_delta_all": 0.013953,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 48,
+        "status": "local_ablation",
+        "tp_changed_cases": 48,
+        "unit": "level_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.025 si nivel queda antes de max(0.25,35% del reward)",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-LEVEL_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:level_risk_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Barrera de soporte/resistencia",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "family_evidence_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "OSLER_SUPPORT_RESISTANCE"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_threshold",
+      "current_decision": "research_or_retire",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 7,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 1.91819,
+        "max_abs_tp_delta": 0.015,
+        "mean_abs_ev_delta_usdt": 0.034218,
+        "mean_abs_tp_delta_active": 0.004286,
+        "mean_abs_tp_delta_all": 0.000349,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 2,
+        "status": "local_ablation",
+        "tp_changed_cases": 2,
+        "unit": "sentiment_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.015 con FearGreed >=75 para long o <=25 para short",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-SENTIMENT_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:sentiment_extreme_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Sentimiento extremo",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "provider_methodology_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "ALTERNATIVE_FNG"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "duplicated",
+      "current_decision": "merge_into_single_structure_feature",
+      "e1_3_findings": [
+        "E1.3-F11"
+      ],
+      "e1_4_impact": {
+        "active_cases": 18,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 4.40499,
+        "max_abs_tp_delta": 0.0243,
+        "mean_abs_ev_delta_usdt": 0.114983,
+        "mean_abs_tp_delta_active": 0.00905,
+        "mean_abs_tp_delta_all": 0.001894,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 8,
+        "status": "local_ablation",
+        "tp_changed_cases": 8,
+        "unit": "higher_timeframe_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "Penalizacion discreta por estructura 4h/1d contraria y horizonte",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-HIGHER_TIMEFRAME_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:higher_timeframe_contra_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Contradiccion HTF",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "concept_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "CFA_TECHNICAL_ANALYSIS"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_combination",
+      "current_decision": "research_continuous_interaction",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 6,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.491882,
+        "max_abs_tp_delta": 0.02,
+        "mean_abs_ev_delta_usdt": 0.025177,
+        "mean_abs_tp_delta_active": 0.02,
+        "mean_abs_tp_delta_all": 0.001395,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 6,
+        "status": "local_ablation",
+        "tp_changed_cases": 6,
+        "unit": "technical_entry_timing_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.02 por RSI extremo y extension frente a EMA/ATR",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-TECHNICAL_ENTRY_TIMING_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_technical_rating",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Timing tecnico",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "definitions_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "WILDER_1978",
+        "CFA_TECHNICAL_ANALYSIS"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_thresholds",
+      "current_decision": "compare_barrier_models",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 76,
+        "cases": 86,
+        "decision_changed_cases": 5,
+        "ev_sign_changed_cases": 2,
+        "grade_changed_cases": 6,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 2.468893,
+        "max_abs_tp_delta": 0.025,
+        "mean_abs_ev_delta_usdt": 0.666151,
+        "mean_abs_tp_delta_active": 0.017382,
+        "mean_abs_tp_delta_all": 0.01536,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 57,
+        "status": "local_ablation",
+        "tp_changed_cases": 57,
+        "unit": "technical_barrier_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "0.025 si barrera<55% reward; 0.012 si <85%",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-TECHNICAL_BARRIER_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_technical_rating",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Barrera tecnica al TP",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "family_evidence_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "OSLER_SUPPORT_RESISTANCE"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unvalidated_interpretation",
+      "current_decision": "research_by_horizon",
+      "e1_3_findings": [],
+      "e1_4_impact": {
+        "active_cases": 10,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0.518332,
+        "max_abs_tp_delta": 0.012,
+        "mean_abs_ev_delta_usdt": 0.034272,
+        "mean_abs_tp_delta_active": 0.01128,
+        "mean_abs_tp_delta_all": 0.001312,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 10,
+        "status": "local_ablation",
+        "tp_changed_cases": 10,
+        "unit": "oi_context_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "Penalizacion discreta por combinaciones de precio y OI",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-OI_CONTEXT_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:oi_price_context_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Contexto precio-OI",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "data_only",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "BINANCE_USDM_API"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "composite_double_count_risk",
+      "current_decision": "replace_with_explicit_interactions",
+      "e1_3_findings": [
+        "E1.3-F13"
+      ],
+      "e1_4_impact": {
+        "active_cases": 21,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 1.61258,
+        "max_abs_tp_delta": 0.032,
+        "mean_abs_ev_delta_usdt": 0.120743,
+        "mean_abs_tp_delta_active": 0.015048,
+        "mean_abs_tp_delta_all": 0.003674,
+        "range_changed_cases": 3,
+        "sl_changed_cases": 17,
+        "status": "local_ablation",
+        "tp_changed_cases": 16,
+        "unit": "contradiction_penalty"
+      },
+      "exact_formula_support": "none",
+      "formula": "Cuenta contradicciones y aplica 0.018/0.032/0.045",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-CONTRADICTION_PENALTY",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:combined_contradiction_penalty",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Penalizacion por contradicciones",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "none",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "aggregate_not_attributable",
+      "current_decision": "decompose_and_revalidate",
+      "e1_3_findings": [
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "active_cases": 58,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 1,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 22.689082,
+        "max_abs_tp_delta": 0.135,
+        "mean_abs_ev_delta_usdt": 1.8965,
+        "mean_abs_tp_delta_active": 0.052172,
+        "mean_abs_tp_delta_all": 0.035185,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 58,
+        "status": "local_ablation",
+        "tp_changed_cases": 58,
+        "unit": "risk_calibration_tp_adjustment"
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "Suma de gates con floor agregado -0.16",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-RISK_CALIBRATION_TP_ADJUSTMENT",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ajuste TP agregado de calibracion",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "small_internal_sample",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "aggregate_only",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "semantic_mixing",
+      "current_decision": "separate_activation_from_outcome",
+      "e1_3_findings": [
+        "E1.3-F13"
+      ],
+      "e1_4_impact": {
+        "active_cases": 0,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0,
+        "max_abs_tp_delta": 0,
+        "mean_abs_ev_delta_usdt": 0.0,
+        "mean_abs_tp_delta_active": null,
+        "mean_abs_tp_delta_all": 0.0,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 0,
+        "status": "local_ablation",
+        "sum_abs_tp_delta_active": 0,
+        "tp_changed_cases": 0,
+        "unit": "zone_range_probability_adjustment"
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "Aumenta range_probability por baja activacion pendiente",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-ZONE_RANGE_PROBABILITY_ADJUSTMENT",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_zone_probability_context",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ajuste rango por no activacion",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "none",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "component_recorded_without_stable_rule_version",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "exact_weight_without_external_support",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "aggregate_not_attributable",
+      "current_decision": "remove_until_defined",
+      "e1_3_findings": [
+        "E1.3-F13",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "active_cases": 0,
+        "cases": 86,
+        "decision_changed_cases": 0,
+        "ev_sign_changed_cases": 0,
+        "grade_changed_cases": 0,
+        "kind": "direct_component",
+        "max_abs_ev_delta_usdt": 0,
+        "max_abs_tp_delta": 0,
+        "mean_abs_ev_delta_usdt": 0.0,
+        "mean_abs_tp_delta_active": null,
+        "mean_abs_tp_delta_all": 0.0,
+        "range_changed_cases": 0,
+        "sl_changed_cases": 0,
+        "status": "local_ablation",
+        "sum_abs_tp_delta_active": 0,
+        "tp_changed_cases": 0,
+        "unit": "risk_calibration_range_adjustment"
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "Ajuste agregado de rango; actualmente no activado en cohorte E1.4",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": true,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "SCORE-RISK_CALIBRATION_RANGE_ADJUSTMENT",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "active_predictive_adjustment",
+      "layer": "predictive_score",
+      "name": "Ajuste rango de calibracion",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "none",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "aggregate_only",
+      "transfer_limit": "Ninguna fuente valida el threshold y peso exactos actuales."
+    },
+    {
+      "blockers": [
+        "circular_heuristic_input",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "circular_heuristic_input",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 27,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF sl_probability>=0.55 THEN -0.045 TP; +0.10 risk; cap D; force",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-SL_PROBABILITY_GTE_55",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "SL estimado >=55%",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "circular_heuristic_input",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "circular_heuristic_input",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 5,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF 0.50<=sl_probability<0.55 THEN -0.025 TP; +0.06 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-SL_PROBABILITY_GTE_50",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "SL estimado >=50%",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "circular_heuristic_input",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "circular_heuristic_input",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 31,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF tp_probability<0.40 THEN -0.025 TP; +0.07 risk; cap D; force",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-DIRECTION_SCORE_LT_40",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "TP estimado <40%",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "duplicate_technical_path",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "duplicate_technical_path",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 26,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF technical_rating.score<40 THEN -0.020 TP; +0.07 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-TECHNICAL_SCORE_LT_40",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Rating tecnico <40",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "unsupported_threshold",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "unsupported_threshold",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 8,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF risk_reward_ratio>=3 THEN -0.035 TP if reward>=3% else -0.020; +0.08 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-RR_RATIO_GTE_3",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "R/R >=3",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "unsupported_threshold",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "unsupported_threshold",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 2,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF reward_distance>=3 THEN -0.025 TP; +0.07 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-REWARD_DISTANCE_GTE_3",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "TP distante >=3%",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "unsupported_threshold",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "unsupported_threshold",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 17,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF risk_distance<0.25 THEN -0.025 TP; +0.10 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-RISK_DISTANCE_LT_0_25",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "SL <0.25%",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "unsupported_threshold",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "unsupported_threshold",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 4,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF risk_distance>=3 THEN +0.08 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-RISK_DISTANCE_GTE_3",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "SL >=3%",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "unsupported_interpretation",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "unsupported_interpretation",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 33,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF side_signed_contra(price_change_24h,0.25) THEN -0.025 TP; +0.05 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-TICKER_24H_CONTRA_SIDE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:side_signed_contra"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Ticker 24h contrario",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "duplicate_ema_path",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "duplicate_ema_path",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 26,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF timeframe_contra_side(15m,require_stack=True) THEN -0.020 TP; +0.04 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-EMA_STACK_15M_CONTRA_SIDE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:timeframe_contra_side"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "EMA stack 15m contrario",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "duplicate_ema_path",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "duplicate_ema_path",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 29,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF timeframe_contra_side(1h,threshold=0.08) THEN -0.020 TP; +0.04 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-PRICE_VS_EMA_1H_CONTRA_SIDE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:timeframe_contra_side"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Precio vs EMA21 1h contrario",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "duplicate_zone_path",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "duplicate_zone_path",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 5,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF zone_probability_adjustment<0 THEN -0.015 TP; +0.04 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-PENDING_ZONE_NEGATIVE_ADJUSTMENT",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Zona pendiente negativa",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "small_internal_sample",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "small_internal_sample",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 3,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF entry_order_type=='stop_breakdown' THEN -0.030 TP; +0.08 risk; cap D; force",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-PENDING_STOP_BREAKDOWN",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Orden stop breakdown",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "small_internal_sample",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "small_internal_sample",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 5,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF liquidity_sweep_risk=='alto' THEN -0.020 TP; +0.05 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-PENDING_LIQUIDITY_SWEEP_HIGH",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Sweep risk alto",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "small_internal_sample",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "small_internal_sample",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 4,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF reaction_bias=='falsa_ruptura_riesgo' THEN -0.020 TP; +0.05 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-PENDING_FALSE_BREAKOUT_RISK",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Riesgo de falsa ruptura",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "three_case_cluster",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "three_case_cluster",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 2,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF extreme_fibonacci and extreme_sentiment THEN -0.035 TP; +0.08 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-EXTREME_FIB_EXTREME_SENTIMENT_CLUSTER",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Fibonacci extremo + sentimiento",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "tiny_subgroup",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "tiny_subgroup",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 0,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF extreme_fibonacci and extreme_sentiment and cvd_contra THEN -0.015 TP; +0.03 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-EXTREME_FIB_SENTIMENT_CVD_CONTRA",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:build_risk_calibration_context"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "Cluster anterior + CVD contrario",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "tiny_subgroup",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "tiny_subgroup",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 4,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF rsi_extreme and material_risk_count>=2 THEN -0.012 TP; +0.025 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-RSI_EXTREME_MULTI_RISK_CLUSTER",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:rsi_extreme_against_entry"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "RSI extremo + dos riesgos",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "tiny_subgroup",
+        "per_flag_effect_not_preserved_after_caps",
+        "no_temporal_holdout",
+        "no_cross_pair_validation",
+        "insufficient_sample"
+      ],
+      "challenger_admission": "blocked_current_gate",
+      "coherence": "tiny_subgroup",
+      "current_decision": "keep_champion_frozen_do_not_transfer",
+      "e1_3_findings": [
+        "E1.3-F11",
+        "E1.3-F12",
+        "E1.3-F15"
+      ],
+      "e1_4_impact": {
+        "activation_count": 0,
+        "individual_ablation_available": false
+      },
+      "exact_formula_support": "internal_provisional",
+      "formula": "IF rsi_extreme and extreme_fibonacci and extreme_sentiment THEN -0.008 TP; +0.015 risk; cap C",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "GATE-RSI_EXTREME_WITH_FIB_SENTIMENT_CLUSTER",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_context",
+        "analysis_engine.py:rsi_extreme_against_entry"
+      ],
+      "kind": "internal_empirical_gate",
+      "layer": "risk_calibration",
+      "name": "RSI + Fibonacci + sentimiento",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "insufficient_internal_sample",
+      "published_support": "Origen interno documentado; no hay validacion externa del gate exacto.",
+      "reliability_tier": "R3_internal_provisional",
+      "source_ids": [
+        "INTERNAL_V09_AUDIT",
+        "INTERNAL_ENGINE_HISTORY"
+      ],
+      "traceability": "flag_recorded_effect_aggregated",
+      "transfer_limit": "Muestra retrospectiva, versiones mezcladas y subgrupos pequenos."
+    },
+    {
+      "blockers": [
+        "incoherent_probability_semantics",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "incoherent_probability_semantics",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F01"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "0.5 + biases - penalties",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-TP-ADDITIVE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "TP score aditivo",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "saturation",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "saturation",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F06"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "clamp 0.26..0.74 y despues 0.22..0.74",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-TP-CAPS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Caps TP",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "mixed_semantics",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "mixed_semantics",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F13"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "0.12/0.10/0.08/0.06 + ajustes; cap 0.04..0.22",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-RANGE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:range_probability_for_context",
+        "analysis_engine.py:range_probability_for_context"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Probabilidad de rango",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "normalization_fail",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "normalization_fail",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F03",
+        "E1.3-F05"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "max(0.05,1-TP-range)",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-SL-RESIDUAL",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "SL residual",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "not_statistical_interval",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "not_statistical_interval",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F09"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "ancho 0.04/0.06/0.08 por contradiccion",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-PROBABILITY-BANDS",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_probability_ranges",
+        "analysis_engine.py:build_probability_ranges"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Bandas de probabilidad",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "uncalibrated_probabilities",
+        "incomplete_cost_model"
+      ],
+      "challenger_admission": "calculation_allowed_nonpredictive",
+      "coherence": "valid_identity_invalid_inputs",
+      "current_decision": "keep_identity_rebuild_inputs",
+      "e1_3_findings": [
+        "E1.3-F01"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "financial_identity_only",
+      "formula": "TP*net_win-SL*net_loss-range*cost",
+      "gates": {
+        "bounded_source_claim": true,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-EV-COST",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:calculate_expected_value",
+        "analysis_engine.py:calculate_expected_value"
+      ],
+      "kind": "financial_identity",
+      "layer": "output_and_policy",
+      "name": "Esperanza matematica",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "La identidad de valor esperado es valida si probabilidades y costes lo son.",
+      "reliability_tier": "R1_standard_calculation",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC",
+        "GNEITING_RAFTERY_2007"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "TP/SL no calibrados y costes simplificados invalidan su uso decisional."
+    },
+    {
+      "blockers": [
+        "unsupported_universal_cost",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unsupported_universal_cost",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "notional*0.0008",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-FEE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:calculate_expected_value",
+        "analysis_engine.py:calculate_expected_value"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Fee round-trip fija",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "unsupported_execution_model",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unsupported_execution_model",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "max(spread_pct/100,0.0002)",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-SLIPPAGE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:calculate_expected_value",
+        "analysis_engine.py:calculate_expected_value"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Slippage minimo",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "wrong_sign_and_horizon",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "wrong_sign_and_horizon",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F07",
+        "E1.3-F08"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "notional*abs(funding_rate_pct)/100 una vez",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-FUNDING-COST",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:calculate_expected_value",
+        "analysis_engine.py:calculate_expected_value"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Coste funding absoluto",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "unsupported_score",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unsupported_score",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Suma manual de flags y cortes 0.12/0.24/0.42",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-RISK-SCORE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:analyze_trade",
+        "analysis_engine.py:analyze_trade"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Risk score agregado",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "unsupported_governance_thresholds",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unsupported_governance_thresholds",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Cortes TP, risk_score y expected_value_score + cap",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-GRADE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:grade_from_scores",
+        "analysis_engine.py:cap_grade",
+        "analysis_engine.py:stricter_grade_cap"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Grado A/B/C/D",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "not_statistical_uncertainty",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "not_statistical_uncertainty",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F17"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Cortes 76/61/46 sobre confidence_score",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-CONFIDENCE",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:confidence_from_score",
+        "analysis_engine.py:confidence_from_score"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Confianza textual",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "unsupported_policy",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unsupported_policy",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Reglas por grade, risk, confidence, EV y force",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-DECISION",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:decision_from_context",
+        "analysis_engine.py:decision_from_context"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Decision simular/observar",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "heuristic_relabeling",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "heuristic_relabeling",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F17"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Transformaciones manuales 0..100 de direccion/calidad/riesgo/confianza/EV",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-LAYERED-SCORES",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_layered_scores",
+        "analysis_engine.py:build_layered_scores"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Scores por capas",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "silent_semantic_fallback",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "silent_semantic_fallback",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "Valor desconocido usa intraday_short",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-HORIZON-FALLBACK",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:time_horizon_profile",
+        "analysis_engine.py:time_horizon_profile"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Fallback de horizonte",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [
+        "unknown_presented_as_neutral",
+        "no_temporal_holdout",
+        "no_probability_calibration"
+      ],
+      "challenger_admission": "blocked_current_formula",
+      "coherence": "unknown_presented_as_neutral",
+      "current_decision": "replace_in_challenger",
+      "e1_3_findings": [
+        "E1.3-F10"
+      ],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "RSI=50, EMA=precio y multiples None->0",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": false,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": false,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-MISSING-DATA",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "data_engine.py:summarize_timeframe",
+        "data_engine.py:summarize_timeframe"
+      ],
+      "kind": "output_transformation",
+      "layer": "output_and_policy",
+      "name": "Defaults neutrales por falta de datos",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "aggregate_output_recorded",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    },
+    {
+      "blockers": [],
+      "challenger_admission": "presentation_only",
+      "coherence": "presentation_only_heuristic",
+      "current_decision": "presentation_only",
+      "e1_3_findings": [],
+      "e1_4_impact": null,
+      "exact_formula_support": "none",
+      "formula": "100-len(flags)*10-risk_addition",
+      "gates": {
+        "bounded_source_claim": false,
+        "complete_trace": true,
+        "cross_pair_validation": false,
+        "horizon_validation": false,
+        "implementation_fidelity": true,
+        "incremental_ablation": false,
+        "mathematical_coherence": true,
+        "probability_calibration": false,
+        "sufficient_sample": false,
+        "temporal_holdout": false
+      },
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "id": "OUT-RISK-CAL-METRIC",
+      "implementation_fidelity": "reproducible_internal_formula",
+      "implementation_refs": [
+        "analysis_engine.py:build_risk_calibration_metric",
+        "analysis_engine.py:build_risk_calibration_metric"
+      ],
+      "kind": "presentation_rule",
+      "layer": "output_and_policy",
+      "name": "Metrica visual de calibracion",
+      "pair_scope": "all_supported_pairs_unvalidated",
+      "predictive_validation": "not_validated",
+      "published_support": "Diseno interno; sin fuente para parametros exactos.",
+      "reliability_tier": "RX_blocked",
+      "source_ids": [
+        "INTERNAL_ENGINE_SPEC"
+      ],
+      "traceability": "presentation_only",
+      "transfer_limit": "No acredita probabilidad, calibracion ni rentabilidad."
+    }
+  ],
+  "source_taxonomy": {
+    "ALTERNATIVE_FNG": {
+      "does_not_support": "El proveedor declara que no es recomendacion; no valida 75/25 ni la penalizacion de 1.5 puntos.",
+      "kind": "provider_methodology",
+      "supports": "Definicion, escala 0-100, componentes y API del indice.",
+      "title": "Alternative.me Crypto Fear & Greed Index"
+    },
+    "BINANCE_USDM_API": {
+      "does_not_support": "No valida umbrales, pesos ni capacidad predictiva del motor.",
+      "kind": "official_data_definition",
+      "supports": "Campos y endpoints de precio, klines, profundidad, aggTrades, funding, OI y ratios.",
+      "title": "Binance USD-M Futures REST API - Market Data"
+    },
+    "BRIER_1950": {
+      "does_not_support": "Un score heuristico no se convierte en probabilidad por estar acotado entre 0 y 1.",
+      "kind": "primary_probability_research",
+      "supports": "Evaluacion de previsiones probabilisticas contra resultados observados.",
+      "title": "Brier - Verification of Forecasts Expressed in Terms of Probability"
+    },
+    "BROCK_LAKONISHOK_LEBARON": {
+      "does_not_support": "Resultados de otro activo y periodo; no valida los pesos del motor ni probabilidad TP.",
+      "kind": "primary_empirical_research",
+      "supports": "Antecedente empirico para reglas simples de medias y rangos.",
+      "title": "Brock, Lakonishok y LeBaron - Simple Technical Trading Rules"
+    },
+    "CFA_TECHNICAL_ANALYSIS": {
+      "does_not_support": "No valida los periodos, umbrales ni pesos concretos del motor.",
+      "kind": "recognized_manual",
+      "supports": "Uso descriptivo de medias, cruces y osciladores como RSI.",
+      "title": "CFA Institute - Technical Analysis refresher"
+    },
+    "COINGECKO_GLOBAL_API": {
+      "does_not_support": "No valida interpretaciones direccionales del motor.",
+      "kind": "official_data_definition",
+      "supports": "Capitalizacion, volumen y dominancia global.",
+      "title": "CoinGecko API - Crypto Global Market Data"
+    },
+    "COINGECKO_MARKETS_API": {
+      "does_not_support": "No valida el breadth 58/42 ni su ajuste de +/-2 puntos.",
+      "kind": "official_data_definition",
+      "supports": "Campos de mercado y variaciones 1h/24h/7d de los activos consultados.",
+      "title": "CoinGecko API - Coins Markets"
+    },
+    "CONT_KUKANOV_STOIKOV": {
+      "does_not_support": "Nuestro desequilibrio estatico de notional top-20 no es el OFI dinamico del estudio ni hereda sus coeficientes.",
+      "kind": "primary_empirical_research",
+      "supports": "Relacion de corto plazo entre cambios de precio y order-flow imbalance en mejor bid/ask.",
+      "title": "Cont, Kukanov y Stoikov - The Price Impact of Order Book Events"
+    },
+    "CORP_CALIBRATION": {
+      "does_not_support": "No acredita la calibracion actual, que todavia no se ha demostrado.",
+      "kind": "primary_probability_research",
+      "supports": "Una probabilidad esta calibrada cuando coincide con frecuencias observadas; propone diagnostico reproducible.",
+      "title": "Dimitriadis, Gneiting y Jordan - Reliability diagrams revisited"
+    },
+    "FIBONACCI_2022": {
+      "does_not_support": "No encontro diferencia estadistica frente a zonas no Fibonacci y la estrategia quedo por debajo de buy-and-hold.",
+      "kind": "primary_empirical_research",
+      "supports": "Evaluacion automatizada de zonas Fibonacci en tres mercados de renta variable.",
+      "title": "Tsinaslanidis, Guijarro y Voukelatos - Automatic identification and evaluation of Fibonacci retracements"
+    },
+    "GNEITING_RAFTERY_2007": {
+      "does_not_support": "No valida la suma manual de biases usada por el motor actual.",
+      "kind": "primary_probability_research",
+      "supports": "Marco de scoring propio para evaluar distribuciones probabilisticas.",
+      "title": "Gneiting y Raftery - Strictly Proper Scoring Rules, Prediction, and Estimation"
+    },
+    "INTERNAL_ENGINE_HISTORY": {
+      "does_not_support": "Documentar una regla no demuestra su validez predictiva.",
+      "kind": "internal_change_history",
+      "supports": "Motivacion y version de incorporacion de reglas del proyecto.",
+      "title": "Historial de cambios del motor"
+    },
+    "INTERNAL_ENGINE_SPEC": {
+      "does_not_support": "No es una fuente externa ni una validacion estadistica.",
+      "kind": "internal_specification",
+      "supports": "Intencion funcional y semantica declarada del sistema.",
+      "title": "Especificacion del motor de analisis"
+    },
+    "INTERNAL_V09_AUDIT": {
+      "does_not_support": "No es validacion independiente; mezcla versiones y tiene muestras pequenas por subgrupo.",
+      "kind": "internal_empirical_evidence",
+      "supports": "Origen interno de los frenos v0.10 y de varias hipotesis de riesgo.",
+      "title": "Auditoria profunda de 184 operaciones / 67 resueltas v0.9"
+    },
+    "LO_MAMAYSKY_WANG": {
+      "does_not_support": "No convierte una regla tecnica concreta en probabilidad calibrada sin validacion.",
+      "kind": "primary_empirical_research",
+      "supports": "Los patrones tecnicos pueden formalizarse y someterse a pruebas estadisticas.",
+      "title": "Lo, Mamaysky y Wang - Foundations of Technical Analysis"
+    },
+    "OSLER_SUPPORT_RESISTANCE": {
+      "does_not_support": "No valida nuestro detector por media de cinco extremos ni penalizaciones 0.025/0.012.",
+      "kind": "primary_empirical_research",
+      "supports": "Evidencia de interrupciones intradia cerca de ciertos soportes/resistencias en FX.",
+      "title": "Osler - Support for Resistance: Technical Analysis and Intraday Exchange Rates"
+    },
+    "WILDER_1978": {
+      "does_not_support": "No valida nuestros pesos predictivos. RSI/ATR del codigo usan media simple reciente, no todo el suavizado original de Wilder.",
+      "kind": "recognized_manual",
+      "supports": "Procedencia reconocida de RSI y ATR y sus construcciones originales.",
+      "title": "J. Welles Wilder, New Concepts in Technical Trading Systems (1978)"
+    }
+  },
+  "summary": {
+    "by_admission": {
+      "blocked_as_predictor": 1,
+      "blocked_current_formula": 45,
+      "blocked_current_gate": 19,
+      "blocked_current_implementation": 3,
+      "calculation_allowed_nonpredictive": 6,
+      "data_allowed_not_predictive": 7,
+      "presentation_only": 1,
+      "research_only_not_shadow": 4
+    },
+    "by_exact_formula_support": {
+      "financial_identity_only": 4,
+      "implementation_variant": 2,
+      "internal_only": 2,
+      "internal_provisional": 23,
+      "none": 47,
+      "official_field_definition": 7,
+      "standard_formula": 1
+    },
+    "by_layer": {
+      "feature_transform": 14,
+      "market_data": 7,
+      "output_and_policy": 17,
+      "predictive_score": 29,
+      "risk_calibration": 19
+    },
+    "by_reliability_tier": {
+      "R0_data_definition": 7,
+      "R1_standard_calculation": 6,
+      "R2_research_hypothesis": 4,
+      "R3_internal_provisional": 24,
+      "RX_blocked": 45
+    },
+    "predictive_or_decisional_rules": 69,
+    "production_authorized_predictive_rules": 0,
+    "rules": 86,
+    "temporally_validated_predictive_rules": 0
+  }
+}

@@ -21,7 +21,11 @@ E1.3 demostro sus incoherencias matematicas mediante
 [`auditorias_motor/informe_coherencia_motor.md`](auditorias_motor/informe_coherencia_motor.md).
 E1.4 midio su impacto historico mediante
 [`auditorias_motor/informe_impacto_historico_reglas.md`](auditorias_motor/informe_impacto_historico_reglas.md).
-La siguiente fase es E1.5: definir el challenger probabilistico en sombra.
+E1.5 separo datos calculables de afirmaciones predictivas, fijo el contrato
+probabilistico y dejo un challenger aislado que se bloquea sin modelo calibrado:
+[`auditorias_motor/contrato_challenger_alcanzabilidad.md`](auditorias_motor/contrato_challenger_alcanzabilidad.md).
+La auditoria E1 esta completada. La siguiente fase, aun no iniciada, es la Fase
+5 de reevaluacion legacy append-only.
 
 ## Estado actual
 

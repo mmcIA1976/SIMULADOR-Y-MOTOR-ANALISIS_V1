@@ -188,7 +188,7 @@ Artefactos:
 
 ### E1.5 - Contrato del challenger
 
-Estado: SIGUIENTE - NO INICIADA
+Estado: COMPLETADA
 
 - Definir arquitectura interpretable de alcanzabilidad.
 - Crear challenger en sombra.
@@ -198,10 +198,39 @@ Criterio de salida:
 
 - El challenger no altera produccion y puede compararse caso a caso.
 
+Resultado:
+
+- Matriz de admisibilidad reproducible con 86 reglas exactas.
+- 69 reglas predictivas o decisionales identificadas.
+- 0 reglas predictivas validadas temporalmente y 0 autorizadas para
+  produccion.
+- 7 definiciones de datos y 6 calculos deterministas/estandar separados de
+  cualquier afirmacion predictiva.
+- Contrato de tres outcomes coherentes: TP, SL y expiracion.
+- Baseline multinomial interpretable sin pesos heredados del champion.
+- Bloqueo ejecutable cuando no existe artefacto calibrado y aprobado.
+- Validacion estricta de geometria, horizonte, fuente, frescura, admision,
+  identidad del modelo y corte temporal.
+- Traza de variable, coeficiente y contribucion para cada outcome.
+- Kill switch y selector reversible de version probados.
+- Protocolo temporal, calibracion, ablation y promocion preregistrado.
+- El modulo permanece aislado de `app.py` y no altera produccion.
+
+Artefactos:
+
+- `audit_rule_admissibility.py`
+- `matriz_admisibilidad_reglas_v0_1.json`
+- `informe_admisibilidad_reglas.md`
+- `contrato_challenger_alcanzabilidad.md`
+- `protocolo_validacion_challenger.md`
+- `challenger_engine.py`
+- `tests/test_rule_admissibility.py`
+- `tests/test_challenger_engine.py`
+
 ## 6. Reglas de seguridad
 
 - El champion permanece congelado.
-- No se cambian probabilidades, decisiones, TP, SL o grados durante E1.1-E1.4.
+- No se cambian probabilidades, decisiones, TP, SL o grados durante E1.1-E1.5.
 - Los analisis historicos no se sobrescriben.
 - Toda reinterpretacion se guarda append-only y con version.
 - No se presenta precision probabilistica sin calibracion demostrada.
@@ -215,6 +244,7 @@ Criterio de salida:
 - `informe_coherencia_motor.md`
 - `impacto_historico_reglas.json`
 - `contrato_challenger_alcanzabilidad.md`
+- `protocolo_validacion_challenger.md`
 
 ## 8. Comando reproducible
 
@@ -223,9 +253,16 @@ Criterio de salida:
   --output auditorias_motor\inventario_reglas_motor_v0_1.json
 
 .\.venv\Scripts\python.exe audit_engine_coherence.py
+
+.\.venv\Scripts\python.exe audit_rule_admissibility.py
+
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 ## 9. Estado de cierre
 
-La auditoria extraordinaria no puede cerrarse hasta completar E1.1-E1.5.
-La Fase 5 original permanece pausada.
+Decision: AUDITORIA EXTRAORDINARIA E1 COMPLETADA.
+
+E1.1-E1.5 estan cerradas sin modificar el champion. La siguiente fase del plan
+auditable es la Fase 5 - Reevaluacion legacy append-only. Queda desbloqueada,
+pero no iniciada hasta la aprobacion expresa del usuario.

@@ -221,7 +221,7 @@ Criterio de salida:
 
 ### Fase extraordinaria E1 - Auditoria integral del motor
 
-Estado: EN CURSO - FASE 5 PAUSADA
+Estado: COMPLETADA
 
 Motivo:
 
@@ -247,11 +247,12 @@ Prohibido:
 
 - Cambiar silenciosamente el scoring actual.
 - Presentar un score heuristico como probabilidad calibrada.
-- Reanudar la Fase 5 antes de cerrar esta auditoria.
+- Reanudar la Fase 5 antes de cerrar esta auditoria. Condicion satisfecha el
+  2026-07-25 con el cierre de E1.1-E1.5.
 
 ### Fase 5 - Reevaluacion legacy append-only
 
-Estado: PAUSADA POR FASE EXTRAORDINARIA E1
+Estado: SIGUIENTE - DESBLOQUEADA, NO INICIADA
 
 Objetivo:
 
@@ -370,8 +371,8 @@ Criterio de salida:
 | 2 | Completada | `814755f` | `2026-07-23_fase_2_contratos_versionado_resultado.md` | Aprobada |
 | 3 | Completada | `ed3cfa3` | `2026-07-23_fase_3_reconstruccion_mfe_mae_resultado.md` | Aprobada |
 | 4 | Completada | `5295690` | `2026-07-24_fase_4_metricas_economicas_normalizadas_resultado.md` | Aprobada |
-| E1 | En curso; E1.1 completada | `8bb7b93` | `auditorias_motor/2026-07-24_plan_auditoria_integral_motor.md` | Autorizada |
-| 5 | Pausada por E1 | - | - | - |
+| E1 | Completada; E1.1-E1.5 cerradas | Pendiente commit de cierre | `auditorias_motor/2026-07-25_E1_5_contrato_challenger_resultado.md` | Autorizada |
+| 5 | Siguiente; desbloqueada, no iniciada | - | - | Pendiente |
 | 6 | Bloqueada por fase 5 | - | - | - |
 | 7 | Bloqueada por fase 6 | - | - | - |
 | 8 | Bloqueada por fase 7 | - | - | - |

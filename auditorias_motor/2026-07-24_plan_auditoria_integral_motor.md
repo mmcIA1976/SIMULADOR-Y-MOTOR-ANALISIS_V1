@@ -43,16 +43,18 @@ habitual en trading.
 
 ## 3. Pregunta probabilistica objetivo
 
-El futuro motor debe estimar por separado:
+El futuro motor debe mostrar como resultados principales:
 
 `P(TP antes que SL dentro del horizonte | informacion pre-trade)`
 
 `P(SL antes que TP dentro del horizonte | informacion pre-trade)`
 
-`P(ninguno dentro del horizonte | informacion pre-trade)`
+La expiracion sin tocar ninguna barrera debe modelarse internamente para no
+falsear esos dos porcentajes y debe quedar registrada en el outcome posterior.
 
-Las tres salidas deben sumar uno, identificar la version del modelo y declarar
-su incertidumbre y calibracion.
+La distribucion interna de resultados mutuamente excluyentes debe ser
+matematicamente coherente. Los dos porcentajes principales deben identificar
+la version del modelo y declarar su incertidumbre y calibracion.
 
 ## 4. Clasificacion obligatoria de reglas
 
@@ -121,7 +123,7 @@ Artefactos:
 
 ### E1.3 - Coherencia matematica y semantica
 
-Estado: SIGUIENTE - NO INICIADA
+Estado: COMPLETADA
 
 - Auditar monotonicidad, continuidad, unidades, doble conteo y caps.
 - Separar score direccional, alcanzabilidad y calidad de ejecucion.
@@ -131,9 +133,29 @@ Criterio de salida:
 
 - Cada incoherencia tiene reproduccion, severidad y correccion candidata.
 
+Resultado:
+
+- 12 invariantes matematicos y semanticos versionados.
+- 17 hallazgos: 16 fallos demostrados y 1 validez universal no demostrada.
+- 7 hallazgos criticos, 9 altos y 1 medio.
+- Casos end-to-end sinteticos prueban insensibilidad a distancia TP/SL y el
+  salto exacto de cinco puntos al cruzar entrada/precio.
+- Quedan reproducidos la masa total de 1.01, funding sin signo, costes sin
+  duracion, intervalos no estadisticos, ausencia de bloqueo por falta de datos,
+  dobles conteos y trazabilidad incompleta.
+- El champion y las salidas de produccion permanecen sin cambios.
+
+Artefactos:
+
+- `invariantes_coherencia_motor_v0_1.json`
+- `coherencia_motor_v0_1.json`
+- `informe_coherencia_motor.md`
+- `audit_engine_coherence.py`
+- `tests/test_engine_coherence_audit.py`
+
 ### E1.4 - Impacto historico
 
-Estado: PENDIENTE
+Estado: SIGUIENTE - NO INICIADA
 
 - Reejecutar reglas sobre snapshots preservados.
 - Medir contribucion a probabilidad, grado, EV y decision.
@@ -178,6 +200,8 @@ Criterio de salida:
 ```powershell
 .\.venv\Scripts\python.exe audit_scoring_rules.py `
   --output auditorias_motor\inventario_reglas_motor_v0_1.json
+
+.\.venv\Scripts\python.exe audit_engine_coherence.py
 ```
 
 ## 9. Estado de cierre

@@ -15,6 +15,13 @@ analisis, las reglas combinadas y la funcion exacta del aprendizaje. La
 [`COBERTURA_ANALITICA_FASE_1.md`](COBERTURA_ANALITICA_FASE_1.md) registra los 34
 bloques de analisis objetivo y el estado real de los datos actuales.
 
+La auditoria extraordinaria mantiene congelado el champion mientras se
+documenta y prueba. E1.1 inventario sus reglas, E1.2 registro su procedencia y
+E1.3 demostro sus incoherencias matematicas mediante
+[`auditorias_motor/informe_coherencia_motor.md`](auditorias_motor/informe_coherencia_motor.md).
+La siguiente fase es E1.4: medir el impacto historico de cada regla sin
+sobrescribir recomendaciones antiguas.
+
 ## Estado actual
 
 - Registro/login local con cookie de sesion.
@@ -90,8 +97,15 @@ Validacion de conteos:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest tests.test_pending_zone_analysis
 .\.venv\Scripts\python.exe -m unittest tests.test_training_recharge
+.\.venv\Scripts\python.exe -m unittest tests.test_engine_coherence_audit
 .\.venv\Scripts\python.exe -m py_compile app.py analysis_engine.py data_engine.py market_data.py security.py tests\test_pending_zone_analysis.py tests\test_training_recharge.py
 node --check .\app.js
+```
+
+Auditoria reproducible de coherencia:
+
+```powershell
+.\.venv\Scripts\python.exe audit_engine_coherence.py
 ```
 
 ## Script legacy

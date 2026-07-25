@@ -1,0 +1,107 @@
+{
+  "audit_version": "E1.3-v0.1",
+  "invariants": [
+    {
+      "category": "probability_semantics",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3",
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:5"
+      ],
+      "id": "INV-PROB-01",
+      "requirement": "TP y SL deben ser estimaciones pre-trade del plan concreto, obtenidas por un metodo probabilistico documentado y calibrable, no por renombrar un score."
+    },
+    {
+      "category": "probability_semantics",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3"
+      ],
+      "id": "INV-PROB-02",
+      "requirement": "La semantica conjunta de TP, SL y expiracion debe ser explicita y su masa de probabilidad debe ser coherente."
+    },
+    {
+      "category": "monotonicity",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3"
+      ],
+      "id": "INV-MONO-TP-01",
+      "requirement": "Con snapshot, entrada, SL y horizonte fijos, alejar el TP no puede aumentar su probabilidad y debe modificar su alcanzabilidad de forma medible."
+    },
+    {
+      "category": "monotonicity",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3"
+      ],
+      "id": "INV-MONO-SL-01",
+      "requirement": "Con snapshot, entrada, TP y horizonte fijos, alejar el SL debe modificar la probabilidad de alcanzarlo de forma coherente."
+    },
+    {
+      "category": "continuity",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3",
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:6"
+      ],
+      "id": "INV-CONT-01",
+      "requirement": "Una perturbacion infinitesimal de precio no debe provocar un salto material sin un evento de mercado discreto documentado."
+    },
+    {
+      "category": "horizon",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3"
+      ],
+      "id": "INV-HORIZON-01",
+      "requirement": "La alcanzabilidad y los costes deben utilizar explicitamente uno de los tres horizontes vigentes y su duracion."
+    },
+    {
+      "category": "costs",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:4"
+      ],
+      "id": "INV-COST-01",
+      "requirement": "Fees, slippage y funding deben conservar signo, lado, frecuencia y horizonte sin alterar la evidencia direccional."
+    },
+    {
+      "category": "data_quality",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:5"
+      ],
+      "id": "INV-DATA-01",
+      "requirement": "La falta de datos fiables debe bloquear o degradar explicitamente el resultado; no puede convertirse en evidencia neutral aparente."
+    },
+    {
+      "category": "double_counting",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:4",
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:8"
+      ],
+      "id": "INV-DOUBLE-01",
+      "requirement": "Una misma evidencia no puede afectar varias veces al resultado salvo que su valor incremental haya sido definido y validado."
+    },
+    {
+      "category": "separation",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:4"
+      ],
+      "id": "INV-SEPARATION-01",
+      "requirement": "Direccion, alcanzabilidad, activacion, ejecucion, riesgo y confianza deben conservar semanticas separadas antes de integrarse."
+    },
+    {
+      "category": "traceability",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:6"
+      ],
+      "id": "INV-TRACE-01",
+      "requirement": "Cada efecto debe registrar regla estable, version, entradas, formula, salida intermedia y contribucion final."
+    },
+    {
+      "category": "cross_pair_validity",
+      "contract_refs": [
+        "CONTRATO_FASE_1_MOTOR_ANALISIS.md:3"
+      ],
+      "id": "INV-PAIR-01",
+      "requirement": "Cada regla activa debe declarar unidades, normalizacion y evidencia de validez para todos los pares donde se aplique."
+    }
+  ],
+  "phase": "E1.3.1",
+  "production_modified": false,
+  "purpose": "Contrato de pruebas matematicas y semanticas del motor de Fase 1."
+}

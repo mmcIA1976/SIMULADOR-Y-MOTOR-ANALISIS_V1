@@ -244,15 +244,22 @@ class VersionedDataContractTests(unittest.TestCase):
         )
 
         with patch("app.connect", return_value=self.DbContext(db)):
-            result = analyze(payload, "session")
+            with patch("app.persist_live_shadow_safely") as shadow_audit:
+                result = analyze(payload, "session")
 
         self.assertEqual(result["recommendation_id"], 42)
         self.assertEqual(result["version_contract"]["scoring_version"], SCORING_VERSION)
+        self.assertEqual(
+            result["snapshot"]["evaluation_horizon_seconds"],
+            4 * 60 * 60,
+        )
+        self.assertIn("analysis_at", result["snapshot"])
         self.assertIsNone(result["data_contract"]["post_trade_outcomes"])
         self.assertIsNone(result["data_contract"]["diagnostic_labels"])
         self.assertNotIn("data_contract", result["data_contract"]["pre_trade_features"])
         self.assertEqual(db.query.count("?"), len(db.params))
         self.assertEqual(len(db.params), 24)
+        shadow_audit.assert_called_once()
 
 
 if __name__ == "__main__":

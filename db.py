@@ -9,6 +9,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
+from versioning import APP_VERSION
+
 
 _PG_POOL: ConnectionPool | None = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -453,6 +455,69 @@ def init_db() -> None:
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE,
                 FOREIGN KEY(evaluation_id) REFERENCES learning_evaluations(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS challenger_model_artifacts (
+                id {id_type},
+                model_version TEXT NOT NULL UNIQUE,
+                schema_version TEXT NOT NULL,
+                deployment_state TEXT NOT NULL CHECK(deployment_state = 'shadow'),
+                artifact_sha256 TEXT NOT NULL UNIQUE,
+                artifact_json TEXT NOT NULL,
+                registration_reason TEXT NOT NULL,
+                registered_by TEXT NOT NULL,
+                created_at {text_timestamp}
+            );
+
+            CREATE TABLE IF NOT EXISTS challenger_shadow_config_events (
+                id {id_type},
+                action TEXT NOT NULL,
+                enabled BOOLEAN NOT NULL,
+                selected_model_version TEXT,
+                previous_event_id {fk_type},
+                previous_model_version TEXT,
+                rollback_target_event_id {fk_type},
+                reason TEXT NOT NULL,
+                requested_by TEXT NOT NULL,
+                app_version TEXT NOT NULL,
+                code_commit_sha TEXT,
+                created_at {text_timestamp},
+                FOREIGN KEY(selected_model_version)
+                    REFERENCES challenger_model_artifacts(model_version) ON DELETE RESTRICT,
+                FOREIGN KEY(previous_event_id)
+                    REFERENCES challenger_shadow_config_events(id) ON DELETE RESTRICT,
+                FOREIGN KEY(rollback_target_event_id)
+                    REFERENCES challenger_shadow_config_events(id) ON DELETE RESTRICT
+            );
+
+            CREATE TABLE IF NOT EXISTS challenger_shadow_runs (
+                id {id_type},
+                run_key TEXT NOT NULL UNIQUE,
+                recommendation_id {fk_type} NOT NULL,
+                config_event_id {fk_type},
+                run_origin TEXT NOT NULL CHECK(run_origin IN ('live_analysis', 'offline_replay')),
+                champion_engine_version TEXT NOT NULL,
+                champion_scoring_version TEXT NOT NULL,
+                champion_result_json TEXT NOT NULL,
+                challenger_version TEXT NOT NULL,
+                model_version TEXT,
+                challenger_status TEXT NOT NULL CHECK(challenger_status IN ('blocked', 'shadow_prediction')),
+                block_code TEXT,
+                challenger_result_json TEXT NOT NULL,
+                comparison_json TEXT NOT NULL,
+                plan_contract_json TEXT NOT NULL,
+                feature_snapshot_json TEXT NOT NULL,
+                source_snapshot_sha256 TEXT NOT NULL,
+                admission_matrix_sha256 TEXT NOT NULL,
+                production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+                app_version TEXT NOT NULL,
+                created_at {text_timestamp},
+                FOREIGN KEY(recommendation_id)
+                    REFERENCES recommendations(id) ON DELETE RESTRICT,
+                FOREIGN KEY(config_event_id)
+                    REFERENCES challenger_shadow_config_events(id) ON DELETE RESTRICT,
+                FOREIGN KEY(model_version)
+                    REFERENCES challenger_model_artifacts(model_version) ON DELETE RESTRICT
+            );
             """
         )
         ensure_column(db, "operations", "observation_until", "TEXT")
@@ -533,6 +598,8 @@ def init_db() -> None:
         ensure_economic_metric_precision(db)
         secure_internal_learning_tables(db)
         ensure_legacy_reevaluations_append_only(db)
+        ensure_challenger_shadow_append_only(db)
+        ensure_challenger_shadow_baseline(db)
         backfill_recommendation_links(db)
 
 
@@ -568,6 +635,14 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_learning_evaluations_economics ON learning_evaluations(economic_normalization_status, closure_type);
         CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_status ON learning_legacy_reevaluations(review_status, outcome_class);
         CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_evaluation ON learning_legacy_reevaluations(evaluation_id);
+        CREATE INDEX IF NOT EXISTS idx_challenger_artifacts_state ON challenger_model_artifacts(deployment_state, created_at);
+        CREATE INDEX IF NOT EXISTS idx_challenger_config_selected_model ON challenger_shadow_config_events(selected_model_version);
+        CREATE INDEX IF NOT EXISTS idx_challenger_config_previous_event ON challenger_shadow_config_events(previous_event_id);
+        CREATE INDEX IF NOT EXISTS idx_challenger_config_rollback_target ON challenger_shadow_config_events(rollback_target_event_id);
+        CREATE INDEX IF NOT EXISTS idx_challenger_shadow_recommendation ON challenger_shadow_runs(recommendation_id);
+        CREATE INDEX IF NOT EXISTS idx_challenger_shadow_config ON challenger_shadow_runs(config_event_id);
+        CREATE INDEX IF NOT EXISTS idx_challenger_shadow_model ON challenger_shadow_runs(model_version);
+        CREATE INDEX IF NOT EXISTS idx_challenger_shadow_status ON challenger_shadow_runs(challenger_status, block_code, created_at);
         """
     )
 
@@ -578,14 +653,35 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         ALTER TABLE learning_evidence_reconstructions ENABLE ROW LEVEL SECURITY;
         ALTER TABLE learning_economic_normalizations ENABLE ROW LEVEL SECURITY;
         ALTER TABLE learning_legacy_reevaluations ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE challenger_model_artifacts ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
         REVOKE ALL PRIVILEGES ON TABLE learning_evidence_reconstructions FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_economic_normalizations FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_legacy_reevaluations FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE challenger_model_artifacts FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_config_events FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_runs FROM anon, authenticated;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE learning_legacy_reevaluations FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE challenger_model_artifacts FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE challenger_shadow_config_events FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE challenger_shadow_runs FROM service_role;
         GRANT SELECT, INSERT ON TABLE learning_legacy_reevaluations TO service_role;
+        GRANT SELECT, INSERT ON TABLE challenger_model_artifacts TO service_role;
+        GRANT SELECT, INSERT ON TABLE challenger_shadow_config_events TO service_role;
+        GRANT SELECT, INSERT ON TABLE challenger_shadow_runs TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE learning_legacy_reevaluations_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE challenger_model_artifacts_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE challenger_shadow_config_events_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE challenger_shadow_runs_id_seq TO service_role;
         """
     )
 
@@ -618,6 +714,57 @@ def ensure_legacy_reevaluations_append_only(db: DbSession) -> None:
             DO INSTEAD NOTHING
             """
         )
+
+
+def ensure_challenger_shadow_append_only(db: DbSession) -> None:
+    for table in (
+        "challenger_model_artifacts",
+        "challenger_shadow_config_events",
+        "challenger_shadow_runs",
+    ):
+        rules = {
+            row_to_dict(row)["rulename"]
+            for row in db.execute(
+                """
+                SELECT rulename
+                FROM pg_rules
+                WHERE schemaname = 'public'
+                  AND tablename = ?
+                """,
+                (table,),
+            ).fetchall()
+        }
+        for operation in ("update", "delete"):
+            rule_name = f"{table}_no_{operation}"
+            if rule_name in rules:
+                continue
+            db.execute(
+                f"""
+                CREATE RULE {rule_name} AS
+                ON {operation.upper()} TO {table}
+                DO INSTEAD NOTHING
+                """
+            )
+
+
+def ensure_challenger_shadow_baseline(db: DbSession) -> None:
+    db.execute(
+        """
+        INSERT INTO challenger_shadow_config_events (
+            action, enabled, selected_model_version, previous_event_id,
+            previous_model_version, rollback_target_event_id, reason,
+            requested_by, app_version, code_commit_sha
+        )
+        SELECT
+            'initialize_disabled', FALSE, NULL, NULL, NULL, NULL,
+            'Fase 6: estado seguro inicial sin artefacto aprobado',
+            'system_migration', ?, NULL
+        WHERE NOT EXISTS (
+            SELECT 1 FROM challenger_shadow_config_events
+        )
+        """,
+        (APP_VERSION,),
+    )
 
 
 def ensure_economic_metric_precision(db: DbSession) -> None:

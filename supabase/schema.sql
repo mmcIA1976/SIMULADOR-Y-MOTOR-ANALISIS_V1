@@ -260,6 +260,57 @@ CREATE TABLE IF NOT EXISTS learning_legacy_reevaluations (
     UNIQUE(operation_id, reevaluation_version)
 );
 
+CREATE TABLE IF NOT EXISTS challenger_model_artifacts (
+    id BIGSERIAL PRIMARY KEY,
+    model_version TEXT NOT NULL UNIQUE,
+    schema_version TEXT NOT NULL,
+    deployment_state TEXT NOT NULL CHECK(deployment_state = 'shadow'),
+    artifact_sha256 TEXT NOT NULL UNIQUE,
+    artifact_json TEXT NOT NULL,
+    registration_reason TEXT NOT NULL,
+    registered_by TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS challenger_shadow_config_events (
+    id BIGSERIAL PRIMARY KEY,
+    action TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL,
+    selected_model_version TEXT REFERENCES challenger_model_artifacts(model_version) ON DELETE RESTRICT,
+    previous_event_id BIGINT REFERENCES challenger_shadow_config_events(id) ON DELETE RESTRICT,
+    previous_model_version TEXT,
+    rollback_target_event_id BIGINT REFERENCES challenger_shadow_config_events(id) ON DELETE RESTRICT,
+    reason TEXT NOT NULL,
+    requested_by TEXT NOT NULL,
+    app_version TEXT NOT NULL,
+    code_commit_sha TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS challenger_shadow_runs (
+    id BIGSERIAL PRIMARY KEY,
+    run_key TEXT NOT NULL UNIQUE,
+    recommendation_id BIGINT NOT NULL REFERENCES recommendations(id) ON DELETE RESTRICT,
+    config_event_id BIGINT REFERENCES challenger_shadow_config_events(id) ON DELETE RESTRICT,
+    run_origin TEXT NOT NULL CHECK(run_origin IN ('live_analysis', 'offline_replay')),
+    champion_engine_version TEXT NOT NULL,
+    champion_scoring_version TEXT NOT NULL,
+    champion_result_json TEXT NOT NULL,
+    challenger_version TEXT NOT NULL,
+    model_version TEXT REFERENCES challenger_model_artifacts(model_version) ON DELETE RESTRICT,
+    challenger_status TEXT NOT NULL CHECK(challenger_status IN ('blocked', 'shadow_prediction')),
+    block_code TEXT,
+    challenger_result_json TEXT NOT NULL,
+    comparison_json TEXT NOT NULL,
+    plan_contract_json TEXT NOT NULL,
+    feature_snapshot_json TEXT NOT NULL,
+    source_snapshot_sha256 TEXT NOT NULL,
+    admission_matrix_sha256 TEXT NOT NULL,
+    production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+    app_version TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -288,6 +339,14 @@ CREATE INDEX IF NOT EXISTS idx_learning_economic_evaluation ON learning_economic
 CREATE INDEX IF NOT EXISTS idx_learning_evaluations_economics ON learning_evaluations(economic_normalization_status, closure_type);
 CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_status ON learning_legacy_reevaluations(review_status, outcome_class);
 CREATE INDEX IF NOT EXISTS idx_learning_legacy_review_evaluation ON learning_legacy_reevaluations(evaluation_id);
+CREATE INDEX IF NOT EXISTS idx_challenger_artifacts_state ON challenger_model_artifacts(deployment_state, created_at);
+CREATE INDEX IF NOT EXISTS idx_challenger_config_selected_model ON challenger_shadow_config_events(selected_model_version);
+CREATE INDEX IF NOT EXISTS idx_challenger_config_previous_event ON challenger_shadow_config_events(previous_event_id);
+CREATE INDEX IF NOT EXISTS idx_challenger_config_rollback_target ON challenger_shadow_config_events(rollback_target_event_id);
+CREATE INDEX IF NOT EXISTS idx_challenger_shadow_recommendation ON challenger_shadow_runs(recommendation_id);
+CREATE INDEX IF NOT EXISTS idx_challenger_shadow_config ON challenger_shadow_runs(config_event_id);
+CREATE INDEX IF NOT EXISTS idx_challenger_shadow_model ON challenger_shadow_runs(model_version);
+CREATE INDEX IF NOT EXISTS idx_challenger_shadow_status ON challenger_shadow_runs(challenger_status, block_code, created_at);
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operations ENABLE ROW LEVEL SECURITY;
@@ -300,6 +359,9 @@ ALTER TABLE public.contest_seasons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_evidence_reconstructions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_economic_normalizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_legacy_reevaluations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.challenger_model_artifacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operations FROM anon, authenticated;
@@ -312,6 +374,9 @@ REVOKE ALL PRIVILEGES ON TABLE public.contest_seasons FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.learning_evidence_reconstructions FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.learning_economic_normalizations FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.learning_legacy_reevaluations FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.challenger_model_artifacts FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_config_events FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_runs FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
 
@@ -324,6 +389,24 @@ GRANT SELECT, INSERT
     ON TABLE public.learning_legacy_reevaluations TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.learning_legacy_reevaluations_id_seq TO service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.challenger_model_artifacts FROM service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.challenger_shadow_config_events FROM service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.challenger_shadow_runs FROM service_role;
+GRANT SELECT, INSERT
+    ON TABLE public.challenger_model_artifacts TO service_role;
+GRANT SELECT, INSERT
+    ON TABLE public.challenger_shadow_config_events TO service_role;
+GRANT SELECT, INSERT
+    ON TABLE public.challenger_shadow_runs TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.challenger_model_artifacts_id_seq TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.challenger_shadow_config_events_id_seq TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.challenger_shadow_runs_id_seq TO service_role;
 
 DO $$
 BEGIN
@@ -350,3 +433,80 @@ BEGIN
         DO INSTEAD NOTHING;
     END IF;
 END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'challenger_model_artifacts'
+          AND rulename = 'challenger_model_artifacts_no_update'
+    ) THEN
+        CREATE RULE challenger_model_artifacts_no_update AS
+        ON UPDATE TO public.challenger_model_artifacts
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'challenger_model_artifacts'
+          AND rulename = 'challenger_model_artifacts_no_delete'
+    ) THEN
+        CREATE RULE challenger_model_artifacts_no_delete AS
+        ON DELETE TO public.challenger_model_artifacts
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'challenger_shadow_config_events'
+          AND rulename = 'challenger_shadow_config_events_no_update'
+    ) THEN
+        CREATE RULE challenger_shadow_config_events_no_update AS
+        ON UPDATE TO public.challenger_shadow_config_events
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'challenger_shadow_config_events'
+          AND rulename = 'challenger_shadow_config_events_no_delete'
+    ) THEN
+        CREATE RULE challenger_shadow_config_events_no_delete AS
+        ON DELETE TO public.challenger_shadow_config_events
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'challenger_shadow_runs'
+          AND rulename = 'challenger_shadow_runs_no_update'
+    ) THEN
+        CREATE RULE challenger_shadow_runs_no_update AS
+        ON UPDATE TO public.challenger_shadow_runs
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'challenger_shadow_runs'
+          AND rulename = 'challenger_shadow_runs_no_delete'
+    ) THEN
+        CREATE RULE challenger_shadow_runs_no_delete AS
+        ON DELETE TO public.challenger_shadow_runs
+        DO INSTEAD NOTHING;
+    END IF;
+END $$;
+
+INSERT INTO public.challenger_shadow_config_events (
+    action, enabled, selected_model_version, previous_event_id,
+    previous_model_version, rollback_target_event_id, reason,
+    requested_by, app_version, code_commit_sha
+)
+SELECT
+    'initialize_disabled', FALSE, NULL, NULL, NULL, NULL,
+    'Fase 6: estado seguro inicial sin artefacto aprobado',
+    'system_migration', 'app-v0.17.0-challenger-shadow', NULL
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.challenger_shadow_config_events
+);

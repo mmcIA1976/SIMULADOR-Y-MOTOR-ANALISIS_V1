@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -29,6 +30,11 @@ from learning_evidence import (
     reconstruction_window,
 )
 from security import create_token, hash_password, read_token, verify_password
+from shadow_runtime import (
+    build_user_shadow_audit,
+    execute_live_shadow_run,
+    stamp_pre_trade_horizon,
+)
 from versioning import (
     APP_SEMVER,
     APP_VERSION,
@@ -69,6 +75,7 @@ STALE_LEARNING_SUMMARY_MARKERS = (
 )
 
 app = FastAPI(title="Trading Trainer", version=APP_SEMVER)
+logger = logging.getLogger(__name__)
 
 
 class AuthPayload(BaseModel):
@@ -1334,6 +1341,16 @@ def economic_audit(session_token: str | None = Cookie(default=None, alias=SESSIO
     user = current_user(session_token)
     with connect() as db:
         return build_economic_audit_report(db, int(user["id"]))
+
+
+@app.get("/api/learning/challenger-audit")
+def challenger_audit(
+    limit: int = 100,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_user_shadow_audit(db, int(user["id"]), limit)
 
 
 def build_economic_audit_report(db, user_id: int) -> dict:
@@ -4005,6 +4022,36 @@ def market_snapshot(symbol: str = "BTCUSDT") -> dict:
     return data_engine.build_market_snapshot(symbol)
 
 
+def persist_live_shadow_safely(
+    db,
+    recommendation_id: int,
+    proposal: TradeProposal,
+    champion_result: dict,
+) -> dict:
+    db.execute("SAVEPOINT challenger_shadow_run")
+    try:
+        audit = execute_live_shadow_run(
+            db=db,
+            recommendation_id=recommendation_id,
+            proposal=proposal,
+            champion_result=champion_result,
+        )
+        db.execute("RELEASE SAVEPOINT challenger_shadow_run")
+        return audit
+    except Exception as exc:
+        db.execute("ROLLBACK TO SAVEPOINT challenger_shadow_run")
+        db.execute("RELEASE SAVEPOINT challenger_shadow_run")
+        logger.exception(
+            "Challenger shadow audit failed for recommendation %s",
+            recommendation_id,
+        )
+        return {
+            "status": "technical_error_isolated",
+            "error_type": type(exc).__name__,
+            "production_effect": "none",
+        }
+
+
 @app.post("/api/analyze")
 def analyze(payload: TradePayload, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)
@@ -4046,6 +4093,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     }
     result["entry_order_context"] = entry_context
     result.setdefault("snapshot", {})["entry_order_context"] = entry_context
+    stamp_pre_trade_horizon(result["snapshot"], proposal.time_horizon)
     version_contract = current_version_contract()
     result["version_contract"] = version_contract
     result["snapshot"]["version_contract"] = version_contract
@@ -4091,6 +4139,12 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             ),
         )
         recommendation_id = int(cursor.lastrowid)
+        persist_live_shadow_safely(
+            db=db,
+            recommendation_id=recommendation_id,
+            proposal=proposal,
+            champion_result=result,
+        )
     return {"recommendation_id": recommendation_id, **result}
 
 

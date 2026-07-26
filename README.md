@@ -28,8 +28,12 @@ La auditoria E1 esta completada. La Fase 5 tambien esta cerrada: las 232
 evaluaciones legacy se conservaron y reinterpretaron en revisiones append-only
 sin autorizar su uso para calibracion predictiva directa. El resultado esta en
 [`auditorias_aprendizaje/2026-07-25_fase_5_reevaluacion_legacy_resultado.md`](auditorias_aprendizaje/2026-07-25_fase_5_reevaluacion_legacy_resultado.md).
-La siguiente fase, aun no iniciada, es la Fase 6 de ejecucion paralela
-champion/challenger con reversion.
+La Fase 6 tambien esta cerrada. Cada nuevo analisis conserva la salida champion
+y registra en paralelo un resultado o bloqueo challenger append-only, con
+kill switch, rollback y aislamiento por savepoint:
+[`auditorias_aprendizaje/2026-07-26_fase_6_champion_challenger_resultado.md`](auditorias_aprendizaje/2026-07-26_fase_6_champion_challenger_resultado.md).
+La Fase 7 es la siguiente, pero no puede entrenar ni evaluar un artefacto hasta
+alcanzar la muestra futura preregistrada.
 
 ## Estado actual
 
@@ -44,6 +48,8 @@ champion/challenger con reversion.
 - Motor v0.9 con analisis de zonas pendientes, aprendizaje estructurado y auditoria agregada.
 - Registro de recomendaciones, ticks de precio, cierres, observacion y conclusiones de aprendizaje.
 - Reevaluacion legacy append-only con 232 revisiones historicas separadas de las evaluaciones fuente.
+- Ejecucion champion/challenger en sombra para nuevos analisis, con vencimiento exacto por marco y sin efecto en produccion.
+- Auditoria autenticada del carril sombra en `/api/learning/challenger-audit`.
 - La app online usa Supabase PostgreSQL. El entorno local se usa solo para desarrollo y puede conectar con Supabase si esta configurado.
 
 ## Desarrollo local

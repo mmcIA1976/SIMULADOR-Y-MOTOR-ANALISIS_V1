@@ -1,0 +1,296 @@
+{
+  "version": "M6-frozen-candidate-no-H-v0.2",
+  "status": "frozen_for_prospective_validation",
+  "selection": {
+    "development_records": 145,
+    "calibration_records": 35,
+    "final_test_records_accessed": 0,
+    "removed_feature": "directional_path_efficiency_h",
+    "reason": "historical_ablation_and_prior_post_M8_rule_decision",
+    "ridge_candidates": [
+      0.1,
+      1.0,
+      10.0
+    ],
+    "temperature_candidates": [
+      0.75,
+      1.0,
+      1.25,
+      1.5
+    ],
+    "selected_ridge": 10.0,
+    "selected_temperature": 1.5,
+    "selected_calibration_metrics": {
+      "n": 35,
+      "class_counts": {
+        "sl_first_within_horizon": 21,
+        "tp_first_within_horizon": 9,
+        "neither_barrier_before_expiry": 5
+      },
+      "brier_3c": 0.5379872891466461,
+      "log_loss_3c": 0.8553632286233426,
+      "macro_ovr_auc": 0.7264236292807721,
+      "ovr_auc_by_class": {
+        "tp_first_within_horizon": 0.6837606837606838,
+        "sl_first_within_horizon": 0.608843537414966,
+        "neither_barrier_before_expiry": 0.8866666666666667
+      },
+      "calibration": {
+        "bin_count": 1,
+        "weighted_absolute_calibration_error": 0.11621103398320884,
+        "classes": {
+          "tp_first_within_horizon": [
+            {
+              "n": 35,
+              "mean_forecast": 0.4314594081176704,
+              "observed_frequency": 0.2571428571428571,
+              "absolute_error": 0.1743165509748133
+            }
+          ],
+          "sl_first_within_horizon": [
+            {
+              "n": 35,
+              "mean_forecast": 0.46792508764731244,
+              "observed_frequency": 0.6,
+              "absolute_error": 0.13207491235268753
+            }
+          ],
+          "neither_barrier_before_expiry": [
+            {
+              "n": 35,
+              "mean_forecast": 0.10061550423501713,
+              "observed_frequency": 0.14285714285714285,
+              "absolute_error": 0.042241638622125724
+            }
+          ]
+        }
+      }
+    }
+  },
+  "candidate_summaries": [
+    {
+      "ridge": 0.1,
+      "artifact_id": "M6-CANDIDATE-NO-H-RIDGE-0.1-v0.2",
+      "selected_temperature": 1.5,
+      "selected_metrics": {
+        "n": 35,
+        "class_counts": {
+          "sl_first_within_horizon": 21,
+          "tp_first_within_horizon": 9,
+          "neither_barrier_before_expiry": 5
+        },
+        "brier_3c": 0.5534776513850593,
+        "log_loss_3c": 0.8864717171849157,
+        "macro_ovr_auc": 0.7379615093900808,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.688034188034188,
+          "sl_first_within_horizon": 0.6258503401360545,
+          "neither_barrier_before_expiry": 0.9
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.13262538791337364,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 35,
+                "mean_forecast": 0.4560809390129176,
+                "observed_frequency": 0.2571428571428571,
+                "absolute_error": 0.19893808187006046
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 35,
+                "mean_forecast": 0.4558230296217684,
+                "observed_frequency": 0.6,
+                "absolute_error": 0.14417697037823157
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 35,
+                "mean_forecast": 0.088096031365314,
+                "observed_frequency": 0.14285714285714285,
+                "absolute_error": 0.05476111149182884
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "ridge": 1.0,
+      "artifact_id": "M6-CANDIDATE-NO-H-RIDGE-1-v0.2",
+      "selected_temperature": 1.5,
+      "selected_metrics": {
+        "n": 35,
+        "class_counts": {
+          "sl_first_within_horizon": 21,
+          "tp_first_within_horizon": 9,
+          "neither_barrier_before_expiry": 5
+        },
+        "brier_3c": 0.5519585282087935,
+        "log_loss_3c": 0.8833302640842694,
+        "macro_ovr_auc": 0.7337170765742194,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.6923076923076923,
+          "sl_first_within_horizon": 0.608843537414966,
+          "neither_barrier_before_expiry": 0.9
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.13116646618185257,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 35,
+                "mean_forecast": 0.453892556415636,
+                "observed_frequency": 0.2571428571428571,
+                "absolute_error": 0.19674969927277886
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 35,
+                "mean_forecast": 0.4576123705495692,
+                "observed_frequency": 0.6,
+                "absolute_error": 0.14238762945043076
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 35,
+                "mean_forecast": 0.08849507303479472,
+                "observed_frequency": 0.14285714285714285,
+                "absolute_error": 0.05436206982234813
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "ridge": 10.0,
+      "artifact_id": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+      "selected_temperature": 1.5,
+      "selected_metrics": {
+        "n": 35,
+        "class_counts": {
+          "sl_first_within_horizon": 21,
+          "tp_first_within_horizon": 9,
+          "neither_barrier_before_expiry": 5
+        },
+        "brier_3c": 0.5379872891466461,
+        "log_loss_3c": 0.8553632286233426,
+        "macro_ovr_auc": 0.7264236292807721,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.6837606837606838,
+          "sl_first_within_horizon": 0.608843537414966,
+          "neither_barrier_before_expiry": 0.8866666666666667
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.11621103398320884,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 35,
+                "mean_forecast": 0.4314594081176704,
+                "observed_frequency": 0.2571428571428571,
+                "absolute_error": 0.1743165509748133
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 35,
+                "mean_forecast": 0.46792508764731244,
+                "observed_frequency": 0.6,
+                "absolute_error": 0.13207491235268753
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 35,
+                "mean_forecast": 0.10061550423501713,
+                "observed_frequency": 0.14285714285714285,
+                "absolute_error": 0.042241638622125724
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "coefficient_artifact": {
+    "id": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+    "version": "0.2",
+    "status": "estimated_internal_candidate",
+    "provenance": "estimated_temporal_training",
+    "training_cutoff": "2026-07-04T10:00:51.518919+00:00",
+    "feature_schema_sha256": "bbc2c7cddddd5a317c23881e7a066da1f8c4517f779c992ef7a63a5e96788869",
+    "coefficients": {
+      "tp": {
+        "intercept": -0.144149452369794,
+        "directional_path_efficiency_h": 0.0,
+        "directional_path_efficiency_2h": 0.04656228699988703,
+        "directional_path_efficiency_4h": 0.1730886790956213,
+        "volatility_percentile_60": -0.5446818209064133,
+        "target_extreme_between_entry_and_tp": 0.06992799118212334
+      },
+      "sl": {
+        "intercept": -0.23970216832912355,
+        "directional_path_efficiency_h": 0.0,
+        "directional_path_efficiency_2h": -0.21100274047083908,
+        "directional_path_efficiency_4h": -0.15500924011502018,
+        "volatility_percentile_60": -0.27055081722504065,
+        "target_extreme_between_entry_and_tp": 0.1670447895598004
+      }
+    },
+    "feature_standardization": {
+      "directional_path_efficiency_h": {
+        "mean": 0.10375010598944176,
+        "scale": 0.2998625607854509
+      },
+      "directional_path_efficiency_2h": {
+        "mean": 0.07271969831434635,
+        "scale": 0.22611665083808646
+      },
+      "directional_path_efficiency_4h": {
+        "mean": 0.06282196943927999,
+        "scale": 0.16565698802414194
+      },
+      "volatility_percentile_60": {
+        "mean": 0.6545977011494253,
+        "scale": 0.26054380764763446
+      },
+      "target_extreme_between_entry_and_tp": {
+        "mean": 0.5241379310344828,
+        "scale": 0.4994170204201841
+      }
+    },
+    "ridge_lambda": 10.0,
+    "optimizer": {
+      "method": "deterministic_adam_numeric_eta_gradient",
+      "iterations": 300,
+      "learning_rate": 0.04
+    },
+    "production_authorized": false,
+    "artifact_sha256": "9f3b47775c67e19f5c1727d5b73f6fe066a2de384ef6f9d813d97850f74f7f1f",
+    "removed_predictive_features": [
+      "directional_path_efficiency_h"
+    ],
+    "calibration": {
+      "method": "multiclass_temperature",
+      "temperature": 1.5,
+      "selection_partition": "calibration",
+      "selection_metric": "log_loss_3c_then_brier_3c"
+    }
+  },
+  "boundaries": {
+    "production_authorized": false,
+    "production_effect": "none",
+    "prospective_validation_required": true
+  },
+  "canonical_payload_sha256": "9219ecaf950ad6ced7c0909bb9a3af760ebfd0c969b04481e2994ea2eb53fc2b"
+}

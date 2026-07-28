@@ -1,0 +1,794 @@
+{
+  "version": "M4.2-reachability-v0.1",
+  "phase": "M4",
+  "subphase": "M4.2",
+  "status": "completed_internal_milestone_m4_still_in_progress",
+  "date": "2026-07-27",
+  "scope": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "rule_cards": 6,
+    "direct_probability_effects": 0,
+    "numeric_weights": 0,
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "learning_engine_used": false,
+    "m5_started": false,
+    "m4_next_subphase": "M4.3"
+  },
+  "operational_sampling_policy": {
+    "minimum_returns_per_horizon": 24,
+    "classification": "project resolution policy, not an academic optimum",
+    "horizon_limits_seconds": {
+      "intraday_short": [
+        1800,
+        14400
+      ],
+      "intraday_wide": [
+        14400,
+        86400
+      ],
+      "short_swing": [
+        86400,
+        604800
+      ]
+    },
+    "profile_intervals_seconds": {
+      "intraday_short": [
+        60,
+        180,
+        300,
+        900
+      ],
+      "intraday_wide": [
+        300,
+        900,
+        1800,
+        3600
+      ],
+      "short_swing": [
+        3600,
+        7200,
+        14400,
+        21600,
+        28800,
+        43200,
+        86400
+      ]
+    },
+    "selection": "largest supported interval dividing H exactly with >=24 returns",
+    "rounding_allowed": false
+  },
+  "sources": [
+    {
+      "id": "M2-SEMANTIC-CONTRACT",
+      "type": "approved_internal_contract",
+      "title": "M2 - Semantica, geometria e invariantes",
+      "url": null,
+      "supported_claim": "Long/short barrier geometry, exact horizon and mandatory normalization by an approved horizon log-volatility scale.",
+      "does_not_support": "A volatility estimator or probability model."
+    },
+    {
+      "id": "M3-DATA-CONTRACTS",
+      "type": "approved_internal_contract",
+      "title": "M3 - Contratos de datos pre-trade",
+      "url": null,
+      "supported_claim": "Plan identity, closed Binance USD-M klines, timestamps, freshness and missing-data behavior.",
+      "does_not_support": "Predictive value of price history."
+    },
+    {
+      "id": "BINANCE-USDM-KLINES",
+      "type": "official_provider_documentation",
+      "title": "Binance USD-M Futures Kline/Candlestick Data",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "supported_claim": "Kline fields, intervals, timestamps and units.",
+      "does_not_support": "Volatility forecasts or TP/SL prediction."
+    },
+    {
+      "id": "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+      "type": "primary_academic_publication",
+      "title": "Modeling and Forecasting Realized Volatility",
+      "url": "https://doi.org/10.1111/1468-0262.00418",
+      "supported_claim": "Realized volatility constructed from high-frequency returns is linked to quadratic variation and can be modeled over time.",
+      "does_not_support": "Using one lagged horizon as an exact forecast for crypto, a universal sampling interval, or a TP/SL probability."
+    },
+    {
+      "id": "POETZELBERGER-WANG-2001",
+      "type": "primary_academic_publication",
+      "title": "Boundary Crossing Probability for Brownian Motion",
+      "url": "https://doi.org/10.1239/jap/996986650",
+      "supported_claim": "Boundary crossing is a path-dependent first-passage problem that requires a specified stochastic process and boundary.",
+      "does_not_support": "Brownian motion as an accepted crypto model or any project probability before M6."
+    },
+    {
+      "id": "XIE-ET-AL-2019-BITCOIN-RV",
+      "type": "primary_academic_publication",
+      "title": "Forecast Bitcoin Volatility with Least Squares Model Averaging",
+      "url": "https://doi.org/10.3390/econometrics7030040",
+      "supported_claim": "Bitcoin realized-volatility forecasting is an empirical model selection problem with competing specifications.",
+      "does_not_support": "Transfer to all six pairs, barrier probabilities, or a fixed project estimator without independent validation."
+    }
+  ],
+  "rules": [
+    {
+      "id": "M4-RULE-HORIZON-SAMPLING-001",
+      "version": "0.1",
+      "name": "Seleccion exacta de intervalo para el horizonte",
+      "analytical_blocks": [
+        26
+      ],
+      "concrete_objective": "Select a closed-kline interval that divides the exact horizon without temporal interpolation.",
+      "rule_type": "deterministic_policy",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "I={delta in profile_intervals: H mod delta=0 and H/delta>=24}",
+        "delta*=max(I)",
+        "N_H=H/delta*"
+      ],
+      "pseudocode": [
+        "validate horizon profile and exact H",
+        "retain supported intervals that divide H exactly",
+        "retain intervals with at least 24 returns",
+        "select the largest retained interval or block"
+      ],
+      "cross_pair_normalization": "Same algorithm for every pair; only H and profile select delta.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "valid exact horizon inside approved profile"
+      ],
+      "non_application_conditions": [
+        "no supported exact divisor with at least 24 returns"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USDM-KLINES",
+          "level": "definition",
+          "claim": "Supported kline intervals and timestamp fields."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "The minimum of 24 returns is project policy, not an academic optimum."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "No TP/SL direction; data-resolution policy only.",
+      "related_rules": [
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "double_counting_control": "Produces one interval identity, no evidence.",
+      "missing_data_behavior": "Block reachability family.",
+      "unit_tests_limits_and_invariants": [
+        "H is never rounded",
+        "delta divides H exactly",
+        "N_H>=24",
+        "selection is pair-independent"
+      ],
+      "trace_output": [
+        "time_horizon",
+        "horizon_seconds",
+        "interval",
+        "interval_seconds",
+        "returns_per_horizon",
+        "selection_policy"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Suspend if M7 shows unstable or aliased RV at the selected grid.",
+        "Change only by versioned M4 amendment before empirical testing."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PLAN-GEOMETRY-001",
+      "version": "0.1",
+      "name": "Geometria logaritmica long/short",
+      "analytical_blocks": [
+        26,
+        28
+      ],
+      "concrete_objective": "Represent TP and SL distance symmetrically across sides.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "s=+1 long; s=-1 short",
+        "d_TP=s*ln(TP/E)",
+        "d_SL=-s*ln(SL/E)",
+        "valid iff d_TP>0 and d_SL>0"
+      ],
+      "pseudocode": [
+        "validate side and positive finite prices",
+        "validate side-specific barrier ordering",
+        "calculate d_TP and d_SL in log-price space"
+      ],
+      "cross_pair_normalization": "Log ratios are dimensionless and scale-invariant.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "valid plan geometry"
+      ],
+      "non_application_conditions": [
+        "invalid side, price or barrier ordering"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTIC-CONTRACT",
+          "level": "definition",
+          "claim": "Approved side-symmetric geometry."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "Holding all else fixed, a farther same-side barrier cannot be declared easier to reach.",
+      "related_rules": [
+        "M4-RULE-BARRIER-REACHABILITY-001"
+      ],
+      "double_counting_control": "Single canonical geometry for all later blocks.",
+      "missing_data_behavior": "Block the complete analysis.",
+      "unit_tests_limits_and_invariants": [
+        "long/short mirror symmetry",
+        "positive distances",
+        "price-scale invariance",
+        "continuous response to barrier movement"
+      ],
+      "trace_output": [
+        "side_sign",
+        "entry",
+        "take_profit",
+        "stop_loss",
+        "tp_log_distance",
+        "sl_log_distance"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Withdraw any implementation that differs from M2."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-LOG-RETURNS-001",
+      "version": "0.1",
+      "name": "Retornos logaritmicos de velas cerradas",
+      "analytical_blocks": [
+        26
+      ],
+      "concrete_objective": "Create the only return series used by M4.2 volatility.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "r_i=ln(C_i/C_(i-1))"
+      ],
+      "pseudocode": [
+        "take consecutive closed adjusted-free USD-M closes",
+        "reject non-positive, missing, stale, future or gapped observations",
+        "calculate natural log price ratios"
+      ],
+      "cross_pair_normalization": "Dimensionless return; same formula for every pair.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "M3-compliant consecutive closed klines"
+      ],
+      "non_application_conditions": [
+        "gap, open bar, invalid close or insufficient history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+          "level": "definition",
+          "claim": "High-frequency return inputs for realized volatility."
+        },
+        {
+          "source_id": "BINANCE-USDM-KLINES",
+          "level": "definition",
+          "claim": "Close price and close timestamp semantics."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "No direction or probability by itself.",
+      "related_rules": [
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "double_counting_control": "One canonical return series per selected interval.",
+      "missing_data_behavior": "Block realized volatility and dependent rules.",
+      "unit_tests_limits_and_invariants": [
+        "constant price gives zero returns",
+        "multiplying all prices by a constant does not change returns",
+        "gaps and invalid prices block"
+      ],
+      "trace_output": [
+        "close_count",
+        "return_count",
+        "first_close_time",
+        "last_close_time",
+        "return_series_hash"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Withdraw any fallback that inserts zero returns."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "version": "0.1",
+      "name": "Volatilidad realizada del horizonte anterior",
+      "analytical_blocks": [
+        26
+      ],
+      "concrete_objective": "Measure observed log-price variation over the immediately preceding exact horizon without scaling from another horizon.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "RV_prev(H)=sum_(i=1..N_H)(r_i^2)",
+        "sigma_prev(H)=sqrt(RV_prev(H))"
+      ],
+      "pseudocode": [
+        "select delta with M4-RULE-HORIZON-SAMPLING-001",
+        "take N_H+1 consecutive closes ending at latest closed bar",
+        "verify exact H span and M3 freshness",
+        "calculate N_H log returns, RV and sigma"
+      ],
+      "cross_pair_normalization": "Log-volatility is dimensionless and calculated over the same exact H for every pair.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete previous-H window with at least 24 returns"
+      ],
+      "non_application_conditions": [
+        "missing/gapped/future/stale bars",
+        "zero sigma blocks normalized reachability"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+          "level": "technical_foundation",
+          "claim": "Sum-of-squared high-frequency returns measures RV."
+        },
+        {
+          "source_id": "XIE-ET-AL-2019-BITCOIN-RV",
+          "level": "external_predictive_evidence",
+          "claim": "Bitcoin RV can be forecast, but competing model specifications matter."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "Lagged sigma_prev(H) is not labelled a forecast.",
+        "No persistence coefficient is assumed."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REACH-001",
+        "status": "proposed_unverified",
+        "statement": "Previous-horizon RV may provide a useful reference scale for next-horizon barrier distance.",
+        "not_a_claim": "It is not assumed equal to future volatility and receives no probability weight."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Higher sigma lowers both normalized barrier distances; it does not choose TP versus SL direction.",
+      "related_rules": [
+        "M4-RULE-LOG-RETURNS-001",
+        "M4-RULE-BARRIER-REACHABILITY-001"
+      ],
+      "double_counting_control": "RV is one scale input. M4.3 regime may classify it but cannot re-add the same value as independent evidence.",
+      "missing_data_behavior": "Block all sigma-normalized M4.2 outputs.",
+      "unit_tests_limits_and_invariants": [
+        "exact previous-H span",
+        "RV>=0",
+        "sigma=sqrt(RV)",
+        "scale invariance",
+        "no annualization or cross-horizon square-root scaling"
+      ],
+      "trace_output": [
+        "interval",
+        "horizon_seconds",
+        "return_count",
+        "window_start_close_time",
+        "window_end_close_time",
+        "realized_variance",
+        "realized_volatility",
+        "forecast_status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Reject M4-HYP-REACH-001 if independent evaluation shows no incremental reachability value or unstable pair behavior.",
+        "A future forecast model belongs to M6 and needs a new rule ID."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-BARRIER-REACHABILITY-001",
+      "version": "0.1",
+      "name": "Distancia TP/SL normalizada por volatilidad",
+      "analytical_blocks": [
+        26,
+        28
+      ],
+      "concrete_objective": "Express both barriers in comparable horizon-volatility units.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "z_TP=d_TP/sigma_prev(H)",
+        "z_SL=d_SL/sigma_prev(H)",
+        "b=ln(d_TP/d_SL)"
+      ],
+      "pseudocode": [
+        "obtain valid geometry and sigma_prev(H)>0",
+        "divide each positive log distance by the common sigma",
+        "record balance b without converting it to probability"
+      ],
+      "cross_pair_normalization": "Dimensionless z values comparable across price scales.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "valid geometry and finite sigma_prev(H)>0"
+      ],
+      "non_application_conditions": [
+        "invalid geometry, missing history or sigma<=0"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTIC-CONTRACT",
+          "level": "definition",
+          "claim": "Mandatory z_TP and z_SL geometry."
+        },
+        {
+          "source_id": "POETZELBERGER-WANG-2001",
+          "level": "technical_foundation",
+          "claim": "Actual crossing probability requires a specified path process and boundary treatment."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "z is not a normal CDF input until M6 selects and validates a model.",
+        "No threshold such as one or two sigma is a decision boundary."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REACH-002",
+        "status": "mathematical_constraint_for_future_model",
+        "statement": "Holding all other state fixed, increasing only z_TP must not increase P(TP first); likewise for z_SL and P(SL first)."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Continuous monotonic geometry constraint, not a probability or directional signal.",
+      "related_rules": [
+        "M4-RULE-PLAN-GEOMETRY-001",
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "double_counting_control": "Geometry appears once in M6. Raw percentage, ATR bands and price-vs-entry bonuses cannot re-enter separately.",
+      "missing_data_behavior": "Block probability publication.",
+      "unit_tests_limits_and_invariants": [
+        "z_TP>0 and z_SL>0",
+        "barrier monotonicity",
+        "volatility monotonicity",
+        "long/short mirror symmetry",
+        "continuity"
+      ],
+      "trace_output": [
+        "tp_log_distance",
+        "sl_log_distance",
+        "sigma_prev_horizon",
+        "z_tp",
+        "z_sl",
+        "distance_balance_log_ratio",
+        "probability"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Any later model violating monotonicity fails M7.",
+        "Withdraw any score bands attached directly to z."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PENDING-ACTIVATION-001",
+      "version": "0.1",
+      "name": "Distancia de activacion para entrada pendiente",
+      "analytical_blocks": [
+        28
+      ],
+      "concrete_objective": "Represent the pre-entry barrier separately from TP/SL after entry under the M2 event tree.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-004",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "market: d_entry=0, z_entry=0",
+        "pending: d_entry=abs(ln(E/P_analysis))",
+        "z_entry=d_entry/sigma_prev(H)"
+      ],
+      "pseudocode": [
+        "require entry_type and trigger_condition from the immutable plan",
+        "reject a pending trigger already satisfied at analysis_at",
+        "calculate distance and z_entry for a waiting trigger",
+        "do not calculate activation probability in M4"
+      ],
+      "cross_pair_normalization": "Dimensionless log distance over the same sigma_prev(H).",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "market entry or valid unsatisfied pending trigger"
+      ],
+      "non_application_conditions": [
+        "missing trigger_condition",
+        "pending condition already satisfied",
+        "invalid or stale current price"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTIC-CONTRACT",
+          "level": "definition",
+          "claim": "No-entry and post-entry expiry are separate outcomes."
+        },
+        {
+          "source_id": "M3-DATA-CONTRACTS",
+          "level": "definition",
+          "claim": "Plan trigger, analysis price and timestamps are pre-trade data."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "Distance alone does not define activation probability."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-PENDING-001",
+        "status": "mathematical_constraint_for_future_model",
+        "statement": "Holding path law fixed, moving an unsatisfied entry trigger farther away must not increase activation probability."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Feeds a future P(entry within H) branch; never adds points to conditional P(TP first | entry).",
+      "related_rules": [
+        "M4-RULE-BARRIER-REACHABILITY-001",
+        "M2 event tree"
+      ],
+      "double_counting_control": "Entry activation is evaluated once before conditional TP/SL.",
+      "missing_data_behavior": "Block pending-order probability analysis.",
+      "unit_tests_limits_and_invariants": [
+        "market z_entry=0",
+        "pending z_entry>0",
+        "trigger direction preserved",
+        "already-satisfied pending trigger rejected",
+        "activation probability remains null"
+      ],
+      "trace_output": [
+        "entry_type",
+        "trigger_condition",
+        "entry_order_type",
+        "current_price",
+        "entry",
+        "entry_log_distance",
+        "z_entry",
+        "activation_status",
+        "activation_probability"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Any future activation model must preserve M2 probability mass.",
+        "Withdraw any zone score or fixed activation band."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    }
+  ],
+  "preregistered_hypotheses": [
+    {
+      "id": "M4-HYP-REACH-001",
+      "status": "proposed_unverified",
+      "statement": "Previous-horizon RV may provide a useful reference scale for next-horizon barrier distance.",
+      "not_a_claim": "It is not assumed equal to future volatility and receives no probability weight."
+    },
+    {
+      "id": "M4-HYP-REACH-002",
+      "status": "mathematical_constraint_for_future_model",
+      "statement": "Holding all other state fixed, increasing only z_TP must not increase P(TP first); likewise for z_SL and P(SL first)."
+    },
+    {
+      "id": "M4-HYP-PENDING-001",
+      "status": "mathematical_constraint_for_future_model",
+      "statement": "Holding path law fixed, moving an unsatisfied entry trigger farther away must not increase activation probability."
+    }
+  ],
+  "supersedes_current_elements": {
+    "IND-ATR14-CURRENT": "Not used as P0 horizon scale; P1 ATR remains deferred.",
+    "IND-PENDING-ZONE": "Replaced by deterministic activation distance.",
+    "SCORE-PRICE_VS_ENTRY_BIAS": "Retired; M2 log geometry is canonical.",
+    "SCORE-ZONE_PROBABILITY_ADJUSTMENT": "Retired; activation remains a separate future event.",
+    "SCORE-VOLATILITY_PENALTY": "Retired; continuous z_TP/z_SL geometry replaces bands.",
+    "SCORE-ZONE_RANGE_PROBABILITY_ADJUSTMENT": "Retired; no-entry and expiry-after-entry remain separate."
+  },
+  "summary": {
+    "rules": 6,
+    "deterministic_or_measure_rules": 6,
+    "hypotheses": 3,
+    "rules_with_probability_effect": 0,
+    "rules_with_numeric_weight": 0,
+    "production_modified": false
+  },
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "auditorias_motor\\contrato_semantico_m2_v0_1.json",
+      "sha256": "4eeb152ca84d69aa1035128120915159a9783ec5a2b81d350dfe32c0c3363139"
+    },
+    {
+      "path": "auditorias_motor\\catalogo_contratos_datos_m3_v0_1.json",
+      "sha256": "c6b4166d4a71fc6bd146b9352d4b2893a8a8c33ef98999406463a4ac3ac38e3d"
+    },
+    {
+      "path": "auditorias_motor\\reconciliacion_candidatos_m4_v0_1.json",
+      "sha256": "a888e6ab08c1729b71e2a74f68db5e58cf1d527011ba04f285293d172e9e4348"
+    }
+  ],
+  "catalog_sha256": "23863cfa9f841667a0b9e0dfbbaaa7b18bb25feb52e894e59e87ed82bc1cd642"
+}

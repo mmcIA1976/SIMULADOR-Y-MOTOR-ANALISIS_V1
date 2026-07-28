@@ -1,0 +1,98 @@
+{
+  "version": "M6-R1-diagnostic-v0.1",
+  "phase": "M6-R1",
+  "status": "remediation_verified_internal_only",
+  "defect": {
+    "code": "machine_precision_terminal_survival",
+    "description": "Conditional interval hazards were divided by survival at or below machine precision after effective absorption.",
+    "continuous_first_passage_defect": false,
+    "discrete_transition_defect": true,
+    "historical_blocked_records_before": [
+      {
+        "recommendation_id": 197,
+        "partition": "development",
+        "symbol": "SOLUSDT",
+        "side": "short",
+        "time_horizon": "short_swing",
+        "exception_type": "EvidenceArtifactError",
+        "reason": "baseline_interval_hazard_mass_invalid"
+      },
+      {
+        "recommendation_id": 276,
+        "partition": "development",
+        "symbol": "BTCUSDT",
+        "side": "short",
+        "time_horizon": "intraday_wide",
+        "exception_type": "EvidenceArtifactError",
+        "reason": "baseline_interval_hazard_mass_invalid"
+      },
+      {
+        "recommendation_id": 628,
+        "partition": "development",
+        "symbol": "SOLUSDT",
+        "side": "long",
+        "time_horizon": "short_swing",
+        "exception_type": "EvidenceArtifactError",
+        "reason": "baseline_interval_hazard_mass_invalid"
+      },
+      {
+        "recommendation_id": 811,
+        "partition": "final_test",
+        "symbol": "BTCUSDT",
+        "side": "short",
+        "time_horizon": "intraday_wide",
+        "exception_type": "EvidenceArtifactError",
+        "reason": "baseline_survival_exhausted_before_horizon"
+      },
+      {
+        "recommendation_id": 840,
+        "partition": "final_test",
+        "symbol": "BTCUSDT",
+        "side": "short",
+        "time_horizon": "intraday_wide",
+        "exception_type": "EvidenceArtifactError",
+        "reason": "baseline_survival_exhausted_before_horizon"
+      }
+    ],
+    "historical_blocked_count_before": 5
+  },
+  "remediation": {
+    "layer_version": "M6-R1-discrete-competing-risks-v0.1",
+    "numerical_survival_floor": 1e-10,
+    "formula_id": "M6-R1-NUMERICAL-TERMINAL-RECONCILIATION-009",
+    "behavior": "When prior survival is <=1e-10, reconcile the residual event mass to the final continuous solution and mark later intervals as post-absorption neutral.",
+    "historical_m6_files_modified": false
+  },
+  "historical_cohort_after": {
+    "records": 201,
+    "evaluated": 201,
+    "blocked": [],
+    "terminal_reconciled_records": [
+      127,
+      146,
+      147,
+      197,
+      267,
+      276,
+      307,
+      417,
+      628,
+      707,
+      811,
+      840
+    ],
+    "terminal_reconciled_count": 12,
+    "maximum_probability_mass_error": 6.661338147750939e-16,
+    "maximum_zero_coefficient_baseline_error": 6.661338147750939e-16
+  },
+  "property_grid": {
+    "cases": 500,
+    "failures": [],
+    "maximum_probability_mass_error": 1.5543122344752192e-15,
+    "maximum_barrier_swap_error": 5.551115123125783e-16
+  },
+  "production_effect": "none",
+  "m8_reopened": false,
+  "m9_started": false,
+  "canonical_payload_sha256": "d51788362c2edea70b5e6f98895a65e7d3cb1ce7774c15a09d983e5f4a2ccb30"
+}

@@ -1,0 +1,1745 @@
+{
+  "catalog_version": "M3-data-contracts-v0.1",
+  "phase": "M3",
+  "status": "completed_owner_approved",
+  "approved_at": "2026-07-27",
+  "scope": {
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "m4_started": false,
+    "predictive_rules_defined": false,
+    "learning_engine_used": false,
+    "p1_liquidations_included": false
+  },
+  "post_closure_clarifications": [
+    {
+      "id": "M3-CLARIFICATION-001",
+      "identified_in_phase": "M4.2",
+      "date": "2026-07-27",
+      "contract_id": "M3-DATA-001",
+      "field_added": "trigger_condition",
+      "reason": "Pending-entry activation cannot be reconstructed from entry_type and price alone. The field already exists in POST /api/analyze and was omitted from the M3 field list.",
+      "source_or_endpoint_changed": false,
+      "production_modified": false,
+      "m3_conclusions_changed": false
+    },
+    {
+      "id": "M3-CLARIFICATION-002",
+      "identified_in_phase": "M4.5",
+      "date": "2026-07-27",
+      "contract_id": "M3-DATA-001",
+      "fields_added": [
+        "margin",
+        "leverage"
+      ],
+      "reason": "Plan exposure and loss on requested margin cannot be reconstructed from price geometry alone. Both fields already exist in POST /api/analyze and were omitted from the M3 field list.",
+      "source_or_endpoint_changed": false,
+      "production_modified": false,
+      "m3_conclusions_changed": false
+    }
+  ],
+  "universe": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "futures_market": "Binance USD-M perpetual",
+    "spot_market": "Binance Spot"
+  },
+  "operational_policies": {
+    "classification": "project limits, not latency guarantees made by Binance",
+    "realtime_max_age_ms": 30000,
+    "snapshot_max_span_ms": 15000,
+    "request_max_latency_ms": 10000,
+    "period_release_grace_ms": 60000,
+    "metadata_max_age_ms": 86400000,
+    "commission_max_age_ms": 3600000,
+    "cross_venue_capture_skew_ms": 2000
+  },
+  "global_invariants": [
+    {
+      "id": "M3-INV-PRETRADE-01",
+      "rule": "Every provider timestamp, request and response must be <=analysis_at."
+    },
+    {
+      "id": "M3-INV-CAPTURE-01",
+      "rule": "requested_at and received_at are mandatory per source; the complete snapshot capture span is bounded."
+    },
+    {
+      "id": "M3-INV-MISSING-01",
+      "rule": "Missing, stale, invalid, unsupported or future data is never converted to neutral evidence."
+    },
+    {
+      "id": "M3-INV-CLOSED-BAR-01",
+      "rule": "Closed and partial candles are distinct; only bars with close_time<=analysis_at satisfy the closed-bar contract."
+    },
+    {
+      "id": "M3-INV-PAIR-01",
+      "rule": "Symbol, market, quote asset, contract type and TRADING status must be validated from exchangeInfo."
+    },
+    {
+      "id": "M3-INV-UNIT-01",
+      "rule": "Raw units are retained; normalization is explicit and belongs to the future rule contract."
+    },
+    {
+      "id": "M3-INV-RETENTION-01",
+      "rule": "Provider retention is not local history; exact replay requires immutable raw local capture."
+    },
+    {
+      "id": "M3-INV-SEPARATION-01",
+      "rule": "Unavailable cost data may block EV/execution decisions without changing market-path probability."
+    },
+    {
+      "id": "M3-INV-SOURCE-01",
+      "rule": "Official source semantics validate a datum, not its predictive value."
+    }
+  ],
+  "contracts": [
+    {
+      "id": "M3-DATA-001",
+      "name": "Plan propuesto por el usuario",
+      "priority": "P0",
+      "provider": "application_user_input",
+      "market": "binance_usdm_perpetual_plan",
+      "endpoint": "POST /api/analyze",
+      "authentication": "application_session",
+      "source_status": "approved_internal_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "symbol",
+          "meaning": "USD-M Futures symbol",
+          "unit": "symbol"
+        },
+        {
+          "field": "side",
+          "meaning": "long or short",
+          "unit": "enum"
+        },
+        {
+          "field": "entry_type",
+          "meaning": "market or pending",
+          "unit": "enum"
+        },
+        {
+          "field": "trigger_condition",
+          "meaning": "pending trigger: price_lte or price_gte; null for market",
+          "unit": "enum_or_null"
+        },
+        {
+          "field": "entry",
+          "meaning": "planned entry price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "margin",
+          "meaning": "user-requested margin allocation",
+          "unit": "quote_asset"
+        },
+        {
+          "field": "leverage",
+          "meaning": "user-requested exposure multiple",
+          "unit": "multiple"
+        },
+        {
+          "field": "take_profit",
+          "meaning": "planned TP barrier",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "stop_loss",
+          "meaning": "planned SL barrier",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "time_horizon",
+          "meaning": "approved horizon profile",
+          "unit": "enum"
+        },
+        {
+          "field": "horizon_seconds",
+          "meaning": "exact analysis duration",
+          "unit": "seconds"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "request_received_at",
+            "meaning": "server receipt of the immutable proposal",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "request_identity",
+          "rule": "request_received_at defines the proposal cutoff"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "stored_with_recommendation",
+      "historical_reconstruction": "stored_values_available_but_exact_request_time_missing",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        1,
+        26,
+        28,
+        29,
+        30,
+        32
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "app.py:92-102",
+          "app.py:4055-4100"
+        ]
+      },
+      "limitations": [
+        "horizon_seconds is stamped after analysis, not received with the plan",
+        "symbol is not checked against exchangeInfo before collection"
+      ]
+    },
+    {
+      "id": "M3-DATA-002",
+      "name": "Reglas y metadatos USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/exchangeInfo",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "symbols[].status",
+          "meaning": "trading status",
+          "unit": "enum"
+        },
+        {
+          "field": "symbols[].contractType",
+          "meaning": "contract type",
+          "unit": "enum"
+        },
+        {
+          "field": "symbols[].baseAsset",
+          "meaning": "base asset",
+          "unit": "asset"
+        },
+        {
+          "field": "symbols[].quoteAsset",
+          "meaning": "quote asset",
+          "unit": "asset"
+        },
+        {
+          "field": "symbols[].filters",
+          "meaning": "price quantity and notional rules",
+          "unit": "object"
+        },
+        {
+          "field": "symbols[].marketTakeBound",
+          "meaning": "market order price bound",
+          "unit": "ratio"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "captured_configuration",
+          "max_age_ms": 86400000,
+          "rule": "symbol must be TRADING and contract/quote must match"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_configuration_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        1,
+        3,
+        7,
+        9,
+        10,
+        15,
+        24,
+        26,
+        28,
+        29,
+        30
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "market_data.py"
+        ]
+      },
+      "limitations": [
+        "exchangeInfo serverTime is explicitly not the clock source"
+      ]
+    },
+    {
+      "id": "M3-DATA-003",
+      "name": "Reloj del proveedor USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/time",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "serverTime",
+          "meaning": "Binance server time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "serverTime",
+            "meaning": "provider clock at response",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "clock_alignment",
+          "max_age_ms": 30000,
+          "rule": "record server offset and never infer provider time locally"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        1,
+        3,
+        7,
+        9,
+        10,
+        15,
+        24,
+        26,
+        28,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "market_data.py"
+        ]
+      },
+      "limitations": []
+    },
+    {
+      "id": "M3-DATA-004",
+      "name": "Ultimo precio USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v2/ticker/price",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "symbol",
+          "meaning": "contract symbol",
+          "unit": "symbol"
+        },
+        {
+          "field": "price",
+          "meaning": "latest traded price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "time",
+          "meaning": "transaction time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "time",
+            "meaning": "transaction time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "realtime_event",
+          "max_age_ms": 30000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        1,
+        15,
+        24,
+        26,
+        28,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:21",
+          "market_data.py:234-244"
+        ]
+      },
+      "limitations": [
+        "production uses deprecated v1 route and returns only float",
+        "memory-cache capture time is hidden from the snapshot"
+      ]
+    },
+    {
+      "id": "M3-DATA-005",
+      "name": "Velas USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/klines",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "[0]",
+          "meaning": "open time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "[1]",
+          "meaning": "open",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "[2]",
+          "meaning": "high",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "[3]",
+          "meaning": "low",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "[4]",
+          "meaning": "close",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "[5]",
+          "meaning": "base volume",
+          "unit": "base_asset"
+        },
+        {
+          "field": "[6]",
+          "meaning": "close time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "[7]",
+          "meaning": "quote volume",
+          "unit": "quote_asset"
+        },
+        {
+          "field": "[8]",
+          "meaning": "trade count",
+          "unit": "count"
+        },
+        {
+          "field": "[9]",
+          "meaning": "taker buy base volume",
+          "unit": "base_asset"
+        },
+        {
+          "field": "[10]",
+          "meaning": "taker buy quote volume",
+          "unit": "quote_asset"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "[0]",
+            "meaning": "bar open time",
+            "unit": "unix_ms_utc"
+          },
+          {
+            "field": "[6]",
+            "meaning": "bar close time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "closed_period",
+          "rule": "only close_time<=analysis_at is closed; latest closed bar gap must be <= interval_ms+60000",
+          "release_grace_ms": 60000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "provider_retention_not_committed",
+      "historical_reconstruction": "REST pagination can reconstruct available history but local raw storage is required for guaranteed reproducibility",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        1,
+        3,
+        24,
+        26,
+        28
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "data_engine.py:11",
+          "data_engine.py:74-82",
+          "data_engine.py:539-544"
+        ]
+      },
+      "limitations": [
+        "production discards open and close timestamps",
+        "production does not separate the open partial candle",
+        "production substitutes neutral indicators when candles are missing"
+      ]
+    },
+    {
+      "id": "M3-DATA-006",
+      "name": "Profundidad USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/depth",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "lastUpdateId",
+          "meaning": "order book update id",
+          "unit": "identifier"
+        },
+        {
+          "field": "E",
+          "meaning": "message output time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "T",
+          "meaning": "transaction time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "bids[][0]",
+          "meaning": "bid price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "bids[][1]",
+          "meaning": "bid quantity",
+          "unit": "base_asset"
+        },
+        {
+          "field": "asks[][0]",
+          "meaning": "ask price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "asks[][1]",
+          "meaning": "ask quantity",
+          "unit": "base_asset"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "E",
+            "meaning": "message output time",
+            "unit": "unix_ms_utc"
+          },
+          {
+            "field": "T",
+            "meaning": "transaction time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "realtime_snapshot",
+          "max_age_ms": 30000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_snapshot_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        7,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:23",
+          "data_engine.py:334-352"
+        ]
+      },
+      "limitations": [
+        "production requests only 20 levels and discards E/T/update id",
+        "standard depth excludes RPI orders by provider definition",
+        "visible depth is not guaranteed executable depth"
+      ]
+    },
+    {
+      "id": "M3-DATA-007",
+      "name": "Operaciones agregadas USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/aggTrades",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "a",
+          "meaning": "aggregate trade id",
+          "unit": "identifier"
+        },
+        {
+          "field": "p",
+          "meaning": "trade price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "q",
+          "meaning": "quantity",
+          "unit": "base_asset"
+        },
+        {
+          "field": "T",
+          "meaning": "trade time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "m",
+          "meaning": "buyer was maker",
+          "unit": "boolean"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "T",
+            "meaning": "aggregate trade timestamp",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "explicit_event_window",
+          "max_last_event_age_ms": 30000,
+          "rule": "startTime/endTime and a duration selected in M4 are mandatory; a last-N sample is forbidden"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "only_last_24_hours_by_provider",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        7,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:276-290",
+          "data_engine.py:355-379"
+        ]
+      },
+      "limitations": [
+        "production uses latest 500 trades with variable elapsed time",
+        "RPI fills are aggregated without a distinguishing tag",
+        "insurance fund and ADL trades are excluded"
+      ]
+    },
+    {
+      "id": "M3-DATA-008",
+      "name": "Mejor bid/ask USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/ticker/bookTicker",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "bidPrice",
+          "meaning": "best bid",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "bidQty",
+          "meaning": "best bid quantity",
+          "unit": "base_asset"
+        },
+        {
+          "field": "askPrice",
+          "meaning": "best ask",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "askQty",
+          "meaning": "best ask quantity",
+          "unit": "base_asset"
+        },
+        {
+          "field": "time",
+          "meaning": "transaction time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "time",
+            "meaning": "book transaction time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "realtime_event",
+          "max_age_ms": 30000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        15,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "market_data.py"
+        ]
+      },
+      "limitations": [
+        "RPI orders are excluded by provider definition"
+      ]
+    },
+    {
+      "id": "M3-DATA-009",
+      "name": "Estadistica movil 24h USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/ticker/24hr",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "priceChangePercent",
+          "meaning": "rolling price change",
+          "unit": "percent"
+        },
+        {
+          "field": "quoteVolume",
+          "meaning": "rolling quote volume",
+          "unit": "quote_asset"
+        },
+        {
+          "field": "highPrice",
+          "meaning": "rolling high",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "lowPrice",
+          "meaning": "rolling low",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "openTime",
+          "meaning": "rolling window start",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "closeTime",
+          "meaning": "rolling window end",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "openTime",
+            "meaning": "rolling window start",
+            "unit": "unix_ms_utc"
+          },
+          {
+            "field": "closeTime",
+            "meaning": "rolling window end",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "rolling_window",
+          "max_age_ms": 30000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_rolling_window_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        24
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:24",
+          "data_engine.py:597-602"
+        ]
+      },
+      "limitations": [
+        "production discards openTime/closeTime",
+        "missing payload becomes zero-valued evidence"
+      ]
+    },
+    {
+      "id": "M3-DATA-010",
+      "name": "Mark, indice y funding actual USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/premiumIndex",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "markPrice",
+          "meaning": "mark price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "indexPrice",
+          "meaning": "index price",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "lastFundingRate",
+          "meaning": "latest funding rate",
+          "unit": "ratio"
+        },
+        {
+          "field": "nextFundingTime",
+          "meaning": "next funding time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "time",
+          "meaning": "snapshot time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "time",
+            "meaning": "provider snapshot time",
+            "unit": "unix_ms_utc"
+          },
+          {
+            "field": "nextFundingTime",
+            "meaning": "scheduled next funding",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "realtime_snapshot",
+          "max_age_ms": 30000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        10,
+        15,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:26",
+          "data_engine.py:426-431"
+        ]
+      },
+      "limitations": [
+        "production discards provider snapshot time"
+      ]
+    },
+    {
+      "id": "M3-DATA-011",
+      "name": "Historial de funding USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/fundingRate",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "fundingRate",
+          "meaning": "settled funding rate",
+          "unit": "ratio"
+        },
+        {
+          "field": "fundingTime",
+          "meaning": "funding settlement time",
+          "unit": "unix_ms_utc"
+        },
+        {
+          "field": "markPrice",
+          "meaning": "mark price for funding charge",
+          "unit": "quote_asset_per_base"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "fundingTime",
+            "meaning": "funding settlement time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "scheduled_event_history",
+          "rule": "latest fundingTime must be compatible with the current fundingIntervalHours and <=analysis_at"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "provider_retention_not_committed",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        10,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:31",
+          "data_engine.py:424-428"
+        ]
+      },
+      "limitations": [
+        "production averages eight rates without preserving timestamps",
+        "production does not account for funding interval changes"
+      ]
+    },
+    {
+      "id": "M3-DATA-012",
+      "name": "Configuracion del intervalo de funding",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/fundingInfo",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "symbol",
+          "meaning": "contract symbol",
+          "unit": "symbol"
+        },
+        {
+          "field": "fundingIntervalHours",
+          "meaning": "current funding interval",
+          "unit": "hours"
+        },
+        {
+          "field": "adjustedFundingRateCap",
+          "meaning": "adjusted cap",
+          "unit": "ratio"
+        },
+        {
+          "field": "adjustedFundingRateFloor",
+          "meaning": "adjusted floor",
+          "unit": "ratio"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "captured_configuration",
+          "max_age_ms": 86400000,
+          "rule": "absence from response means no documented adjustment; capture time remains mandatory"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_adjustments_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        10,
+        29
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "market_data.py"
+        ]
+      },
+      "limitations": []
+    },
+    {
+      "id": "M3-DATA-013",
+      "name": "Open interest actual USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /fapi/v1/openInterest",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "openInterest",
+          "meaning": "present open interest",
+          "unit": "base_asset"
+        },
+        {
+          "field": "time",
+          "meaning": "transaction time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "time",
+            "meaning": "provider transaction time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "realtime_snapshot",
+          "max_age_ms": 30000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        9
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:27",
+          "data_engine.py:432"
+        ]
+      },
+      "limitations": [
+        "production discards provider time"
+      ]
+    },
+    {
+      "id": "M3-DATA-014",
+      "name": "Historial de open interest USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /futures/data/openInterestHist",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "sumOpenInterest",
+          "meaning": "total open interest",
+          "unit": "base_asset"
+        },
+        {
+          "field": "sumOpenInterestValue",
+          "meaning": "total open interest value",
+          "unit": "quote_asset"
+        },
+        {
+          "field": "timestamp",
+          "meaning": "period end time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "timestamp",
+            "meaning": "period end time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "completed_period",
+          "rule": "latest timestamp<=analysis_at and lag<=period_ms+60000",
+          "release_grace_ms": 60000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "latest_one_month_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        9
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "data_engine.py:382-390",
+          "data_engine.py:393-454"
+        ]
+      },
+      "limitations": [
+        "production discards all period timestamps",
+        "no local archive exists beyond provider retention"
+      ]
+    },
+    {
+      "id": "M3-DATA-015",
+      "name": "Volumen taker buy/sell USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures",
+      "endpoint": "GET /futures/data/takerlongshortRatio",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": [
+        {
+          "field": "buySellRatio",
+          "meaning": "taker buy/sell ratio",
+          "unit": "ratio"
+        },
+        {
+          "field": "buyVol",
+          "meaning": "taker buy volume",
+          "unit": "base_asset"
+        },
+        {
+          "field": "sellVol",
+          "meaning": "taker sell volume",
+          "unit": "base_asset"
+        },
+        {
+          "field": "timestamp",
+          "meaning": "period start time",
+          "unit": "unix_ms_utc"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [
+          {
+            "field": "timestamp",
+            "meaning": "period start time",
+            "unit": "unix_ms_utc"
+          }
+        ],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "completed_period",
+          "rule": "period must be complete at analysis_at and release lag must be <=period_ms+60000",
+          "release_grace_ms": 60000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "latest_30_days_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        7
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "implemented_noncompliant",
+        "source_refs": [
+          "market_data.py:35-37",
+          "data_engine.py:438-450"
+        ]
+      },
+      "limitations": [
+        "production requests one row and discards timestamp",
+        "no local archive exists beyond provider retention"
+      ]
+    },
+    {
+      "id": "M3-DATA-016",
+      "name": "Reglas y metadatos Binance Spot",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "spot",
+      "endpoint": "GET /api/v3/exchangeInfo",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/general",
+      "fields": [
+        {
+          "field": "symbols[].status",
+          "meaning": "spot trading status",
+          "unit": "enum"
+        },
+        {
+          "field": "symbols[].baseAsset",
+          "meaning": "base asset",
+          "unit": "asset"
+        },
+        {
+          "field": "symbols[].quoteAsset",
+          "meaning": "quote asset",
+          "unit": "asset"
+        },
+        {
+          "field": "symbols[].filters",
+          "meaning": "spot execution filters",
+          "unit": "object"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "captured_configuration",
+          "max_age_ms": 86400000
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_configuration_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        15
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "market_data.py"
+        ]
+      },
+      "limitations": []
+    },
+    {
+      "id": "M3-DATA-017",
+      "name": "Mejor bid/ask Binance Spot",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "spot",
+      "endpoint": "GET /api/v3/ticker/bookTicker",
+      "authentication": "public",
+      "source_status": "approved_public_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/market",
+      "fields": [
+        {
+          "field": "bidPrice",
+          "meaning": "best spot bid",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "bidQty",
+          "meaning": "best spot bid quantity",
+          "unit": "base_asset"
+        },
+        {
+          "field": "askPrice",
+          "meaning": "best spot ask",
+          "unit": "quote_asset_per_base"
+        },
+        {
+          "field": "askQty",
+          "meaning": "best spot ask quantity",
+          "unit": "base_asset"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "receive_time_only",
+          "max_request_latency_ms": 10000,
+          "cross_venue_capture_skew_ms": 2000,
+          "rule": "provider supplies no event timestamp; requested_at and received_at plus cross-venue skew are mandatory"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        15
+      ],
+      "missing_effect": "rule_not_evaluated_never_neutral",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "market_data.py"
+        ]
+      },
+      "limitations": [
+        "REST response has no provider event timestamp",
+        "basis quality is lower than same-timestamp index basis"
+      ]
+    },
+    {
+      "id": "M3-DATA-018",
+      "name": "Comision efectiva del usuario USD-M Futures",
+      "priority": "P0",
+      "provider": "binance",
+      "market": "usd_m_futures_account",
+      "endpoint": "GET /fapi/v1/commissionRate",
+      "authentication": "signed_user_data",
+      "source_status": "approved_conditional_auth_source",
+      "documentation_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account",
+      "fields": [
+        {
+          "field": "makerCommissionRate",
+          "meaning": "account maker commission",
+          "unit": "ratio"
+        },
+        {
+          "field": "takerCommissionRate",
+          "meaning": "account taker commission",
+          "unit": "ratio"
+        },
+        {
+          "field": "rpiCommissionRate",
+          "meaning": "account RPI commission",
+          "unit": "ratio"
+        }
+      ],
+      "time_contract": {
+        "timestamp_fields": [],
+        "requested_at_required": true,
+        "received_at_required": true,
+        "analysis_rule": "provider_time<=received_at<=analysis_at; future data block",
+        "freshness": {
+          "kind": "authenticated_configuration",
+          "max_age_ms": 3600000,
+          "rule": "without authenticated or explicitly user-configured rates, exact execution economics are unavailable"
+        },
+        "snapshot_max_span_ms": 15000,
+        "request_max_latency_ms": 10000
+      },
+      "retention": "current_account_configuration_only",
+      "historical_reconstruction": "requires_local_capture_for_exact_replay",
+      "supported_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "supported_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "p0_blocks": [
+        29
+      ],
+      "missing_effect": "market_path_may_remain_available_but_exact_ev_and_execution_decision_blocked",
+      "current_implementation": {
+        "status": "not_implemented",
+        "source_refs": [
+          "analysis_engine.py:1889-1892"
+        ]
+      },
+      "limitations": [
+        "not anonymously accessible",
+        "M3 live audit intentionally did not use account credentials"
+      ]
+    }
+  ],
+  "summary": {
+    "contracts": 18,
+    "public_or_internal_approved": 17,
+    "conditional_auth": 1,
+    "current_statuses": {
+      "implemented_noncompliant": 11,
+      "not_implemented": 7
+    },
+    "live_checks": 76,
+    "live_passed": 76,
+    "live_failed": 0
+  },
+  "live_verification": {
+    "path": "auditorias_motor\\2026-07-27_M3_verificacion_viva_fuentes.json",
+    "sha256": "e048915d08a750867f76c69fc0993f33bce217de1d1c1caf7611e34a5929054c",
+    "status": "pass",
+    "started_at": "2026-07-27T11:07:09.300000+00:00",
+    "finished_at": "2026-07-27T11:07:41.409000+00:00"
+  },
+  "official_sources": [
+    {
+      "provider": "Binance USD-M Futures",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "scope": "public market data and exchange metadata"
+    },
+    {
+      "provider": "Binance USD-M Futures",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account",
+      "scope": "signed user commission rate"
+    },
+    {
+      "provider": "Binance Spot",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/market",
+      "scope": "public spot market data"
+    },
+    {
+      "provider": "Binance Spot",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/general",
+      "scope": "spot exchange metadata and server time"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "CONTRATO_FASE_1_MOTOR_ANALISIS.md",
+      "sha256": "0f8e94c32e0b9867a0f0d3796fccfaf7e52df4ec739c2b5ff2a9cf0a7ee2650a"
+    },
+    {
+      "path": "auditorias_motor\\contrato_semantico_m2_v0_1.json",
+      "sha256": "4eeb152ca84d69aa1035128120915159a9783ec5a2b81d350dfe32c0c3363139"
+    },
+    {
+      "path": "auditorias_motor\\matriz_decisiones_m1_v0_1.json",
+      "sha256": "dd137c422c4f963059210409ab981c935537b9f5dd317ceefdca8f5cd79bb4f0"
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d"
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028"
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a"
+    },
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263"
+    },
+    {
+      "path": "auditorias_motor\\2026-07-27_M3_verificacion_viva_fuentes.json",
+      "sha256": "e048915d08a750867f76c69fc0993f33bce217de1d1c1caf7611e34a5929054c"
+    }
+  ],
+  "catalog_sha256": "a2bc0b4facd0801a63a6c39b2cd7f8448561c7eb8c22b6c0d170a3fe78e537dd"
+}

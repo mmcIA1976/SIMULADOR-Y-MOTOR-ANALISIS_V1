@@ -1,0 +1,228 @@
+{
+  "audit_version": "M3-current-data-audit-v0.1",
+  "phase": "M3",
+  "status": "current_data_pipeline_fails_m3_contract_as_expected",
+  "summary": {
+    "findings": 15,
+    "failures": 15,
+    "critical": 10,
+    "high": 5,
+    "production_modified": false
+  },
+  "findings": [
+    {
+      "id": "M3-CURRENT-FAIL-01",
+      "severity": "critical",
+      "reason": "analysis_at is stamped after analyze_trade finishes and no analysis_started_at or source-level data_cutoff is recorded.",
+      "observation": {
+        "analyze_before_stamp": true
+      },
+      "source_refs": [
+        "app.py:4080",
+        "app.py:4096"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-02",
+      "severity": "critical",
+      "reason": "P0 Binance observations do not retain requested_at, received_at and provider timestamps in the snapshot.",
+      "observation": {
+        "candle_fields": [
+          "interval",
+          "closes",
+          "highs",
+          "lows",
+          "volumes",
+          "taker_buy_volumes"
+        ],
+        "source_level_capture_metadata": false
+      },
+      "source_refs": [
+        "data_engine.py:17-23",
+        "data_engine.py:74-82"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-03",
+      "severity": "critical",
+      "reason": "The current open candle is not distinguished from closed candles before indicators are calculated.",
+      "observation": {
+        "close_time_parsed": false,
+        "current_open_bar_filter": false
+      },
+      "source_refs": [
+        "data_engine.py:74-82",
+        "data_engine.py:104-166"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-04",
+      "severity": "critical",
+      "reason": "Missing candles become neutral-looking EMA, RSI, ATR and volume values instead of blocking evidence.",
+      "observation": {
+        "neutral_rsi": true,
+        "neutral_volume": true
+      },
+      "source_refs": [
+        "data_engine.py:110-131"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-05",
+      "severity": "critical",
+      "reason": "Optional HTTP helpers and future_value suppress provider errors into None, empty objects or empty arrays without a field-level failure reason.",
+      "observation": {
+        "optional_helper_present": true,
+        "future_default_present": true
+      },
+      "source_refs": [
+        "market_data.py:133-137",
+        "data_engine.py:97-101"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-06",
+      "severity": "high",
+      "reason": "Order flow uses the latest 500 aggregate trades, so its elapsed time changes with market activity.",
+      "observation": {
+        "fixed_last_n_call": true,
+        "explicit_time_window": false
+      },
+      "source_refs": [
+        "data_engine.py:531",
+        "data_engine.py:355-379"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-07",
+      "severity": "critical",
+      "reason": "OI and taker period timestamps are discarded, so freshness and completed-period status cannot be proved.",
+      "observation": {
+        "oi_timestamp_retained": false,
+        "taker_timestamp_retained": false
+      },
+      "source_refs": [
+        "data_engine.py:382-454"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-08",
+      "severity": "high",
+      "reason": "OI and taker history are provider-limited to about one month and no immutable local raw archive exists.",
+      "observation": {
+        "provider_oi_retention": "latest_one_month",
+        "provider_taker_retention": "latest_30_days",
+        "local_raw_archive": false
+      },
+      "source_refs": [
+        "market_data.py:305-310",
+        "market_data.py:327-332"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-09",
+      "severity": "high",
+      "reason": "Funding history is averaged over eight rows without funding interval metadata or retained event times.",
+      "observation": {
+        "funding_history_limit": 8,
+        "funding_info_endpoint_integrated": false
+      },
+      "source_refs": [
+        "data_engine.py:400",
+        "data_engine.py:424-428"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-10",
+      "severity": "critical",
+      "reason": "The P0 spot-versus-futures block has no Binance Spot source in the current market snapshot.",
+      "observation": {
+        "spot_api_present": false,
+        "spot_snapshot_field_present": false
+      },
+      "source_refs": [
+        "market_data.py",
+        "data_engine.py:525-610"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-11",
+      "severity": "critical",
+      "reason": "Commission and minimum slippage are hardcoded rather than captured from account and market data.",
+      "observation": {
+        "hardcoded_round_trip_fee": true,
+        "hardcoded_slippage_floor": true
+      },
+      "source_refs": [
+        "analysis_engine.py:1889-1892"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-12",
+      "severity": "high",
+      "reason": "Symbol status, contract type, quote asset and exchange precision are not validated through exchangeInfo.",
+      "observation": {
+        "futures_exchange_info_integrated": false,
+        "spot_exchange_info_integrated": false
+      },
+      "source_refs": [
+        "market_data.py",
+        "app.py:4064-4079"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-13",
+      "severity": "high",
+      "reason": "The current price route is deprecated v1 instead of the documented v2 route and its time field is discarded.",
+      "observation": {
+        "current_path": "/fapi/v1/ticker/price",
+        "v2_path_present": false
+      },
+      "source_refs": [
+        "market_data.py:21",
+        "market_data.py:234-244"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-14",
+      "severity": "critical",
+      "reason": "A missing 24h ticker becomes zero change, zero volume and zero barriers while analysis continues.",
+      "observation": {
+        "zero_price_change_fallback": true,
+        "zero_volume_fallback": true
+      },
+      "source_refs": [
+        "data_engine.py:597-602"
+      ],
+      "status": "fail"
+    },
+    {
+      "id": "M3-CURRENT-FAIL-15",
+      "severity": "critical",
+      "reason": "No field-level quality, capture span or blocking-reason contract exists for the assembled snapshot.",
+      "observation": {
+        "availability_is_boolean_only": true,
+        "snapshot_capture_span_recorded": false,
+        "blocking_reasons_recorded": false
+      },
+      "source_refs": [
+        "data_engine.py:499-522",
+        "data_engine.py:567-610"
+      ],
+      "status": "fail"
+    }
+  ]
+}

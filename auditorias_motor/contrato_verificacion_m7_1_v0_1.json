@@ -1,0 +1,247 @@
+{
+  "version": "M7.1-verification-contract-v0.1",
+  "phase": "M7",
+  "subphase": "M7.1",
+  "status": "in_progress_owner_authorized",
+  "date": "2026-07-28",
+  "owner_authorization": {
+    "instruction": "perfecto empecemos con M7",
+    "m7_started": true,
+    "m8_started": false,
+    "production_authorized": false
+  },
+  "objective": "Attempt to refute the frozen M6 revision through independent mathematical, software and coverage verification before any empirical performance evaluation.",
+  "explicit_exclusions": [
+    "no probability calibration",
+    "no coefficient estimation",
+    "no profitability claim",
+    "no use of legacy scores as truth",
+    "no production activation",
+    "no M8 empirical evaluation"
+  ],
+  "independence_contract": {
+    "oracles_must_not_call_M6_solver": true,
+    "manual_cases_must_be_recalculated_outside_M6": true,
+    "property_tests_must_not_copy_expected_M6_outputs": true,
+    "formula_review_must_map_expression_to_primary_source": true,
+    "failures_must_be_recorded_before_correction": true,
+    "production_hashes_must_match_M6_close": true
+  },
+  "workstreams": [
+    {
+      "id": "M7-GATE-EDGE-001",
+      "roadmap_item": 1,
+      "name": "Casos limite de entrada, TP, SL y horizonte",
+      "subphase": "M7.2",
+      "method": "boundary and adversarial tests"
+    },
+    {
+      "id": "M7-GATE-SYMMETRY-002",
+      "roadmap_item": 2,
+      "name": "Simetria long/short",
+      "subphase": "M7.2",
+      "method": "metamorphic log-price reflection tests"
+    },
+    {
+      "id": "M7-GATE-SHAPE-003",
+      "roadmap_item": 3,
+      "name": "Monotonicidad y continuidad",
+      "subphase": "M7.2",
+      "method": "property grids plus independent numerical oracle"
+    },
+    {
+      "id": "M7-GATE-MASS-004",
+      "roadmap_item": 4,
+      "name": "Masa probabilistica",
+      "subphase": "M7.2",
+      "method": "bounds, conservation and residual-error tests"
+    },
+    {
+      "id": "M7-GATE-DATA-005",
+      "roadmap_item": 5,
+      "name": "Datos ausentes, obsoletos, parciales o contradictorios",
+      "subphase": "M7.3",
+      "method": "invalid-input and fail-closed matrix"
+    },
+    {
+      "id": "M7-GATE-PAIR-006",
+      "roadmap_item": 6,
+      "name": "Cobertura de todos los pares soportados",
+      "subphase": "M7.4",
+      "method": "six-pair scale and contract matrix"
+    },
+    {
+      "id": "M7-GATE-HORIZON-007",
+      "roadmap_item": 7,
+      "name": "Cobertura de los tres marcos",
+      "subphase": "M7.4",
+      "method": "three-horizon exact-sampling matrix"
+    },
+    {
+      "id": "M7-GATE-INTERACTION-008",
+      "roadmap_item": 8,
+      "name": "Doble conteo e interacciones",
+      "subphase": "M7.4",
+      "method": "rule-DAG and coefficient-feature uniqueness audit"
+    },
+    {
+      "id": "M7-GATE-TRACE-009",
+      "roadmap_item": 9,
+      "name": "Reproducibilidad de traza y explicacion",
+      "subphase": "M7.5",
+      "method": "canonical replay and explanation completeness"
+    },
+    {
+      "id": "M7-GATE-MANUAL-010",
+      "roadmap_item": 10,
+      "name": "Comparacion manual de una muestra de analisis",
+      "subphase": "M7.5",
+      "method": "predeclared cases recalculated outside M6"
+    },
+    {
+      "id": "M7-GATE-RESILIENCE-011",
+      "roadmap_item": 11,
+      "name": "Rendimiento, latencia y tolerancia a fallos",
+      "subphase": "M7.6",
+      "method": "benchmarks, stress cases and failure injection"
+    },
+    {
+      "id": "M7-GATE-REVIEW-012",
+      "roadmap_item": 12,
+      "name": "Revision independiente del codigo y formulas",
+      "subphase": "M7.7",
+      "method": "source-to-formula review and defect register"
+    }
+  ],
+  "severity_policy": [
+    {
+      "severity": "critical",
+      "definition": "Can produce invalid probabilities, invert a required mathematical relation, accept leakage or contradictory inputs silently, mutate production, or make an analysis non-reproducible.",
+      "closure_policy": "must_be_fixed_and_retested_before_M7_closure"
+    },
+    {
+      "severity": "high",
+      "definition": "Breaks a supported pair, side, horizon, trace field, or declared fail-closed behavior without corrupting every result.",
+      "closure_policy": "must_be_fixed_or_explicitly_block_affected_scope"
+    },
+    {
+      "severity": "medium",
+      "definition": "Weakens diagnostics, numerical precision, coverage evidence, latency margin, or explanation quality.",
+      "closure_policy": "fix_or_declare_with_owner_review"
+    },
+    {
+      "severity": "low",
+      "definition": "Documentation or maintainability defect with no demonstrated effect on calculation or supported behavior.",
+      "closure_policy": "record_and_schedule"
+    }
+  ],
+  "coverage_contract": {
+    "pairs": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "sides": [
+      "long",
+      "short"
+    ],
+    "pair_horizon_side_cells": 36,
+    "frozen_rules": 27,
+    "rule_coverage_cells": 972,
+    "coverage_does_not_claim_predictive_validity": true
+  },
+  "required_deliverables": [
+    "verification test suite",
+    "defect and correction register",
+    "pair-horizon-rule matrix",
+    "manual independent sample",
+    "performance and fault-tolerance report",
+    "independent code and formula review",
+    "proof that production remains unchanged"
+  ],
+  "closure_gates": {
+    "all_12_workstreams_completed": true,
+    "critical_defects_open": 0,
+    "all_remaining_limitations_declared": true,
+    "production_unchanged": true,
+    "owner_approval_required": true
+  },
+  "phase_boundaries": {
+    "m6_frozen": true,
+    "m7_started": true,
+    "m7_closed": false,
+    "m8_blocked": true,
+    "production_effect": "none"
+  },
+  "inputs": [
+    {
+      "path": "auditorias_motor/paquete_cierre_m6_6_v0_1.json",
+      "sha256": "2879011fcbecaf12190e3d0f60ddacb6e82a4aab23d39242869dca35061af4ba",
+      "bytes": 14167
+    },
+    {
+      "path": "auditorias_motor/decision_metodologica_m6_1_v0_1.json",
+      "sha256": "bb906cc52a46bca8d1e9ccf38a5898fe875c7cc2700df961305f7af09fe750ce",
+      "bytes": 18038
+    },
+    {
+      "path": "auditorias_motor/verificacion_m6_5_v0_1.json",
+      "sha256": "bec353de186565f04ce7064ab6f67c6ebe3fc5dba60943bec1c3ecf5f32099a7",
+      "bytes": 6842
+    },
+    {
+      "path": "auditorias_motor/catalogo_27_reglas_formulas_m4_7_v0_2.json",
+      "sha256": "0ec5395c8ac2ebaa9702d229ae4ff9a849cf2cbf562b0be6745435e2e7e7be04",
+      "bytes": 159252
+    }
+  ],
+  "m6_formula_count": 8,
+  "m6_source_count": 6,
+  "m6_verification_status": "completed_internal_verification_m7_still_required",
+  "production_source_hashes_frozen": [
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263",
+      "bytes": 233770
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a",
+      "bytes": 119801
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028",
+      "bytes": 27626
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d",
+      "bytes": 14585
+    },
+    {
+      "path": "liquidation_data.py",
+      "sha256": "817de5c66f1d52066989492e1e3cad32300bebc0df3474820777d10cdb803fd9",
+      "bytes": 9921
+    },
+    {
+      "path": "challenger_engine.py",
+      "sha256": "767b2cf514e49256c5a326667a84986417aae235acbb9b7760e033ec880183a9",
+      "bytes": 22553
+    }
+  ],
+  "next_step": {
+    "id": "M7.2",
+    "name": "Pruebas matematicas adversarias y oraculos independientes",
+    "started": false
+  },
+  "canonical_payload_sha256": "d480cc514d195763945ec669776f8c6262a873a8721aff61c4b876e65d480460"
+}

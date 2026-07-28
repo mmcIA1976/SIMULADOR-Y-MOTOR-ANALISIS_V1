@@ -1,0 +1,27 @@
+{
+  "version": "M7.6-resilience-corrections-v0.1",
+  "phase": "M7",
+  "subphase": "M7.6",
+  "date": "2026-07-28",
+  "status": "corrected_and_retested",
+  "corrections": [
+    {
+      "defect_id": "M7-DEFECT-NUMERIC-002",
+      "method": "three-state log-sum-exp hazard normalization",
+      "result": "finite extreme predictors remain finite; non-finite predictors block"
+    },
+    {
+      "defect_id": "M7-DEFECT-RESOURCE-003",
+      "method": "strict integer validation and MAX_INTERVAL_COUNT=4096",
+      "result": "boolean and oversized interval counts block before iteration"
+    }
+  ],
+  "versions_after_correction": {
+    "competing_risk_layer": "M6-discrete-competing-risks-v0.2",
+    "m6_competing_risks_sha256": "7dff0bb8e545e3ca2c8a8b751312b7bf5d6d3d971b0856d58a92cedb86a2b9b4",
+    "m6_engine_sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87"
+  },
+  "manual_probability_or_weight_added": false,
+  "production_effect": "none",
+  "m8_started": false
+}

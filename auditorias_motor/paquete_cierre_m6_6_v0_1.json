@@ -1,0 +1,402 @@
+{
+  "version": "M6.6-closure-package-v0.1",
+  "phase": "M6",
+  "subphase": "M6.6",
+  "status": "completed_owner_authorized",
+  "date": "2026-07-28",
+  "owner_authorization": {
+    "statement": "continua y completa M6, no vayas parando por favor a no ser que tengas alguna duda en concreto",
+    "methodology_approved": true,
+    "m6_completion_authorized": true,
+    "production_authorized": false,
+    "m7_start_authorized": false
+  },
+  "scope": {
+    "m6_closed": true,
+    "m7_started": false,
+    "production_modified": false,
+    "learning_engine_modified": false,
+    "outcomes": 3,
+    "formulas_registered": 8,
+    "m5_rules_partitioned": 27,
+    "baseline_inputs": 5,
+    "candidate_covariates": 12,
+    "active_evidence_coefficients": 0,
+    "property_grid_cases": 125
+  },
+  "architecture": {
+    "id": "first_passage_baseline_plus_competing_risk_evidence_v0.1",
+    "layer_a_baseline": {
+      "state_process": "X(t)=sigma_H*W(t)",
+      "drift": 0,
+      "upper_barrier": "a=d_TP>0",
+      "lower_barrier": "-b where b=d_SL>0",
+      "horizon": "T=H",
+      "stopping_time": "tau=inf{t>=0: X(t)>=a or X(t)<=-b}",
+      "probabilities": {
+        "P_TP": "P(tau<=T and X(tau)=a)",
+        "P_SL": "P(tau<=T and X(tau)=-b)",
+        "P_EXPIRY": "P(tau>T)"
+      },
+      "solver_decision_deferred_to": "M6.2"
+    },
+    "layer_b_evidence": {
+      "model": "discrete_time_competing_risks",
+      "cause_specific_hazards": [
+        "h_TP(k|x)",
+        "h_SL(k|x)"
+      ],
+      "survival": "S(k|x)=product_(j=1..k)[1-h_TP(j|x)-h_SL(j|x)]",
+      "cumulative_incidence": {
+        "P_TP": "sum_(k=1..K) S(k-1|x)*h_TP(k|x)",
+        "P_SL": "sum_(k=1..K) S(k-1|x)*h_SL(k|x)",
+        "P_EXPIRY": "S(K|x)"
+      },
+      "baseline_use": "first-passage interval hazards act as fixed offsets; M5 covariates may enter only through fitted coefficients"
+    }
+  },
+  "formula_registry": [
+    {
+      "id": "M6-FORMULA-DB-TRANSITION-001",
+      "layer": "first_passage_baseline",
+      "expression": "p(y,t|y0)=2/L sum_n sin(n*pi*y0/L) sin(n*pi*y/L) exp[-n^2*pi^2*sigma_H^2*t/(2L^2)]"
+    },
+    {
+      "id": "M6-FORMULA-DB-TP-002",
+      "layer": "first_passage_baseline",
+      "expression": "P_TP(T)=b/L-(2/pi) sum_n (-1)^(n+1) sin(n*pi*b/L) exp(-c*n^2)/n"
+    },
+    {
+      "id": "M6-FORMULA-DB-SL-003",
+      "layer": "first_passage_baseline",
+      "expression": "P_SL(T)=a/L-(2/pi) sum_n sin(n*pi*b/L) exp(-c*n^2)/n"
+    },
+    {
+      "id": "M6-FORMULA-DB-EXPIRY-004",
+      "layer": "first_passage_baseline",
+      "expression": "P_EXPIRY(T)=1-P_TP(T)-P_SL(T)"
+    },
+    {
+      "id": "M6-FORMULA-INTERVAL-HAZARD-005",
+      "layer": "competing_risks",
+      "expression": "h_c(k)=[F_c(t_k)-F_c(t_(k-1))]/S(t_(k-1))"
+    },
+    {
+      "id": "M6-FORMULA-EVIDENCE-OFFSET-006",
+      "layer": "competing_risks",
+      "expression": "h'_c(k)=h_c(k)*exp(beta_c*x)/[h_none(k)+sum_j h_j(k)*exp(beta_j*x)]"
+    },
+    {
+      "id": "M6-FORMULA-CIF-007",
+      "layer": "competing_risks",
+      "expression": "F_c(K)=sum_(k=1..K) S(k-1)*h'_c(k)"
+    },
+    {
+      "id": "M6-FORMULA-SURVIVAL-008",
+      "layer": "competing_risks",
+      "expression": "S(K)=product_(k=1..K)[1-h'_TP(k)-h'_SL(k)]"
+    }
+  ],
+  "coefficient_artifact": {
+    "path": "auditorias_motor/coeficientes_m6_v0_1_bloqueados.json",
+    "sha256": "55255a4bab7167763df1676069d3200a92ac46f40e5c1593351664f209daf65b",
+    "status": "locked_no_estimated_coefficients",
+    "active": false
+  },
+  "trace_contract": {
+    "source": "m6_engine.py",
+    "from_m5_values": [
+      "horizon_seconds",
+      "tp_log_distance",
+      "sl_log_distance",
+      "sigma_horizon"
+    ],
+    "exposes": [
+      "source M5 trace hashes",
+      "formula IDs",
+      "baseline probabilities",
+      "interval hazards and cumulative incidence",
+      "coefficient artifact status",
+      "uncertainty status or scenario envelope",
+      "assumptions and limitations",
+      "probability mass error"
+    ],
+    "production_effect": "none"
+  },
+  "historical_872_873": {
+    "legacy_ordering": "P_TP_872_lt_P_TP_873",
+    "m6_ordering": "P_TP_872_gt_P_TP_873_for_every_sigma_scenario",
+    "sigma_scenarios": [
+      0.005,
+      0.01,
+      0.02,
+      0.04,
+      0.08,
+      0.16
+    ],
+    "historical_probability_claimed": false
+  },
+  "verification_summary": {
+    "probability_mass_grid_passed": true,
+    "probability_bounds_passed": true,
+    "symmetry_passed": true,
+    "scale_invariance_passed": true,
+    "farther_tp_monotonicity_passed": true,
+    "horizon_monotonicity_passed": true,
+    "continuity_passed": true,
+    "uncertainty_state_explicit": true,
+    "reproducible_trace_passed": true,
+    "m7_independent_verification_still_required": true
+  },
+  "import_isolation_audit": [
+    {
+      "path": "m6_first_passage.py",
+      "forbidden_imports": [],
+      "internal_only": true
+    },
+    {
+      "path": "m6_competing_risks.py",
+      "forbidden_imports": [],
+      "internal_only": true
+    },
+    {
+      "path": "m6_engine.py",
+      "forbidden_imports": [],
+      "internal_only": true
+    }
+  ],
+  "boundaries": {
+    "manual_points_bonus_penalties": "none",
+    "manual_coefficients": "none",
+    "production_probability_changed": false,
+    "probabilities_calibrated": false,
+    "predictive_validity_established": false,
+    "profitability_established": false,
+    "m7_replaced": false,
+    "m8_replaced": false
+  },
+  "sources": [
+    {
+      "id": "WIESE-2019-FIRST-PASSAGE-INTERVAL",
+      "type": "primary_research",
+      "title": "First passage in an interval for fractional Brownian motion",
+      "url": "https://arxiv.org/abs/1807.08807",
+      "supported_claims": [
+        "First exit from an interval is defined by two absorbing boundaries.",
+        "For ordinary Brownian motion the eventual upper-exit splitting probability is determined by the normalized starting position.",
+        "Finite discretization can materially affect observed barrier crossings."
+      ],
+      "not_supported": [
+        "Bitcoin log returns are Brownian.",
+        "Realized volatility is a calibrated forecast.",
+        "Technical indicators have any specified coefficient."
+      ]
+    },
+    {
+      "id": "RANGARAJAN-DING-2001-TWO-BARRIERS",
+      "type": "primary_research",
+      "title": "Anomalous diffusion and the first passage time problem",
+      "url": "https://arxiv.org/abs/cond-mat/0105267",
+      "supported_claims": [
+        "Two absorbing barriers admit a finite-time first-passage power-series treatment.",
+        "Ordinary Brownian diffusion is a special case of the derivation."
+      ],
+      "not_supported": [
+        "The Brownian special case is empirically sufficient for crypto.",
+        "A finite series truncation tolerance for this project."
+      ]
+    },
+    {
+      "id": "KIM-ET-AL-2023-CIF",
+      "type": "primary_research",
+      "title": "Revisiting the cumulative incidence function with competing risks data",
+      "url": "https://academic.oup.com/jrsssc/article/72/2/498/7076689",
+      "supported_claims": [
+        "A cause-specific cumulative incidence is an absolute event probability.",
+        "The cumulative incidence integrates survival times the cause-specific hazard.",
+        "All competing event types must be modeled jointly for coherent absolute risk."
+      ],
+      "not_supported": [
+        "A specific crypto covariate set or coefficient.",
+        "A project-specific bin width."
+      ]
+    },
+    {
+      "id": "LEE-ET-AL-2025-DISCRETE-COMPETING-RISKS",
+      "type": "primary_research",
+      "title": "Discrete-time competing-risks regression with or without penalization",
+      "url": "https://academic.oup.com/biometrics/article/81/2/ujaf040/8120014",
+      "supported_claims": [
+        "Discrete cause-specific hazards can produce cumulative incidence through survival products.",
+        "A discrete competing-risks likelihood can estimate covariate effects without treating competing events as ordinary censoring."
+      ],
+      "not_supported": [
+        "M5 variables are predictive.",
+        "Penalty strength, coefficients or promotion thresholds."
+      ]
+    },
+    {
+      "id": "GNEITING-RAFTERY-2007-PROPER-SCORES",
+      "type": "primary_research",
+      "title": "Strictly Proper Scoring Rules, Prediction, and Estimation",
+      "url": "https://sites.stat.washington.edu/people/raftery/Research/PDF/Gneiting2007jasa.pdf",
+      "supported_claims": [
+        "Strictly proper scores reward reporting the forecaster's true predictive distribution.",
+        "Logarithmic and Brier-type scores are suitable for probabilistic evaluation."
+      ],
+      "not_supported": [
+        "This project's probabilities are calibrated.",
+        "Any acceptable score threshold."
+      ]
+    },
+    {
+      "id": "BRIER-1950-PROBABILITY-FORECASTS",
+      "type": "primary_research",
+      "title": "Verification of forecasts expressed in terms of probability",
+      "url": "https://journals.ametsoc.org/view/journals/mwre/78/1/1520-0493_1950_078_0001_vofeit_2_0_co_2.xml",
+      "supported_claims": [
+        "Probability forecasts can be evaluated with squared probability error."
+      ],
+      "not_supported": [
+        "Brier score alone establishes profitability.",
+        "A project-specific acceptance threshold."
+      ]
+    }
+  ],
+  "verification_commands": {
+    "status": "passed_2026_07_28",
+    "m6_specific_tests_passed": 62,
+    "full_suite_tests_passed": 478,
+    "m6_specific": ".\\.venv\\Scripts\\python.exe -m unittest tests.test_m6_methodology_decision tests.test_m6_first_passage tests.test_m6_competing_risks tests.test_m6_engine tests.test_m6_verification tests.test_m6_closure",
+    "full_suite": ".\\.venv\\Scripts\\python.exe -m unittest discover -s tests",
+    "reproduce_decision": ".\\.venv\\Scripts\\python.exe build_m6_methodology_decision.py --check",
+    "reproduce_verification": ".\\.venv\\Scripts\\python.exe build_m6_verification.py --check",
+    "reproduce_closure": ".\\.venv\\Scripts\\python.exe build_m6_closure.py --check"
+  },
+  "production_source_hashes_at_close": [
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263",
+      "bytes": 233770
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a",
+      "bytes": 119801
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028",
+      "bytes": 27626
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d",
+      "bytes": 14585
+    },
+    {
+      "path": "liquidation_data.py",
+      "sha256": "817de5c66f1d52066989492e1e3cad32300bebc0df3474820777d10cdb803fd9",
+      "bytes": 9921
+    },
+    {
+      "path": "challenger_engine.py",
+      "sha256": "767b2cf514e49256c5a326667a84986417aae235acbb9b7760e033ec880183a9",
+      "bytes": 22553
+    }
+  ],
+  "artifact_manifest": [
+    {
+      "path": "m6_first_passage.py",
+      "sha256": "6d70c67e84980dc4245c0181e7ce9a0d8dc51fea90a7b8e28319c9eb8ca746f1",
+      "bytes": 7471
+    },
+    {
+      "path": "m6_competing_risks.py",
+      "sha256": "7dff0bb8e545e3ca2c8a8b751312b7bf5d6d3d971b0856d58a92cedb86a2b9b4",
+      "bytes": 9741
+    },
+    {
+      "path": "m6_engine.py",
+      "sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87",
+      "bytes": 9616
+    },
+    {
+      "path": "build_m6_methodology_decision.py",
+      "sha256": "879e6f795fc5dac1f5df2fbfe99cae70421cfb5562117603ec0dedff2ae3bc14",
+      "bytes": 19693
+    },
+    {
+      "path": "build_m6_verification.py",
+      "sha256": "f43f145284abe36483fd565ab572e59a00e709dd9cf03c998f04fab2f34cb774",
+      "bytes": 11817
+    },
+    {
+      "path": "build_m6_closure.py",
+      "sha256": "39c2dbf31acb33f7d5b30ca1f155ffbd38cead8913a463f41c5d520c75032efc",
+      "bytes": 16648
+    },
+    {
+      "path": "tests/test_m6_methodology_decision.py",
+      "sha256": "d7c3c2a79133a0456a3d5a3c396583d55f47399812a4327472896cafdb44baba",
+      "bytes": 6129
+    },
+    {
+      "path": "tests/test_m6_first_passage.py",
+      "sha256": "0b33e019cbd71e53d676ed570a0d01f2a93b0470874bb9ba4bda6a3a8a976a68",
+      "bytes": 6434
+    },
+    {
+      "path": "tests/test_m6_competing_risks.py",
+      "sha256": "e378b0c3010b9416cd0b44eb5d6af09fb82f29cba272230831fc0fc0549267b3",
+      "bytes": 6280
+    },
+    {
+      "path": "tests/test_m6_engine.py",
+      "sha256": "1aa68d824919cf65e39bc73e90cd08aa4ae4f78864162afe2bf35926e0a1c64d",
+      "bytes": 6975
+    },
+    {
+      "path": "tests/test_m6_verification.py",
+      "sha256": "2ea22f4af9c3c186ffc2098ac650949a28dd0800c6924f4e955c066997a2a166",
+      "bytes": 4069
+    },
+    {
+      "path": "tests/test_m6_closure.py",
+      "sha256": "df33c150531aecbb1e3b4c99888642bc026974a3229da555f9371d5ad62ae8e0",
+      "bytes": 6728
+    },
+    {
+      "path": "auditorias_motor/decision_metodologica_m6_1_v0_1.json",
+      "sha256": "bb906cc52a46bca8d1e9ccf38a5898fe875c7cc2700df961305f7af09fe750ce",
+      "bytes": 18038
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M6_1_decision_metodologica_v0_1.md",
+      "sha256": "ec39bcf87d3ac71d4576590afb51a688aa98b55337396a787030d95b72b41792",
+      "bytes": 2991
+    },
+    {
+      "path": "auditorias_motor/verificacion_m6_5_v0_1.json",
+      "sha256": "bec353de186565f04ce7064ab6f67c6ebe3fc5dba60943bec1c3ecf5f32099a7",
+      "bytes": 6842
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M6_5_verificacion_propiedades_v0_1.md",
+      "sha256": "a09534328be76e64be48fea3ebf4849ce3f127298c1229c6e66c91942d1a2c93",
+      "bytes": 1192
+    },
+    {
+      "path": "auditorias_motor/coeficientes_m6_v0_1_bloqueados.json",
+      "sha256": "55255a4bab7167763df1676069d3200a92ac46f40e5c1593351664f209daf65b",
+      "bytes": 1234
+    }
+  ],
+  "next_phase": {
+    "id": "M7",
+    "name": "Verificacion matematica, de software y cobertura",
+    "started": false,
+    "requires_separate_owner_order": true
+  },
+  "canonical_payload_sha256": "f2c042bf0be339f7c9358f65918efc7b7f293c5c0218c0e1e1cb3076f1370875"
+}

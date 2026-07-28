@@ -1,0 +1,972 @@
+{
+  "version": "direct-old-vs-repaired-new-v0.1",
+  "captured_at": "2026-07-28T12:57:50.141523+00:00",
+  "scope": {
+    "sealed_final_records": 21,
+    "resolved_records": 21,
+    "directly_comparable_records": 21,
+    "formal_exact_horizon_records": 1,
+    "policy_reconstructed_horizon_records": 20
+  },
+  "engines": {
+    "old": "stored_legacy_probabilities",
+    "new_baseline": "M6-R1-remediated-zero-coefficient-baseline",
+    "new_candidate": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+    "new_candidate_version": "M6-frozen-candidate-no-H-v0.2",
+    "temperature": 1.5
+  },
+  "metrics": {
+    "old_engine": {
+      "n": 21,
+      "class_counts": {
+        "tp_first_within_horizon": 10,
+        "sl_first_within_horizon": 9,
+        "neither_barrier_before_expiry": 2
+      },
+      "brier_3c": 0.8117939066666667,
+      "log_loss_3c": 1.2074806106658773,
+      "macro_ovr_auc": 0.3154911689999409,
+      "ovr_auc_by_class": {
+        "tp_first_within_horizon": 0.12727272727272726,
+        "sl_first_within_horizon": 0.14814814814814814,
+        "neither_barrier_before_expiry": 0.6710526315789473
+      },
+      "calibration": {
+        "bin_count": 1,
+        "weighted_absolute_calibration_error": 0.03153015873015872,
+        "classes": {
+          "tp_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.4431809523809524,
+              "observed_frequency": 0.47619047619047616,
+              "absolute_error": 0.033009523809523766
+            }
+          ],
+          "sl_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.47586666666666666,
+              "observed_frequency": 0.42857142857142855,
+              "absolute_error": 0.04729523809523811
+            }
+          ],
+          "neither_barrier_before_expiry": [
+            {
+              "n": 21,
+              "mean_forecast": 0.08095238095238096,
+              "observed_frequency": 0.09523809523809523,
+              "absolute_error": 0.014285714285714277
+            }
+          ]
+        }
+      }
+    },
+    "new_baseline": {
+      "n": 21,
+      "class_counts": {
+        "tp_first_within_horizon": 10,
+        "sl_first_within_horizon": 9,
+        "neither_barrier_before_expiry": 2
+      },
+      "brier_3c": 0.5523987035948489,
+      "log_loss_3c": 0.8900741746435108,
+      "macro_ovr_auc": 0.6699302971232796,
+      "ovr_auc_by_class": {
+        "tp_first_within_horizon": 0.6818181818181818,
+        "sl_first_within_horizon": 0.5648148148148148,
+        "neither_barrier_before_expiry": 0.7631578947368421
+      },
+      "calibration": {
+        "bin_count": 1,
+        "weighted_absolute_calibration_error": 0.07517618461764344,
+        "classes": {
+          "tp_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.36342619926401104,
+              "observed_frequency": 0.47619047619047616,
+              "absolute_error": 0.11276427692646512
+            }
+          ],
+          "sl_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.5252986584751682,
+              "observed_frequency": 0.42857142857142855,
+              "absolute_error": 0.09672722990373966
+            }
+          ],
+          "neither_barrier_before_expiry": [
+            {
+              "n": 21,
+              "mean_forecast": 0.11127514226082079,
+              "observed_frequency": 0.09523809523809523,
+              "absolute_error": 0.016037047022725556
+            }
+          ]
+        }
+      }
+    },
+    "new_candidate": {
+      "n": 21,
+      "class_counts": {
+        "tp_first_within_horizon": 10,
+        "sl_first_within_horizon": 9,
+        "neither_barrier_before_expiry": 2
+      },
+      "brier_3c": 0.5486446175267577,
+      "log_loss_3c": 0.8220997294582665,
+      "macro_ovr_auc": 0.6892285427373146,
+      "ovr_auc_by_class": {
+        "tp_first_within_horizon": 0.5818181818181818,
+        "sl_first_within_horizon": 0.5648148148148148,
+        "neither_barrier_before_expiry": 0.9210526315789473
+      },
+      "calibration": {
+        "bin_count": 1,
+        "weighted_absolute_calibration_error": 0.02755237492317235,
+        "classes": {
+          "tp_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.4348619138057177,
+              "observed_frequency": 0.47619047619047616,
+              "absolute_error": 0.04132856238475846
+            }
+          ],
+          "sl_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.4617121989255902,
+              "observed_frequency": 0.42857142857142855,
+              "absolute_error": 0.03314077035416163
+            }
+          ],
+          "neither_barrier_before_expiry": [
+            {
+              "n": 21,
+              "mean_forecast": 0.10342588726869219,
+              "observed_frequency": 0.09523809523809523,
+              "absolute_error": 0.008187792030596955
+            }
+          ]
+        }
+      }
+    },
+    "diagnostic_candidate_without_h_no_refit": {
+      "n": 21,
+      "class_counts": {
+        "tp_first_within_horizon": 10,
+        "sl_first_within_horizon": 9,
+        "neither_barrier_before_expiry": 2
+      },
+      "brier_3c": 0.5486446175267577,
+      "log_loss_3c": 0.8220997294582665,
+      "macro_ovr_auc": 0.6892285427373146,
+      "ovr_auc_by_class": {
+        "tp_first_within_horizon": 0.5818181818181818,
+        "sl_first_within_horizon": 0.5648148148148148,
+        "neither_barrier_before_expiry": 0.9210526315789473
+      },
+      "calibration": {
+        "bin_count": 1,
+        "weighted_absolute_calibration_error": 0.02755237492317235,
+        "classes": {
+          "tp_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.4348619138057177,
+              "observed_frequency": 0.47619047619047616,
+              "absolute_error": 0.04132856238475846
+            }
+          ],
+          "sl_first_within_horizon": [
+            {
+              "n": 21,
+              "mean_forecast": 0.4617121989255902,
+              "observed_frequency": 0.42857142857142855,
+              "absolute_error": 0.03314077035416163
+            }
+          ],
+          "neither_barrier_before_expiry": [
+            {
+              "n": 21,
+              "mean_forecast": 0.10342588726869219,
+              "observed_frequency": 0.09523809523809523,
+              "absolute_error": 0.008187792030596955
+            }
+          ]
+        }
+      }
+    },
+    "top_class_accuracy": {
+      "old_engine": {
+        "correct": 5,
+        "total": 21,
+        "accuracy": 0.23809523809523808
+      },
+      "new_baseline": {
+        "correct": 14,
+        "total": 21,
+        "accuracy": 0.6666666666666666
+      },
+      "new_candidate": {
+        "correct": 12,
+        "total": 21,
+        "accuracy": 0.5714285714285714
+      }
+    },
+    "new_candidate_improvement": {
+      "brier_reduction": 0.263149289139909,
+      "brier_reduction_pct": 32.41577535614117,
+      "log_loss_reduction": 0.3853808812076108,
+      "log_loss_reduction_pct": 31.91611341859052,
+      "cases_higher_probability_for_actual_outcome": {
+        "new": 16,
+        "old": 5,
+        "ties": 0
+      },
+      "paired_bootstrap": {
+        "status": "evaluated",
+        "calendar_blocks": 11,
+        "resamples": 2000,
+        "left_minus_right": {
+          "brier_3c": {
+            "mean": -0.26469953524423667,
+            "lower_95": -0.42196669280286586,
+            "upper_95": -0.11924509125417793
+          },
+          "log_loss_3c": {
+            "mean": -0.3927085907040564,
+            "lower_95": -0.6545877750506854,
+            "upper_95": -0.2049567733211033
+          }
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "recommendation_id": 798,
+      "operation_id": 226,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.22,
+        "sl_first_within_horizon": 0.72,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.5466243685664367,
+        "sl_first_within_horizon": 0.3896597507713382,
+        "neither_barrier_before_expiry": 0.06371588066222511
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5709198588416787,
+        "sl_first_within_horizon": 0.34566162187086874,
+        "neither_barrier_before_expiry": 0.08341851928745253
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5709198588416787,
+        "sl_first_within_horizon": 0.34566162187086874,
+        "neither_barrier_before_expiry": 0.08341851928745253
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.22,
+        "new_candidate": 0.5709198588416787
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 799,
+      "operation_id": 227,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.22,
+        "sl_first_within_horizon": 0.72,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.4815434013549666,
+        "sl_first_within_horizon": 0.4690495115537303,
+        "neither_barrier_before_expiry": 0.04940708709130304
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5762168286282641,
+        "sl_first_within_horizon": 0.3693570214101991,
+        "neither_barrier_before_expiry": 0.054426149961536864
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5762168286282641,
+        "sl_first_within_horizon": 0.3693570214101991,
+        "neither_barrier_before_expiry": 0.054426149961536864
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.22,
+        "new_candidate": 0.5762168286282641
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 801,
+      "operation_id": 228,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.4808,
+        "sl_first_within_horizon": 0.3992,
+        "neither_barrier_before_expiry": 0.12
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.15848601587389183,
+        "sl_first_within_horizon": 0.601585207958703,
+        "neither_barrier_before_expiry": 0.23992877616740516
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.28307040793786403,
+        "sl_first_within_horizon": 0.47108215920428337,
+        "neither_barrier_before_expiry": 0.24584743285785265
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.28307040793786403,
+        "sl_first_within_horizon": 0.47108215920428337,
+        "neither_barrier_before_expiry": 0.24584743285785265
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.4808,
+        "new_candidate": 0.28307040793786403
+      },
+      "higher_probability_for_actual_outcome": "old"
+    },
+    {
+      "recommendation_id": 811,
+      "operation_id": 229,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.5277000000000001,
+        "sl_first_within_horizon": 0.39230000000000004,
+        "neither_barrier_before_expiry": 0.08000000000000002
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.30648339333439334,
+        "sl_first_within_horizon": 0.6935166066656067,
+        "neither_barrier_before_expiry": 0.0
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.39604238599794983,
+        "sl_first_within_horizon": 0.6039576139218223,
+        "neither_barrier_before_expiry": 8.02278532409972e-11
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.39604238599794983,
+        "sl_first_within_horizon": 0.6039576139218223,
+        "neither_barrier_before_expiry": 8.02278532409972e-11
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.39230000000000004,
+        "new_candidate": 0.6039576139218223
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 813,
+      "operation_id": 230,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.5613,
+        "sl_first_within_horizon": 0.3387,
+        "neither_barrier_before_expiry": 0.1
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.3042480543165063,
+        "sl_first_within_horizon": 0.6535946077200355,
+        "neither_barrier_before_expiry": 0.04215733796345822
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.3692746030783107,
+        "sl_first_within_horizon": 0.5480916194133147,
+        "neither_barrier_before_expiry": 0.08263377750837456
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.3692746030783107,
+        "sl_first_within_horizon": 0.5480916194133147,
+        "neither_barrier_before_expiry": 0.08263377750837456
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.3387,
+        "new_candidate": 0.5480916194133147
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 816,
+      "operation_id": 231,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.634,
+        "sl_first_within_horizon": 0.286,
+        "neither_barrier_before_expiry": 0.08
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.365809125787219,
+        "sl_first_within_horizon": 0.634004160447007,
+        "neither_barrier_before_expiry": 0.00018671376577394927
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.440390225900631,
+        "sl_first_within_horizon": 0.5596050557621729,
+        "neither_barrier_before_expiry": 4.718337196241025e-06
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.440390225900631,
+        "sl_first_within_horizon": 0.5596050557621729,
+        "neither_barrier_before_expiry": 4.718337196241025e-06
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.286,
+        "new_candidate": 0.5596050557621729
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 817,
+      "operation_id": 232,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.4253,
+        "sl_first_within_horizon": 0.5147,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.5874967619732396,
+        "sl_first_within_horizon": 0.41198959408775676,
+        "neither_barrier_before_expiry": 0.0005136439390036052
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5790769095895189,
+        "sl_first_within_horizon": 0.4174387367145068,
+        "neither_barrier_before_expiry": 0.0034843536959742716
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5790769095895189,
+        "sl_first_within_horizon": 0.4174387367145068,
+        "neither_barrier_before_expiry": 0.0034843536959742716
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.5147,
+        "new_candidate": 0.4174387367145068
+      },
+      "higher_probability_for_actual_outcome": "old"
+    },
+    {
+      "recommendation_id": 818,
+      "operation_id": 233,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.3469,
+        "sl_first_within_horizon": 0.5331,
+        "neither_barrier_before_expiry": 0.12
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.557207005622032,
+        "sl_first_within_horizon": 0.2594315526631675,
+        "neither_barrier_before_expiry": 0.18336144171480057
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.6482849061337144,
+        "sl_first_within_horizon": 0.23325945847360557,
+        "neither_barrier_before_expiry": 0.11845563539268009
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.6482849061337144,
+        "sl_first_within_horizon": 0.23325945847360557,
+        "neither_barrier_before_expiry": 0.11845563539268009
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.3469,
+        "new_candidate": 0.6482849061337144
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 822,
+      "operation_id": 234,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.469,
+        "sl_first_within_horizon": 0.411,
+        "neither_barrier_before_expiry": 0.12
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.521748411186596,
+        "sl_first_within_horizon": 0.44680246968740206,
+        "neither_barrier_before_expiry": 0.031449119126001956
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.6064307760159722,
+        "sl_first_within_horizon": 0.3706687935270674,
+        "neither_barrier_before_expiry": 0.022900430456960295
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.6064307760159722,
+        "sl_first_within_horizon": 0.3706687935270674,
+        "neither_barrier_before_expiry": 0.022900430456960295
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.469,
+        "new_candidate": 0.6064307760159722
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 838,
+      "operation_id": 235,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.5938,
+        "sl_first_within_horizon": 0.3462,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.5017987994462216,
+        "sl_first_within_horizon": 0.4981901163363343,
+        "neither_barrier_before_expiry": 1.1084217444057298e-05
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5530450412622903,
+        "sl_first_within_horizon": 0.44466522165601885,
+        "neither_barrier_before_expiry": 0.00228973708169086
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5530450412622903,
+        "sl_first_within_horizon": 0.44466522165601885,
+        "neither_barrier_before_expiry": 0.00228973708169086
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.5938,
+        "new_candidate": 0.5530450412622903
+      },
+      "higher_probability_for_actual_outcome": "old"
+    },
+    {
+      "recommendation_id": 840,
+      "operation_id": 237,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.22,
+        "sl_first_within_horizon": 0.72,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.359982403109987,
+        "sl_first_within_horizon": 0.640017596890013,
+        "neither_barrier_before_expiry": 0.0
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.2781604034603784,
+        "sl_first_within_horizon": 0.7218395964563423,
+        "neither_barrier_before_expiry": 8.327940997317137e-11
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.2781604034603784,
+        "sl_first_within_horizon": 0.7218395964563423,
+        "neither_barrier_before_expiry": 8.327940997317137e-11
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.22,
+        "new_candidate": 0.2781604034603784
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 841,
+      "operation_id": 238,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.22,
+        "sl_first_within_horizon": 0.72,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.3155349465650054,
+        "sl_first_within_horizon": 0.6844645745323873,
+        "neither_barrier_before_expiry": 4.78902607348175e-07
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.3581906989119483,
+        "sl_first_within_horizon": 0.6417962698481433,
+        "neither_barrier_before_expiry": 1.3031239908468431e-05
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.3581906989119483,
+        "sl_first_within_horizon": 0.6417962698481433,
+        "neither_barrier_before_expiry": 1.3031239908468431e-05
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.22,
+        "new_candidate": 0.3581906989119483
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 842,
+      "operation_id": 239,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.422,
+        "sl_first_within_horizon": 0.498,
+        "neither_barrier_before_expiry": 0.08
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.5136426274904141,
+        "sl_first_within_horizon": 0.47645502802655343,
+        "neither_barrier_before_expiry": 0.009902344483032455
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.523071074190499,
+        "sl_first_within_horizon": 0.43511794720100727,
+        "neither_barrier_before_expiry": 0.04181097860849374
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.523071074190499,
+        "sl_first_within_horizon": 0.43511794720100727,
+        "neither_barrier_before_expiry": 0.04181097860849374
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.422,
+        "new_candidate": 0.523071074190499
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 843,
+      "operation_id": 240,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.4087,
+        "sl_first_within_horizon": 0.4713,
+        "neither_barrier_before_expiry": 0.12
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.31949057311154244,
+        "sl_first_within_horizon": 0.6805089900697738,
+        "neither_barrier_before_expiry": 4.3681868366896026e-07
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5006767337638754,
+        "sl_first_within_horizon": 0.49932207033014364,
+        "neither_barrier_before_expiry": 1.1959059808424924e-06
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5006767337638754,
+        "sl_first_within_horizon": 0.49932207033014364,
+        "neither_barrier_before_expiry": 1.1959059808424924e-06
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.4713,
+        "new_candidate": 0.49932207033014364
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 849,
+      "operation_id": 241,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.6304,
+        "sl_first_within_horizon": 0.2896,
+        "neither_barrier_before_expiry": 0.08
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.3782806255368098,
+        "sl_first_within_horizon": 0.5497376096579824,
+        "neither_barrier_before_expiry": 0.0719817648052079
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.39980811512922765,
+        "sl_first_within_horizon": 0.428971440926135,
+        "neither_barrier_before_expiry": 0.1712204439446373
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.39980811512922765,
+        "sl_first_within_horizon": 0.428971440926135,
+        "neither_barrier_before_expiry": 0.1712204439446373
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.2896,
+        "new_candidate": 0.428971440926135
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 855,
+      "operation_id": 242,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "neither_barrier_before_expiry",
+      "old_engine": {
+        "tp_first_within_horizon": 0.5594,
+        "sl_first_within_horizon": 0.3606,
+        "neither_barrier_before_expiry": 0.08
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.22550333451129273,
+        "sl_first_within_horizon": 0.7461008126783262,
+        "neither_barrier_before_expiry": 0.02839585281038115
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.29949117009415155,
+        "sl_first_within_horizon": 0.5517658539462675,
+        "neither_barrier_before_expiry": 0.1487429759595808
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.29949117009415155,
+        "sl_first_within_horizon": 0.5517658539462675,
+        "neither_barrier_before_expiry": 0.1487429759595808
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.08,
+        "new_candidate": 0.1487429759595808
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 857,
+      "operation_id": 243,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.6146,
+        "sl_first_within_horizon": 0.3254,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.41336845528930544,
+        "sl_first_within_horizon": 0.24189975624953386,
+        "neither_barrier_before_expiry": 0.3447317884611607
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5562320415200683,
+        "sl_first_within_horizon": 0.2503154590627689,
+        "neither_barrier_before_expiry": 0.19345249941716286
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5562320415200683,
+        "sl_first_within_horizon": 0.2503154590627689,
+        "neither_barrier_before_expiry": 0.19345249941716286
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.3254,
+        "new_candidate": 0.2503154590627689
+      },
+      "higher_probability_for_actual_outcome": "old"
+    },
+    {
+      "recommendation_id": 871,
+      "operation_id": 244,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "tp_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.22,
+        "sl_first_within_horizon": 0.72,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.21126954497950015,
+        "sl_first_within_horizon": 0.7887303241734827,
+        "neither_barrier_before_expiry": 1.3084701722121395e-07
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.21669562931498929,
+        "sl_first_within_horizon": 0.7825510961822721,
+        "neither_barrier_before_expiry": 0.000753274502738526
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.21669562931498929,
+        "sl_first_within_horizon": 0.7825510961822721,
+        "neither_barrier_before_expiry": 0.000753274502738526
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.22,
+        "new_candidate": 0.21669562931498929
+      },
+      "higher_probability_for_actual_outcome": "old"
+    },
+    {
+      "recommendation_id": 878,
+      "operation_id": 245,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "neither_barrier_before_expiry",
+      "old_engine": {
+        "tp_first_within_horizon": 0.4224,
+        "sl_first_within_horizon": 0.4776,
+        "neither_barrier_before_expiry": 0.1
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.01588750326066879,
+        "sl_first_within_horizon": 2.429620212307526e-05,
+        "neither_barrier_before_expiry": 0.9840882005372081
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.11158111986046497,
+        "sl_first_within_horizon": 0.0014524972397842403,
+        "neither_barrier_before_expiry": 0.8869663828997508
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.11158111986046497,
+        "sl_first_within_horizon": 0.0014524972397842403,
+        "neither_barrier_before_expiry": 0.8869663828997508
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.1,
+        "new_candidate": 0.8869663828997508
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 884,
+      "operation_id": 246,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "horizon_status": "policy_reconstructed",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.5003,
+        "sl_first_within_horizon": 0.4197,
+        "neither_barrier_before_expiry": 0.08
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.15173910293208437,
+        "sl_first_within_horizon": 0.5789434333534648,
+        "neither_barrier_before_expiry": 0.26931746371445087
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.3078255722773136,
+        "sl_first_within_horizon": 0.5832010603338182,
+        "neither_barrier_before_expiry": 0.10897336738886819
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.3078255722773136,
+        "sl_first_within_horizon": 0.5832010603338182,
+        "neither_barrier_before_expiry": 0.10897336738886819
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.4197,
+        "new_candidate": 0.5832010603338182
+      },
+      "higher_probability_for_actual_outcome": "new"
+    },
+    {
+      "recommendation_id": 893,
+      "operation_id": 247,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "horizon_status": "stored_exact",
+      "actual_outcome": "sl_first_within_horizon",
+      "old_engine": {
+        "tp_first_within_horizon": 0.6102,
+        "sl_first_within_horizon": 0.3298,
+        "neither_barrier_before_expiry": 0.06
+      },
+      "new_baseline": {
+        "tp_first_within_horizon": 0.39580573029611865,
+        "sl_first_within_horizon": 0.5865658282538099,
+        "neither_barrier_before_expiry": 0.017628441450071475
+      },
+      "new_candidate": {
+        "tp_first_within_horizon": 0.5576156880109607,
+        "sl_first_within_horizon": 0.43583558395685057,
+        "neither_barrier_before_expiry": 0.006548728032188678
+      },
+      "diagnostic_candidate_without_h": {
+        "tp_first_within_horizon": 0.5576156880109607,
+        "sl_first_within_horizon": 0.43583558395685057,
+        "neither_barrier_before_expiry": 0.006548728032188678
+      },
+      "actual_outcome_probability": {
+        "old_engine": 0.3298,
+        "new_candidate": 0.43583558395685057
+      },
+      "higher_probability_for_actual_outcome": "new"
+    }
+  ],
+  "decision": {
+    "historical_result": "new_candidate_better_than_old",
+    "production_authorized": false,
+    "reason": "Only one comparison record stored its exact horizon before the outcome; the other horizons are retrospective policy."
+  },
+  "production_effect": "none",
+  "canonical_payload_sha256": "8c431761af681ba092fcb509eb6898cb438dddd5e9f0a060fd0a6881d063bb38"
+}

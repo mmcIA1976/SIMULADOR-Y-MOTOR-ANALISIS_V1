@@ -1,0 +1,51 @@
+{
+  "version": "M7.2-defect-record-v0.1",
+  "phase": "M7",
+  "subphase": "M7.2",
+  "date": "2026-07-28",
+  "status": "observed_before_correction",
+  "defect": {
+    "id": "M7-DEFECT-CONVERGENCE-001",
+    "severity": "high",
+    "gate": "M7-GATE-EDGE-001",
+    "component": "m6_first_passage.py",
+    "name": "spectral_series_exhausts_max_terms_for_extreme_barrier_asymmetry",
+    "observed_exception": "FirstPassageConvergenceError",
+    "observed_message": "series_not_converged_within_100000_terms",
+    "affected_grid_cases": 26,
+    "total_grid_cases": 175,
+    "impact": "A finite, mathematically valid input can fail closed instead of returning the three probabilities.",
+    "root_cause": "The absorbing-interval eigenfunction series is numerically inefficient when effective diffusion is tiny relative to total interval length and the start is close to one barrier.",
+    "correction_requirement": "Use a separately derived numerical branch with a rigorous absolute-error bound; retain the spectral series elsewhere.",
+    "status": "open_at_observation"
+  },
+  "representative_cases": [
+    {
+      "tp_log_distance": 1e-12,
+      "sl_log_distance": 5.0,
+      "sigma_horizon": 1e-08,
+      "time_fraction": 1.0
+    },
+    {
+      "tp_log_distance": 1e-08,
+      "sl_log_distance": 0.5,
+      "sigma_horizon": 0.0001,
+      "time_fraction": 0.0001
+    },
+    {
+      "tp_log_distance": 0.5,
+      "sl_log_distance": 1e-08,
+      "sigma_horizon": 0.01,
+      "time_fraction": 1e-10
+    },
+    {
+      "tp_log_distance": 5.0,
+      "sl_log_distance": 1e-12,
+      "sigma_horizon": 0.1,
+      "time_fraction": 1e-10
+    }
+  ],
+  "affected_solver_sha256_before_correction": "c9bbd47e5ea2d92b76212a8299bf601e4f306238ad31a84f6cdd25b701857429",
+  "production_effect": "none",
+  "m8_started": false
+}

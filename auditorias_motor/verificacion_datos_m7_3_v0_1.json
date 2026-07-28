@@ -1,0 +1,204 @@
+{
+  "version": "M7.3-data-verification-v0.1",
+  "phase": "M7",
+  "subphase": "M7.3",
+  "status": "passed",
+  "date": "2026-07-28",
+  "valid_case": {
+    "status": "accepted",
+    "reason_codes": [],
+    "checked_contract_ids": [
+      "M3-DATA-001",
+      "M3-DATA-002",
+      "M3-DATA-003",
+      "M3-DATA-004",
+      "M3-DATA-005"
+    ],
+    "analysis_at_ms": 1800000000000,
+    "symbol": "BTCUSDT",
+    "production_effect": "none",
+    "gate_version": "M7-pretrade-data-gate-v0.1"
+  },
+  "invalid_cases": [
+    {
+      "name": "missing_mandatory",
+      "status": "blocked",
+      "reason_codes": [
+        "mandatory_observation_missing"
+      ],
+      "expected_reason": "mandatory_observation_missing",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "partial_payload",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_partial_or_incomplete"
+      ],
+      "expected_reason": "m3_data_004_partial_or_incomplete",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "future_provider",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_provider_after_receive",
+        "m3_data_004_future_provider_data"
+      ],
+      "expected_reason": "m3_data_004_future_provider_data",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "future_receive",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_received_after_analysis"
+      ],
+      "expected_reason": "m3_data_004_received_after_analysis",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "request_after_receive",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_request_after_receive"
+      ],
+      "expected_reason": "m3_data_004_request_after_receive",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "stale_realtime",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_stale"
+      ],
+      "expected_reason": "m3_data_004_stale",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "contradictory",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_contradictory"
+      ],
+      "expected_reason": "m3_data_004_contradictory",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "symbol_mismatch",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_symbol_mismatch"
+      ],
+      "expected_reason": "m3_data_004_symbol_mismatch",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "invalid_market",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_002_market_identity_invalid"
+      ],
+      "expected_reason": "m3_data_002_market_identity_invalid",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "latency_exceeded",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_004_request_latency_exceeded",
+        "snapshot_capture_span_exceeded"
+      ],
+      "expected_reason": "m3_data_004_request_latency_exceeded",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "capture_span",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_002_provider_after_receive",
+        "snapshot_capture_span_exceeded"
+      ],
+      "expected_reason": "snapshot_capture_span_exceeded",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "open_period",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_005_open_or_future_period"
+      ],
+      "expected_reason": "m3_data_005_open_or_future_period",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "stale_period",
+      "status": "blocked",
+      "reason_codes": [
+        "m3_data_005_completed_period_stale"
+      ],
+      "expected_reason": "m3_data_005_completed_period_stale",
+      "passed": true,
+      "probabilities_emitted": false
+    },
+    {
+      "name": "duplicate_source",
+      "status": "blocked",
+      "reason_codes": [
+        "duplicate_observation_contract_id"
+      ],
+      "expected_reason": "duplicate_observation_contract_id",
+      "passed": true,
+      "probabilities_emitted": false
+    }
+  ],
+  "summary": {
+    "valid_cases_accepted": 1,
+    "invalid_cases_total": 14,
+    "invalid_cases_blocked_as_expected": 14,
+    "neutral_fallbacks": 0,
+    "probabilities_emitted_for_invalid_data": 0,
+    "critical_defects_open": 0
+  },
+  "boundaries": {
+    "gate_is_internal_only": true,
+    "production_effect": "none",
+    "calibration_performed": false,
+    "m8_started": false
+  },
+  "inputs": [
+    {
+      "path": "auditorias_motor/contrato_verificacion_m7_1_v0_1.json",
+      "sha256": "942e542fa50aa2bd8d405ed614286d1b9cbafb1c94bcdea197e7d4c7f80c20d9",
+      "bytes": 7903
+    },
+    {
+      "path": "auditorias_motor/catalogo_contratos_datos_m3_v0_1.json",
+      "sha256": "c6b4166d4a71fc6bd146b9352d4b2893a8a8c33ef98999406463a4ac3ac38e3d",
+      "bytes": 52125
+    },
+    {
+      "path": "m7_data_gate.py",
+      "sha256": "4f2992fb76a6ccec433391c04f7cd18a6d70c019b2954904b94bde8ec45c62c4",
+      "bytes": 9441
+    }
+  ],
+  "next_step": {
+    "id": "M7.4",
+    "name": "Matriz completa par-marco-regla e interacciones",
+    "started": false
+  },
+  "canonical_payload_sha256": "486b31ac7423a1ecd27eade75f245036e5641d821a9f4165a5765732a48c82ca"
+}

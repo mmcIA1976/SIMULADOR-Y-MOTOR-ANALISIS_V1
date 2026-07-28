@@ -2,6 +2,7 @@
 
 Fecha: 2026-07-24
 Contrato rector: `CONTRATO_FASE_1_MOTOR_ANALISIS.md`
+Hoja de ruta vigente: `HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md`
 Origen: listado de 34 bloques aportado por el propietario del proyecto
 
 ## 1. Uso de este documento
@@ -134,15 +135,15 @@ Prioridades:
 7. Spot contra Futures.
 8. Regimen.
 
-### Bloque C - Probabilidad y aprendizaje
+### Bloque C - Probabilidad, trazabilidad y validacion
 
 1. Baseline matematico interpretable.
 2. Features aprobadas.
 3. Trazabilidad por regla.
 4. Reglas combinadas pre-registradas.
-5. Walk-forward.
-6. Calibracion.
-7. Champion/challenger.
+5. Verificacion matematica y de software.
+6. Evaluacion temporal posterior a la congelacion de reglas.
+7. Calibracion.
 8. Ablation y retirada de reglas.
 
 ### Bloque D - Expansiones
@@ -156,7 +157,7 @@ Prioridades:
 
 ## 5. Criterio de admision de una variable
 
-Una variable solo entra al challenger si:
+Una variable solo entra en la revision mejorada del motor si:
 
 1. Tiene fuente fiable y gratuita autorizada.
 2. Puede obtenerse en tiempo real y reconstruirse historicamente.

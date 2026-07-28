@@ -1,0 +1,1696 @@
+{
+  "version": "M5.6-closure-package-v0.1",
+  "phase": "M5",
+  "subphase": "M5.6",
+  "status": "completed_owner_authorized",
+  "date": "2026-07-27",
+  "owner_authorization": {
+    "statement": "continua y completa M5",
+    "authorized_completion": true,
+    "production_authorized": false,
+    "m6_start_authorized": false
+  },
+  "scope": {
+    "rules_implemented": 27,
+    "formulas_preserved": 80,
+    "dag_nodes": 27,
+    "dag_edges": 32,
+    "invariants_mapped": 108,
+    "canonical_families": 17,
+    "legacy_elements_without_effect": 30,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "m5_closed": true,
+    "m6_started": false,
+    "production_modified": false,
+    "learning_engine_modified": false
+  },
+  "deliverables": {
+    "runtime_trace_contract": "m5_runtime.py",
+    "deterministic_rule_implementation": "m5_rules.py",
+    "dag_internal_engine": "m5_engine.py",
+    "formula_and_data_parity": "formula_parity",
+    "invariant_test_registry": "invariant_coverage",
+    "legacy_heuristics_exclusion": "legacy_effect"
+  },
+  "formula_parity": [
+    {
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "formula_count": 4,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "formula_count": 1,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "formula_count": 7,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "formula_count": 1,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_derivatives_context_selects_one_basis_source",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_readiness_never_authorizes_decision",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_expected_value_is_implemented_but_blocked_until_m6",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "formula_count": 2,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "formula_count": 4,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "formula_count": 4,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_state_uses_realized_load_without_future_cost",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_sampling_uses_largest_exact_valid_interval",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "formula_count": 1,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "formula_count": 1,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "formula_count": 2,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_net_payoff_identity_and_no_entry_constraint",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_normalized_barrier_geometry_uses_plan_and_sigma",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "formula_count": 2,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "formula_count": 4,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_market_activation_is_zero_and_pending_is_deferred",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "formula_count": 7,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "formula_count": 4,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_plan_geometry_is_directionally_symmetric",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "formula_count": 1,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_price_oi_state_is_a_container_without_positioning_label",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "formula_count": 3,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "formula_count": 2,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "formula_count": 4,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "status": "implemented_and_tested"
+    },
+    {
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "formula_count": 2,
+      "formula_text_exact": true,
+      "input_contract_preserved": true,
+      "evaluator_registered": true,
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "status": "implemented_and_tested"
+    }
+  ],
+  "invariant_coverage": [
+    {
+      "m4_invariant_id": "M4-INV-01-01",
+      "m5_test_id": "M5-TEST-01-01",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "H is never rounded",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_sampling_uses_largest_exact_valid_interval",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-01-02",
+      "m5_test_id": "M5-TEST-01-02",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "delta divides H exactly",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_sampling_uses_largest_exact_valid_interval",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-01-03",
+      "m5_test_id": "M5-TEST-01-03",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "N_H>=24",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_sampling_uses_largest_exact_valid_interval",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-01-04",
+      "m5_test_id": "M5-TEST-01-04",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "selection is pair-independent",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_sampling_uses_largest_exact_valid_interval",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-02-01",
+      "m5_test_id": "M5-TEST-02-01",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "long/short mirror symmetry",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_plan_geometry_is_directionally_symmetric",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-02-02",
+      "m5_test_id": "M5-TEST-02-02",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "positive distances",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_plan_geometry_is_directionally_symmetric",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-02-03",
+      "m5_test_id": "M5-TEST-02-03",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "price-scale invariance",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_plan_geometry_is_directionally_symmetric",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-02-04",
+      "m5_test_id": "M5-TEST-02-04",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "continuous response to barrier movement",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_plan_geometry_is_directionally_symmetric",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-03-01",
+      "m5_test_id": "M5-TEST-03-01",
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "statement": "constant price gives zero returns",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-03-02",
+      "m5_test_id": "M5-TEST-03-02",
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "statement": "multiplying all prices by a constant does not change returns",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-03-03",
+      "m5_test_id": "M5-TEST-03-03",
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "statement": "gaps and invalid prices block",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-04-01",
+      "m5_test_id": "M5-TEST-04-01",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "exact previous-H span",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-04-02",
+      "m5_test_id": "M5-TEST-04-02",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "RV>=0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-04-03",
+      "m5_test_id": "M5-TEST-04-03",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "sigma=sqrt(RV)",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-04-04",
+      "m5_test_id": "M5-TEST-04-04",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "scale invariance",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-04-05",
+      "m5_test_id": "M5-TEST-04-05",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "no annualization or cross-horizon square-root scaling",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_log_returns_and_realized_volatility_match_manual_formula",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-05-01",
+      "m5_test_id": "M5-TEST-05-01",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "z_TP>0 and z_SL>0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_normalized_barrier_geometry_uses_plan_and_sigma",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-05-02",
+      "m5_test_id": "M5-TEST-05-02",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "barrier monotonicity",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_normalized_barrier_geometry_uses_plan_and_sigma",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-05-03",
+      "m5_test_id": "M5-TEST-05-03",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "volatility monotonicity",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_normalized_barrier_geometry_uses_plan_and_sigma",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-05-04",
+      "m5_test_id": "M5-TEST-05-04",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "long/short mirror symmetry",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_normalized_barrier_geometry_uses_plan_and_sigma",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-05-05",
+      "m5_test_id": "M5-TEST-05-05",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "continuity",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_normalized_barrier_geometry_uses_plan_and_sigma",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-06-01",
+      "m5_test_id": "M5-TEST-06-01",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "market z_entry=0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_market_activation_is_zero_and_pending_is_deferred",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-06-02",
+      "m5_test_id": "M5-TEST-06-02",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "pending z_entry>0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_market_activation_is_zero_and_pending_is_deferred",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-06-03",
+      "m5_test_id": "M5-TEST-06-03",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "trigger direction preserved",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_market_activation_is_zero_and_pending_is_deferred",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-06-04",
+      "m5_test_id": "M5-TEST-06-04",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "already-satisfied pending trigger rejected",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_market_activation_is_zero_and_pending_is_deferred",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-06-05",
+      "m5_test_id": "M5-TEST-06-05",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "activation probability remains null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_market_activation_is_zero_and_pending_is_deferred",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-07-01",
+      "m5_test_id": "M5-TEST-07-01",
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "statement": "0<alpha<=1",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-07-02",
+      "m5_test_id": "M5-TEST-07-02",
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "statement": "explicit initialization",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-07-03",
+      "m5_test_id": "M5-TEST-07-03",
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "statement": "constant input remains constant",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-08-01",
+      "m5_test_id": "M5-TEST-08-01",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "0<=E_W<=1",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-08-02",
+      "m5_test_id": "M5-TEST-08-02",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "-1<=SE_W<=1",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-08-03",
+      "m5_test_id": "M5-TEST-08-03",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "TV_W=0 implies E_W=SE_W=0 and flat_path=true",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-08-04",
+      "m5_test_id": "M5-TEST-08-04",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "scale invariance",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-08-05",
+      "m5_test_id": "M5-TEST-08-05",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "D_W equals log endpoint ratio",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_smoother_and_path_structure_match_manual_calculation",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-09-01",
+      "m5_test_id": "M5-TEST-09-01",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "prior_low<=prior_high",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-09-02",
+      "m5_test_id": "M5-TEST-09-02",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "strict between relation",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-09-03",
+      "m5_test_id": "M5-TEST-09-03",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "long/short mirror handling",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-09-04",
+      "m5_test_id": "M5-TEST-09-04",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "no support/resistance label",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-10-01",
+      "m5_test_id": "M5-TEST-10-01",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "0<=q<=1",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-10-02",
+      "m5_test_id": "M5-TEST-10-02",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "exactly 60 prior windows",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-10-03",
+      "m5_test_id": "M5-TEST-10-03",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "current window excluded from reference",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-10-04",
+      "m5_test_id": "M5-TEST-10-04",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "midrank tie handling",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_prior_extrema_and_volatility_rank_are_continuous_outputs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-11-01",
+      "m5_test_id": "M5-TEST-11-01",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "exact windows H,2H,4H",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-11-02",
+      "m5_test_id": "M5-TEST-11-02",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "same sampling grid",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-11-03",
+      "m5_test_id": "M5-TEST-11-03",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "no numeric aggregation",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-11-04",
+      "m5_test_id": "M5-TEST-11-04",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "order and signs preserved",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-12-01",
+      "m5_test_id": "M5-TEST-12-01",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "q_RV in [0,1]",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-12-02",
+      "m5_test_id": "M5-TEST-12-02",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "SE_H in [-1,1]",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-12-03",
+      "m5_test_id": "M5-TEST-12-03",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "regime_label is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-12-04",
+      "m5_test_id": "M5-TEST-12-04",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "directional_score is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_mtf_and_continuous_regime_do_not_create_scores",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-13-01",
+      "m5_test_id": "M5-TEST-13-01",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "-1<=ATI_H<=1",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-13-02",
+      "m5_test_id": "M5-TEST-13-02",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "exact complete window",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-13-03",
+      "m5_test_id": "M5-TEST-13-03",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "buyer-maker means seller taker",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-13-04",
+      "m5_test_id": "M5-TEST-13-04",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "source alternatives are not averaged",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-14-01",
+      "m5_test_id": "M5-TEST-14-01",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "OI_t>0 and OI_(t-H)>0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-14-02",
+      "m5_test_id": "M5-TEST-14-02",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "exact endpoint separation H",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-14-03",
+      "m5_test_id": "M5-TEST-14-03",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "dimensionless log change",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-14-04",
+      "m5_test_id": "M5-TEST-14-04",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "long_short_direction is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_aggressor_and_open_interest_use_exact_observations",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-15-01",
+      "m5_test_id": "M5-TEST-15-01",
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "statement": "continuous values preserved",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_price_oi_state_is_a_container_without_positioning_label",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-15-02",
+      "m5_test_id": "M5-TEST-15-02",
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "statement": "positioning_label is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_price_oi_state_is_a_container_without_positioning_label",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-15-03",
+      "m5_test_id": "M5-TEST-15-03",
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "statement": "aggregate_score is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_price_oi_state_is_a_container_without_positioning_label",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-16-01",
+      "m5_test_id": "M5-TEST-16-01",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "bid<=ask on both venues",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-16-02",
+      "m5_test_id": "M5-TEST-16-02",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "capture skew<=2000ms",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-16-03",
+      "m5_test_id": "M5-TEST-16-03",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "capture times are local receive times, not synchronized market times",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-16-04",
+      "m5_test_id": "M5-TEST-16-04",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "log ratios are scale invariant",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-16-05",
+      "m5_test_id": "M5-TEST-16-05",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "price_leadership is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-17-01",
+      "m5_test_id": "M5-TEST-17-01",
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "statement": "markPrice>0 and indexPrice>0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-17-02",
+      "m5_test_id": "M5-TEST-17-02",
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "statement": "same provider timestamp",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-17-03",
+      "m5_test_id": "M5-TEST-17-03",
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "statement": "binance_spot_basis is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_basis_and_mark_index_keep_semantics_separate",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-18-01",
+      "m5_test_id": "M5-TEST-18-01",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "fundingIntervalHours>0",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_state_uses_realized_load_without_future_cost",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-18-02",
+      "m5_test_id": "M5-TEST-18-02",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "funding events ordered and <=analysis_at",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_state_uses_realized_load_without_future_cost",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-18-03",
+      "m5_test_id": "M5-TEST-18-03",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "future_funding_rate_assumption is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_state_uses_realized_load_without_future_cost",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-18-04",
+      "m5_test_id": "M5-TEST-18-04",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "projected_funding_cost is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_state_uses_realized_load_without_future_cost",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-19-01",
+      "m5_test_id": "M5-TEST-19-01",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "ATI_H in [-1,1]",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_derivatives_context_selects_one_basis_source",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-19-02",
+      "m5_test_id": "M5-TEST-19-02",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "all components continuous",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_derivatives_context_selects_one_basis_source",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-19-03",
+      "m5_test_id": "M5-TEST-19-03",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "crowding_label is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_derivatives_context_selects_one_basis_source",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-19-04",
+      "m5_test_id": "M5-TEST-19-04",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "aggregate_score is null",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_derivatives_context_selects_one_basis_source",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-20-01",
+      "m5_test_id": "M5-TEST-20-01",
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "statement": "Snapshot actual; puede cambiar antes de ejecutar.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-20-02",
+      "m5_test_id": "M5-TEST-20-02",
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-20-03",
+      "m5_test_id": "M5-TEST-20-03",
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-21-01",
+      "m5_test_id": "M5-TEST-21-01",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "Solo profundidad visible solicitada.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-21-02",
+      "m5_test_id": "M5-TEST-21-02",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "No garantiza fills ni incorpora latencia o cola.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-21-03",
+      "m5_test_id": "M5-TEST-21-03",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "El coste del tramo llenado no representa el coste de la cantidad no llenada.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-21-04",
+      "m5_test_id": "M5-TEST-21-04",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "El IS desde midpoint ya contiene medio spread y barrido; no se suma de nuevo el spread.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-21-05",
+      "m5_test_id": "M5-TEST-21-05",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-21-06",
+      "m5_test_id": "M5-TEST-21-06",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-22-01",
+      "m5_test_id": "M5-TEST-22-01",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "RPI solo entra cuando el tipo de orden lo permite.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-22-02",
+      "m5_test_id": "M5-TEST-22-02",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "Cada tramo y resultado usa su propio notional y rol.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-22-03",
+      "m5_test_id": "M5-TEST-22-03",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "El basis bruto no se netea con comisiones; ambos conservan campos y unidades separados.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-22-04",
+      "m5_test_id": "M5-TEST-22-04",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-22-05",
+      "m5_test_id": "M5-TEST-22-05",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_spread_depth_and_fee_formulas_match_manual_values",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-23-01",
+      "m5_test_id": "M5-TEST-23-01",
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "statement": "Antes del cierre solo admite escenarios, no forecast exacto.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-23-02",
+      "m5_test_id": "M5-TEST-23-02",
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-23-03",
+      "m5_test_id": "M5-TEST-23-03",
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-24-01",
+      "m5_test_id": "M5-TEST-24-01",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "Modelo lineal USD-M bruto, antes de costes.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-24-02",
+      "m5_test_id": "M5-TEST-24-02",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "No incluye equity, margin mode ni maintenance brackets.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-24-03",
+      "m5_test_id": "M5-TEST-24-03",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-24-04",
+      "m5_test_id": "M5-TEST-24-04",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_funding_cashflow_and_exposure_preserve_signs",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-25-01",
+      "m5_test_id": "M5-TEST-25-01",
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "statement": "Si un coste de una rama falta, esa rama queda incompleta.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_net_payoff_identity_and_no_entry_constraint",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-25-02",
+      "m5_test_id": "M5-TEST-25-02",
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_net_payoff_identity_and_no_entry_constraint",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-25-03",
+      "m5_test_id": "M5-TEST-25-03",
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_net_payoff_identity_and_no_entry_constraint",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-26-01",
+      "m5_test_id": "M5-TEST-26-01",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "Probabilidades coherentes no existiran antes de M6.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_expected_value_is_implemented_but_blocked_until_m6",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-26-02",
+      "m5_test_id": "M5-TEST-26-02",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "Costes futuros incompletos impiden un EV exacto.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_expected_value_is_implemented_but_blocked_until_m6",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-26-03",
+      "m5_test_id": "M5-TEST-26-03",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_expected_value_is_implemented_but_blocked_until_m6",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-26-04",
+      "m5_test_id": "M5-TEST-26-04",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_expected_value_is_implemented_but_blocked_until_m6",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-27-01",
+      "m5_test_id": "M5-TEST-27-01",
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "statement": "Es control de completitud, no evidencia de rentabilidad.",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_readiness_never_authorizes_decision",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-27-02",
+      "m5_test_id": "M5-TEST-27-02",
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "statement": "long/short signs must follow the declared direction",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_readiness_never_authorizes_decision",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    },
+    {
+      "m4_invariant_id": "M4-INV-27-03",
+      "m5_test_id": "M5-TEST-27-03",
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "statement": "no execution or exposure value may change market probability",
+      "test_module": "tests.test_m5_rules",
+      "test_case": "test_readiness_never_authorizes_decision",
+      "property_test_module": "tests.test_m5_properties",
+      "status": "mapped_to_executable_tests"
+    }
+  ],
+  "import_isolation_audit": [
+    {
+      "path": "m5_runtime.py",
+      "forbidden_production_imports": [],
+      "internal_shadow_isolation": true
+    },
+    {
+      "path": "m5_rules.py",
+      "forbidden_production_imports": [],
+      "internal_shadow_isolation": true
+    },
+    {
+      "path": "m5_engine.py",
+      "forbidden_production_imports": [],
+      "internal_shadow_isolation": true
+    }
+  ],
+  "legacy_effect": [
+    {
+      "legacy_id": "IND-EMA-CORE",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "IND-EMA200-FALLBACK",
+      "final_status": "retired_without_replacement",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "IND-ATR14-CURRENT",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "IND-EMA-STACK",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "IND-SUPPORT-RESISTANCE",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "IND-CVD-PROXY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "IND-PENDING-ZONE",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-TREND_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-TECHNICAL_DIRECTION_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-PRICE_VS_ENTRY_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-MARKET_REGIME_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-FIBONACCI_PROBABILITY_ADJUSTMENT",
+      "final_status": "deferred_to_m10",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-ZONE_PROBABILITY_ADJUSTMENT",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-TAKER_FLOW_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-CVD_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-OI_TREND_BIAS",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-VOLATILITY_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-LIQUIDITY_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-OVEREXTENSION_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-FUNDING_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-FUNDING_RELATIVE_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-LEVEL_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-HIGHER_TIMEFRAME_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-TECHNICAL_ENTRY_TIMING_PENALTY",
+      "final_status": "retired_without_replacement",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-TECHNICAL_BARRIER_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-OI_CONTEXT_PENALTY",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-CONTRADICTION_PENALTY",
+      "final_status": "replaced_by_preregistered_combinations",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-RISK_CALIBRATION_TP_ADJUSTMENT",
+      "final_status": "retired_without_replacement",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-ZONE_RANGE_PROBABILITY_ADJUSTMENT",
+      "final_status": "reconciled_to_formal_cards_without_legacy_effect",
+      "m5_internal_effect": "none"
+    },
+    {
+      "legacy_id": "SCORE-RISK_CALIBRATION_RANGE_ADJUSTMENT",
+      "final_status": "retired_without_replacement",
+      "m5_internal_effect": "none"
+    }
+  ],
+  "boundaries": {
+    "production_output_effect": "none",
+    "probability_output_effect": "none",
+    "numeric_weights_or_scores": "none",
+    "learning_feedback": "none",
+    "automatic_trading": "none",
+    "predictive_validity_claimed": false,
+    "profitability_claimed": false,
+    "m7_verification_replaced": false,
+    "m8_empirical_validation_replaced": false
+  },
+  "verification": {
+    "status": "passed_2026_07_27",
+    "m5_specific_tests_passed": 71,
+    "full_suite_tests_passed": 416,
+    "m5_tests": ".\\.venv\\Scripts\\python.exe -m unittest tests.test_m5_implementation_contract tests.test_m5_runtime tests.test_m5_rules tests.test_m5_engine tests.test_m5_properties tests.test_m5_closure",
+    "full_suite": ".\\.venv\\Scripts\\python.exe -m unittest discover -s tests",
+    "reproduce_contract": ".\\.venv\\Scripts\\python.exe build_m5_implementation_contract.py --check",
+    "reproduce_closure": ".\\.venv\\Scripts\\python.exe build_m5_closure.py --check"
+  },
+  "production_source_hashes_at_close": [
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263",
+      "bytes": 233770
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a",
+      "bytes": 119801
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028",
+      "bytes": 27626
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d",
+      "bytes": 14585
+    },
+    {
+      "path": "liquidation_data.py",
+      "sha256": "817de5c66f1d52066989492e1e3cad32300bebc0df3474820777d10cdb803fd9",
+      "bytes": 9921
+    },
+    {
+      "path": "challenger_engine.py",
+      "sha256": "767b2cf514e49256c5a326667a84986417aae235acbb9b7760e033ec880183a9",
+      "bytes": 22553
+    }
+  ],
+  "artifact_manifest": [
+    {
+      "path": "m5_runtime.py",
+      "sha256": "70a1645d6dc72bc7d68616abc4d4e592cacfa547996420fb048cca9875cf1376",
+      "bytes": 8621
+    },
+    {
+      "path": "m5_rules.py",
+      "sha256": "e0ba4934dc0230cf275c0df73f285b95c43730d1c935eb6ca0ee33d84b847941",
+      "bytes": 35848
+    },
+    {
+      "path": "m5_engine.py",
+      "sha256": "6eb0a10aebe4a14e99e86d896a2725d01cf5462de355e7ab55964e755ef55b4b",
+      "bytes": 4565
+    },
+    {
+      "path": "tests/test_m5_implementation_contract.py",
+      "sha256": "7b6a43aca5b5998bb85ce8df4e35f00e5ef96f26d82d7afaaa339dd2d937a073",
+      "bytes": 8305
+    },
+    {
+      "path": "tests/test_m5_runtime.py",
+      "sha256": "475f2a9f5f0eac909610d56265ede95a6def5d351b43981af0bab6291c4821eb",
+      "bytes": 3951
+    },
+    {
+      "path": "tests/test_m5_rules.py",
+      "sha256": "da082178286d939dccb0c06f7b8c98d70dcd8537e5e79d075fd67815155f0f5e",
+      "bytes": 18760
+    },
+    {
+      "path": "tests/test_m5_engine.py",
+      "sha256": "f8625fa5bcd919f876ed4f1b829d8e9b6abca1e18f438647a4eabe10bcff3081",
+      "bytes": 6181
+    },
+    {
+      "path": "tests/test_m5_properties.py",
+      "sha256": "39afa3df6f00e66257f4ae88cc01807fe7362271ed0021130a63c322998d231f",
+      "bytes": 7896
+    },
+    {
+      "path": "tests/test_m5_closure.py",
+      "sha256": "22a2ad8579ea30e8bd9e510bb2475c5c9e4b0adec50d6aac9d0d3fbd03152af8",
+      "bytes": 5650
+    },
+    {
+      "path": "build_m5_implementation_contract.py",
+      "sha256": "5a529e782df5247f858484181af443dc7bcec830a4c42177cf5c8c162798f9a5",
+      "bytes": 15156
+    },
+    {
+      "path": "build_m5_closure.py",
+      "sha256": "56ec9ea295d51afa7e4c3e2d87915f51aea15f461037527703e2aca187d564a6",
+      "bytes": 16868
+    },
+    {
+      "path": "auditorias_motor/contrato_implementacion_m5_1_v0_1.json",
+      "sha256": "8d206862f12a5edb63f104b3c4896217ddbeb2c16ab77ed3966c46808bfa7405",
+      "bytes": 138118
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M5_1_inicio_contrato_ejecutable_v0_1.md",
+      "sha256": "56aebdfad4b42a700960ca59234137681bb6153a20fb6cc6bb1d26342889def6",
+      "bytes": 1260
+    }
+  ],
+  "next_phase": {
+    "id": "M6",
+    "name": "Integracion probabilistica documentada",
+    "started": false,
+    "requires_separate_owner_order": true
+  },
+  "canonical_payload_sha256": "a04a4ffe5ed568e97f7f9dbc4b4f92ad66935b30e417e004402d9c89a7ec0934"
+}

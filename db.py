@@ -518,6 +518,31 @@ def init_db() -> None:
                 FOREIGN KEY(model_version)
                     REFERENCES challenger_model_artifacts(model_version) ON DELETE RESTRICT
             );
+
+            CREATE TABLE IF NOT EXISTS m6_prospective_runs (
+                id {id_type},
+                run_key TEXT NOT NULL UNIQUE,
+                recommendation_id {fk_type} NOT NULL,
+                runtime_version TEXT NOT NULL,
+                m5_engine_version TEXT NOT NULL,
+                m6_engine_version TEXT NOT NULL,
+                run_status TEXT NOT NULL CHECK(run_status IN ('evaluated', 'blocked')),
+                block_code TEXT,
+                analysis_at TIMESTAMPTZ NOT NULL,
+                data_cutoff_at TIMESTAMPTZ,
+                evaluation_expires_at TIMESTAMPTZ NOT NULL,
+                horizon_seconds INTEGER NOT NULL,
+                plan_contract_json TEXT NOT NULL,
+                feature_snapshot_json TEXT NOT NULL,
+                m5_trace_json TEXT NOT NULL,
+                probability_result_json TEXT NOT NULL,
+                source_data_sha256 TEXT NOT NULL,
+                production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+                app_version TEXT NOT NULL,
+                created_at {text_timestamp},
+                FOREIGN KEY(recommendation_id)
+                    REFERENCES recommendations(id) ON DELETE RESTRICT
+            );
             """
         )
         ensure_column(db, "operations", "observation_until", "TEXT")
@@ -643,6 +668,9 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_challenger_shadow_config ON challenger_shadow_runs(config_event_id);
         CREATE INDEX IF NOT EXISTS idx_challenger_shadow_model ON challenger_shadow_runs(model_version);
         CREATE INDEX IF NOT EXISTS idx_challenger_shadow_status ON challenger_shadow_runs(challenger_status, block_code, created_at);
+        CREATE INDEX IF NOT EXISTS idx_m6_prospective_recommendation ON m6_prospective_runs(recommendation_id);
+        CREATE INDEX IF NOT EXISTS idx_m6_prospective_status ON m6_prospective_runs(run_status, block_code, created_at);
+        CREATE INDEX IF NOT EXISTS idx_m6_prospective_expiry ON m6_prospective_runs(evaluation_expires_at, run_status);
         """
     )
 
@@ -656,12 +684,14 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         ALTER TABLE challenger_model_artifacts ENABLE ROW LEVEL SECURITY;
         ALTER TABLE challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
         ALTER TABLE challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE m6_prospective_runs ENABLE ROW LEVEL SECURITY;
         REVOKE ALL PRIVILEGES ON TABLE learning_evidence_reconstructions FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_economic_normalizations FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_legacy_reevaluations FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE challenger_model_artifacts FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_config_events FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_runs FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE m6_prospective_runs FROM anon, authenticated;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE learning_legacy_reevaluations FROM service_role;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
@@ -670,10 +700,13 @@ def secure_internal_learning_tables(db: DbSession) -> None:
             ON TABLE challenger_shadow_config_events FROM service_role;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE challenger_shadow_runs FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE m6_prospective_runs FROM service_role;
         GRANT SELECT, INSERT ON TABLE learning_legacy_reevaluations TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_model_artifacts TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_shadow_config_events TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_shadow_runs TO service_role;
+        GRANT SELECT, INSERT ON TABLE m6_prospective_runs TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE learning_legacy_reevaluations_id_seq TO service_role;
         GRANT USAGE, SELECT
@@ -682,6 +715,8 @@ def secure_internal_learning_tables(db: DbSession) -> None:
             ON SEQUENCE challenger_shadow_config_events_id_seq TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE challenger_shadow_runs_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE m6_prospective_runs_id_seq TO service_role;
         """
     )
 
@@ -721,6 +756,7 @@ def ensure_challenger_shadow_append_only(db: DbSession) -> None:
         "challenger_model_artifacts",
         "challenger_shadow_config_events",
         "challenger_shadow_runs",
+        "m6_prospective_runs",
     ):
         rules = {
             row_to_dict(row)["rulename"]

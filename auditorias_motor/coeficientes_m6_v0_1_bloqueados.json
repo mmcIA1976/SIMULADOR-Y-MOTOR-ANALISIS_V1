@@ -1,0 +1,33 @@
+{
+  "id": "M6-COEFFICIENTS-v0.1-LOCKED",
+  "version": "0.1",
+  "status": "locked_no_estimated_coefficients",
+  "date": "2026-07-28",
+  "reason": "No temporally separated M5 feature/outcome training set has estimated these coefficients.",
+  "candidate_rule_ids": [
+    "M4-RULE-PATH-STRUCTURE-001",
+    "M4-RULE-PRIOR-EXTREMA-001",
+    "M4-RULE-VOLATILITY-RANK-001",
+    "M4-RULE-MTF-HIERARCHY-001",
+    "M4-RULE-CONTINUOUS-REGIME-001",
+    "M4-RULE-AGGRESSOR-IMBALANCE-001",
+    "M4-RULE-OPEN-INTEREST-CHANGE-001",
+    "M4-RULE-PRICE-OI-STATE-001",
+    "M4-RULE-SPOT-FUTURES-BASIS-001",
+    "M4-RULE-MARK-INDEX-PREMIUM-001",
+    "M4-RULE-FUNDING-STATE-001",
+    "M4-RULE-DERIVATIVES-CONTEXT-001"
+  ],
+  "coefficients": null,
+  "manual_coefficients_authorized": false,
+  "probability_adjustment_active": false,
+  "production_authorized": false,
+  "unlock_requirements": [
+    "preregistered feature set and interactions",
+    "temporally ordered training and calibration data",
+    "regularized likelihood or other explicitly approved estimator",
+    "coefficient uncertainty and stability report",
+    "independent temporal holdout in M8"
+  ],
+  "artifact_sha256": "507295c00bcd269aa326dc203a3d76093394b7e29ccd404938b523f9890645d7"
+}

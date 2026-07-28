@@ -14,6 +14,10 @@ from challenger_engine import (
     validate_model_artifact,
 )
 from db import row_to_dict
+from prospective_validation import (
+    build_user_prospective_audit,
+    execute_prospective_validation,
+)
 from versioning import (
     APP_VERSION,
     CHALLENGER_RUNTIME_VERSION,
@@ -89,6 +93,10 @@ def stamp_pre_trade_horizon(snapshot: dict, time_horizon: str) -> dict:
     analysis_at = datetime.now(timezone.utc).isoformat()
     horizon_seconds = fixed_horizon_seconds(time_horizon)
     snapshot["analysis_at"] = analysis_at
+    snapshot["data_cutoff_at"] = analysis_at
+    snapshot["data_cutoff_policy"] = (
+        "local_snapshot_sealed_upper_bound_v0.1"
+    )
     snapshot["evaluation_horizon_seconds"] = horizon_seconds
     snapshot["evaluation_expires_at"] = datetime.fromtimestamp(
         datetime.fromisoformat(analysis_at).timestamp() + horizon_seconds,
@@ -97,6 +105,7 @@ def stamp_pre_trade_horizon(snapshot: dict, time_horizon: str) -> dict:
     snapshot["evaluation_horizon_policy"] = "selected_frame_upper_bound_v0.1"
     return {
         "analysis_at": analysis_at,
+        "data_cutoff_at": snapshot["data_cutoff_at"],
         "horizon_seconds": horizon_seconds,
         "evaluation_expires_at": snapshot["evaluation_expires_at"],
     }
@@ -348,7 +357,14 @@ def execute_live_shadow_run(
         "source_snapshot_sha256": sha256_json(snapshot),
         "admission_matrix_sha256": matrix_sha256,
     }
-    return persist_shadow_run(db, record)
+    shadow_audit = persist_shadow_run(db, record)
+    prospective_audit = execute_prospective_validation(
+        db=db,
+        recommendation_id=recommendation_id,
+        proposal=proposal,
+        champion_result=champion_result,
+    )
+    return shadow_audit | {"prospective_validation": prospective_audit}
 
 
 def build_user_shadow_audit(db, user_id: int, limit: int = 100) -> dict:
@@ -435,7 +451,7 @@ def build_user_shadow_audit(db, user_id: int, limit: int = 100) -> dict:
                 "created_at": row.get("created_at"),
             }
         )
-    return {
+    report = {
         "runtime_version": CHALLENGER_RUNTIME_VERSION,
         "champion_engine_version": ENGINE_VERSION,
         "champion_scoring_version": SCORING_VERSION,
@@ -467,6 +483,12 @@ def build_user_shadow_audit(db, user_id: int, limit: int = 100) -> dict:
         },
         "runs": runs,
     }
+    report["prospective_validation"] = build_user_prospective_audit(
+        db,
+        user_id,
+        limit,
+    )
+    return report
 
 
 def append_config_event(

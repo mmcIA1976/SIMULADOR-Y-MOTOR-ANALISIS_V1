@@ -1,0 +1,228 @@
+{
+  "version": "M6.5-property-verification-v0.1",
+  "phase": "M6",
+  "subphase": "M6.5",
+  "status": "completed_internal_verification_m7_still_required",
+  "date": "2026-07-28",
+  "historical_case_872_873": {
+    "source": "recommendations 872 and 873 read from the project database on 2026-07-28",
+    "cases": [
+      {
+        "recommendation_id": 872,
+        "symbol": "BTCUSDT",
+        "side": "short",
+        "time_horizon": "intraday_wide",
+        "entry": 63942.4,
+        "take_profit": 63200.0,
+        "stop_loss": 65000.0,
+        "legacy_p_tp": 0.5389,
+        "legacy_price_vs_entry_bias": -0.02,
+        "tp_log_distance": 0.011678376963695896,
+        "sl_log_distance": 0.016404591779129413
+      },
+      {
+        "recommendation_id": 873,
+        "symbol": "BTCUSDT",
+        "side": "short",
+        "time_horizon": "intraday_wide",
+        "entry": 63920.2,
+        "take_profit": 63115.0,
+        "stop_loss": 65000.0,
+        "legacy_p_tp": 0.5889,
+        "legacy_price_vs_entry_bias": 0.03,
+        "tp_log_distance": 0.012676971159438168,
+        "sl_log_distance": 0.01675183953137405
+      }
+    ],
+    "legacy_ordering": "P_TP_872_lt_P_TP_873",
+    "legacy_jump": 0.05,
+    "legacy_cause": "binary_price_vs_entry_bias_-0.02_to_+0.03",
+    "m6_sigma_scenarios": [
+      0.005,
+      0.01,
+      0.02,
+      0.04,
+      0.08,
+      0.16
+    ],
+    "m6_results": [
+      {
+        "sigma_horizon_scenario": 0.005,
+        "probabilities": {
+          "872": {
+            "p_tp": 0.019508165925922194,
+            "p_sl": 0.0010346969044615073,
+            "p_expiry": 0.9794571371696164
+          },
+          "873": {
+            "p_tp": 0.011232084141050813,
+            "p_sl": 0.0008070429124943379,
+            "p_expiry": 0.9879608729464548
+          }
+        },
+        "ordering": "872_gt_873"
+      },
+      {
+        "sigma_horizon_scenario": 0.01,
+        "probabilities": {
+          "872": {
+            "p_tp": 0.24286360246558014,
+            "p_sl": 0.10083968511499963,
+            "p_expiry": 0.6562967124194202
+          },
+          "873": {
+            "p_tp": 0.20490226178558968,
+            "p_sl": 0.09387267321178422,
+            "p_expiry": 0.7012250650026262
+          }
+        },
+        "ordering": "872_gt_873"
+      },
+      {
+        "sigma_horizon_scenario": 0.02,
+        "probabilities": {
+          "872": {
+            "p_tp": 0.5338447058054767,
+            "p_sl": 0.36556441611212165,
+            "p_expiry": 0.10059087808240164
+          },
+          "873": {
+            "p_tp": 0.5055856520651517,
+            "p_sl": 0.3671498341871401,
+            "p_expiry": 0.1272645137477082
+          }
+        },
+        "ordering": "872_gt_873"
+      },
+      {
+        "sigma_horizon_scenario": 0.04,
+        "probabilities": {
+          "872": {
+            "p_tp": 0.5841197737227101,
+            "p_sl": 0.4158250731618593,
+            "p_expiry": 5.51531154306395e-05
+          },
+          "873": {
+            "p_tp": 0.5691643829224275,
+            "p_sl": 0.4306991076944325,
+            "p_expiry": 0.00013650938313997107
+          }
+        },
+        "ordering": "872_gt_873"
+      },
+      {
+        "sigma_horizon_scenario": 0.08,
+        "probabilities": {
+          "872": {
+            "p_tp": 0.5841473502804254,
+            "p_sl": 0.41585264971957464,
+            "p_expiry": 0.0
+          },
+          "873": {
+            "p_tp": 0.5692326376139974,
+            "p_sl": 0.4307673623860023,
+            "p_expiry": 2.7755575615628914e-16
+          }
+        },
+        "ordering": "872_gt_873"
+      },
+      {
+        "sigma_horizon_scenario": 0.16,
+        "probabilities": {
+          "872": {
+            "p_tp": 0.5841473502804254,
+            "p_sl": 0.41585264971957464,
+            "p_expiry": 0.0
+          },
+          "873": {
+            "p_tp": 0.5692326376139976,
+            "p_sl": 0.4307673623860024,
+            "p_expiry": 5.551115123125783e-17
+          }
+        },
+        "ordering": "872_gt_873"
+      }
+    ],
+    "m6_ordering": "P_TP_872_gt_P_TP_873_for_every_sigma_scenario",
+    "interpretation": "The test verifies geometry ordering only. The sigma grid is a sensitivity grid, not reconstructed M5 volatility and not a historical probability claim."
+  },
+  "property_results": {
+    "mass_grid_cases": 125,
+    "max_mass_error": 0.0,
+    "all_probabilities_in_unit_interval": true,
+    "farther_tp_monotonic_rows": [
+      {
+        "tp_log_distance": 0.005,
+        "p_tp": 0.8645677673480991
+      },
+      {
+        "tp_log_distance": 0.01,
+        "p_tp": 0.7364286168428364
+      },
+      {
+        "tp_log_distance": 0.02,
+        "p_tp": 0.5041300156807008
+      },
+      {
+        "tp_log_distance": 0.04,
+        "p_tp": 0.1823590969942373
+      },
+      {
+        "tp_log_distance": 0.08,
+        "p_tp": 0.007660664709112197
+      }
+    ],
+    "farther_tp_never_increases_p_tp": true,
+    "continuity_epsilon": 1e-08,
+    "continuity_max_probability_delta": 3.2198744165379267e-07,
+    "continuity_passed": true,
+    "long_short_symmetry": "covered_by_tests.test_m6_first_passage",
+    "scale_invariance": "covered_by_tests.test_m6_first_passage",
+    "horizon_monotonicity": "covered_by_tests.test_m6_first_passage",
+    "uncertainty_labeling": "covered_by_tests.test_m6_engine"
+  },
+  "claims": {
+    "software_and_basic_mathematical_properties_verified": true,
+    "brownian_model_empirically_validated": false,
+    "probabilities_calibrated": false,
+    "profitability_established": false,
+    "m7_replaced": false,
+    "m8_replaced": false,
+    "production_authorized": false
+  },
+  "source_files": [
+    {
+      "path": "m6_first_passage.py",
+      "sha256": "6d70c67e84980dc4245c0181e7ce9a0d8dc51fea90a7b8e28319c9eb8ca746f1"
+    },
+    {
+      "path": "m6_competing_risks.py",
+      "sha256": "7dff0bb8e545e3ca2c8a8b751312b7bf5d6d3d971b0856d58a92cedb86a2b9b4"
+    },
+    {
+      "path": "m6_engine.py",
+      "sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87"
+    },
+    {
+      "path": "tests/test_m6_first_passage.py",
+      "sha256": "0b33e019cbd71e53d676ed570a0d01f2a93b0470874bb9ba4bda6a3a8a976a68"
+    },
+    {
+      "path": "tests/test_m6_competing_risks.py",
+      "sha256": "e378b0c3010b9416cd0b44eb5d6af09fb82f29cba272230831fc0fc0549267b3"
+    },
+    {
+      "path": "tests/test_m6_engine.py",
+      "sha256": "1aa68d824919cf65e39bc73e90cd08aa4ae4f78864162afe2bf35926e0a1c64d"
+    },
+    {
+      "path": "tests/test_m6_verification.py",
+      "sha256": "2ea22f4af9c3c186ffc2098ac650949a28dd0800c6924f4e955c066997a2a166"
+    },
+    {
+      "path": "build_m6_verification.py",
+      "sha256": "f43f145284abe36483fd565ab572e59a00e709dd9cf03c998f04fab2f34cb774"
+    }
+  ],
+  "canonical_payload_sha256": "a8d266fe62c708b247d5b6ac363ffbca815f7a6b48ce70258cf09e35e934102c"
+}

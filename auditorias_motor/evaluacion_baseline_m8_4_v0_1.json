@@ -1,0 +1,126 @@
+{
+  "version": "M8.4-baseline-evaluation-v0.1",
+  "phase": "M8",
+  "subphase": "M8.4",
+  "status": "completed_retrospective_cohort",
+  "dataset_sha256": "b055fe260222082ae23a9f9c298cb5fd7330d0ca42f6fe8fbb9f73bc6099e36a",
+  "formal_validation_possible": false,
+  "development_n": 145,
+  "calibration_n": 35,
+  "development_class_frequency": {
+    "tp_first_within_horizon": 0.32413793103448274,
+    "sl_first_within_horizon": 0.4482758620689655,
+    "neither_barrier_before_expiry": 0.22758620689655173
+  },
+  "baseline": {
+    "n": 35,
+    "class_counts": {
+      "sl_first_within_horizon": 21,
+      "tp_first_within_horizon": 9,
+      "neither_barrier_before_expiry": 5
+    },
+    "brier_3c": 0.503266003510872,
+    "log_loss_3c": 0.8375213568920581,
+    "macro_ovr_auc": 0.7412535612535612,
+    "ovr_auc_by_class": {
+      "tp_first_within_horizon": 0.6837606837606838,
+      "sl_first_within_horizon": 0.6666666666666666,
+      "neither_barrier_before_expiry": 0.8733333333333333
+    },
+    "calibration": {
+      "bin_count": 1,
+      "weighted_absolute_calibration_error": 0.08265616912910931,
+      "classes": {
+        "tp_first_within_horizon": [
+          {
+            "n": 35,
+            "mean_forecast": 0.38112711083652107,
+            "observed_frequency": 0.2571428571428571,
+            "absolute_error": 0.12398425369366395
+          }
+        ],
+        "sl_first_within_horizon": [
+          {
+            "n": 35,
+            "mean_forecast": 0.5005890796699312,
+            "observed_frequency": 0.6,
+            "absolute_error": 0.09941092033006882
+          }
+        ],
+        "neither_barrier_before_expiry": [
+          {
+            "n": 35,
+            "mean_forecast": 0.11828380949354772,
+            "observed_frequency": 0.14285714285714285,
+            "absolute_error": 0.02457333336359513
+          }
+        ]
+      }
+    }
+  },
+  "empirical_comparator": {
+    "n": 35,
+    "class_counts": {
+      "sl_first_within_horizon": 21,
+      "tp_first_within_horizon": 9,
+      "neither_barrier_before_expiry": 5
+    },
+    "brier_3c": 0.5881569560047563,
+    "log_loss_3c": 0.9825623455482514,
+    "macro_ovr_auc": 0.5,
+    "ovr_auc_by_class": {
+      "tp_first_within_horizon": 0.5,
+      "sl_first_within_horizon": 0.5,
+      "neither_barrier_before_expiry": 0.5
+    },
+    "calibration": {
+      "bin_count": 1,
+      "weighted_absolute_calibration_error": 0.10114942528735632,
+      "classes": {
+        "tp_first_within_horizon": [
+          {
+            "n": 35,
+            "mean_forecast": 0.32413793103448274,
+            "observed_frequency": 0.2571428571428571,
+            "absolute_error": 0.06699507389162562
+          }
+        ],
+        "sl_first_within_horizon": [
+          {
+            "n": 35,
+            "mean_forecast": 0.4482758620689655,
+            "observed_frequency": 0.6,
+            "absolute_error": 0.15172413793103445
+          }
+        ],
+        "neither_barrier_before_expiry": [
+          {
+            "n": 35,
+            "mean_forecast": 0.22758620689655173,
+            "observed_frequency": 0.14285714285714285,
+            "absolute_error": 0.08472906403940889
+          }
+        ]
+      }
+    }
+  },
+  "paired_baseline_minus_empirical": {
+    "status": "evaluated",
+    "calendar_blocks": 11,
+    "resamples": 2000,
+    "left_minus_right": {
+      "brier_3c": {
+        "mean": -0.08831358412399436,
+        "lower_95": -0.21836552237303297,
+        "upper_95": 0.02420396887324794
+      },
+      "log_loss_3c": {
+        "mean": -0.1555402467048688,
+        "lower_95": -0.3949104464072618,
+        "upper_95": 0.07972011171749571
+      }
+    }
+  },
+  "production_effect": "none",
+  "canonical_payload_sha256": "e6f898c3fb86c9a318d232e3c750d82ac471b29620fd796fad0413531f516ecc"
+}

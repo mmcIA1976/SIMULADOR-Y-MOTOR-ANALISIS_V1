@@ -1,0 +1,28 @@
+{
+  "version": "M7.2-defect-correction-v0.1",
+  "phase": "M7",
+  "subphase": "M7.2",
+  "date": "2026-07-28",
+  "defect_id": "M7-DEFECT-CONVERGENCE-001",
+  "status": "corrected_and_retested",
+  "correction": {
+    "method": "reflection_principle_separated_barriers",
+    "activation_condition": "twice the one-sided full-interval crossing bound is less than or equal to the requested tolerance",
+    "returned_error_bound": "2 * P(one-sided traversal of the full interval within the remaining time)",
+    "spectral_series_retained_elsewhere": true,
+    "manual_probability_or_weight_added": false
+  },
+  "verification": {
+    "formerly_failing_cases": 26,
+    "formerly_failing_cases_now_passing": 26,
+    "adversarial_grid_cases": 175,
+    "adversarial_grid_failures_after_correction": 0,
+    "maximum_probability_mass_error": 0.0,
+    "maximum_independent_oracle_error": 0.00028916808025841734,
+    "oracle_acceptance_limit": 0.0025
+  },
+  "solver_sha256_before_correction": "c9bbd47e5ea2d92b76212a8299bf601e4f306238ad31a84f6cdd25b701857429",
+  "solver_sha256_after_correction": "6d70c67e84980dc4245c0181e7ce9a0d8dc51fea90a7b8e28319c9eb8ca746f1",
+  "production_effect": "none",
+  "m8_started": false
+}

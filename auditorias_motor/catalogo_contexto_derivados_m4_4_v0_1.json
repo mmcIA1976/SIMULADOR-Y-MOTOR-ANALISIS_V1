@@ -1,0 +1,1031 @@
+{
+  "version": "M4.4-derivatives-context-v0.1",
+  "phase": "M4",
+  "subphase": "M4.4",
+  "status": "completed_internal_milestone_m4_still_in_progress",
+  "date": "2026-07-27",
+  "scope": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "p0_blocks": [
+      7,
+      9,
+      10,
+      15
+    ],
+    "rules": 7,
+    "direct_probability_effects": 0,
+    "numeric_weights": 0,
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "learning_engine_used": false,
+    "m5_started": false,
+    "m4_next_subphase": "M4.5"
+  },
+  "operational_policies": {
+    "exact_window": "Every flow and OI change uses exact H; unavailable provider retention blocks unless an immutable local archive exists.",
+    "event_trade_retention": "aggTrades REST covers at most the provider window documented by M3; no last-N replacement.",
+    "cross_venue_max_skew_ms": 2000,
+    "spot_timestamp_quality": "receive-time bounded because Spot REST bookTicker has no provider event timestamp",
+    "funding_projection_allowed": false,
+    "market_leadership_label_allowed": false,
+    "oi_positioning_label_allowed": false,
+    "full_ofi_label_allowed": false,
+    "classification": "project operational policies, not published optima"
+  },
+  "sources": [
+    {
+      "id": "M3-DATA-CONTRACTS",
+      "type": "approved_internal_contract",
+      "url": null,
+      "supported_claim": "Fields, timestamps, retention and absence policy for Binance Futures and Spot observations.",
+      "does_not_support": "Any predictive sign, threshold, weight or score."
+    },
+    {
+      "id": "M4.2-REACHABILITY",
+      "type": "completed_internal_milestone",
+      "url": null,
+      "supported_claim": "Exact horizon, closed-window and log-geometry conventions.",
+      "does_not_support": "A derivatives-context probability effect."
+    },
+    {
+      "id": "M4.3-STRUCTURE",
+      "type": "completed_internal_milestone",
+      "url": null,
+      "supported_claim": "Price displacement and non-additive interaction conventions.",
+      "does_not_support": "Price-OI quadrant meanings or weights."
+    },
+    {
+      "id": "BINANCE-USD-M-MARKET-DATA",
+      "type": "official_provider_documentation",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "supported_claim": "Official meanings and availability of aggregate trades, taker volume, open interest, mark/index prices and funding fields.",
+      "does_not_support": "Predictiveness, full-book order flow, complete retention or universal funding interpretation."
+    },
+    {
+      "id": "BINANCE-SPOT-MARKET-DATA",
+      "type": "official_provider_documentation",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/market",
+      "supported_claim": "Official Spot best bid and ask fields.",
+      "does_not_support": "Provider event time for REST bookTicker or basis predictiveness."
+    },
+    {
+      "id": "CONT-KUKANOV-STOIKOV-2014",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1093/jjfinec/nbt003",
+      "supported_claim": "Short-interval price changes in the studied equities were more robustly related to full order-book event imbalance than to trade volume or trade imbalance alone.",
+      "does_not_support": "Calling Binance taker-trade imbalance OFI, crypto transfer, project horizons or a TP/SL probability."
+    },
+    {
+      "id": "HONG-YOGO-2012",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1016/j.jfineco.2011.05.008",
+      "supported_claim": "Open-interest changes contained information in the traditional futures markets and horizons studied by the authors.",
+      "does_not_support": "Crypto perpetual intraday transfer, long/short direction from gross OI, quadrant labels or project weights."
+    },
+    {
+      "id": "BAUR-DIMPFL-2019",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1002/fut.22004",
+      "supported_claim": "Their Bitcoin sample found spot leading the restricted exchange-traded futures market in price discovery.",
+      "does_not_support": "Binance perpetual leadership, basis direction or all crypto pairs and horizons."
+    },
+    {
+      "id": "FRINO-ET-AL-2025",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1002/fut.22560",
+      "supported_claim": "A later Bitcoin study found futures generally leading spot with daily variation after accounting for noise.",
+      "does_not_support": "A fixed leader, Binance perpetual transfer or a basis signal."
+    },
+    {
+      "id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+      "type": "primary_academic_preprint",
+      "url": "https://arxiv.org/abs/2212.06888",
+      "supported_claim": "Funding is an anchoring cash-flow mechanism for perpetuals and spot-perpetual deviations can remain material.",
+      "does_not_support": "Funding sign as a standalone return forecast, Binance-specific thresholds or ignoring trading costs."
+    }
+  ],
+  "rules": [
+    {
+      "id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "version": "0.1",
+      "name": "Desequilibrio de operaciones agresoras ejecutadas",
+      "analytical_blocks": [
+        7
+      ],
+      "concrete_objective": "Measure buyer-taker versus seller-taker executed volume over one exact window without calling it full order flow.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-005",
+          "M3-DATA-007",
+          "M3-DATA-015"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "B_H=sum(p_i*q_i where buyer_is_maker=false)",
+        "S_H=sum(p_i*q_i where buyer_is_maker=true)",
+        "ATI_H=(B_H-S_H)/(B_H+S_H)",
+        "periodic alternative=(sum(buyVol)-sum(sellVol))/total"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Trade side, price, quantity and taker volumes."
+        },
+        {
+          "source_id": "CONT-KUKANOV-STOIKOV-2014",
+          "level": "transfer_limit",
+          "claim": "Trade imbalance is weaker than full order-book event imbalance in the studied equity data."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "ATI_H is not OFI or CVD.",
+        "Limit orders and cancellations are absent.",
+        "Event and periodic measures cannot be added or averaged."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-FLOW-001",
+        "status": "proposed_unverified",
+        "statement": "Side-aligned ATI_H may condition first-barrier behavior after controlling for path, volatility and activity."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown; no direct TP/SL effect.",
+      "related_rules": [
+        "M4-RULE-DERIVATIVES-CONTEXT-001"
+      ],
+      "double_counting_control": "aggTrades, taker endpoint and kline taker volume are alternative measurements of one evidence family.",
+      "missing_data_behavior": "Rule unavailable; no zero or neutral imbalance.",
+      "unit_tests_limits_and_invariants": [
+        "-1<=ATI_H<=1",
+        "exact complete window",
+        "buyer-maker means seller taker",
+        "source alternatives are not averaged"
+      ],
+      "trace_output": [
+        "window_start",
+        "window_end",
+        "source",
+        "buy_taker_volume",
+        "sell_taker_volume",
+        "total_activity",
+        "ATI_H",
+        "coverage_complete",
+        "prediction"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire if no stable incremental value after full controls.",
+        "A true OFI rule requires book-event capture and a new card."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "version": "0.1",
+      "name": "Cambio logaritmico de open interest",
+      "analytical_blocks": [
+        9
+      ],
+      "concrete_objective": "Measure the change in outstanding contract quantity over the same exact horizon without inferring long/short direction.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-013",
+          "M3-DATA-014"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "dOI_H=ln(OI_t/OI_(t-H))"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Current and historical total open interest."
+        },
+        {
+          "source_id": "HONG-YOGO-2012",
+          "level": "external_predictive_evidence",
+          "claim": "OI changes carried information in traditional futures samples."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "Gross OI does not identify net long or net short pressure.",
+        "OI value is not substituted for contract quantity."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-OI-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "dOI_H may alter the conditional value of price-path and aggressor-flow observations."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Context only; no standalone direction.",
+      "related_rules": [
+        "M4-RULE-PRICE-OI-STATE-001"
+      ],
+      "double_counting_control": "Current OI and historical OI form one endpoint change.",
+      "missing_data_behavior": "Rule unavailable; no assumed unchanged OI.",
+      "unit_tests_limits_and_invariants": [
+        "OI_t>0 and OI_(t-H)>0",
+        "exact endpoint separation H",
+        "dimensionless log change",
+        "long_short_direction is null"
+      ],
+      "trace_output": [
+        "previous_timestamp",
+        "current_timestamp",
+        "previous_open_interest",
+        "current_open_interest",
+        "dOI_H",
+        "long_short_direction"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if unstable by pair or horizon.",
+        "Reject any implementation that labels OI rise as longs."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PRICE-OI-STATE-001",
+      "version": "0.1",
+      "name": "Estado conjunto precio y open interest",
+      "analytical_blocks": [
+        1,
+        9
+      ],
+      "concrete_objective": "Preserve the joint continuous state (D_H,dOI_H) without legacy quadrant narratives or duplicate points.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-005",
+          "M3-DATA-013",
+          "M3-DATA-014"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "POI_H=(D_H,dOI_H)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HONG-YOGO-2012",
+          "level": "transfer_limit",
+          "claim": "OI may contain information beyond futures price."
+        },
+        {
+          "source_id": "M4.3-STRUCTURE",
+          "level": "internal_definition",
+          "claim": "D_H is the exact-H log price displacement."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "No quadrant means new longs, new shorts, covering or exit.",
+        "The vector adds no evidence beyond its components."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-PRICE-OI-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "The joint continuous state may condition first-passage behavior beyond price displacement alone."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown interaction; no quadrant score.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001"
+      ],
+      "double_counting_control": "References D_H and dOI_H; cannot be added as a third signal.",
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "unit_tests_limits_and_invariants": [
+        "continuous values preserved",
+        "positioning_label is null",
+        "aggregate_score is null"
+      ],
+      "trace_output": [
+        "D_H",
+        "dOI_H",
+        "price_sign",
+        "oi_sign",
+        "state_descriptor",
+        "positioning_label",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire interaction if no incremental conditional value.",
+        "Any semantic quadrant requires separately verified evidence."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "version": "0.1",
+      "name": "Intervalo observable spot-Futures",
+      "analytical_blocks": [
+        15
+      ],
+      "concrete_objective": "Measure synchronized midpoint and executable quote ratios between Binance Spot and USD-M perpetual.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-008",
+          "M3-DATA-016",
+          "M3-DATA-017"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "mid_F=(F_bid+F_ask)/2; mid_S=(S_bid+S_ask)/2",
+        "b_mid=ln(mid_F/mid_S)",
+        "b_sellF_buyS=ln(F_bid/S_ask)",
+        "b_buyF_sellS=ln(F_ask/S_bid)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-SPOT-MARKET-DATA",
+          "level": "definition",
+          "claim": "Spot best bid and ask."
+        },
+        {
+          "source_id": "BAUR-DIMPFL-2019",
+          "level": "external_predictive_evidence",
+          "claim": "Spot led futures in their Bitcoin sample."
+        },
+        {
+          "source_id": "FRINO-ET-AL-2025",
+          "level": "external_predictive_evidence",
+          "claim": "Futures generally led spot in a later sample, with daily variation."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "No market is assigned permanent price leadership.",
+        "The raw interval excludes fees, latency and fill uncertainty."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-BASIS-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Basis magnitude and sign may condition price discovery when combined with flow, OI and freshness."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown; no automatic convergence direction.",
+      "related_rules": [
+        "M4-RULE-MARK-INDEX-PREMIUM-001"
+      ],
+      "double_counting_control": "Midpoint and executable bounds are one basis observation.",
+      "missing_data_behavior": "Block basis; mark-index premium is not a silent substitute.",
+      "unit_tests_limits_and_invariants": [
+        "bid<=ask on both venues",
+        "capture skew<=2000ms",
+        "log ratios are scale invariant",
+        "price_leadership is null"
+      ],
+      "trace_output": [
+        "four_quotes",
+        "requested_at",
+        "received_at",
+        "capture_skew_ms",
+        "b_mid",
+        "executable_basis_bounds",
+        "fees_included"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire if capture uncertainty dominates observed basis.",
+        "Price leadership requires a separate time-series model."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "version": "0.1",
+      "name": "Prima sincronizada mark-index",
+      "analytical_blocks": [
+        10,
+        15
+      ],
+      "concrete_objective": "Measure the same-timestamp USD-M mark-to-index log ratio without presenting the index as Binance Spot.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-010"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "b_mark_index=ln(markPrice/indexPrice)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Mark price, index price and provider time."
+        },
+        {
+          "source_id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+          "level": "technical_foundation",
+          "claim": "Perpetual prices can deviate from spot anchors."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "Index price is not Binance Spot bookTicker.",
+        "Premium sign is not a return forecast."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-PREMIUM-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "The synchronized mark-index premium may improve basis context when cross-venue capture is noisy."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Context only; no convergence assumption.",
+      "related_rules": [
+        "M4-RULE-SPOT-FUTURES-BASIS-001"
+      ],
+      "double_counting_control": "Cross-venue basis and mark-index premium share one family and cannot both receive independent effects.",
+      "missing_data_behavior": "Rule unavailable; no zero premium.",
+      "unit_tests_limits_and_invariants": [
+        "markPrice>0 and indexPrice>0",
+        "same provider timestamp",
+        "binance_spot_basis is null"
+      ],
+      "trace_output": [
+        "provider_time",
+        "mark_price",
+        "index_price",
+        "mark_index_log_premium",
+        "binance_spot_basis"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if it adds no value beyond actual basis."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-FUNDING-STATE-001",
+      "version": "0.1",
+      "name": "Estado temporal y carga realizada de funding",
+      "analytical_blocks": [
+        10
+      ],
+      "concrete_objective": "Normalize the current rate by its configured interval and record realized prior-H funding without forecasting rates.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-010",
+          "M3-DATA-011",
+          "M3-DATA-012"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "f_last_hour=lastFundingRate/fundingIntervalHours",
+        "L_prev(H)=sum(f_j where t-H<fundingTime_j<=t)",
+        "L_prev_hour(H)=L_prev(H)/H_hours",
+        "N_schedule=count configured event times within future H"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Funding rate, funding time, next time and adjusted interval configuration."
+        },
+        {
+          "source_id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+          "level": "technical_foundation",
+          "claim": "Funding is an anchoring cash-flow mechanism."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "Last observed funding is not the next funding rate.",
+        "Historical average is not a future rate.",
+        "Scheduled events do not imply a projected funding cost."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-FUNDING-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Funding state may condition basis and positioning interactions but has no standalone price direction."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "No direct TP/SL effect; economic cost is M4.5.",
+      "related_rules": [
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-DERIVATIVES-CONTEXT-001"
+      ],
+      "double_counting_control": "Current, normalized and historical funding describe one funding family.",
+      "missing_data_behavior": "Funding context unavailable; never assume zero.",
+      "unit_tests_limits_and_invariants": [
+        "fundingIntervalHours>0",
+        "funding events ordered and <=analysis_at",
+        "future_funding_rate_assumption is null",
+        "projected_funding_cost is null"
+      ],
+      "trace_output": [
+        "last_funding_rate",
+        "interval_hours",
+        "last_rate_per_hour",
+        "next_funding_time",
+        "scheduled_events_under_current_config",
+        "previous_horizon_funding_load",
+        "projected_funding_cost"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire interaction if no stable independent value.",
+        "Projected cost requires M4.5 execution assumptions."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "version": "0.1",
+      "name": "Vector continuo de contexto de derivados",
+      "analytical_blocks": [
+        7,
+        9,
+        10,
+        15
+      ],
+      "concrete_objective": "Expose flow, OI, basis and funding jointly without crowding labels, votes or additive scores.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-007",
+          "M3-DATA-008",
+          "M3-DATA-010",
+          "M3-DATA-012",
+          "M3-DATA-014",
+          "M3-DATA-016",
+          "M3-DATA-017"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "DC_H=(ATI_H,dOI_H,b_mid,f_last_hour)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M4.3-STRUCTURE",
+          "level": "internal_methodology",
+          "claim": "Interaction vectors reference atomic components without adding them as separate evidence."
+        },
+        {
+          "source_id": "M3-DATA-CONTRACTS",
+          "level": "data_foundation",
+          "claim": "Every component has a separate data contract."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "The vector is not a crowding index.",
+        "No component has a numeric coefficient."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-DERIVATIVES-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Joint derivatives state may contain conditional value not present in any marginal observation."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown interaction; no direct probability.",
+      "related_rules": [
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "double_counting_control": "The vector references four atomic families and adds no fifth piece of evidence.",
+      "missing_data_behavior": "Vector unavailable if any required component is absent.",
+      "unit_tests_limits_and_invariants": [
+        "ATI_H in [-1,1]",
+        "all components continuous",
+        "crowding_label is null",
+        "aggregate_score is null"
+      ],
+      "trace_output": [
+        "ATI_H",
+        "dOI_H",
+        "b_mid",
+        "f_last_hour",
+        "crowding_label",
+        "aggregate_score",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire interaction if no incremental validated value.",
+        "Any coefficient requires M6 and independent validation."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    }
+  ],
+  "preregistered_hypotheses": [
+    {
+      "id": "M4-HYP-FLOW-001",
+      "status": "proposed_unverified",
+      "statement": "Side-aligned ATI_H may condition first-barrier behavior after controlling for path, volatility and activity."
+    },
+    {
+      "id": "M4-HYP-OI-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "dOI_H may alter the conditional value of price-path and aggressor-flow observations."
+    },
+    {
+      "id": "M4-HYP-PRICE-OI-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "The joint continuous state may condition first-passage behavior beyond price displacement alone."
+    },
+    {
+      "id": "M4-HYP-BASIS-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Basis magnitude and sign may condition price discovery when combined with flow, OI and freshness."
+    },
+    {
+      "id": "M4-HYP-PREMIUM-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "The synchronized mark-index premium may improve basis context when cross-venue capture is noisy."
+    },
+    {
+      "id": "M4-HYP-FUNDING-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Funding state may condition basis and positioning interactions but has no standalone price direction."
+    },
+    {
+      "id": "M4-HYP-DERIVATIVES-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Joint derivatives state may contain conditional value not present in any marginal observation."
+    }
+  ],
+  "evidence_families": [
+    {
+      "id": "M4-EVIDENCE-EXECUTED-AGGRESSOR-FLOW",
+      "members": [
+        "M4-RULE-AGGRESSOR-IMBALANCE-001"
+      ],
+      "alternative_sources": [
+        "aggTrades",
+        "periodic taker volume",
+        "closed-kline taker volume"
+      ],
+      "additive_members_allowed": false
+    },
+    {
+      "id": "M4-EVIDENCE-OPEN-INTEREST",
+      "members": [
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001"
+      ],
+      "additive_members_allowed": false
+    },
+    {
+      "id": "M4-EVIDENCE-BASIS",
+      "members": [
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001"
+      ],
+      "additive_members_allowed": false
+    },
+    {
+      "id": "M4-EVIDENCE-FUNDING",
+      "members": [
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "additive_members_allowed": false
+    },
+    {
+      "id": "M4-EVIDENCE-DERIVATIVES-CONTEXT",
+      "members": [
+        "M4-RULE-DERIVATIVES-CONTEXT-001"
+      ],
+      "references_atomic_families": [
+        "M4-EVIDENCE-EXECUTED-AGGRESSOR-FLOW",
+        "M4-EVIDENCE-OPEN-INTEREST",
+        "M4-EVIDENCE-BASIS",
+        "M4-EVIDENCE-FUNDING"
+      ],
+      "additive_members_allowed": false
+    }
+  ],
+  "supersedes_current_elements": {
+    "IND-CVD-PROXY": "Renamed as executed aggressor imbalance; it is not CVD/OFI.",
+    "SCORE-TAKER_FLOW_BIAS": "Legacy points replaced by exact-window descriptor.",
+    "SCORE-CVD_BIAS": "Merged into the same aggressor evidence family.",
+    "SCORE-OI_TREND_BIAS": "Replaced by dOI_H and an unweighted joint vector.",
+    "SCORE-OI_CONTEXT_PENALTY": "Merged into the same OI family without quadrant labels.",
+    "SCORE-FUNDING_PENALTY": "Replaced by interval-normalized funding state.",
+    "SCORE-FUNDING_RELATIVE_PENALTY": "Merged into funding state; no threshold or penalty survives.",
+    "P0-BLOCK-SPOT-FUTURES": "Defined for synchronized quotes; current snapshot remains noncompliant until M5."
+  },
+  "summary": {
+    "rules": 7,
+    "hypotheses": 7,
+    "evidence_families": 5,
+    "rules_with_probability_effect": 0,
+    "rules_with_numeric_weight": 0,
+    "production_modified": false
+  },
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "auditorias_motor\\catalogo_contratos_datos_m3_v0_1.json",
+      "sha256": "c6b4166d4a71fc6bd146b9352d4b2893a8a8c33ef98999406463a4ac3ac38e3d"
+    },
+    {
+      "path": "auditorias_motor\\reconciliacion_candidatos_m4_v0_1.json",
+      "sha256": "a888e6ab08c1729b71e2a74f68db5e58cf1d527011ba04f285293d172e9e4348"
+    },
+    {
+      "path": "auditorias_motor\\catalogo_regimen_estructura_mtf_m4_3_v0_1.json",
+      "sha256": "c28d9ffa316ea2a7e1e858299e0bf4a95e070906b7c70e5cb2b12a736ec497ce"
+    }
+  ],
+  "catalog_sha256": "8c764a9b36d74ac9a4dbc62416d0ac7b921112641d9ab7e37008af0996ef9736"
+}

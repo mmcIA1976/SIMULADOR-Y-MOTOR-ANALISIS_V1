@@ -311,6 +311,29 @@ CREATE TABLE IF NOT EXISTS challenger_shadow_runs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS m6_prospective_runs (
+    id BIGSERIAL PRIMARY KEY,
+    run_key TEXT NOT NULL UNIQUE,
+    recommendation_id BIGINT NOT NULL REFERENCES recommendations(id) ON DELETE RESTRICT,
+    runtime_version TEXT NOT NULL,
+    m5_engine_version TEXT NOT NULL,
+    m6_engine_version TEXT NOT NULL,
+    run_status TEXT NOT NULL CHECK(run_status IN ('evaluated', 'blocked')),
+    block_code TEXT,
+    analysis_at TIMESTAMPTZ NOT NULL,
+    data_cutoff_at TIMESTAMPTZ,
+    evaluation_expires_at TIMESTAMPTZ NOT NULL,
+    horizon_seconds INTEGER NOT NULL,
+    plan_contract_json TEXT NOT NULL,
+    feature_snapshot_json TEXT NOT NULL,
+    m5_trace_json TEXT NOT NULL,
+    probability_result_json TEXT NOT NULL,
+    source_data_sha256 TEXT NOT NULL,
+    production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+    app_version TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -347,6 +370,9 @@ CREATE INDEX IF NOT EXISTS idx_challenger_shadow_recommendation ON challenger_sh
 CREATE INDEX IF NOT EXISTS idx_challenger_shadow_config ON challenger_shadow_runs(config_event_id);
 CREATE INDEX IF NOT EXISTS idx_challenger_shadow_model ON challenger_shadow_runs(model_version);
 CREATE INDEX IF NOT EXISTS idx_challenger_shadow_status ON challenger_shadow_runs(challenger_status, block_code, created_at);
+CREATE INDEX IF NOT EXISTS idx_m6_prospective_recommendation ON m6_prospective_runs(recommendation_id);
+CREATE INDEX IF NOT EXISTS idx_m6_prospective_status ON m6_prospective_runs(run_status, block_code, created_at);
+CREATE INDEX IF NOT EXISTS idx_m6_prospective_expiry ON m6_prospective_runs(evaluation_expires_at, run_status);
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operations ENABLE ROW LEVEL SECURITY;
@@ -362,6 +388,7 @@ ALTER TABLE public.learning_legacy_reevaluations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_model_artifacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.m6_prospective_runs ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operations FROM anon, authenticated;
@@ -377,6 +404,7 @@ REVOKE ALL PRIVILEGES ON TABLE public.learning_legacy_reevaluations FROM anon, a
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_model_artifacts FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_config_events FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_runs FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.m6_prospective_runs FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
 
@@ -395,18 +423,24 @@ REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.challenger_shadow_config_events FROM service_role;
 REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.challenger_shadow_runs FROM service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.m6_prospective_runs FROM service_role;
 GRANT SELECT, INSERT
     ON TABLE public.challenger_model_artifacts TO service_role;
 GRANT SELECT, INSERT
     ON TABLE public.challenger_shadow_config_events TO service_role;
 GRANT SELECT, INSERT
     ON TABLE public.challenger_shadow_runs TO service_role;
+GRANT SELECT, INSERT
+    ON TABLE public.m6_prospective_runs TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.challenger_model_artifacts_id_seq TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.challenger_shadow_config_events_id_seq TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.challenger_shadow_runs_id_seq TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.m6_prospective_runs_id_seq TO service_role;
 
 DO $$
 BEGIN
@@ -494,6 +528,30 @@ BEGIN
     ) THEN
         CREATE RULE challenger_shadow_runs_no_delete AS
         ON DELETE TO public.challenger_shadow_runs
+        DO INSTEAD NOTHING;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'm6_prospective_runs'
+          AND rulename = 'm6_prospective_runs_no_update'
+    ) THEN
+        CREATE RULE m6_prospective_runs_no_update AS
+        ON UPDATE TO public.m6_prospective_runs
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'm6_prospective_runs'
+          AND rulename = 'm6_prospective_runs_no_delete'
+    ) THEN
+        CREATE RULE m6_prospective_runs_no_delete AS
+        ON DELETE TO public.m6_prospective_runs
         DO INSTEAD NOTHING;
     END IF;
 END $$;

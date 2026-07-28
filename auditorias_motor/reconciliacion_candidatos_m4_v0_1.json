@@ -1,0 +1,1494 @@
+{
+  "version": "M4.1-reconciliation-v0.1",
+  "phase": "M4",
+  "subphase": "M4.1",
+  "status": "completed_internal_milestone_m4_still_in_progress",
+  "date": "2026-07-27",
+  "purpose": "Reconcile every M1 item assigned to M4 before defining new rules, without carrying current heuristic effects forward.",
+  "scope": {
+    "m4_started": true,
+    "m4_current_subphase": "M4.1",
+    "m4_next_subphase": "M4.2",
+    "m5_started": false,
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "learning_engine_used": false,
+    "new_predictive_weight_authorized": false
+  },
+  "universe": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "futures_market": "Binance USD-M perpetual",
+    "spot_market": "Binance Spot"
+  },
+  "p0_blocks": [
+    {
+      "id": 1,
+      "name": "Estructura del precio"
+    },
+    {
+      "id": 3,
+      "name": "Multi-timeframe"
+    },
+    {
+      "id": 7,
+      "name": "Order flow"
+    },
+    {
+      "id": 9,
+      "name": "Open interest"
+    },
+    {
+      "id": 10,
+      "name": "Funding"
+    },
+    {
+      "id": 15,
+      "name": "Spot contra Futures"
+    },
+    {
+      "id": 24,
+      "name": "Regimen"
+    },
+    {
+      "id": 26,
+      "name": "Estadistica, volatilidad y alcanzabilidad"
+    },
+    {
+      "id": 28,
+      "name": "Probabilidad TP/SL"
+    },
+    {
+      "id": 29,
+      "name": "Ejecucion y costes"
+    },
+    {
+      "id": 30,
+      "name": "Gestion de riesgo"
+    },
+    {
+      "id": 32,
+      "name": "Evaluacion del rendimiento"
+    }
+  ],
+  "admission_contract": {
+    "mandatory_fields": [
+      "id_and_version",
+      "analytical_block",
+      "concrete_objective",
+      "rule_type",
+      "raw_data_and_provider",
+      "market_symbol_timestamp_unit_freshness",
+      "exact_transformation_and_formula",
+      "cross_pair_normalization",
+      "applicable_horizons",
+      "activation_and_non_application",
+      "source_and_exact_supported_claim",
+      "claims_not_supported_by_source",
+      "separate_predictive_hypothesis",
+      "expected_relation_to_tp_sl_or_expiry",
+      "related_rules_and_double_counting",
+      "missing_data_behavior",
+      "unit_tests_limits_and_invariants",
+      "trace_output",
+      "refutation_suspension_or_withdrawal",
+      "lifecycle_status"
+    ],
+    "source_levels": [
+      {
+        "level": "definition",
+        "meaning": "Standard formula or verifiable meaning of a datum.",
+        "can_authorize": "deterministic calculation only",
+        "cannot_authorize": "predictive sign, threshold, weight or probability"
+      },
+      {
+        "level": "technical_foundation",
+        "meaning": "Published interpretation or financial mechanism.",
+        "can_authorize": "a mechanism stated with its assumptions",
+        "cannot_authorize": "project-specific predictive effect or weight"
+      },
+      {
+        "level": "external_predictive_evidence",
+        "meaning": "Primary study with a comparable forward outcome.",
+        "can_authorize": "a bounded candidate hypothesis",
+        "cannot_authorize": "transfer across pairs, horizons or regimes"
+      },
+      {
+        "level": "project_hypothesis",
+        "meaning": "Preregistered relation to TP, SL or expiry.",
+        "can_authorize": "shadow evaluation after M5-M7",
+        "cannot_authorize": "production influence before M8-M9"
+      }
+    ],
+    "hard_gates": [
+      "A data source validates meaning and availability, not prediction.",
+      "No current point, threshold or weight transfers automatically.",
+      "A P1 parent cannot influence P0 through probability block 28.",
+      "Definitions and hypotheses remain separate records.",
+      "No rule receives direct probability mass in M4.",
+      "Every target family must later name exact M3 data contracts.",
+      "Missing or stale data never becomes neutral evidence.",
+      "All pairs and horizons require the same formula and declared parameters.",
+      "Combinations are preregistered before empirical evaluation."
+    ]
+  },
+  "summary": {
+    "m1_candidates": 30,
+    "reconciled": 30,
+    "p0_blocks": 12,
+    "target_families": 17,
+    "rows_with_direct_probability_authorized": 0,
+    "production_modified": false,
+    "disposition_counts": {
+      "defer_parent_block_to_m10": 1,
+      "exclude_current_formula_research_p0_volatility_separately": 1,
+      "merge_duplicate_evidence_family": 1,
+      "merge_funding_evidence_family": 1,
+      "merge_joint_oi_family": 1,
+      "merge_mtf_family": 1,
+      "merge_structural_barrier_family": 2,
+      "rebuild_detector_before_hypothesis": 1,
+      "rebuild_regime_without_directional_points": 1,
+      "reformulate_as_joint_state_hypothesis": 1,
+      "reformulate_as_normalized_structure_hypothesis": 1,
+      "reformulate_as_preregistered_structure_hypothesis": 1,
+      "reformulate_as_windowed_flow_hypothesis": 1,
+      "reformulate_with_historical_normalization": 1,
+      "rename_and_reformulate": 1,
+      "replace_with_continuous_reachability_geometry": 1,
+      "replace_with_m2_probability_tree_semantics": 1,
+      "replace_with_pending_entry_geometry": 1,
+      "retain_definition_without_predictive_weight": 1,
+      "retire_aggregate_rebuild_components": 1,
+      "retire_count_use_preregistered_interactions": 1,
+      "retire_formula_use_m2_geometry": 1,
+      "retire_learning_derived_adjustment": 2,
+      "retire_opaque_aggregate": 1,
+      "retire_points_rebuild_components": 1,
+      "retire_points_rebuild_pending_semantics": 1,
+      "retire_without_replacement": 1,
+      "separate_execution_from_market_probability": 1
+    },
+    "subphase_counts": {
+      "M4.1": 3,
+      "M4.2": 6,
+      "M4.3": 12,
+      "M4.4": 7,
+      "M4.5": 1,
+      "M4.6": 1
+    }
+  },
+  "target_family_seed_registry": [
+    {
+      "family_id": "M4-FAMILY-AGGRESSOR-TRADE-IMBALANCE",
+      "member_count": 3,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-BARRIER-GEOMETRY",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-BARRIER-REACHABILITY",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-DEPTH-SLIPPAGE",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-FUNDING-STATE",
+      "member_count": 2,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-INTERACTION-MATRIX",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-MTF-HIERARCHY",
+      "member_count": 4,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-OI-CHANGE",
+      "member_count": 2,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-PENDING-ACTIVATION",
+      "member_count": 4,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-PRICE-OI-STATE",
+      "member_count": 2,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-REALIZED-VOLATILITY",
+      "member_count": 2,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-SPREAD",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-STRUCTURAL-LEVELS",
+      "member_count": 3,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-STRUCTURE-DISPLACEMENT",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-STRUCTURE-SMOOTHER",
+      "member_count": 4,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-TREND-REGIME",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    },
+    {
+      "family_id": "M4-FAMILY-VOLATILITY-REGIME",
+      "member_count": 1,
+      "status": "seed_only_not_a_rule",
+      "formula_defined": false,
+      "predictive_effect_defined": false,
+      "note": "M4.1 groups legacy elements only. Formal rule cards begin in M4.2 and cannot inherit legacy effects."
+    }
+  ],
+  "rows": [
+    {
+      "current_rule_id": "IND-EMA-CORE",
+      "current_name": "EMA estandar con historia suficiente",
+      "current_kind": "standard_calculation",
+      "current_formula": "EMA_t = alpha*x_t + (1-alpha)*EMA_(t-1), alpha=2/(period+1)",
+      "current_decision": "conservar_calculo_sin_peso_predictivo",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        1,
+        3
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Multi-timeframe"
+      ],
+      "non_p0_blocks": [
+        2
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "retain_definition_without_predictive_weight",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURE-SMOOTHER"
+      ],
+      "reason": "A correctly initialized EMA may be a deterministic smoother. Its periods and predictive interpretation require separate rules.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "IND-EMA200-FALLBACK",
+      "current_name": "Fallback EMA200 con hasta 80 cierres",
+      "current_kind": "implementation_variant",
+      "current_formula": "if len(closes)<200: ema(closes, min(80,len(closes))) etiquetada ema_200",
+      "current_decision": "desactivar_fallback_mal_etiquetado",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        1,
+        3
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Multi-timeframe"
+      ],
+      "non_p0_blocks": [
+        2,
+        34
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "retire_without_replacement",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [],
+      "reason": "A shorter history must not be labelled EMA200. M5 must block insufficient history instead of synthesizing an equivalent value.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "IND-ATR14-CURRENT",
+      "current_name": "ATR14 variante de media simple",
+      "current_kind": "implementation_variant",
+      "current_formula": "Media simple de true ranges recientes",
+      "current_decision": "reformular_a_definicion_estandar_o_renombrar",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        26,
+        28
+      ],
+      "p0_block_names": [
+        "Estadistica, volatilidad y alcanzabilidad",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [
+        2
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "exclude_current_formula_research_p0_volatility_separately",
+      "m4_subphase": "M4.2",
+      "target_rule_families": [
+        "M4-FAMILY-REALIZED-VOLATILITY"
+      ],
+      "reason": "The current simple-mean ATR variant is not the approved P0 horizon volatility scale. M4.2 will define that scale directly.",
+      "parent_block_gate": "indicator_parent_deferred_p1",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "IND-EMA-STACK",
+      "current_name": "Stack EMA multi-temporalidad",
+      "current_kind": "research_hypothesis",
+      "current_formula": "bullish/bearish/mixed por orden EMA9, EMA21 y EMA50",
+      "current_decision": "mantener_solo_como_hipotesis_estructural",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        1,
+        3
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Multi-timeframe"
+      ],
+      "non_p0_blocks": [
+        2
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "reformulate_as_preregistered_structure_hypothesis",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURE-SMOOTHER",
+        "M4-FAMILY-MTF-HIERARCHY"
+      ],
+      "reason": "EMA ordering can describe smoothed price structure but cannot retain the current directional score or arbitrary timeframe weights.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "IND-SUPPORT-RESISTANCE",
+      "current_name": "Detector interno de soportes y resistencias",
+      "current_kind": "research_hypothesis",
+      "current_formula": "Cluster de extremos recientes y distancia porcentual al nivel",
+      "current_decision": "reformular_detector_antes_de_uso",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        1
+      ],
+      "p0_block_names": [
+        "Estructura del precio"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "rebuild_detector_before_hypothesis",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURAL-LEVELS"
+      ],
+      "reason": "The current clustering constants are internal. A deterministic level detector and barrier-distance contract must be defined first.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "IND-CVD-PROXY",
+      "current_name": "CVD proxy de 500 aggTrades",
+      "current_kind": "proxy_hypothesis",
+      "current_formula": "(buy_notional-sell_notional)/(buy+sell) sobre muestra reciente",
+      "current_decision": "reformular_proxy_sin_peso_actual",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        7
+      ],
+      "p0_block_names": [
+        "Order flow"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "disposition": "rename_and_reformulate",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-AGGRESSOR-TRADE-IMBALANCE"
+      ],
+      "reason": "A bounded Binance aggTrades window is trade-flow imbalance, not full cumulative volume delta. The last-500 sample is forbidden.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "IND-PENDING-ZONE",
+      "current_name": "Zona de entrada pendiente",
+      "current_kind": "internal_composite_hypothesis",
+      "current_formula": "Confluencia, activacion, sweep, rechazo/ruptura y calidad de camino",
+      "current_decision": "conservar_solo_observacional_y_reformular_interaccion",
+      "current_probability_action": "sin_autorizacion_de_efecto_predictivo_directo",
+      "p0_blocks": [
+        1,
+        28,
+        29
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Probabilidad TP/SL",
+        "Ejecucion y costes"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004",
+        "M3-DATA-007",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "replace_with_pending_entry_geometry",
+      "m4_subphase": "M4.2",
+      "target_rule_families": [
+        "M4-FAMILY-PENDING-ACTIVATION"
+      ],
+      "reason": "Pending entry must be represented as a separate activation event under the M2 probability tree, never as an additive TP score.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-TREND_BIAS",
+      "current_name": "Tendencia EMA multi-TF",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "EMA stacks ponderados; cortes +/-0.2 y +/-0.55; efecto +0.10/+0.05/-0.05/-0.09",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        3
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Multi-timeframe"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "retire_points_rebuild_components",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURE-SMOOTHER",
+        "M4-FAMILY-MTF-HIERARCHY"
+      ],
+      "reason": "The current points and timeframe weights have no admissible derivation.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-TECHNICAL_DIRECTION_BIAS",
+      "current_name": "Rating tecnico direccional",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Score EMA+precio/EMA+RSI; cortes +/-0.15 y +/-0.45; efecto +0.035/+0.015/-0.02/-0.04",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        3
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Multi-timeframe"
+      ],
+      "non_p0_blocks": [
+        2
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "retire_aggregate_rebuild_components",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURE-SMOOTHER",
+        "M4-FAMILY-MTF-HIERARCHY"
+      ],
+      "reason": "A technical rating cannot enter P0 as an opaque aggregate. Only individually documented components may survive.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-PRICE_VS_ENTRY_BIAS",
+      "current_name": "Precio actual frente a entrada",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Long: +0.03 si price<=entry, si no -0.02; short simetrico",
+      "current_decision": "retirar_formula_actual",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        26,
+        28
+      ],
+      "p0_block_names": [
+        "Estadistica, volatilidad y alcanzabilidad",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "retire_formula_use_m2_geometry",
+      "m4_subphase": "M4.2",
+      "target_rule_families": [
+        "M4-FAMILY-BARRIER-GEOMETRY",
+        "M4-FAMILY-PENDING-ACTIVATION"
+      ],
+      "reason": "The discontinuous current adjustment is replaced by continuous log-distance geometry already required by M2.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-MARKET_REGIME_BIAS",
+      "current_name": "Sesgo de regimen",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Efectos 0.024/-0.028/-0.018 con multiplicador por horizonte",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        24
+      ],
+      "p0_block_names": [
+        "Regimen"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "disposition": "rebuild_regime_without_directional_points",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-VOLATILITY-REGIME",
+        "M4-FAMILY-TREND-REGIME"
+      ],
+      "reason": "Regime is contextual state, not an automatic long/short bonus. Its estimator, persistence and transition rules require definition.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-FIBONACCI_PROBABILITY_ADJUSTMENT",
+      "current_name": "Ajuste Fibonacci",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Ajuste actual 0 para favorable y negativo para contextos adversos",
+      "current_decision": "retirar_efecto_predictivo",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        28
+      ],
+      "p0_block_names": [
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [
+        4
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "defer_parent_block_to_m10",
+      "m4_subphase": "M4.1",
+      "target_rule_families": [],
+      "reason": "Fibonacci belongs to P1 block 4. Its presence in block 28 cannot bypass the priority gate or create a P0 probability adjustment.",
+      "parent_block_gate": "blocked_parent_is_p1",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-ZONE_PROBABILITY_ADJUSTMENT",
+      "current_name": "Ajuste de zona pendiente",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Ajustes discretos de zona hasta +0.025/-0.035",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        28
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004",
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "retire_points_rebuild_pending_semantics",
+      "m4_subphase": "M4.2",
+      "target_rule_families": [
+        "M4-FAMILY-PENDING-ACTIVATION"
+      ],
+      "reason": "Zone quality must affect an activation event, not add TP points.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-TAKER_FLOW_BIAS",
+      "current_name": "Ratio taker buy/sell",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Umbrales 1.12/0.88; efecto +/-0.02 por lado y derivatives_weight",
+      "current_decision": "retirar_umbral_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        7
+      ],
+      "p0_block_names": [
+        "Order flow"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "disposition": "reformulate_as_windowed_flow_hypothesis",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-AGGRESSOR-TRADE-IMBALANCE"
+      ],
+      "reason": "The datum is viable, but fixed ratio thresholds and points are withdrawn pending an exact event window and normalization.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-CVD_BIAS",
+      "current_name": "CVD proxy",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Umbral +/-0.12; efecto +/-0.018 por lado y micro_weight",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        7
+      ],
+      "p0_block_names": [
+        "Order flow"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "disposition": "merge_duplicate_evidence_family",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-AGGRESSOR-TRADE-IMBALANCE"
+      ],
+      "reason": "This is not independent evidence from the taker-flow family.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-OI_TREND_BIAS",
+      "current_name": "Tendencia precio-OI",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "OI change >=0.2 y signo precio 24h; efecto +/-0.02",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        9
+      ],
+      "p0_block_names": [
+        "Open interest"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "m3_conditional_data_ids": [],
+      "disposition": "reformulate_as_joint_state_hypothesis",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-OI-CHANGE",
+        "M4-FAMILY-PRICE-OI-STATE"
+      ],
+      "reason": "OI is unsigned activity. Directional interpretation requires an explicit interaction with price and cannot retain current points.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-VOLATILITY_PENALTY",
+      "current_name": "SL frente a volatilidad",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.07 si risk_distance < max(range,ATR)*0.35",
+      "current_decision": "retirar_penalizacion_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        26,
+        28
+      ],
+      "p0_block_names": [
+        "Estadistica, volatilidad y alcanzabilidad",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "replace_with_continuous_reachability_geometry",
+      "m4_subphase": "M4.2",
+      "target_rule_families": [
+        "M4-FAMILY-REALIZED-VOLATILITY",
+        "M4-FAMILY-BARRIER-REACHABILITY"
+      ],
+      "reason": "A barrier-to-volatility ratio is continuous plan geometry; fixed penalty bands are withdrawn.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-LIQUIDITY_PENALTY",
+      "current_name": "Penalizacion de spread",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.03 si spread_pct>0.04",
+      "current_decision": "separar_de_probabilidad_de_mercado",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        29
+      ],
+      "p0_block_names": [
+        "Ejecucion y costes"
+      ],
+      "non_p0_blocks": [
+        8
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "disposition": "separate_execution_from_market_probability",
+      "m4_subphase": "M4.5",
+      "target_rule_families": [
+        "M4-FAMILY-SPREAD",
+        "M4-FAMILY-DEPTH-SLIPPAGE"
+      ],
+      "reason": "Spread and depth affect executable price and costs. They do not directly alter market-path probability without a separate study.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-OVEREXTENSION_PENALTY",
+      "current_name": "Extension frente a EMA21",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.025 si abs(price_vs_ema21)>max(0.5,ATR*1.8)",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        24
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Regimen"
+      ],
+      "non_p0_blocks": [
+        2
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004",
+        "M3-DATA-009"
+      ],
+      "disposition": "reformulate_as_normalized_structure_hypothesis",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURE-DISPLACEMENT"
+      ],
+      "reason": "Distance from a smoother must be volatility-normalized. Mean reversion or continuation remains an unproven project hypothesis.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-FUNDING_PENALTY",
+      "current_name": "Funding extremo por lado",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.025 si long funding>0.03 o short funding<-0.03",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        10
+      ],
+      "p0_block_names": [
+        "Funding"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "m3_conditional_data_ids": [],
+      "disposition": "merge_funding_evidence_family",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-FUNDING-STATE"
+      ],
+      "reason": "Funding sign and magnitude are retained as state and cost inputs; the current directional penalty is withdrawn.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-FUNDING_RELATIVE_PENALTY",
+      "current_name": "Funding frente a media",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Thresholds internos de funding actual frente a media reciente",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        10
+      ],
+      "p0_block_names": [
+        "Funding"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "m3_conditional_data_ids": [],
+      "disposition": "reformulate_with_historical_normalization",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-FUNDING-STATE"
+      ],
+      "reason": "Relative funding needs interval-aware history and robust normalization; it is the same evidence family as current funding.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-LEVEL_PENALTY",
+      "current_name": "Barrera de soporte/resistencia",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.025 si nivel queda antes de max(0.25,35% del reward)",
+      "current_decision": "retirar_penalizacion_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        28
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004",
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "merge_structural_barrier_family",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURAL-LEVELS"
+      ],
+      "reason": "Current points are withdrawn; only explicit level-to-barrier geometry remains.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-HIGHER_TIMEFRAME_PENALTY",
+      "current_name": "Contradiccion HTF",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Penalizacion discreta por estructura 4h/1d contraria y horizonte",
+      "current_decision": "retirar_duplicidad_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        3
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Multi-timeframe"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "disposition": "merge_mtf_family",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-MTF-HIERARCHY"
+      ],
+      "reason": "Higher-timeframe evidence must be represented once through a declared hierarchy, not duplicated as trend and penalty.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-TECHNICAL_ENTRY_TIMING_PENALTY",
+      "current_name": "Timing tecnico",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.02 por RSI extremo y extension frente a EMA/ATR",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        24
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Regimen"
+      ],
+      "non_p0_blocks": [
+        2
+      ],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004",
+        "M3-DATA-009"
+      ],
+      "disposition": "retire_opaque_aggregate",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [],
+      "reason": "The aggregate mixes P0 and deferred P1 signals and has no unique formula.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-TECHNICAL_BARRIER_PENALTY",
+      "current_name": "Barrera tecnica al TP",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "0.025 si barrera<55% reward; 0.012 si <85%",
+      "current_decision": "retirar_penalizacion_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        1,
+        28
+      ],
+      "p0_block_names": [
+        "Estructura del precio",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-004",
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "merge_structural_barrier_family",
+      "m4_subphase": "M4.3",
+      "target_rule_families": [
+        "M4-FAMILY-STRUCTURAL-LEVELS"
+      ],
+      "reason": "This duplicates the level family and cannot contribute independently.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-OI_CONTEXT_PENALTY",
+      "current_name": "Contexto precio-OI",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Penalizacion discreta por combinaciones de precio y OI",
+      "current_decision": "retirar_puntos_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        9,
+        24
+      ],
+      "p0_block_names": [
+        "Open interest",
+        "Regimen"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "disposition": "merge_joint_oi_family",
+      "m4_subphase": "M4.4",
+      "target_rule_families": [
+        "M4-FAMILY-OI-CHANGE",
+        "M4-FAMILY-PRICE-OI-STATE"
+      ],
+      "reason": "This duplicates the price-OI interaction and retains no separate points.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-CONTRADICTION_PENALTY",
+      "current_name": "Penalizacion por contradicciones",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Cuenta contradicciones y aplica 0.018/0.032/0.045",
+      "current_decision": "retirar_conteo_y_reformular",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        24,
+        28
+      ],
+      "p0_block_names": [
+        "Regimen",
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-009",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "retire_count_use_preregistered_interactions",
+      "m4_subphase": "M4.6",
+      "target_rule_families": [
+        "M4-FAMILY-INTERACTION-MATRIX"
+      ],
+      "reason": "Counting heterogeneous contradictions assumes equal and independent effects. M4.6 will define explicit interactions instead.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-RISK_CALIBRATION_TP_ADJUSTMENT",
+      "current_name": "Ajuste TP agregado de calibracion",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Suma de gates con floor agregado -0.16",
+      "current_decision": "retirar_ajuste_agregado",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        28,
+        30,
+        32
+      ],
+      "p0_block_names": [
+        "Probabilidad TP/SL",
+        "Gestion de riesgo",
+        "Evaluacion del rendimiento"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "retire_learning_derived_adjustment",
+      "m4_subphase": "M4.1",
+      "target_rule_families": [],
+      "reason": "The learning engine is paused and evidence from the old heuristic engine cannot define P0 rules or probability weights.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-ZONE_RANGE_PROBABILITY_ADJUSTMENT",
+      "current_name": "Ajuste rango por no activacion",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Aumenta range_probability por baja activacion pendiente",
+      "current_decision": "separar_semanticas",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        28
+      ],
+      "p0_block_names": [
+        "Probabilidad TP/SL"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "replace_with_m2_probability_tree_semantics",
+      "m4_subphase": "M4.2",
+      "target_rule_families": [
+        "M4-FAMILY-PENDING-ACTIVATION"
+      ],
+      "reason": "No-entry and expiry-after-entry remain separate outcomes; a range adjustment cannot merge their probability mass.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    },
+    {
+      "current_rule_id": "SCORE-RISK_CALIBRATION_RANGE_ADJUSTMENT",
+      "current_name": "Ajuste rango de calibracion",
+      "current_kind": "active_predictive_adjustment",
+      "current_formula": "Ajuste agregado de rango; actualmente no activado en cohorte E1.4",
+      "current_decision": "retirar_formula_actual",
+      "current_probability_action": "debe_salir_de_la_ruta_probabilistica_actual",
+      "p0_blocks": [
+        28,
+        30,
+        32
+      ],
+      "p0_block_names": [
+        "Probabilidad TP/SL",
+        "Gestion de riesgo",
+        "Evaluacion del rendimiento"
+      ],
+      "non_p0_blocks": [],
+      "m3_required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "m3_conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "disposition": "retire_learning_derived_adjustment",
+      "m4_subphase": "M4.1",
+      "target_rule_families": [],
+      "reason": "Old retrospective calibration cannot set the new unresolved probability.",
+      "parent_block_gate": "p0_parent_available",
+      "current_points_or_weight_authorized": false,
+      "direct_probability_effect_authorized": false,
+      "production_modified": false
+    }
+  ],
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "auditorias_motor\\matriz_decisiones_m1_v0_1.json",
+      "sha256": "dd137c422c4f963059210409ab981c935537b9f5dd317ceefdca8f5cd79bb4f0"
+    },
+    {
+      "path": "auditorias_motor\\catalogo_contratos_datos_m3_v0_1.json",
+      "sha256": "c6b4166d4a71fc6bd146b9352d4b2893a8a8c33ef98999406463a4ac3ac38e3d"
+    },
+    {
+      "path": "auditorias_motor\\matriz_dato_bloque_par_horizonte_m3_v0_1.json",
+      "sha256": "db8ad2c52b9a665229bdb57a56456a0224445cfaa2ae4c0f302734852bbc5bf1"
+    }
+  ],
+  "reconciliation_sha256": "a3efd084e7aa4b3a268bf5c57bd614167f752414f5db3fad08c2a5a554e1d6d8"
+}

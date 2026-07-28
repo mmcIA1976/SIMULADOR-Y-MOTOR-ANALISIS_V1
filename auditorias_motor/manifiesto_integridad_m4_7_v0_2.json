@@ -1,0 +1,20 @@
+{
+  "version": "M4.7-integrity-manifest-v0.2",
+  "date": "2026-07-27",
+  "hash_scope": "complete_utf8_file_bytes",
+  "canonical_payload_sha256": "4edd9f5be4debeddb374bbe477f29e51df7e30723e8cebd2e31504b9c6abb8f0",
+  "artifacts": [
+    {
+      "artifact_type": "consolidated_catalog",
+      "path": "auditorias_motor/catalogo_27_reglas_formulas_m4_7_v0_2.json",
+      "sha256_full_file": "0ec5395c8ac2ebaa9702d229ae4ff9a849cf2cbf562b0be6745435e2e7e7be04",
+      "bytes_utf8": 159252
+    },
+    {
+      "artifact_type": "human_audit_report",
+      "path": "auditorias_motor/2026-07-27_M4_7_27_reglas_formulas_enmienda_v0_2.md",
+      "sha256_full_file": "fe4558df278d7f6c47cab7515a02805a30c95b4781ecc7c9cc7d15c201b005a3",
+      "bytes_utf8": 88115
+    }
+  ]
+}

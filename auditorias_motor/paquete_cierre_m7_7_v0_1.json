@@ -1,0 +1,481 @@
+{
+  "version": "M7.7-closure-package-v0.1",
+  "phase": "M7",
+  "subphase": "M7.7",
+  "status": "completed_owner_authorized",
+  "date": "2026-07-28",
+  "owner_authorization": {
+    "instruction": "Por favor completa M7 hasta el final",
+    "m7_completion_authorized": true,
+    "m8_start_authorized": false,
+    "production_authorized": false
+  },
+  "objective": "Attempt to refute M6 mathematically and in software before empirical evaluation.",
+  "phase_statuses": {
+    "M7.1": "in_progress_owner_authorized",
+    "M7.2": "passed_no_critical_defects",
+    "M7.3": "passed",
+    "M7.4": "passed",
+    "M7.5": "passed",
+    "M7.6": "passed",
+    "M7.7": "completed"
+  },
+  "scope": {
+    "roadmap_workstreams_completed": 12,
+    "pairs_covered": 6,
+    "horizons_covered": 3,
+    "sides_covered": 2,
+    "rules_covered": 27,
+    "coverage_cells": 972,
+    "runtime_cells": 36,
+    "adversarial_math_cases": 175,
+    "data_failure_cases": 14,
+    "manual_samples": 6,
+    "fault_injection_cases": 12,
+    "m7_closed": true,
+    "m8_started": false
+  },
+  "formula_review": {
+    "registered_formula_ids": [
+      "M6-FORMULA-DB-TRANSITION-001",
+      "M6-FORMULA-DB-TP-002",
+      "M6-FORMULA-DB-SL-003",
+      "M6-FORMULA-DB-EXPIRY-004",
+      "M6-FORMULA-INTERVAL-HAZARD-005",
+      "M6-FORMULA-EVIDENCE-OFFSET-006",
+      "M6-FORMULA-CIF-007",
+      "M6-FORMULA-SURVIVAL-008"
+    ],
+    "trace_formula_ids": [
+      "M6-FORMULA-DB-TRANSITION-001",
+      "M6-FORMULA-DB-TP-002",
+      "M6-FORMULA-DB-SL-003",
+      "M6-FORMULA-DB-EXPIRY-004",
+      "M6-FORMULA-INTERVAL-HAZARD-005",
+      "M6-FORMULA-EVIDENCE-OFFSET-006",
+      "M6-FORMULA-CIF-007",
+      "M6-FORMULA-SURVIVAL-008"
+    ],
+    "exact_match": true,
+    "reviews": [
+      {
+        "formula_ids": [
+          "M6-FORMULA-DB-TRANSITION-001",
+          "M6-FORMULA-DB-TP-002",
+          "M6-FORMULA-DB-SL-003",
+          "M6-FORMULA-DB-EXPIRY-004"
+        ],
+        "implementation": "m6_first_passage.double_barrier_first_passage",
+        "source_ids": [
+          "WIESE-2019-FIRST-PASSAGE-INTERVAL",
+          "RANGARAJAN-DING-2001-TWO-BARRIERS"
+        ],
+        "review_status": "matched_formula_and_properties",
+        "exact_project_specific_transform": false,
+        "sources_present": true
+      },
+      {
+        "formula_ids": [
+          "M6-FORMULA-INTERVAL-HAZARD-005",
+          "M6-FORMULA-CIF-007",
+          "M6-FORMULA-SURVIVAL-008"
+        ],
+        "implementation": "m6_competing_risks",
+        "source_ids": [
+          "KIM-ET-AL-2023-CIF",
+          "LEE-ET-AL-2025-DISCRETE-COMPETING-RISKS"
+        ],
+        "review_status": "matched_competing_risk_identities",
+        "exact_project_specific_transform": false,
+        "sources_present": true
+      },
+      {
+        "formula_ids": [
+          "M6-FORMULA-EVIDENCE-OFFSET-006"
+        ],
+        "implementation": "m6_competing_risks.adjusted_interval_hazards",
+        "source_ids": [
+          "LEE-ET-AL-2025-DISCRETE-COMPETING-RISKS"
+        ],
+        "review_status": "project_specific_log_sum_exp_transform_algebraically_tested",
+        "exact_project_specific_transform": true,
+        "limitation": "The exact offset transform is a project design and has not been empirically validated.",
+        "sources_present": true
+      }
+    ]
+  },
+  "code_review": {
+    "module_audits": [
+      {
+        "path": "m6_first_passage.py",
+        "imports": [
+          "__future__",
+          "dataclasses",
+          "math",
+          "statistics"
+        ],
+        "forbidden_production_imports": [],
+        "random_calls": [],
+        "passed": true
+      },
+      {
+        "path": "m6_competing_risks.py",
+        "imports": [
+          "__future__",
+          "dataclasses",
+          "hashlib",
+          "json",
+          "m6_first_passage",
+          "math",
+          "typing"
+        ],
+        "forbidden_production_imports": [],
+        "random_calls": [],
+        "passed": true
+      },
+      {
+        "path": "m6_engine.py",
+        "imports": [
+          "__future__",
+          "datetime",
+          "hashlib",
+          "json",
+          "m6_competing_risks",
+          "m6_first_passage",
+          "math",
+          "typing"
+        ],
+        "forbidden_production_imports": [],
+        "random_calls": [],
+        "passed": true
+      },
+      {
+        "path": "m7_independent_oracle.py",
+        "imports": [
+          "__future__",
+          "dataclasses",
+          "math",
+          "typing"
+        ],
+        "forbidden_production_imports": [],
+        "random_calls": [],
+        "passed": true
+      },
+      {
+        "path": "m7_data_gate.py",
+        "imports": [
+          "__future__",
+          "dataclasses",
+          "functools",
+          "json",
+          "math",
+          "pathlib",
+          "typing"
+        ],
+        "forbidden_production_imports": [],
+        "random_calls": [],
+        "passed": true
+      },
+      {
+        "path": "m7_trace_audit.py",
+        "imports": [
+          "__future__",
+          "hashlib",
+          "json",
+          "typing"
+        ],
+        "forbidden_production_imports": [],
+        "random_calls": [],
+        "passed": true
+      }
+    ],
+    "all_passed": true
+  },
+  "defect_register": {
+    "corrected": [
+      "M7-DEFECT-CONVERGENCE-001",
+      "M7-DEFECT-NUMERIC-002",
+      "M7-DEFECT-RESOURCE-003"
+    ],
+    "critical_open": 0,
+    "high_open": 0
+  },
+  "declared_limitations": [
+    {
+      "id": "M7-LIMIT-001",
+      "severity": "medium",
+      "statement": "Brownian zero-drift adequacy for crypto is unverified."
+    },
+    {
+      "id": "M7-LIMIT-002",
+      "severity": "medium",
+      "statement": "Previous-horizon realized volatility is a scale input, not a validated volatility forecast."
+    },
+    {
+      "id": "M7-LIMIT-003",
+      "severity": "medium",
+      "statement": "The evidence offset transform and candidate covariates have not been empirically validated or calibrated."
+    },
+    {
+      "id": "M7-LIMIT-004",
+      "severity": "medium",
+      "statement": "The data gate is internal and has not been wired to the production collection pipeline."
+    },
+    {
+      "id": "M7-LIMIT-005",
+      "severity": "low",
+      "statement": "Latency measurements are local synthetic engineering tests without network or exchange SLA."
+    },
+    {
+      "id": "M7-LIMIT-006",
+      "severity": "medium",
+      "statement": "M7 verifies coherence and coverage but does not establish calibration, predictive validity or profitability."
+    }
+  ],
+  "closure_gates": {
+    "all_12_workstreams_completed": true,
+    "critical_defects_open": 0,
+    "high_defects_open": 0,
+    "all_remaining_limitations_declared": true,
+    "production_unchanged": true,
+    "owner_approval_present": true,
+    "passed": true
+  },
+  "boundaries": {
+    "probabilities_calibrated": false,
+    "predictive_validity_established": false,
+    "profitability_established": false,
+    "coefficients_estimated": false,
+    "production_effect": "none",
+    "m8_started": false
+  },
+  "production_source_hashes_at_close": [
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263",
+      "bytes": 233770
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a",
+      "bytes": 119801
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028",
+      "bytes": 27626
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d",
+      "bytes": 14585
+    },
+    {
+      "path": "liquidation_data.py",
+      "sha256": "817de5c66f1d52066989492e1e3cad32300bebc0df3474820777d10cdb803fd9",
+      "bytes": 9921
+    },
+    {
+      "path": "challenger_engine.py",
+      "sha256": "767b2cf514e49256c5a326667a84986417aae235acbb9b7760e033ec880183a9",
+      "bytes": 22553
+    }
+  ],
+  "artifact_manifest": [
+    {
+      "path": "m6_first_passage.py",
+      "sha256": "6d70c67e84980dc4245c0181e7ce9a0d8dc51fea90a7b8e28319c9eb8ca746f1",
+      "bytes": 7471
+    },
+    {
+      "path": "m6_competing_risks.py",
+      "sha256": "7dff0bb8e545e3ca2c8a8b751312b7bf5d6d3d971b0856d58a92cedb86a2b9b4",
+      "bytes": 9741
+    },
+    {
+      "path": "m6_engine.py",
+      "sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87",
+      "bytes": 9616
+    },
+    {
+      "path": "m7_independent_oracle.py",
+      "sha256": "0f8f7f8eaf86f92ed6b51b41498e4bad105cf804824d987276985ea2f5cadd2b",
+      "bytes": 6199
+    },
+    {
+      "path": "m7_data_gate.py",
+      "sha256": "4f2992fb76a6ccec433391c04f7cd18a6d70c019b2954904b94bde8ec45c62c4",
+      "bytes": 9441
+    },
+    {
+      "path": "m7_trace_audit.py",
+      "sha256": "c57682cb20ae5ab469a38e630d1c3a987328340343be3222832dd3f225f24dee",
+      "bytes": 3846
+    },
+    {
+      "path": "build_m7_verification_contract.py",
+      "sha256": "1638e0b2c2692196349d1ba104dcaaaf5006390a26f87df1d3c77e6853c36e20",
+      "bytes": 13369
+    },
+    {
+      "path": "build_m7_math_verification.py",
+      "sha256": "27127bc5533b3b74badb1f8658fcf1e0d9a907f15dce2de465fb55ef7c4c8f4b",
+      "bytes": 21393
+    },
+    {
+      "path": "build_m7_data_verification.py",
+      "sha256": "bc62cceeb6d4e5c4d0ea21e58eac7e3447b75bf8b48640402aedf3eddbde7d4b",
+      "bytes": 10154
+    },
+    {
+      "path": "build_m7_coverage_verification.py",
+      "sha256": "2a4b904fc866373c1fa1f621c3d06d3ebba4530ea99be955ead35b11652d8f83",
+      "bytes": 12261
+    },
+    {
+      "path": "build_m7_trace_verification.py",
+      "sha256": "cb26cf751c91c8265c99f5add64ad8aafd5ff97ca532d74915965919bc92fe2e",
+      "bytes": 11998
+    },
+    {
+      "path": "build_m7_resilience_verification.py",
+      "sha256": "28a2ffe021b73fc1ea6028f6ba1ec6cfa220a903517c1e3d4d3f52aa16ef7cad",
+      "bytes": 12350
+    },
+    {
+      "path": "build_m7_closure.py",
+      "sha256": "259dfcc437329afe180e3a6d54183fdfbe1601cfb311ab42421c873a8f3bad0b",
+      "bytes": 18490
+    },
+    {
+      "path": "tests/test_m7_verification_contract.py",
+      "sha256": "f5cba956d2e6c55515dbf4a1fd27299d2d63e1e1e1b70aa102eee1b444fc7d70",
+      "bytes": 5172
+    },
+    {
+      "path": "tests/test_m7_math_verification.py",
+      "sha256": "7fde6b0c8656e0cf8b8d9a260dc5d0c37314ee7729f131be734c547e3f2a4fdd",
+      "bytes": 5849
+    },
+    {
+      "path": "tests/test_m7_data_verification.py",
+      "sha256": "40878f526b1a3199c35b2312fbd410cefec828b11d3fed38223c98ed2f6c5dc8",
+      "bytes": 3406
+    },
+    {
+      "path": "tests/test_m7_coverage_verification.py",
+      "sha256": "fe7c96a38cfa2ed0fca192ee2acabfbe9b82bb8d64928c28e60111ecdb0f8452",
+      "bytes": 3606
+    },
+    {
+      "path": "tests/test_m7_trace_verification.py",
+      "sha256": "7ba4ec4d7604467692d41558b2a35a90cb7b6c6e0725b0f48eafb3d553e43b92",
+      "bytes": 3609
+    },
+    {
+      "path": "tests/test_m7_resilience_verification.py",
+      "sha256": "9cfa3caa26908c8a7df741d24e3fc5adb0bcc098a1b9e4d0aee802da645c78ee",
+      "bytes": 3794
+    },
+    {
+      "path": "tests/test_m7_closure.py",
+      "sha256": "b664aa2cd9bcdd03a0af881390b9d61c1e96e80d4517de5560375afcc0ecb69e",
+      "bytes": 6454
+    },
+    {
+      "path": "auditorias_motor/contrato_verificacion_m7_1_v0_1.json",
+      "sha256": "942e542fa50aa2bd8d405ed614286d1b9cbafb1c94bcdea197e7d4c7f80c20d9",
+      "bytes": 7903
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_1_contrato_verificacion_v0_1.md",
+      "sha256": "37adf3ff8fb62b82888c8a5348453c8aa013412911d56b378c20461fc5c0335c",
+      "bytes": 1712
+    },
+    {
+      "path": "auditorias_motor/verificacion_matematica_m7_2_v0_1.json",
+      "sha256": "e79fbe250a928ac1dd0b7cd73184f6f77f47f4b9f806c0399baf7459e39c862b",
+      "bytes": 10574
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_2_verificacion_matematica_v0_1.md",
+      "sha256": "7055ac2e97536663b59cecd51894b5eeafa2aab0a7ef91ee8d32a7cfd8447f08",
+      "bytes": 903
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_2_defecto_convergencia_pre_correccion_v0_1.json",
+      "sha256": "efe0fc153b7925233b5fa50e2f760e0ef7160f865ef882e9f3a58f9224b0a9e0",
+      "bytes": 1802
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_2_correccion_convergencia_v0_1.json",
+      "sha256": "c11dbac889c879595bc94ed09b7623e947798e4d646129534708bd369bc26515",
+      "bytes": 1203
+    },
+    {
+      "path": "auditorias_motor/verificacion_datos_m7_3_v0_1.json",
+      "sha256": "1086ec1b0835a800ffa4e988f9378ed44599bf9a0fbfd9bacc7417adee73cad2",
+      "bytes": 5532
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_3_verificacion_datos_v0_1.md",
+      "sha256": "bcd02c6d61ba6aa86015cbb7ccedda2ba46552e9f95157f69392f0a40608ba04",
+      "bytes": 618
+    },
+    {
+      "path": "auditorias_motor/matriz_cobertura_m7_4_v0_1.json",
+      "sha256": "5dd44970b2e5047581ab0c8c682d7787e35871abbc8b78dc91cf93e4ddb3ee31",
+      "bytes": 477247
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_4_cobertura_interacciones_v0_1.md",
+      "sha256": "99a49212e31af503214078e27dfafb41c21ffa831c9ab2e77172ea2b07950c48",
+      "bytes": 626
+    },
+    {
+      "path": "auditorias_motor/verificacion_trazas_m7_5_v0_1.json",
+      "sha256": "065256645285e360f82c6ae87829d0e91eb1afd764f92ca9123fa68fafc8426c",
+      "bytes": 7984
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_5_trazas_muestra_manual_v0_1.md",
+      "sha256": "85142ddb786485eab39b9e097050daf88f4d6d5fc796e825adb5cf045f53252b",
+      "bytes": 558
+    },
+    {
+      "path": "auditorias_motor/verificacion_resiliencia_m7_6_v0_1.json",
+      "sha256": "6ec8896de4a736df8444b471e9484186bbe46934af664042006a693144d13523",
+      "bytes": 5483
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_6_rendimiento_resiliencia_v0_1.md",
+      "sha256": "f60be3d664b0e11be89763bde39e2835b50df1fb40b27e859e459276c0a212cd",
+      "bytes": 600
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_6_defectos_resiliencia_pre_correccion_v0_1.json",
+      "sha256": "f58a68c1ea25a5b13eca2d4176765e24c05d557f9bfd95c42b29efca293b10da",
+      "bytes": 1466
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_6_correcciones_resiliencia_v0_1.json",
+      "sha256": "dcc21819d45a74371a0d8a8a6b9bbc3c72ca859fef23ae02c01ec8b7c0ca0e99",
+      "bytes": 989
+    }
+  ],
+  "verification_commands": {
+    "status": "passed_2026_07_28",
+    "m7_specific_tests_passed": 71,
+    "full_suite_tests_passed": 552,
+    "m7_specific": ".\\.venv\\Scripts\\python.exe -m unittest tests.test_m7_verification_contract tests.test_m7_math_verification tests.test_m7_data_verification tests.test_m7_coverage_verification tests.test_m7_trace_verification tests.test_m7_resilience_verification tests.test_m7_closure",
+    "full_suite": ".\\.venv\\Scripts\\python.exe -m unittest discover -s tests",
+    "reproduce": ".\\.venv\\Scripts\\python.exe build_m7_closure.py --check"
+  },
+  "next_phase": {
+    "id": "M8",
+    "name": "Evaluacion empirica independiente del motor definido",
+    "started": false,
+    "requires_separate_owner_order": true
+  },
+  "canonical_payload_sha256": "bebbd6c54415ba44d4b43e7a19e739902549fdeb46d42f2a699b8fe09c60daf3"
+}

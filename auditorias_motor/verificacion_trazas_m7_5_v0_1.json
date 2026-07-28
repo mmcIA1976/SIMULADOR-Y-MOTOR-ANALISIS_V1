@@ -1,0 +1,254 @@
+{
+  "version": "M7.5-trace-verification-v0.1",
+  "phase": "M7",
+  "subphase": "M7.5",
+  "status": "passed",
+  "date": "2026-07-28",
+  "sample_predeclared_before_execution": true,
+  "samples": [
+    {
+      "case": {
+        "id": "operation-872",
+        "symbol": "BTCUSDT",
+        "horizon": "intraday_wide",
+        "horizon_seconds": 14400,
+        "side": "short",
+        "entry": 63942.4,
+        "tp": 63200.0,
+        "sl": 65000.0,
+        "sigma": 0.02
+      },
+      "tp_log_distance": 0.011678376963695941,
+      "sl_log_distance": 0.016404591779129413,
+      "m6_probabilities": {
+        "tp": 0.5338447058054753,
+        "sl": 0.3655644161121221,
+        "expiry": 0.10059087808240262
+      },
+      "oracle_probabilities": {
+        "tp": 0.5337127264586164,
+        "sl": 0.3654330547345218,
+        "expiry": 0.10085421880686174
+      },
+      "max_oracle_error": 0.0002633407244591185,
+      "result_sha256": "cb60cf296cf7cce29cae34e4f672525af7b7a24150e0bdc558f951c1c20aeb3c",
+      "explanation_sha256": "7f310eb96e8b2082c89e28c29a8f9109a7fc3e7e650c60e0e55ba17f684d9eaa",
+      "integrity_issues": [],
+      "reproducible": true,
+      "explained": true
+    },
+    {
+      "case": {
+        "id": "operation-873",
+        "symbol": "BTCUSDT",
+        "horizon": "intraday_wide",
+        "horizon_seconds": 14400,
+        "side": "short",
+        "entry": 63920.2,
+        "tp": 63115.0,
+        "sl": 65000.0,
+        "sigma": 0.02
+      },
+      "tp_log_distance": 0.012676971159438126,
+      "sl_log_distance": 0.01675183953137405,
+      "m6_probabilities": {
+        "tp": 0.5055856520651528,
+        "sl": 0.36714983418713965,
+        "expiry": 0.12726451374770736
+      },
+      "oracle_probabilities": {
+        "tp": 0.5054475553618016,
+        "sl": 0.3670127817587764,
+        "expiry": 0.12753966287942198
+      },
+      "max_oracle_error": 0.00027514913171461375,
+      "result_sha256": "bc45cc2c30de9c9c2c7440f9ed8c45f3e93f1275d0b1e17746f148ee90ab6622",
+      "explanation_sha256": "6ea3facc67ca15b893259af8a923b28035653b1679b25fef01bf9484903cbde5",
+      "integrity_issues": [],
+      "reproducible": true,
+      "explained": true
+    },
+    {
+      "case": {
+        "id": "eth-long-intraday-short",
+        "symbol": "ETHUSDT",
+        "horizon": "intraday_short",
+        "horizon_seconds": 3600,
+        "side": "long",
+        "entry": 3800.0,
+        "tp": 3869.019310281216,
+        "sl": 3754.672508875336,
+        "sigma": 0.015
+      },
+      "tp_log_distance": 0.017999999999999936,
+      "sl_log_distance": 0.012000000000000023,
+      "m6_probabilities": {
+        "tp": 0.22502927906062675,
+        "sl": 0.42233810794666254,
+        "expiry": 0.35263261299271054
+      },
+      "oracle_probabilities": {
+        "tp": 0.22493100832967866,
+        "sl": 0.4222118591464878,
+        "expiry": 0.3528571325238335
+      },
+      "max_oracle_error": 0.00022451953112295753,
+      "result_sha256": "e4da2f8db0b6f06e4d8f64556d6265c04882ef8351dfb3c150b9a47ad1009710",
+      "explanation_sha256": "62bb3a4b385b7bc7d89d1a174447c20541429c1127873098c9c2d33feaaf6333",
+      "integrity_issues": [],
+      "reproducible": true,
+      "explained": true
+    },
+    {
+      "case": {
+        "id": "sol-short-intraday-wide",
+        "symbol": "SOLUSDT",
+        "horizon": "intraday_wide",
+        "horizon_seconds": 14400,
+        "side": "short",
+        "entry": 190.0,
+        "tp": 185.3088832853832,
+        "sl": 192.67870719831353,
+        "sigma": 0.03
+      },
+      "tp_log_distance": 0.025000000000000053,
+      "sl_log_distance": 0.01399999999999992,
+      "m6_probabilities": {
+        "tp": 0.3279562875267963,
+        "sl": 0.6100033970565456,
+        "expiry": 0.06204031541665841
+      },
+      "oracle_probabilities": {
+        "tp": 0.32784568607917397,
+        "sl": 0.6098925507086141,
+        "expiry": 0.062261763212211885
+      },
+      "max_oracle_error": 0.00022144779555347688,
+      "result_sha256": "8ac2a54ef85c0fb3e1f439d3944265222adaa5b4769f8c0e7905d7c812aa5780",
+      "explanation_sha256": "0bc9c291a23b75a7f6f0b68d1c6027ae749d576fe327ed270bfbd88cdcbbaca1",
+      "integrity_issues": [],
+      "reproducible": true,
+      "explained": true
+    },
+    {
+      "case": {
+        "id": "bnb-long-short-swing",
+        "symbol": "BNBUSDT",
+        "horizon": "short_swing",
+        "horizon_seconds": 86400,
+        "side": "long",
+        "entry": 790.0,
+        "tp": 830.5041661370591,
+        "sl": 770.4948305023828,
+        "sigma": 0.06
+      },
+      "tp_log_distance": 0.05000000000000007,
+      "sl_log_distance": 0.025000000000000053,
+      "m6_probabilities": {
+        "tp": 0.30990327486120534,
+        "sl": 0.6432348096222392,
+        "expiry": 0.04686191551655543
+      },
+      "oracle_probabilities": {
+        "tp": 0.3098052012629203,
+        "sl": 0.6431366119836947,
+        "expiry": 0.04705818675338502
+      },
+      "max_oracle_error": 0.00019627123682959546,
+      "result_sha256": "70244a79f9df9fc9b943eca2728173bf64378e0d4d71e9b691e7b973f92e977a",
+      "explanation_sha256": "e8098e9f8564efb7e345787b5c5ada175d36b7a997fd5de030f781c55989ee25",
+      "integrity_issues": [],
+      "reproducible": true,
+      "explained": true
+    },
+    {
+      "case": {
+        "id": "xrp-short-intraday-short",
+        "symbol": "XRPUSDT",
+        "horizon": "intraday_short",
+        "horizon_seconds": 3600,
+        "side": "short",
+        "entry": 3.1,
+        "tp": 3.0630223098719846,
+        "sl": 3.162624154082943,
+        "sigma": 0.015
+      },
+      "tp_log_distance": 0.012000000000000023,
+      "sl_log_distance": 0.019999999999999966,
+      "m6_probabilities": {
+        "tp": 0.42318424707788743,
+        "sl": 0.17906902443136866,
+        "expiry": 0.39774672849074383
+      },
+      "oracle_probabilities": {
+        "tp": 0.42306315266399397,
+        "sl": 0.17899524936060363,
+        "expiry": 0.3979415979754024
+      },
+      "max_oracle_error": 0.00019486948465857745,
+      "result_sha256": "5fc67d225f8f831062aef45844b6507eca4a76543b5bd0badcb5bf2cacc44dba",
+      "explanation_sha256": "2f90a2791797207aa3fa39f5251be475bbb92b5d2a26efae592ad1db37385fee",
+      "integrity_issues": [],
+      "reproducible": true,
+      "explained": true
+    }
+  ],
+  "tamper_test": {
+    "issues": [
+      "result_hash_mismatch",
+      "probability_mass_invalid"
+    ],
+    "detected": true,
+    "explanation_blocked": true
+  },
+  "operation_872_873": {
+    "ordering": "P_TP_872_gt_P_TP_873",
+    "passed": true
+  },
+  "summary": {
+    "samples_total": 6,
+    "samples_reproducible": 6,
+    "samples_explained": 6,
+    "max_independent_oracle_error": 0.00027514913171461375,
+    "tampering_detected": true,
+    "critical_defects_open": 0
+  },
+  "limitations": [
+    "Manual sample checks calculations, not empirical outcomes.",
+    "PDE agreement does not establish calibration.",
+    "Explanation is generated from the trace, not natural-language inference."
+  ],
+  "boundaries": {
+    "production_effect": "none",
+    "calibration_performed": false,
+    "m8_started": false
+  },
+  "inputs": [
+    {
+      "path": "auditorias_motor/contrato_verificacion_m7_1_v0_1.json",
+      "sha256": "942e542fa50aa2bd8d405ed614286d1b9cbafb1c94bcdea197e7d4c7f80c20d9",
+      "bytes": 7903
+    },
+    {
+      "path": "auditorias_motor/verificacion_matematica_m7_2_v0_1.json",
+      "sha256": "e79fbe250a928ac1dd0b7cd73184f6f77f47f4b9f806c0399baf7459e39c862b",
+      "bytes": 10574
+    },
+    {
+      "path": "m6_engine.py",
+      "sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87",
+      "bytes": 9616
+    },
+    {
+      "path": "m7_trace_audit.py",
+      "sha256": "c57682cb20ae5ab469a38e630d1c3a987328340343be3222832dd3f225f24dee",
+      "bytes": 3846
+    }
+  ],
+  "next_step": {
+    "id": "M7.6",
+    "name": "Rendimiento, latencia y tolerancia a fallos",
+    "started": false
+  },
+  "canonical_payload_sha256": "82a3dac239d4d96d5c1d12ef88295069207eb7cacef12a455a49f93a93b6a3ca"
+}

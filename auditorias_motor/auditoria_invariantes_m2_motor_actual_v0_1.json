@@ -1,0 +1,189 @@
+{
+  "audit_version": "M2-current-engine-invariants-v0.1",
+  "semantic_version": "M2-semantic-contract-v0.1",
+  "status": "current_engine_fails_m2_contract_as_expected",
+  "purpose": "Prove that M2 is a specification boundary, not a claim that the current production scoring already complies.",
+  "summary": {
+    "findings": 9,
+    "failures": 9,
+    "critical": 6,
+    "production_modified": false
+  },
+  "findings": [
+    {
+      "id": "M2-CURRENT-FAIL-01",
+      "severity": "critical",
+      "invariants": [
+        "M2-INV-OUTPUT-01",
+        "M2-INV-OUTCOME-01"
+      ],
+      "observation": {
+        "probabilities": {
+          "tp": 0.74,
+          "sl": 0.05,
+          "range": 0.22
+        },
+        "mass": 1.01
+      },
+      "reason": "The residual 5% SL floor can create mass > 1.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:273",
+        "analysis_engine.py:293"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-02",
+      "severity": "critical",
+      "invariants": [
+        "M2-INV-CONTINUITY-01"
+      ],
+      "observation": {
+        "price_a": 99.999999,
+        "bias_a": -0.02,
+        "price_b": 100.0,
+        "bias_b": 0.03,
+        "jump": 0.05,
+        "historical_case": "analyses 872/873"
+      },
+      "reason": "An infinitesimal price change causes a 5-point score jump.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:186-193"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-03",
+      "severity": "critical",
+      "invariants": [
+        "M2-INV-HORIZON-01"
+      ],
+      "observation": {
+        "trade_proposal_fields": [
+          "entry",
+          "entry_order_type",
+          "entry_type",
+          "leverage",
+          "margin",
+          "side",
+          "stop_loss",
+          "symbol",
+          "take_profit",
+          "time_horizon",
+          "trigger_condition"
+        ],
+        "horizon_seconds_present": false
+      },
+      "reason": "The production TradeProposal has only a category, not an exact expiry duration.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:83-95"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-04",
+      "severity": "high",
+      "invariants": [
+        "M2-INV-HORIZON-01"
+      ],
+      "observation": {
+        "invalid_equals_intraday_short": true,
+        "resolved_label": "Intradia corto"
+      },
+      "reason": "An unknown horizon silently becomes intraday_short.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:104-105"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-05",
+      "severity": "critical",
+      "invariants": [
+        "M2-INV-DATA-01"
+      ],
+      "observation": {
+        "rsi_14": 50.0,
+        "ema_21": 100.0,
+        "volume_ratio": 1.0,
+        "ema_stack": "mixed"
+      },
+      "reason": "Missing candles are converted into apparently neutral technical evidence.",
+      "status": "fail",
+      "source_refs": [
+        "data_engine.py:104-131"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-06",
+      "severity": "critical",
+      "invariants": [
+        "M2-INV-ACTIVATION-01",
+        "M2-INV-OUTCOME-02"
+      ],
+      "observation": {
+        "current_field": "range_probability",
+        "mixed_meanings": [
+          "market_range",
+          "non_resolution",
+          "pending_no_activation"
+        ]
+      },
+      "reason": "Pending no-entry is added to range instead of remaining an independent event.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:268-272",
+        "analysis_engine.py:1406-1411"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-07",
+      "severity": "high",
+      "invariants": [
+        "M2-INV-SEPARATION-01"
+      ],
+      "observation": {
+        "execution_or_cost_inputs_in_tp_score": [
+          "spread/liquidity_penalty",
+          "funding_penalty",
+          "funding_relative_penalty"
+        ]
+      },
+      "reason": "Execution/cost concepts directly alter the market path score.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:253-264"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-08",
+      "severity": "critical",
+      "invariants": [
+        "M2-INV-OUTPUT-01"
+      ],
+      "observation": {
+        "construction": "0.5 + manual biases - penalties + caps"
+      },
+      "reason": "The output is a heuristic score without a documented probabilistic derivation.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:238-293"
+      ]
+    },
+    {
+      "id": "M2-CURRENT-FAIL-09",
+      "severity": "high",
+      "invariants": [
+        "M2-INV-TRACE-01"
+      ],
+      "observation": {
+        "bands": "fixed width 0.04/0.06/0.08 by contradiction"
+      },
+      "reason": "Displayed bands are not uncertainty intervals derived from evidence.",
+      "status": "fail",
+      "source_refs": [
+        "analysis_engine.py:1857-1873"
+      ]
+    }
+  ]
+}

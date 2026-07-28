@@ -1,0 +1,1277 @@
+{
+  "version": "M4.7-owner-review-package-v0.3",
+  "phase": "M4",
+  "subphase": "M4.7",
+  "status": "completed_owner_approved",
+  "date": "2026-07-27",
+  "scope": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "p0_blocks": [
+      1,
+      3,
+      7,
+      9,
+      10,
+      15,
+      24,
+      26,
+      28,
+      29,
+      30,
+      32
+    ],
+    "rules_reviewed": 27,
+    "p0_core_rules_reviewed": 26,
+    "auxiliary_operators_reviewed": 1,
+    "hypotheses_reviewed": 15,
+    "combinations_reviewed": 8,
+    "legacy_elements_reviewed": 30,
+    "feature_slots_reviewed": 15,
+    "relations_reviewed": 16,
+    "dag_nodes_reviewed": 27,
+    "dag_edges_reviewed": 32,
+    "invariants_reviewed": 108,
+    "canonical_families_reviewed": 17,
+    "manifest_artifacts": 37,
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "learning_engine_used": false,
+    "m4_closed": true,
+    "m5_started": false
+  },
+  "meaning_of_owner_approval": {
+    "does_mean": [
+      "accept amendment waves 1 and 2 plus final technical integration",
+      "freeze hypotheses and combinations before empirical results",
+      "complete M4 while leaving M5 subject to a separate owner order"
+    ],
+    "does_not_mean": [
+      "rules are empirically validated",
+      "probabilities or coefficients already exist",
+      "profitability is established",
+      "production deployment or automatic trading is authorized"
+    ]
+  },
+  "technical_review": {
+    "rule_contract_complete": true,
+    "source_claim_and_transfer_limit_complete": true,
+    "trace_and_refutation_complete": true,
+    "hypothesis_linkage_complete": true,
+    "double_counting_registry_complete": true,
+    "legacy_reconciliation_complete": true,
+    "p0_block_coverage_complete": true,
+    "reproducible_artifact_manifest_complete": true,
+    "amendment_waves_1_2_complete": true,
+    "p1_order_scope_complete": true,
+    "operational_extensions_deferred": true,
+    "final_dag_and_invariants_complete": true,
+    "owner_approval_complete": true
+  },
+  "owner_approval_record": {
+    "approved": true,
+    "approved_at": "2026-07-27",
+    "owner_statement": "cierra M4",
+    "scope": "documentary_and_technical_m4_only",
+    "predictive_validation_claimed": false,
+    "profitability_claimed": false,
+    "production_authorized": false,
+    "m5_start_authorized": false,
+    "deferred_work_preserved": true
+  },
+  "rule_audit": [
+    {
+      "id": "M4-RULE-HORIZON-SAMPLING-001",
+      "subphase": "M4.2",
+      "name": "Seleccion exacta de intervalo para el horizonte",
+      "analytical_blocks": [
+        26
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "BINANCE-USDM-KLINES"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PLAN-GEOMETRY-001",
+      "subphase": "M4.2",
+      "name": "Geometria logaritmica long/short",
+      "analytical_blocks": [
+        26,
+        28
+      ],
+      "formula_count": 4,
+      "source_ids": [
+        "M2-SEMANTIC-CONTRACT"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-LOG-RETURNS-001",
+      "subphase": "M4.2",
+      "name": "Retornos logaritmicos de velas cerradas",
+      "analytical_blocks": [
+        26
+      ],
+      "formula_count": 1,
+      "source_ids": [
+        "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+        "BINANCE-USDM-KLINES"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "subphase": "M4.2",
+      "name": "Volatilidad realizada del horizonte anterior",
+      "analytical_blocks": [
+        26
+      ],
+      "formula_count": 2,
+      "source_ids": [
+        "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+        "XIE-ET-AL-2019-BITCOIN-RV"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-REACH-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "subphase": "M4.2",
+      "name": "Geometria de barreras normalizada por volatilidad",
+      "analytical_blocks": [
+        26,
+        28
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "M2-SEMANTIC-CONTRACT",
+        "POETZELBERGER-WANG-2001"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-REACH-002",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PENDING-ACTIVATION-001",
+      "subphase": "M4.2",
+      "name": "Distancia de activacion para entrada pendiente",
+      "analytical_blocks": [
+        28
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "M2-SEMANTIC-CONTRACT",
+        "M3-DATA-CONTRACTS"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-PENDING-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "subphase": "M4.3",
+      "name": "Operador de suavizado exponencial",
+      "analytical_blocks": [
+        1,
+        3
+      ],
+      "formula_count": 2,
+      "source_ids": [
+        "NIST-SINGLE-EXPONENTIAL-SMOOTHING"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PATH-STRUCTURE-001",
+      "subphase": "M4.3",
+      "name": "Desplazamiento y eficiencia de trayectoria",
+      "analytical_blocks": [
+        1,
+        24
+      ],
+      "formula_count": 4,
+      "source_ids": [
+        "HUDSON-URQUHART-2021",
+        "MOSKOWITZ-OOI-PEDERSEN-2012"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-STRUCTURE-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PRIOR-EXTREMA-001",
+      "subphase": "M4.3",
+      "name": "Extremos observados del horizonte anterior",
+      "analytical_blocks": [
+        1,
+        28
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "CURCIO-ET-AL-2014-PRICE-MEMORY",
+        "OSLER-2000-SUPPORT-RESISTANCE"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-LEVEL-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-VOLATILITY-RANK-001",
+      "subphase": "M4.3",
+      "name": "Percentil continuo de volatilidad",
+      "analytical_blocks": [
+        24,
+        26
+      ],
+      "formula_count": 2,
+      "source_ids": [
+        "CORSI-2009-HAR-RV",
+        "HAMILTON-1989-REGIME-SWITCHING"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-REGIME-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-MTF-HIERARCHY-001",
+      "subphase": "M4.3",
+      "name": "Jerarquia multi-timeframe H, 2H y 4H",
+      "analytical_blocks": [
+        1,
+        3,
+        24
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "CORSI-2009-HAR-RV",
+        "HUDSON-URQUHART-2021"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-MTF-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "subphase": "M4.3",
+      "name": "Vector continuo de regimen",
+      "analytical_blocks": [
+        24
+      ],
+      "formula_count": 1,
+      "source_ids": [
+        "HAMILTON-1989-REGIME-SWITCHING"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-REGIME-002",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "subphase": "M4.4",
+      "name": "Desequilibrio de operaciones agresoras ejecutadas",
+      "analytical_blocks": [
+        7
+      ],
+      "formula_count": 4,
+      "source_ids": [
+        "BINANCE-USD-M-MARKET-DATA",
+        "CONT-KUKANOV-STOIKOV-2014"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-FLOW-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "subphase": "M4.4",
+      "name": "Cambio logaritmico de open interest",
+      "analytical_blocks": [
+        9
+      ],
+      "formula_count": 2,
+      "source_ids": [
+        "BINANCE-USD-M-MARKET-DATA",
+        "HONG-YOGO-2012"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-OI-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PRICE-OI-STATE-001",
+      "subphase": "M4.4",
+      "name": "Estado conjunto precio y open interest",
+      "analytical_blocks": [
+        1,
+        9
+      ],
+      "formula_count": 1,
+      "source_ids": [
+        "HONG-YOGO-2012",
+        "M4.3-STRUCTURE"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-PRICE-OI-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "subphase": "M4.4",
+      "name": "Intervalo observable spot-Futures",
+      "analytical_blocks": [
+        15
+      ],
+      "formula_count": 4,
+      "source_ids": [
+        "BAUR-DIMPFL-2019",
+        "BINANCE-SPOT-MARKET-DATA",
+        "FRINO-ET-AL-2025"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-BASIS-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "subphase": "M4.4",
+      "name": "Prima sincronizada mark-index",
+      "analytical_blocks": [
+        10,
+        15
+      ],
+      "formula_count": 1,
+      "source_ids": [
+        "BINANCE-USD-M-MARKET-DATA",
+        "HE-MANELA-ROSS-VON-WACHTER-2022"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-PREMIUM-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-FUNDING-STATE-001",
+      "subphase": "M4.4",
+      "name": "Estado temporal y carga realizada de funding",
+      "analytical_blocks": [
+        10
+      ],
+      "formula_count": 4,
+      "source_ids": [
+        "BINANCE-USD-M-MARKET-DATA",
+        "HE-MANELA-ROSS-VON-WACHTER-2022"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-FUNDING-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "subphase": "M4.4",
+      "name": "Vector continuo de contexto de derivados",
+      "analytical_blocks": [
+        7,
+        9,
+        10,
+        15
+      ],
+      "formula_count": 1,
+      "source_ids": [
+        "M3-DATA-CONTRACTS",
+        "M4.3-STRUCTURE"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": "M4-HYP-DERIVATIVES-001",
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-QUOTED-SPREAD-001",
+      "subphase": "M4.5",
+      "name": "Spread cotizado en el instante de llegada",
+      "analytical_blocks": [
+        29
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "BINANCE-USD-M-MARKET-DATA",
+        "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-DEPTH-SWEEP-001",
+      "subphase": "M4.5",
+      "name": "Barrido visible e implementation shortfall",
+      "analytical_blocks": [
+        29
+      ],
+      "formula_count": 7,
+      "source_ids": [
+        "ALMGREN-CHRISS-2001",
+        "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-FEE-SCENARIOS-001",
+      "subphase": "M4.5",
+      "name": "Comision por rol de liquidez autenticado",
+      "analytical_blocks": [
+        29
+      ],
+      "formula_count": 4,
+      "source_ids": [
+        "BINANCE-USD-M-ACCOUNT"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "subphase": "M4.5",
+      "name": "Flujo monetario firmado de funding",
+      "analytical_blocks": [
+        10,
+        29
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "HE-MANELA-ROSS-VON-WACHTER-2022",
+        "M4.4-DERIVATIVES"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PLAN-EXPOSURE-001",
+      "subphase": "M4.5",
+      "name": "Exposicion monetaria lineal del plan",
+      "analytical_blocks": [
+        30
+      ],
+      "formula_count": 7,
+      "source_ids": [
+        "INVESTOR-GOV-LEVERAGED-INVESTING",
+        "M2-SEMANTICS",
+        "M3-DATA-CONTRACTS"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-NET-PAYOFFS-001",
+      "subphase": "M4.5",
+      "name": "Vector monetario neto por resultado",
+      "analytical_blocks": [
+        32
+      ],
+      "formula_count": 2,
+      "source_ids": [
+        "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019",
+        "M2-SEMANTICS"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-EXPECTED-VALUE-001",
+      "subphase": "M4.5",
+      "name": "Identidad de valor esperado por resultados",
+      "analytical_blocks": [
+        32
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "M2-SEMANTICS"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-EVALUATION-READINESS-001",
+      "subphase": "M4.5",
+      "name": "Estado explicito de disponibilidad economica",
+      "analytical_blocks": [
+        30,
+        32
+      ],
+      "formula_count": 3,
+      "source_ids": [
+        "M3-DATA-CONTRACTS"
+      ],
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "predictive_hypothesis_id": null,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "M4-HYP-REACH-001",
+      "status": "proposed_unverified",
+      "statement": "Previous-horizon RV may provide a useful reference scale for next-horizon barrier distance.",
+      "not_a_claim": "It is not assumed equal to future volatility and receives no probability weight."
+    },
+    {
+      "id": "M4-HYP-REACH-002",
+      "status": "mathematical_constraint_for_future_model",
+      "statement": "Holding all other state fixed, increasing only z_TP must not increase P(TP first); likewise for z_SL and P(SL first)."
+    },
+    {
+      "id": "M4-HYP-PENDING-001",
+      "status": "mathematical_constraint_for_future_model",
+      "statement": "Holding path law fixed, moving an unsatisfied entry trigger farther away must not increase activation probability."
+    },
+    {
+      "id": "M4-HYP-STRUCTURE-001",
+      "status": "proposed_unverified",
+      "statement": "Side-aligned signed path efficiency may condition which barrier is reached first within the same horizon."
+    },
+    {
+      "id": "M4-HYP-LEVEL-001",
+      "status": "proposed_unverified",
+      "statement": "A prior target-side extreme between entry and TP may condition first-passage behavior."
+    },
+    {
+      "id": "M4-HYP-REGIME-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Volatility rank may alter the reliability of structure signals but has no directional effect alone."
+    },
+    {
+      "id": "M4-HYP-MTF-001",
+      "status": "proposed_unverified",
+      "statement": "Sign agreement across H, 2H and 4H may condition first-passage behavior beyond H structure alone."
+    },
+    {
+      "id": "M4-HYP-REGIME-002",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "The interaction of q_RV and SE_H may identify conditions where directional structure behaves differently."
+    },
+    {
+      "id": "M4-HYP-FLOW-001",
+      "status": "proposed_unverified",
+      "statement": "Side-aligned ATI_H may condition first-barrier behavior after controlling for path, volatility and activity."
+    },
+    {
+      "id": "M4-HYP-OI-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "dOI_H may alter the conditional value of price-path and aggressor-flow observations."
+    },
+    {
+      "id": "M4-HYP-PRICE-OI-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "The joint continuous state may condition first-passage behavior beyond price displacement alone."
+    },
+    {
+      "id": "M4-HYP-BASIS-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Basis magnitude and sign may condition price discovery when combined with flow, OI and freshness."
+    },
+    {
+      "id": "M4-HYP-PREMIUM-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "The synchronized mark-index premium may improve basis context when cross-venue capture is noisy."
+    },
+    {
+      "id": "M4-HYP-FUNDING-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Funding state may condition basis and positioning interactions but has no standalone price direction."
+    },
+    {
+      "id": "M4-HYP-DERIVATIVES-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Joint derivatives state may contain conditional value not present in any marginal observation."
+    }
+  ],
+  "combinations": [
+    {
+      "id": "M4-COMB-REACHABILITY-BASE-001",
+      "name": "Base geometrica de primera barrera",
+      "layer": "market_probability_candidate",
+      "parent_slots": [
+        "M4-SLOT-REACHABILITY"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-REACH-001",
+        "M4-HYP-REACH-002"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-PENDING-TREE-001",
+      "name": "Arbol de activacion y resultado condicionado",
+      "layer": "market_probability_tree",
+      "parent_slots": [
+        "M4-SLOT-PENDING-ACTIVATION",
+        "M4-SLOT-REACHABILITY"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-PENDING-001"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-STRUCTURE-001",
+      "name": "Estructura MTF, extremo previo y regimen",
+      "layer": "market_probability_candidate",
+      "parent_slots": [
+        "M4-SLOT-PATH-STRUCTURE",
+        "M4-SLOT-PRIOR-EXTREMA",
+        "M4-SLOT-VOLATILITY-REGIME"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-STRUCTURE-001",
+        "M4-HYP-LEVEL-001",
+        "M4-HYP-MTF-001",
+        "M4-HYP-REGIME-001",
+        "M4-HYP-REGIME-002"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-FLOW-001",
+      "name": "Flujo agresor condicionado por estructura",
+      "layer": "market_probability_candidate",
+      "parent_slots": [
+        "M4-SLOT-REACHABILITY",
+        "M4-SLOT-PATH-STRUCTURE",
+        "M4-SLOT-VOLATILITY-REGIME",
+        "M4-SLOT-AGGRESSOR-FLOW"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-FLOW-001"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-PRICE-OI-001",
+      "name": "Estado continuo precio-OI",
+      "layer": "market_probability_candidate",
+      "parent_slots": [
+        "M4-SLOT-PRICE-DISPLACEMENT",
+        "M4-SLOT-PATH-STRUCTURE",
+        "M4-SLOT-OPEN-INTEREST",
+        "M4-SLOT-AGGRESSOR-FLOW"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-OI-001",
+        "M4-HYP-PRICE-OI-001"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-DERIVATIVES-001",
+      "name": "Contexto conjunto de derivados",
+      "layer": "market_probability_candidate",
+      "parent_slots": [
+        "M4-SLOT-AGGRESSOR-FLOW",
+        "M4-SLOT-OPEN-INTEREST",
+        "M4-SLOT-BASIS",
+        "M4-SLOT-FUNDING-STATE"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-OI-001",
+        "M4-HYP-BASIS-001",
+        "M4-HYP-PREMIUM-001",
+        "M4-HYP-FUNDING-001",
+        "M4-HYP-DERIVATIVES-001"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-FULL-MARKET-001",
+      "name": "Candidato completo de estado de mercado",
+      "layer": "market_probability_candidate",
+      "parent_slots": [
+        "M4-SLOT-REACHABILITY",
+        "M4-SLOT-PATH-STRUCTURE",
+        "M4-SLOT-PRICE-DISPLACEMENT",
+        "M4-SLOT-PRIOR-EXTREMA",
+        "M4-SLOT-VOLATILITY-REGIME",
+        "M4-SLOT-AGGRESSOR-FLOW",
+        "M4-SLOT-OPEN-INTEREST",
+        "M4-SLOT-BASIS",
+        "M4-SLOT-FUNDING-STATE"
+      ],
+      "parent_hypotheses": [
+        "M4-HYP-STRUCTURE-001",
+        "M4-HYP-LEVEL-001",
+        "M4-HYP-MTF-001",
+        "M4-HYP-REGIME-001",
+        "M4-HYP-REGIME-002",
+        "M4-HYP-FLOW-001",
+        "M4-HYP-OI-001",
+        "M4-HYP-PRICE-OI-001",
+        "M4-HYP-BASIS-001",
+        "M4-HYP-PREMIUM-001",
+        "M4-HYP-FUNDING-001",
+        "M4-HYP-DERIVATIVES-001"
+      ],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-COMB-ECONOMIC-EVALUATION-001",
+      "name": "Composicion economica posterior a probabilidad",
+      "layer": "economic_evaluation",
+      "parent_slots": [
+        "M4-SLOT-CURRENT-EXECUTION",
+        "M4-SLOT-FEES",
+        "M4-SLOT-FUNDING-CASHFLOW",
+        "M4-SLOT-EXPOSURE",
+        "M4-SLOT-ECONOMIC-EVALUATION"
+      ],
+      "parent_hypotheses": [],
+      "status": "preregistered_unverified",
+      "has_operator": true,
+      "has_sources": true,
+      "has_trace_contract": true,
+      "has_refutation_contract": true,
+      "probability_effect_authorized": false,
+      "production_authorized": false
+    }
+  ],
+  "legacy_disposition_summary": {
+    "deferred_to_m10": 1,
+    "reconciled_to_formal_cards_without_legacy_effect": 24,
+    "replaced_by_preregistered_combinations": 1,
+    "retired_without_replacement": 4
+  },
+  "known_limits_preserved": [
+    {
+      "item": "probability_link_and_calibration",
+      "phase": "M6",
+      "reason": "M4 defines inputs and combinations, not coefficients."
+    },
+    {
+      "item": "software_implementation",
+      "phase": "M5",
+      "reason": "Production remains frozen through M4."
+    },
+    {
+      "item": "mathematical_and_software_verification",
+      "phase": "M7",
+      "reason": "Requires the implemented M5-M6 candidate."
+    },
+    {
+      "item": "independent_empirical_validation",
+      "phase": "M8",
+      "reason": "Requires preregistered metrics and temporal holdout."
+    },
+    {
+      "item": "account_liquidation_and_risk_policy",
+      "phase": "M5_or_later",
+      "reason": "Equity, margin mode and maintenance brackets are not in the approved P0 data contract."
+    },
+    {
+      "item": "grade_and_decision_policy",
+      "phase": "after_M8",
+      "reason": "No validated governance thresholds exist."
+    }
+  ],
+  "final_integration": {
+    "version": "M4.7-final-integration-v0.2",
+    "status": "technical_integration_complete_owner_approval_pending",
+    "dag_acyclic": true,
+    "dag_nodes": 27,
+    "dag_edges": 32,
+    "canonical_families": 17,
+    "invariants": 108,
+    "future_promotion_gate": {
+      "id": "M8-GATE-RULE-PROMOTION-001",
+      "status": "registered_not_active",
+      "empirical_thresholds_defined": false,
+      "activation_phase": "M8",
+      "requires_independent_temporal_validation": true,
+      "production_promotion_authorized": false
+    },
+    "deferred_outside_current_scope": [
+      "pending_order_automation",
+      "analysis_revalidation_policy",
+      "automatic_time_expiry_execution",
+      "production_first_passage_correction"
+    ]
+  },
+  "owner_decisions": [
+    {
+      "id": "M4-OWNER-DECISION-001",
+      "question": "Aceptar provisionalmente las 26 reglas nucleares y el operador auxiliar corregidos en v0.2.",
+      "acceptance_means": "Se aceptan las enmiendas de las olas 1 y 2; el conjunto final sigue sujeto a P1-P4 y a la regeneracion del DAG.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-DECISION-002",
+      "question": "Aceptar las 15 hipotesis como universo candidato no verificado para M6-M8.",
+      "acceptance_means": "No podran agregarse efectos retrospectivamente sin nueva version y nueva aprobacion.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-DECISION-003",
+      "question": "Aceptar los 15 slots, 16 relaciones y 8 combinaciones prerregistradas de M4.6.",
+      "acceptance_means": "Se prohibe contar dos veces padres, etiquetas, contenedores o fuentes alternativas.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-DECISION-004",
+      "question": "Aceptar la disposicion final de los 30 elementos antiguos.",
+      "acceptance_means": "Ningun punto, penalizacion o ajuste antiguo pasa al motor nuevo por herencia.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-DECISION-005",
+      "question": "Aceptar los limites que permanecen bloqueados para fases posteriores.",
+      "acceptance_means": "Probabilidades, coeficientes, validacion, riesgo de cuenta y politica de decision siguen sin resolverse en M4.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-DECISION-006",
+      "question": "Cerrar M4 sin iniciar M5.",
+      "acceptance_means": "Completa M4; M5 requiere otra orden expresa y siguen sin autorizarse produccion, pesos, rentabilidad ni trading real.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-P1-ORDER-TYPES",
+      "question": "Aplicar solo entradas MARKET en el alcance inmediato.",
+      "acceptance_means": "LIMIT, STOP_MARKET, STOP_LIMIT, triggers y timeInForce quedan diferidos hasta que exista operacion autonoma continua.",
+      "status": "resolved_owner_approved_2026_07_27"
+    },
+    {
+      "id": "M4-OWNER-P2-PRICE-REFERENCES",
+      "question": "Definir las referencias de precio para entrada, TP y SL.",
+      "acceptance_means": "Los analisis nuevos registraran CONTRACT_PRICE o MARK_PRICE; los historicos sin evidencia quedaran como referencia desconocida.",
+      "status": "deferred_outside_current_m4_scope_owner_direction"
+    },
+    {
+      "id": "M4-OWNER-P3-LIQUIDATION-SEMANTICS",
+      "question": "Definir la liquidacion cuando no existe estado completo de cuenta.",
+      "acceptance_means": "Solo el margen aislado con datos suficientes podra producir un escenario; cross o modo desconocido quedaran unknown y bloquearan payoff apalancado, no probabilidad fisica.",
+      "status": "deferred_outside_current_m4_scope_owner_direction"
+    },
+    {
+      "id": "M4-OWNER-P4-EXPIRY-PAYOFF",
+      "question": "Definir el cierre y payoff de la rama expiry.",
+      "acceptance_means": "El payoff pre-trade sera una variable o distribucion condicional; no se inventara un precio terminal puntual.",
+      "status": "deferred_outside_current_m4_scope_owner_direction"
+    }
+  ],
+  "owner_audit_surfaces": {
+    "human_readable_rule_catalog": "auditorias_motor/2026-07-27_M4_7_27_reglas_formulas_enmienda_v0_2.md",
+    "structured_rule_catalog": "auditorias_motor/catalogo_27_reglas_formulas_m4_7_v0_2.json",
+    "integrity_manifest": "auditorias_motor/manifiesto_integridad_m4_7_v0_2.json",
+    "amendment_result": "auditorias_motor/2026-07-27_M4_7_enmiendas_olas_1_2_resultado.md",
+    "dag_and_invariant_integration": "auditorias_motor/2026-07-27_M4_7_integracion_dag_invariantes_v0_2.md",
+    "review_decisions": "auditorias_motor/2026-07-27_M4_7_paquete_revision_cerrado_v0_3.md",
+    "owner_closure_record": "auditorias_motor/2026-07-27_M4_cierre_aprobado_propietario.md"
+  },
+  "closure_gate": {
+    "technical_gate": "passed",
+    "owner_gate": "passed",
+    "m4_close_authorized": true,
+    "m5_start_authorized": false,
+    "required_final_action": "none_for_m4_closure",
+    "next_required_action": "explicit owner authorization to start M5"
+  },
+  "reproduction": {
+    "python": ".\\.venv\\Scripts\\python.exe",
+    "generate_in_order": [
+      ".\\.venv\\Scripts\\python.exe build_m4_reconciliation.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_reachability.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_structure_regime.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_derivatives_context.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_execution_risk.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_combinations.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_rule_audit_report.py",
+      ".\\.venv\\Scripts\\python.exe build_m4_final_integration.py"
+    ],
+    "check_in_order": [
+      ".\\.venv\\Scripts\\python.exe build_m4_reconciliation.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_reachability.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_structure_regime.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_derivatives_context.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_execution_risk.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_combinations.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_rule_audit_report.py --check",
+      ".\\.venv\\Scripts\\python.exe build_m4_final_integration.py --check"
+    ],
+    "m4_tests": ".\\.venv\\Scripts\\python.exe -m unittest tests.test_m4_reconciliation tests.test_m4_reachability tests.test_m4_structure_regime tests.test_m4_derivatives_context tests.test_m4_execution_risk tests.test_m4_combinations tests.test_m4_rule_audit_report tests.test_m4_final_integration tests.test_m4_review_package",
+    "full_tests": ".\\.venv\\Scripts\\python.exe -m unittest discover -s tests"
+  },
+  "artifact_manifest": [
+    {
+      "path": "build_m4_reconciliation.py",
+      "sha256": "72e9221da4a7bb6175d9b3bb2aea567ba6230a5ba5059f24d934a3aea2190228",
+      "bytes": 23984
+    },
+    {
+      "path": "build_m4_reachability.py",
+      "sha256": "5948069490032edacfb68083239e8bb0dfe68f003037912c10fb086515939260",
+      "bytes": 46595
+    },
+    {
+      "path": "build_m4_structure_regime.py",
+      "sha256": "7dcc7150be9f4693f83c16b65bbc00f3cd85fbd4208467c6f7e2f1dacd74bacf",
+      "bytes": 44537
+    },
+    {
+      "path": "build_m4_derivatives_context.py",
+      "sha256": "26eb4e456c3eff48286b3e6227388c01969efbbf2350da9edd4b3bf684c4d2bd",
+      "bytes": 59536
+    },
+    {
+      "path": "build_m4_execution_risk.py",
+      "sha256": "a0eae2207b16f94fdb4728009231a4b2c4fbd2643d9ec0406458ab79160fa580",
+      "bytes": 50964
+    },
+    {
+      "path": "build_m4_combinations.py",
+      "sha256": "8a5ed6bf509ffeed2ad0164282c8c072ce4a1ba50c1fc4227ee5adc55fcf951c",
+      "bytes": 55331
+    },
+    {
+      "path": "build_m4_rule_audit_report.py",
+      "sha256": "e6a2a38ba24ce56551a63bdcba7ecf418e05f67322ad38620adc72f0b4ab63df",
+      "bytes": 23039
+    },
+    {
+      "path": "build_m4_final_integration.py",
+      "sha256": "4ef7598c8e07a2b9efa74e06074b91a2d66e141ee01a5c58f83166b370c8065a",
+      "bytes": 17963
+    },
+    {
+      "path": "auditorias_motor/reconciliacion_candidatos_m4_v0_1.json",
+      "sha256": "a888e6ab08c1729b71e2a74f68db5e58cf1d527011ba04f285293d172e9e4348",
+      "bytes": 51143
+    },
+    {
+      "path": "auditorias_motor/catalogo_alcanzabilidad_m4_2_v0_2.json",
+      "sha256": "60fe4c13f07efbcdbc23a686eacd9ed4abbd773e4ad6ef358977c1fe6567cac6",
+      "bytes": 30690
+    },
+    {
+      "path": "auditorias_motor/catalogo_regimen_estructura_mtf_m4_3_v0_2.json",
+      "sha256": "61c7c7b6589d0e843c50373fc217f88dbb9f68af587c101bee075b2633d2688e",
+      "bytes": 33211
+    },
+    {
+      "path": "auditorias_motor/catalogo_contexto_derivados_m4_4_v0_2.json",
+      "sha256": "5f5ef7d1a25a09b7c0cf4eb9495f2670045e77ff8dab099284f3b32ed80574d2",
+      "bytes": 40511
+    },
+    {
+      "path": "auditorias_motor/catalogo_ejecucion_riesgo_m4_5_v0_2.json",
+      "sha256": "29fd9cee779cd09b485161d4767c960e5f4c39c2b60a6d55ff90aa0c2d0b8a8c",
+      "bytes": 47086
+    },
+    {
+      "path": "auditorias_motor/catalogo_combinaciones_reconciliacion_m4_6_v0_2.json",
+      "sha256": "b4f24422d7c59a0661e30b065e05f817e5597615bd829932343ad2e6fc1c7b61",
+      "bytes": 76368
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_1_alcance_reconciliacion_resultado.md",
+      "sha256": "12b2676542b4b9231308c4a3a8ac8bc43553e9c7525725dbb8a7c6b693a09546",
+      "bytes": 5657
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_2_alcanzabilidad_enmienda_v0_2.md",
+      "sha256": "6c4b991b8497a42828ff85572621f6338ab66c51f0d7b8cb60446e7fe7d6d024",
+      "bytes": 3300
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_3_regimen_estructura_mtf_enmienda_v0_2.md",
+      "sha256": "124171779b00bc1235e73bd599d552b5fc2a552a0e0d981a8f34907834a842fa",
+      "bytes": 2553
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_4_orderflow_oi_basis_funding_enmienda_v0_2.md",
+      "sha256": "0e1c81ed694dd0cf4fc2960c6aeaa56c26928b6b768df6f6f80fb09fc17abc2e",
+      "bytes": 2170
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_5_ejecucion_costes_riesgo_enmienda_v0_2.md",
+      "sha256": "7fa6df9c72ced3ec7750d89e5c1475f601f04d040be69824938d6291afdeeb8b",
+      "bytes": 3393
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_6_combinaciones_reconciliacion_enmienda_v0_2.md",
+      "sha256": "1014186c676b78d77142f13b16b3224277eb16cde2e802b95af66e4bc0d15fd6",
+      "bytes": 2971
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_7_27_reglas_formulas_enmienda_v0_2.md",
+      "sha256": "fe4558df278d7f6c47cab7515a02805a30c95b4781ecc7c9cc7d15c201b005a3",
+      "bytes": 88115
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_7_integracion_dag_invariantes_v0_2.md",
+      "sha256": "c0de097e8da28eee1ce6e37662bd52f17f5b8c1c03b59967b097656c978309a9",
+      "bytes": 1048
+    },
+    {
+      "path": "auditorias_motor/catalogo_27_reglas_formulas_m4_7_v0_2.json",
+      "sha256": "0ec5395c8ac2ebaa9702d229ae4ff9a849cf2cbf562b0be6745435e2e7e7be04",
+      "bytes": 159252
+    },
+    {
+      "path": "auditorias_motor/manifiesto_integridad_m4_7_v0_2.json",
+      "sha256": "fc4933fae005bf5b8723c862163d40a6ab02a7001e5002178005773d2e3175ff",
+      "bytes": 757
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_7_enmiendas_olas_1_2_resultado.md",
+      "sha256": "dae204fb303ce99189592a5b5ada1a406480fb4d79c0627689374cbecd96cb6c",
+      "bytes": 3676
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_7_decision_P1_entradas_market.md",
+      "sha256": "ecc4ba73a3c867d947bd86aa177dbb05e14fdd37091d92d9e7e1667bae7389b1",
+      "bytes": 2198
+    },
+    {
+      "path": "auditorias_motor/integracion_dag_invariantes_m4_7_v0_2.json",
+      "sha256": "a4f508e0b0ee4a10530873865fc11e85aa5ac8bf1405e330f663405d9fd4a24a",
+      "bytes": 72275
+    },
+    {
+      "path": "auditorias_motor/2026-07-27_M4_cierre_aprobado_propietario.md",
+      "sha256": "c8cdef8be3cff7efcddf63fef89585802db80d8d20ba60c5d140df05eebd1bb7",
+      "bytes": 1979
+    },
+    {
+      "path": "tests/test_m4_reconciliation.py",
+      "sha256": "d74c56b3f0f71c5e5bb35e8ea94c54db0f1416605f1638ddf0f724b870f41d16",
+      "bytes": 5737
+    },
+    {
+      "path": "tests/test_m4_reachability.py",
+      "sha256": "35c6ea8c6e5336d1bfb90d80236c28046e7e76741296e13aca8fe040d39b238e",
+      "bytes": 13122
+    },
+    {
+      "path": "tests/test_m4_structure_regime.py",
+      "sha256": "405347ccb278aad1725c82c953bf483aa138afedbe804db87fc5472052b1b86d",
+      "bytes": 11679
+    },
+    {
+      "path": "tests/test_m4_derivatives_context.py",
+      "sha256": "fa04adeb1e8e225a6656ca4e436383be1e90a62b83b773c6d32aa7629b94fca8",
+      "bytes": 20840
+    },
+    {
+      "path": "tests/test_m4_execution_risk.py",
+      "sha256": "75ff99e21939d6640a9f3988f97da05cd19f4876db13e0228746f986c7b1a104",
+      "bytes": 14210
+    },
+    {
+      "path": "tests/test_m4_combinations.py",
+      "sha256": "812b43180b1d1f071b9f2d53da0995c468c04a238216f7b3e8e5be59ac80b0db",
+      "bytes": 12509
+    },
+    {
+      "path": "tests/test_m4_rule_audit_report.py",
+      "sha256": "bfa53a3c4ebc7a707b44285d995014e998ccfcd838b35541184db0b963855d07",
+      "bytes": 9166
+    },
+    {
+      "path": "tests/test_m4_final_integration.py",
+      "sha256": "ffdcc0cd940eba65928e4043d6a1f2cdf2540c3df3ffd14021b9683550defe4b",
+      "bytes": 5556
+    },
+    {
+      "path": "tests/test_m4_review_package.py",
+      "sha256": "c09f3b47fb51df3b5b51eab0b6a0f9df023b4e5f1d85d02ba13b89857d5a4185",
+      "bytes": 12847
+    }
+  ],
+  "production_source_hashes_at_review": [
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263",
+      "bytes": 233770
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a",
+      "bytes": 119801
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028",
+      "bytes": 27626
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d",
+      "bytes": 14585
+    },
+    {
+      "path": "liquidation_data.py",
+      "sha256": "817de5c66f1d52066989492e1e3cad32300bebc0df3474820777d10cdb803fd9",
+      "bytes": 9921
+    },
+    {
+      "path": "challenger_engine.py",
+      "sha256": "767b2cf514e49256c5a326667a84986417aae235acbb9b7760e033ec880183a9",
+      "bytes": 22553
+    }
+  ],
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "auditorias_motor/reconciliacion_candidatos_m4_v0_1.json",
+      "sha256": "a888e6ab08c1729b71e2a74f68db5e58cf1d527011ba04f285293d172e9e4348"
+    },
+    {
+      "path": "auditorias_motor/catalogo_alcanzabilidad_m4_2_v0_2.json",
+      "sha256": "60fe4c13f07efbcdbc23a686eacd9ed4abbd773e4ad6ef358977c1fe6567cac6"
+    },
+    {
+      "path": "auditorias_motor/catalogo_regimen_estructura_mtf_m4_3_v0_2.json",
+      "sha256": "61c7c7b6589d0e843c50373fc217f88dbb9f68af587c101bee075b2633d2688e"
+    },
+    {
+      "path": "auditorias_motor/catalogo_contexto_derivados_m4_4_v0_2.json",
+      "sha256": "5f5ef7d1a25a09b7c0cf4eb9495f2670045e77ff8dab099284f3b32ed80574d2"
+    },
+    {
+      "path": "auditorias_motor/catalogo_ejecucion_riesgo_m4_5_v0_2.json",
+      "sha256": "29fd9cee779cd09b485161d4767c960e5f4c39c2b60a6d55ff90aa0c2d0b8a8c"
+    },
+    {
+      "path": "auditorias_motor/catalogo_combinaciones_reconciliacion_m4_6_v0_2.json",
+      "sha256": "b4f24422d7c59a0661e30b065e05f817e5597615bd829932343ad2e6fc1c7b61"
+    },
+    {
+      "path": "auditorias_motor/integracion_dag_invariantes_m4_7_v0_2.json",
+      "sha256": "a4f508e0b0ee4a10530873865fc11e85aa5ac8bf1405e330f663405d9fd4a24a"
+    }
+  ],
+  "canonical_payload_sha256": "f5047da3222359756eb9925a318afe5b6a4a5e214e09fea766573db03dee7347"
+}

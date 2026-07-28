@@ -1,0 +1,184 @@
+{
+  "version": "M7.6-resilience-verification-v0.1",
+  "phase": "M7",
+  "subphase": "M7.6",
+  "status": "passed",
+  "date": "2026-07-28",
+  "fault_injection_cases": [
+    {
+      "name": "finite_extreme_predictor",
+      "expected_status": "evaluated_internal_only",
+      "observed_status": "evaluated_internal_only",
+      "block_code": null,
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "non_finite_linear_predictor",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "boolean_interval_count",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "oversized_interval_count",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "zero_interval_count",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "duplicate_m5_trace",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "m5_trace_ids_invalid_or_duplicate",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "missing_required_m5_trace",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "required_m5_trace_missing",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "invalid_production_boundary",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "m5_production_boundary_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "invalid_sigma_envelope",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "invalid_interval_type",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "locked_artifact_hides_values",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    },
+    {
+      "name": "feature_schema_hash_mismatch",
+      "expected_status": "blocked",
+      "observed_status": "blocked",
+      "block_code": "probability_input_or_solver_invalid",
+      "unhandled_exception": null,
+      "passed": true
+    }
+  ],
+  "performance_buckets": {
+    "measurement_retention": "pass_fail_bucket_only_to_keep_artifact_reproducible",
+    "solver": {
+      "calls": 200,
+      "budget_average_ms": 5.0,
+      "within_budget": true
+    },
+    "engine": {
+      "calls": 50,
+      "budget_average_ms": 50.0,
+      "within_budget": true
+    },
+    "interval_stress": {
+      "interval_count": 512,
+      "budget_total_ms": 2000.0,
+      "within_budget": true
+    }
+  },
+  "resource_contract": {
+    "minimum_interval_count": 1,
+    "maximum_interval_count": 4096,
+    "boolean_is_not_integer_count": true,
+    "oversized_count_fails_before_iteration": true
+  },
+  "corrected_defects": [
+    "M7-DEFECT-NUMERIC-002",
+    "M7-DEFECT-RESOURCE-003"
+  ],
+  "summary": {
+    "fault_cases_total": 12,
+    "fault_cases_passed": 12,
+    "unhandled_exceptions": 0,
+    "performance_buckets_passed": 3,
+    "critical_defects_open": 0,
+    "high_defects_open": 0
+  },
+  "limitations": [
+    "Latency budgets are internal engineering limits, not exchange SLA.",
+    "Benchmarks run on synthetic local inputs without network latency.",
+    "Pass/fail buckets are retained instead of volatile exact timings."
+  ],
+  "boundaries": {
+    "production_effect": "none",
+    "calibration_performed": false,
+    "m8_started": false
+  },
+  "inputs": [
+    {
+      "path": "auditorias_motor/contrato_verificacion_m7_1_v0_1.json",
+      "sha256": "942e542fa50aa2bd8d405ed614286d1b9cbafb1c94bcdea197e7d4c7f80c20d9",
+      "bytes": 7903
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_6_defectos_resiliencia_pre_correccion_v0_1.json",
+      "sha256": "f58a68c1ea25a5b13eca2d4176765e24c05d557f9bfd95c42b29efca293b10da",
+      "bytes": 1466
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_6_correcciones_resiliencia_v0_1.json",
+      "sha256": "dcc21819d45a74371a0d8a8a6b9bbc3c72ca859fef23ae02c01ec8b7c0ca0e99",
+      "bytes": 989
+    },
+    {
+      "path": "m6_competing_risks.py",
+      "sha256": "7dff0bb8e545e3ca2c8a8b751312b7bf5d6d3d971b0856d58a92cedb86a2b9b4",
+      "bytes": 9741
+    },
+    {
+      "path": "m6_engine.py",
+      "sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87",
+      "bytes": 9616
+    }
+  ],
+  "next_step": {
+    "id": "M7.7",
+    "name": "Revision independiente de codigo y formulas",
+    "started": false
+  },
+  "canonical_payload_sha256": "f4d5fffbada46074108590bbc4054bdc1cd45c82a9be5d47184b7401530ffe01"
+}

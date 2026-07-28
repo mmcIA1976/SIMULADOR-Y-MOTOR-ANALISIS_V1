@@ -1,0 +1,468 @@
+{
+  "version": "M6.1-methodology-decision-v0.1",
+  "phase": "M6",
+  "subphase": "M6.1",
+  "status": "methodology_recommendation_complete_owner_review_pending",
+  "date": "2026-07-28",
+  "owner_authorization": {
+    "statement": "continuamos inicia m6",
+    "m6_started": true,
+    "m6_closed": false,
+    "production_authorized": false,
+    "m7_started": false
+  },
+  "problem_definition": {
+    "analysis_timing": "strictly_pre_trade",
+    "outcomes": [
+      "tp_first_within_horizon",
+      "sl_first_within_horizon",
+      "neither_barrier_before_expiry"
+    ],
+    "tie_policy": "continuous model has zero tie probability; discrete observed ties remain ambiguous and are excluded or reconstructed",
+    "required_identity": "P_TP(T)+P_SL(T)+P_EXPIRY(T)=1",
+    "conditioned_on": [
+      "symbol",
+      "side",
+      "entry",
+      "take_profit",
+      "stop_loss",
+      "exact_horizon",
+      "information_available_at_analysis_time"
+    ]
+  },
+  "candidate_methods": [
+    {
+      "id": "independent_one_sided_barriers",
+      "decision": "rejected",
+      "reason": "Independent TP and SL calculations ignore competition and do not guarantee a coherent three-outcome mass."
+    },
+    {
+      "id": "endpoint_multinomial_only",
+      "decision": "rejected_as_primary",
+      "reason": "It discards event timing and handles horizon censoring less naturally than a time-to-first-event model."
+    },
+    {
+      "id": "brownian_double_barrier_first_passage",
+      "decision": "selected_as_baseline",
+      "reason": "It directly conditions on both plan barriers, volatility and finite horizon and yields TP, SL and survival mass."
+    },
+    {
+      "id": "discrete_time_competing_risks",
+      "decision": "selected_as_future_evidence_layer",
+      "reason": "It preserves first-event timing, competing outcomes and censoring while allowing coefficients to be estimated."
+    }
+  ],
+  "selected_architecture": {
+    "id": "first_passage_baseline_plus_competing_risk_evidence_v0.1",
+    "layer_a_baseline": {
+      "state_process": "X(t)=sigma_H*W(t)",
+      "drift": 0,
+      "upper_barrier": "a=d_TP>0",
+      "lower_barrier": "-b where b=d_SL>0",
+      "horizon": "T=H",
+      "stopping_time": "tau=inf{t>=0: X(t)>=a or X(t)<=-b}",
+      "probabilities": {
+        "P_TP": "P(tau<=T and X(tau)=a)",
+        "P_SL": "P(tau<=T and X(tau)=-b)",
+        "P_EXPIRY": "P(tau>T)"
+      },
+      "solver_decision_deferred_to": "M6.2"
+    },
+    "layer_b_evidence": {
+      "model": "discrete_time_competing_risks",
+      "cause_specific_hazards": [
+        "h_TP(k|x)",
+        "h_SL(k|x)"
+      ],
+      "survival": "S(k|x)=product_(j=1..k)[1-h_TP(j|x)-h_SL(j|x)]",
+      "cumulative_incidence": {
+        "P_TP": "sum_(k=1..K) S(k-1|x)*h_TP(k|x)",
+        "P_SL": "sum_(k=1..K) S(k-1|x)*h_SL(k|x)",
+        "P_EXPIRY": "S(K|x)"
+      },
+      "baseline_use": "first-passage interval hazards act as fixed offsets; M5 covariates may enter only through fitted coefficients"
+    }
+  },
+  "non_negotiable_constraints": [
+    "No indicator receives a manual point, bonus, penalty or coefficient.",
+    "With all evidence coefficients locked, output equals the first-passage baseline.",
+    "Coefficients may be estimated only from pre-trade features and first-event outcomes.",
+    "Calibration, feature construction and final validation use temporally separated data.",
+    "TP, SL and expiry probabilities are published together or not at all.",
+    "Missing required geometry, sigma or horizon blocks the baseline.",
+    "Execution cost and account risk never masquerade as physical barrier probability.",
+    "No M6 result changes production before M7, M8 and a later owner gate."
+  ],
+  "feature_roles": [
+    {
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "canonical_family": "M4-FAMILY-SAMPLING",
+      "m6_role": "first_passage_baseline_input",
+      "probability_access": "deterministic_baseline_only",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "canonical_family": "M4-FAMILY-PLAN-GEOMETRY",
+      "m6_role": "first_passage_baseline_input",
+      "probability_access": "deterministic_baseline_only",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "canonical_family": "M4-FAMILY-RETURNS-VOLATILITY",
+      "m6_role": "first_passage_baseline_input",
+      "probability_access": "deterministic_baseline_only",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "canonical_family": "M4-FAMILY-RETURNS-VOLATILITY",
+      "m6_role": "first_passage_baseline_input",
+      "probability_access": "deterministic_baseline_only",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "canonical_family": "M4-FAMILY-REACHABILITY",
+      "m6_role": "first_passage_baseline_input",
+      "probability_access": "deterministic_baseline_only",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "canonical_family": "M4-FAMILY-PENDING-ACTIVATION",
+      "m6_role": "policy_or_auxiliary_no_probability_vote",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "canonical_family": null,
+      "m6_role": "policy_or_auxiliary_no_probability_vote",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "canonical_family": "M4-FAMILY-PATH-STRUCTURE",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "canonical_family": "M4-FAMILY-PATH-STRUCTURE",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "canonical_family": "M4-FAMILY-VOLATILITY-REGIME",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "canonical_family": "M4-FAMILY-PATH-STRUCTURE",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "canonical_family": "M4-FAMILY-VOLATILITY-REGIME",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "canonical_family": "M4-FAMILY-AGGRESSOR-FLOW",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "canonical_family": "M4-FAMILY-OPEN-INTEREST",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "canonical_family": "M4-FAMILY-OPEN-INTEREST",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "canonical_family": "M4-FAMILY-BASIS",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "canonical_family": "M4-FAMILY-BASIS",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "canonical_family": "M4-FAMILY-FUNDING",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "canonical_family": "M4-FAMILY-DERIVATIVES-CONTAINER",
+      "m6_role": "candidate_competing_risk_covariate",
+      "probability_access": "coefficient_locked_until_estimated_and_validated",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "canonical_family": "M4-FAMILY-EXECUTION",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "canonical_family": "M4-FAMILY-EXECUTION",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "canonical_family": "M4-FAMILY-FEES",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "canonical_family": "M4-FAMILY-FUNDING-CASHFLOW",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "canonical_family": "M4-FAMILY-EXPOSURE",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "canonical_family": "M4-FAMILY-ECONOMIC-EVALUATION",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "canonical_family": "M4-FAMILY-ECONOMIC-EVALUATION",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    },
+    {
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "canonical_family": "M4-FAMILY-ECONOMIC-EVALUATION",
+      "m6_role": "downstream_execution_or_economic_layer",
+      "probability_access": "none",
+      "manual_weight_authorized": false,
+      "current_coefficient": null
+    }
+  ],
+  "coefficient_gate": {
+    "current_status": "all_candidate_coefficients_locked",
+    "manual_coefficients_allowed": false,
+    "zero_coefficient_claim": "zero means no evidence adjustment, not evidence of no effect",
+    "future_requirements": [
+      "preregistered feature set and interactions",
+      "temporally ordered training and calibration data",
+      "regularized likelihood or other explicitly approved estimator",
+      "coefficient uncertainty and stability report",
+      "independent temporal holdout in M8"
+    ]
+  },
+  "evaluation_contract": {
+    "proper_scores": [
+      "multiclass_brier",
+      "multiclass_log_loss"
+    ],
+    "calibration": [
+      "outcome calibration-in-the-large",
+      "calibration slope",
+      "reliability curves by horizon"
+    ],
+    "not_sufficient": [
+      "accuracy",
+      "win rate",
+      "profit alone",
+      "in-sample fit"
+    ],
+    "thresholds_defined": false
+  },
+  "sources": [
+    {
+      "id": "WIESE-2019-FIRST-PASSAGE-INTERVAL",
+      "type": "primary_research",
+      "title": "First passage in an interval for fractional Brownian motion",
+      "url": "https://arxiv.org/abs/1807.08807",
+      "supported_claims": [
+        "First exit from an interval is defined by two absorbing boundaries.",
+        "For ordinary Brownian motion the eventual upper-exit splitting probability is determined by the normalized starting position.",
+        "Finite discretization can materially affect observed barrier crossings."
+      ],
+      "not_supported": [
+        "Bitcoin log returns are Brownian.",
+        "Realized volatility is a calibrated forecast.",
+        "Technical indicators have any specified coefficient."
+      ]
+    },
+    {
+      "id": "RANGARAJAN-DING-2001-TWO-BARRIERS",
+      "type": "primary_research",
+      "title": "Anomalous diffusion and the first passage time problem",
+      "url": "https://arxiv.org/abs/cond-mat/0105267",
+      "supported_claims": [
+        "Two absorbing barriers admit a finite-time first-passage power-series treatment.",
+        "Ordinary Brownian diffusion is a special case of the derivation."
+      ],
+      "not_supported": [
+        "The Brownian special case is empirically sufficient for crypto.",
+        "A finite series truncation tolerance for this project."
+      ]
+    },
+    {
+      "id": "KIM-ET-AL-2023-CIF",
+      "type": "primary_research",
+      "title": "Revisiting the cumulative incidence function with competing risks data",
+      "url": "https://academic.oup.com/jrsssc/article/72/2/498/7076689",
+      "supported_claims": [
+        "A cause-specific cumulative incidence is an absolute event probability.",
+        "The cumulative incidence integrates survival times the cause-specific hazard.",
+        "All competing event types must be modeled jointly for coherent absolute risk."
+      ],
+      "not_supported": [
+        "A specific crypto covariate set or coefficient.",
+        "A project-specific bin width."
+      ]
+    },
+    {
+      "id": "LEE-ET-AL-2025-DISCRETE-COMPETING-RISKS",
+      "type": "primary_research",
+      "title": "Discrete-time competing-risks regression with or without penalization",
+      "url": "https://academic.oup.com/biometrics/article/81/2/ujaf040/8120014",
+      "supported_claims": [
+        "Discrete cause-specific hazards can produce cumulative incidence through survival products.",
+        "A discrete competing-risks likelihood can estimate covariate effects without treating competing events as ordinary censoring."
+      ],
+      "not_supported": [
+        "M5 variables are predictive.",
+        "Penalty strength, coefficients or promotion thresholds."
+      ]
+    },
+    {
+      "id": "GNEITING-RAFTERY-2007-PROPER-SCORES",
+      "type": "primary_research",
+      "title": "Strictly Proper Scoring Rules, Prediction, and Estimation",
+      "url": "https://sites.stat.washington.edu/people/raftery/Research/PDF/Gneiting2007jasa.pdf",
+      "supported_claims": [
+        "Strictly proper scores reward reporting the forecaster's true predictive distribution.",
+        "Logarithmic and Brier-type scores are suitable for probabilistic evaluation."
+      ],
+      "not_supported": [
+        "This project's probabilities are calibrated.",
+        "Any acceptable score threshold."
+      ]
+    },
+    {
+      "id": "BRIER-1950-PROBABILITY-FORECASTS",
+      "type": "primary_research",
+      "title": "Verification of forecasts expressed in terms of probability",
+      "url": "https://journals.ametsoc.org/view/journals/mwre/78/1/1520-0493_1950_078_0001_vofeit_2_0_co_2.xml",
+      "supported_claims": [
+        "Probability forecasts can be evaluated with squared probability error."
+      ],
+      "not_supported": [
+        "Brier score alone establishes profitability.",
+        "A project-specific acceptance threshold."
+      ]
+    }
+  ],
+  "scope": {
+    "m6_started": true,
+    "m6_1_complete": true,
+    "m6_closed": false,
+    "m7_started": false,
+    "rules_partitioned": 27,
+    "baseline_inputs": 5,
+    "candidate_covariates": 12,
+    "probability_coefficients_defined": 0,
+    "production_modified": false
+  },
+  "review_gate": {
+    "technical_recommendation_complete": true,
+    "owner_methodology_approval": "pending",
+    "m6_2_authorized": false,
+    "required_owner_decision": "approve or object to the selected two-layer architecture"
+  },
+  "source_files": [
+    {
+      "path": "auditorias_motor/paquete_cierre_m5_6_v0_1.json",
+      "sha256": "cb48e11b85be2a044c0e14b949cf1b8ee789fdf42d1b659e9194ab857d740fbf"
+    },
+    {
+      "path": "auditorias_motor/contrato_implementacion_m5_1_v0_1.json",
+      "sha256": "8d206862f12a5edb63f104b3c4896217ddbeb2c16ab77ed3966c46808bfa7405"
+    },
+    {
+      "path": "build_m6_methodology_decision.py",
+      "sha256": "879e6f795fc5dac1f5df2fbfe99cae70421cfb5562117603ec0dedff2ae3bc14"
+    },
+    {
+      "path": "tests/test_m6_methodology_decision.py",
+      "sha256": "d7c3c2a79133a0456a3d5a3c396583d55f47399812a4327472896cafdb44baba"
+    }
+  ],
+  "canonical_payload_sha256": "60b4fa2230ab91bb3733eae0cc948f3af5b34d8ce0f18aea6c6ca919c44b3a03"
+}

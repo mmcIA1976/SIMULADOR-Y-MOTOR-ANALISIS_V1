@@ -1,0 +1,98 @@
+{
+  "version": "M8.3-execution-contract-v0.1",
+  "phase": "M8",
+  "subphase": "M8.3",
+  "status": "frozen_before_outcome_access",
+  "outcome_source": "binance_usdm_futures_klines_1m",
+  "outcome_classes": [
+    "tp_first_within_horizon",
+    "sl_first_within_horizon",
+    "neither_barrier_before_expiry"
+  ],
+  "outcome_rules": {
+    "start": "recommendation.created_at",
+    "expiry": "analysis_at+horizon_seconds",
+    "same_minute_both_barriers": "ambiguous_excluded",
+    "boundary_minute_touch": "ambiguous_excluded",
+    "no_touch_after_expiry": "neither_barrier_before_expiry",
+    "no_touch_before_expiry": "right_censored",
+    "minimum_market_coverage": 0.98
+  },
+  "horizon_policy": {
+    "stored_exact": "formal cohort",
+    "missing_exact_duration": {
+      "intraday_short": 14400,
+      "intraday_wide": 86400,
+      "short_swing": 604800
+    },
+    "missing_duration_status": "retrospective_policy_cohort_not_formal"
+  },
+  "pretrade_volatility": {
+    "formula": "sigma_H=sqrt(sum(log_return_t^2))",
+    "sampling": "M4 largest exact supported divisor with >=24 returns",
+    "cutoff": "last fully closed Binance futures kline <= analysis_at",
+    "reference_windows": 60
+  },
+  "candidate_features": [
+    {
+      "name": "directional_path_efficiency_h",
+      "registered_rule": "M4-RULE-PATH-STRUCTURE-001"
+    },
+    {
+      "name": "directional_path_efficiency_2h",
+      "registered_rule": "M4-RULE-MTF-HIERARCHY-001"
+    },
+    {
+      "name": "directional_path_efficiency_4h",
+      "registered_rule": "M4-RULE-MTF-HIERARCHY-001"
+    },
+    {
+      "name": "volatility_percentile_60",
+      "registered_rule": "M4-RULE-VOLATILITY-RANK-001"
+    },
+    {
+      "name": "target_extreme_between_entry_and_tp",
+      "registered_rule": "M4-RULE-PRIOR-EXTREMA-001"
+    }
+  ],
+  "feature_exclusions": {
+    "reason": "No exact historical source window can be proven for every record.",
+    "rule_groups": [
+      "aggressor imbalance",
+      "open interest change",
+      "price/OI state",
+      "spot/futures basis",
+      "funding state",
+      "liquidation map"
+    ],
+    "coefficient_effect": "fixed_zero_not_tested"
+  },
+  "fit": {
+    "partition": "development_only",
+    "ridge_candidates": [
+      0.1,
+      1.0,
+      10.0
+    ],
+    "optimizer": "deterministic Adam, numeric eta gradient",
+    "iterations": 300,
+    "learning_rate": 0.04
+  },
+  "calibration": {
+    "partition": "calibration_only",
+    "temperature_candidates": [
+      0.75,
+      1.0,
+      1.25,
+      1.5
+    ],
+    "selection_metric": "multiclass_log_loss"
+  },
+  "final_test": {
+    "labels_fetched_in": "M8.6_only",
+    "legacy_probabilities_fetched_in": "M8.6_only",
+    "retuning_after_open": false
+  },
+  "production_effect": "none",
+  "canonical_payload_sha256": "847bd7f88877cf7384bf57dfaf4665a2a6b504f172079ac268c66503a6c39792"
+}

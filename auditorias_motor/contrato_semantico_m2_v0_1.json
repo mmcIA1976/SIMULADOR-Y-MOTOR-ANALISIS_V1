@@ -1,0 +1,527 @@
+{
+  "semantic_version": "M2-semantic-contract-v0.1",
+  "phase": "M2",
+  "status": "completed_owner_approved",
+  "approved_at": "2026-07-27",
+  "purpose": "Define the mathematical meaning, geometry, clocks, event tree and invariants required before any new predictive formula.",
+  "scope": {
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "learning_engine_used": false,
+    "m3_started": false,
+    "probabilistic_method_selected": false
+  },
+  "supersession_on_approval": {
+    "document": "auditorias_motor/contrato_challenger_alcanzabilidad.md",
+    "scope": "Pending-order semantics and premature multinomial baseline selection only.",
+    "preserved": "Pre-trade clock, signed log geometry, data blocking, traceability and production isolation."
+  },
+  "time": {
+    "time_zero": "analysis_at",
+    "data_rule": "data_cutoff_at <= analysis_at",
+    "expiry_formula": "expiry_at=analysis_at+horizon_seconds",
+    "pending_clock_restart": false,
+    "profiles_seconds": {
+      "intraday_short": {
+        "minimum": 1800,
+        "maximum": 14400
+      },
+      "intraday_wide": {
+        "minimum": 14400,
+        "maximum": 86400
+      },
+      "short_swing": {
+        "minimum": 86400,
+        "maximum": 604800
+      }
+    }
+  },
+  "geometry": {
+    "long": "stop_loss < entry < take_profit",
+    "short": "take_profit < entry < stop_loss",
+    "side_sign": "long=+1; short=-1",
+    "tp_log_distance": "side_sign*ln(take_profit/entry)",
+    "sl_log_distance": "-side_sign*ln(stop_loss/entry)",
+    "volatility_normalization": "z_tp=tp_log_distance/sigma_H; z_sl=sl_log_distance/sigma_H; finite sigma_H>0 must represent an approved log-return volatility scale matched to the exact horizon. M3 approves its data and M4 its estimator."
+  },
+  "event_tree": {
+    "stage_1": "entry_executed_by_expiry vs no_entry; for an ideal market entry the semantic baseline is entry probability 1.",
+    "stage_2_given_entry": [
+      "tp_first",
+      "sl_first",
+      "expiry_after_entry"
+    ],
+    "overall": [
+      "tp_first",
+      "sl_first",
+      "expiry_after_entry",
+      "no_entry"
+    ],
+    "visible": [
+      "tp_first",
+      "sl_first",
+      "unresolved"
+    ],
+    "clock": "All stages share the absolute expiry fixed at analysis_at.",
+    "execution_boundary": "Touch, trigger and confirmed fill must be defined by the future execution contract; they cannot be conflated silently."
+  },
+  "ambiguity_and_censoring": {
+    "ambiguous": "Both barriers appear in the same observation and their order cannot be reconstructed.",
+    "censored": "Coverage ends, data are missing, or manual closure occurs before a reconstructable terminal event.",
+    "policy": "Record both states; never force them into TP, SL, expiry or no_entry."
+  },
+  "output_contract": {
+    "status_values": [
+      "probability_available",
+      "blocked",
+      "insufficient_evidence"
+    ],
+    "required_identity": [
+      "semantic_version",
+      "analysis_type",
+      "analysis_at",
+      "data_cutoff_at",
+      "symbol",
+      "side",
+      "entry_type",
+      "time_horizon",
+      "horizon_seconds",
+      "expiry_at"
+    ],
+    "required_geometry": [
+      "entry",
+      "take_profit",
+      "stop_loss",
+      "side_sign",
+      "tp_log_distance",
+      "sl_log_distance",
+      "horizon_volatility",
+      "tp_volatility_units",
+      "sl_volatility_units"
+    ],
+    "entry_distribution": {
+      "keys": [
+        "executed_by_expiry",
+        "not_executed_by_expiry"
+      ],
+      "mass": 1.0,
+      "meaning": "Execution means the entry event defined by the approved execution contract occurred before the fixed expiry."
+    },
+    "conditional_after_entry": {
+      "keys": [
+        "tp_first",
+        "sl_first",
+        "expiry_after_entry"
+      ],
+      "mass": 1.0
+    },
+    "overall_distribution": {
+      "keys": [
+        "tp_first",
+        "sl_first",
+        "expiry_after_entry",
+        "no_entry"
+      ],
+      "mass": 1.0,
+      "formula": {
+        "tp_first": "P(entry)*P(tp_first|entry)",
+        "sl_first": "P(entry)*P(sl_first|entry)",
+        "expiry_after_entry": "P(entry)*P(expiry_after_entry|entry)",
+        "no_entry": "1-P(entry)"
+      }
+    },
+    "visible_distribution": {
+      "keys": [
+        "tp_first",
+        "sl_first",
+        "unresolved"
+      ],
+      "mass": 1.0,
+      "formula": {
+        "tp_first": "overall.tp_first",
+        "sl_first": "overall.sl_first",
+        "unresolved": "overall.expiry_after_entry+overall.no_entry"
+      },
+      "labels": {
+        "tp_first": "Probabilidad de alcanzar TP antes que SL",
+        "sl_first": "Probabilidad de alcanzar SL antes que TP",
+        "unresolved": "Probabilidad de no resolver el plan"
+      }
+    },
+    "required_trace": [
+      "entry_event_definition",
+      "price_reference",
+      "conditional_mass",
+      "overall_mass",
+      "visible_mass",
+      "data_quality",
+      "blocking_reasons",
+      "method_version"
+    ],
+    "forbidden": [
+      "manual_points_as_probability",
+      "residual_sl_floor",
+      "silent_horizon_fallback",
+      "missing_as_neutral",
+      "no_entry_renamed_range",
+      "expiry_clock_reset_at_pending_entry",
+      "hidden_renormalization"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "M2-INV-PRETRADE-01",
+      "category": "time",
+      "requirement": "analysis_at is time zero; every predictive datum and model cutoff must be <= analysis_at, and no later outcome may alter the original snapshot.",
+      "acceptance": "data_cutoff_at <= analysis_at < expiry_at"
+    },
+    {
+      "id": "M2-INV-HORIZON-01",
+      "category": "time",
+      "requirement": "A concrete horizon_seconds inside one of the three current profiles is mandatory; expiry_at=analysis_at+horizon_seconds.",
+      "acceptance": "No categorical-only or 3-60h fallback is accepted."
+    },
+    {
+      "id": "M2-INV-GEOMETRY-01",
+      "category": "geometry",
+      "requirement": "Long requires SL<entry<TP; short requires TP<entry<SL; invalid geometry blocks the analysis.",
+      "acceptance": "Both inequalities are checked before any signal."
+    },
+    {
+      "id": "M2-INV-GEOMETRY-02",
+      "category": "geometry",
+      "requirement": "TP and SL distances are positive signed log distances and are side-symmetric.",
+      "acceptance": "d_tp=s*ln(TP/entry); d_sl=-s*ln(SL/entry), s=+1 long/-1 short."
+    },
+    {
+      "id": "M2-INV-SCALE-01",
+      "category": "geometry",
+      "requirement": "Barrier distances must also be expressed in units of an approved positive log-return volatility scale matched to the exact horizon; an unavailable or invalid scale blocks probability.",
+      "acceptance": "z_tp=d_tp/sigma_H and z_sl=d_sl/sigma_H with finite sigma_H>0; M3 must approve its data and M4 its estimator before use."
+    },
+    {
+      "id": "M2-INV-ACTIVATION-01",
+      "category": "entry",
+      "requirement": "Pending entry execution is a separate event. no_entry cannot be renamed as range or expiry_after_entry.",
+      "acceptance": "P(entry)+P(no_entry)=1 and both remain visible in the trace."
+    },
+    {
+      "id": "M2-INV-CLOCK-01",
+      "category": "entry",
+      "requirement": "For pending plans the clock never restarts at entry; late entry has only expiry_at-entry_at remaining.",
+      "acceptance": "expiry_at is fixed once at analysis_at."
+    },
+    {
+      "id": "M2-INV-OUTCOME-01",
+      "category": "outcome",
+      "requirement": "Conditional on executed entry, TP_first, SL_first and expiry_after_entry are mutually exclusive and exhaustive.",
+      "acceptance": "Conditional probability mass equals 1."
+    },
+    {
+      "id": "M2-INV-OUTCOME-02",
+      "category": "outcome",
+      "requirement": "Overall pending outcomes are TP_first, SL_first, expiry_after_entry and no_entry.",
+      "acceptance": "Overall probability mass equals 1."
+    },
+    {
+      "id": "M2-INV-OUTPUT-01",
+      "category": "output",
+      "requirement": "The two main displayed percentages are unconditional P(TP_first) and P(SL_first) from analysis_at; unresolved is explicit.",
+      "acceptance": "TP+SL+unresolved=1 without residual floors."
+    },
+    {
+      "id": "M2-INV-MONO-TP-01",
+      "category": "monotonicity",
+      "requirement": "With snapshot, entry, SL and horizon fixed, moving TP farther cannot increase P(TP_first) and must affect reachability.",
+      "acceptance": "Property test over supported sides, pairs and horizons."
+    },
+    {
+      "id": "M2-INV-MONO-SL-01",
+      "category": "monotonicity",
+      "requirement": "With snapshot, entry, TP and horizon fixed, moving SL farther cannot increase P(SL_first) and must affect reachability.",
+      "acceptance": "Property test over supported sides, pairs and horizons."
+    },
+    {
+      "id": "M2-INV-MONO-HORIZON-01",
+      "category": "monotonicity",
+      "requirement": "With all non-time inputs fixed, extending the horizon cannot increase unresolved probability.",
+      "acceptance": "P(unresolved,H2)<=P(unresolved,H1) for H2>H1."
+    },
+    {
+      "id": "M2-INV-CONTINUITY-01",
+      "category": "continuity",
+      "requirement": "An infinitesimal continuous input change cannot create a material probability jump unless a documented discrete market event changes state.",
+      "acceptance": "The 5-point price/entry jump of 872/873 is forbidden."
+    },
+    {
+      "id": "M2-INV-SYMMETRY-01",
+      "category": "symmetry",
+      "requirement": "Mirrored long and short plans with mirrored signed market inputs must produce mirrored geometry and equivalent reachability.",
+      "acceptance": "Long/short property test."
+    },
+    {
+      "id": "M2-INV-SEPARATION-01",
+      "category": "separation",
+      "requirement": "Market path probability, entry execution, costs, plan quality and account risk remain separate before an explicit integration.",
+      "acceptance": "Margin/leverage/cost policy cannot silently change market path probability."
+    },
+    {
+      "id": "M2-INV-DATA-01",
+      "category": "evidence",
+      "requirement": "Missing, stale, future, invalid or unapproved mandatory data produces blocked or insufficient_evidence, never neutral evidence.",
+      "acceptance": "No RSI=50/EMA=price style predictive fallback."
+    },
+    {
+      "id": "M2-INV-AMBIGUITY-01",
+      "category": "labels",
+      "requirement": "A later observation that cannot order TP and SL is ambiguous; missing coverage or manual closure is censored.",
+      "acceptance": "Ambiguous/censored cases remain recorded but are not forced into an outcome."
+    },
+    {
+      "id": "M2-INV-TRACE-01",
+      "category": "traceability",
+      "requirement": "Every output records semantic version, plan, clock, geometry, entry tree, conditional and overall masses, data cutoff and blocking reasons.",
+      "acceptance": "The visible explanation is generated from this trace."
+    }
+  ],
+  "edge_cases": [
+    {
+      "id": "M2-CASE-001",
+      "name": "valid_long_geometry",
+      "input": {
+        "side": "long",
+        "entry": 100,
+        "tp": 103,
+        "sl": 98
+      },
+      "expected": "accepted_positive_distances"
+    },
+    {
+      "id": "M2-CASE-002",
+      "name": "valid_short_mirror",
+      "input": {
+        "side": "short",
+        "entry": 100,
+        "tp": 97.0873786407767,
+        "sl": 102.04081632653062
+      },
+      "expected": "same_log_distances_as_case_001"
+    },
+    {
+      "id": "M2-CASE-003",
+      "name": "invalid_long_barriers",
+      "input": {
+        "side": "long",
+        "entry": 100,
+        "tp": 99,
+        "sl": 98
+      },
+      "expected": "blocked_invalid_geometry"
+    },
+    {
+      "id": "M2-CASE-004",
+      "name": "market_entry_distribution",
+      "input": {
+        "p_entry": 1.0,
+        "conditional": {
+          "tp_first": 0.45,
+          "sl_first": 0.35,
+          "expiry_after_entry": 0.2
+        }
+      },
+      "expected": "no_entry_zero_all_masses_one"
+    },
+    {
+      "id": "M2-CASE-005",
+      "name": "pending_no_entry_separated",
+      "input": {
+        "p_entry": 0.6,
+        "conditional": {
+          "tp_first": 0.5,
+          "sl_first": 0.3,
+          "expiry_after_entry": 0.2
+        }
+      },
+      "expected": {
+        "tp_first": 0.3,
+        "sl_first": 0.18,
+        "expiry_after_entry": 0.12,
+        "no_entry": 0.4
+      }
+    },
+    {
+      "id": "M2-CASE-006",
+      "name": "late_pending_entry_does_not_restart_clock",
+      "input": {
+        "analysis_at_seconds": 0,
+        "horizon_seconds": 14400,
+        "entry_at_seconds": 13800
+      },
+      "expected": {
+        "expiry_at_seconds": 14400,
+        "remaining_seconds": 600
+      }
+    },
+    {
+      "id": "M2-CASE-007",
+      "name": "same_interval_tp_sl",
+      "input": {
+        "coarse_interval_touches": [
+          "tp",
+          "sl"
+        ],
+        "ordered_ticks": null
+      },
+      "expected": "ambiguous_not_forced"
+    },
+    {
+      "id": "M2-CASE-008",
+      "name": "missing_exact_duration",
+      "input": {
+        "time_horizon": "intraday_short",
+        "horizon_seconds": null
+      },
+      "expected": "blocked"
+    },
+    {
+      "id": "M2-CASE-009",
+      "name": "unknown_horizon",
+      "input": {
+        "time_horizon": "3-60h",
+        "horizon_seconds": 10800
+      },
+      "expected": "blocked"
+    },
+    {
+      "id": "M2-CASE-010",
+      "name": "case_872_873_discontinuity",
+      "input": {
+        "side": "short",
+        "entry": 100,
+        "price_a": 99.999999,
+        "price_b": 100
+      },
+      "expected": "no_material_jump",
+      "current_engine_observation": "-0.02 to +0.03"
+    },
+    {
+      "id": "M2-CASE-011",
+      "name": "current_probability_floor_mass",
+      "input": {
+        "tp": 0.74,
+        "range": 0.22
+      },
+      "expected": "mass_exactly_one",
+      "current_engine_observation": "mass=1.01"
+    },
+    {
+      "id": "M2-CASE-012",
+      "name": "missing_market_data",
+      "input": {
+        "candles": []
+      },
+      "expected": "blocked_or_insufficient_evidence",
+      "current_engine_observation": "neutral defaults"
+    },
+    {
+      "id": "M2-CASE-013",
+      "name": "account_parameters_do_not_change_path",
+      "input": {
+        "same_plan": true,
+        "leverage_a": 1,
+        "leverage_b": 50
+      },
+      "expected": "same_market_path_distribution"
+    },
+    {
+      "id": "M2-CASE-014",
+      "name": "farther_barrier_sensitivity",
+      "input": {
+        "same_snapshot": true,
+        "tp_distance_a": 0.01,
+        "tp_distance_b": 0.03
+      },
+      "expected": "p_tp_b_not_greater_and_not_identical_without_reason"
+    },
+    {
+      "id": "M2-CASE-015",
+      "name": "missing_or_invalid_horizon_volatility",
+      "input": {
+        "horizon_volatility": null
+      },
+      "expected": "blocked_not_neutralized"
+    }
+  ],
+  "external_audit_filter": {
+    "input_path": "C:\\Users\\MSI\\Downloads\\auditoria_86_reglas_motor_futuros.md",
+    "accepted_in_m2": [
+      {
+        "detail": "Pending no-entry must remain separate from expiry after entry.",
+        "effect": "Integrated into the two-stage event tree."
+      },
+      {
+        "detail": "Invalid horizons and missing data must block instead of falling back silently.",
+        "effect": "Reinforces existing M2 invariants."
+      }
+    ],
+    "deferred_without_authorization": [
+      {
+        "detail": "Time-normalized CVD/flow windows.",
+        "target_phase": "M3-M4"
+      },
+      {
+        "detail": "Robust funding percentiles by pair/horizon.",
+        "target_phase": "M4"
+      },
+      {
+        "detail": "Purged splits, embargo and unseen assets.",
+        "target_phase": "M8"
+      },
+      {
+        "detail": "Account fees, depth impact and funding periods.",
+        "target_phase": "M3-M4"
+      }
+    ],
+    "discarded_or_not_adopted": [
+      {
+        "detail": "General 3-60 hour horizon.",
+        "reason": "Contradicts the three approved profiles."
+      },
+      {
+        "detail": "Predetermine logistic/GBM after M2.",
+        "reason": "Method selection belongs to M6."
+      },
+      {
+        "detail": "Retain current score rules as features.",
+        "reason": "Only raw data or newly defined transformations may survive; current thresholds and points remain unauthorized."
+      },
+      {
+        "detail": "Treat HyperPerps as an official Hyperliquid heatmap.",
+        "reason": "Provider and venue scope must remain distinct."
+      }
+    ]
+  },
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "CONTRATO_FASE_1_MOTOR_ANALISIS.md",
+      "sha256": "0f8e94c32e0b9867a0f0d3796fccfaf7e52df4ec739c2b5ff2a9cf0a7ee2650a"
+    },
+    {
+      "path": "auditorias_motor\\invariantes_coherencia_motor_v0_1.json",
+      "sha256": "a5ff889c17e18849bd1d0d500f719433980ea110b2287f998c772362e4eba4b9"
+    },
+    {
+      "path": "auditorias_motor\\contrato_challenger_alcanzabilidad.md",
+      "sha256": "390a2f295d6b72ff9ccf93b3a2e0503f7118eb414c395d92c1b6664fa3d37453"
+    },
+    {
+      "path": "auditorias_motor\\matriz_decisiones_m1_v0_1.json",
+      "sha256": "dd137c422c4f963059210409ab981c935537b9f5dd317ceefdca8f5cd79bb4f0"
+    }
+  ],
+  "contract_sha256": "b7f57f373fc0cab0385ec0b3eef4477cb98f4bc0f355fd20f4ddabbb0a3413c3"
+}

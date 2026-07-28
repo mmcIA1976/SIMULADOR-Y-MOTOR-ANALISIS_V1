@@ -1,0 +1,308 @@
+{
+  "version": "M8.1-preregistered-evaluation-protocol-v0.1",
+  "phase": "M8",
+  "subphase": "M8.1",
+  "status": "protocol_frozen_owner_authorized",
+  "date": "2026-07-28",
+  "owner_authorization": {
+    "instruction": "continuemos con M8",
+    "m8_started": true,
+    "m9_started": false,
+    "production_authorized": false
+  },
+  "objective": "Evaluate the already defined probability engine independently, without learning from legacy heuristic scores.",
+  "historical_outcome_embargo": {
+    "status": "active_during_M8_1_and_M8_2",
+    "closed_operations_performance_inspected_in_M8_1": false,
+    "database_queried_in_M8_1": false,
+    "release_condition": "Protocol, eligibility inventory and chronological cut timestamps must be frozen first.",
+    "legacy_probabilities_allowed_as_final_comparator_only": true,
+    "legacy_probabilities_allowed_as_label_or_training_target": false
+  },
+  "frozen_model": {
+    "files": [
+      {
+        "path": "m5_rules.py",
+        "sha256": "e0ba4934dc0230cf275c0df73f285b95c43730d1c935eb6ca0ee33d84b847941",
+        "bytes": 35848
+      },
+      {
+        "path": "m5_runtime.py",
+        "sha256": "70a1645d6dc72bc7d68616abc4d4e592cacfa547996420fb048cca9875cf1376",
+        "bytes": 8621
+      },
+      {
+        "path": "m5_engine.py",
+        "sha256": "6eb0a10aebe4a14e99e86d896a2725d01cf5462de355e7ab55964e755ef55b4b",
+        "bytes": 4565
+      },
+      {
+        "path": "m6_first_passage.py",
+        "sha256": "6d70c67e84980dc4245c0181e7ce9a0d8dc51fea90a7b8e28319c9eb8ca746f1",
+        "bytes": 7471
+      },
+      {
+        "path": "m6_competing_risks.py",
+        "sha256": "7dff0bb8e545e3ca2c8a8b751312b7bf5d6d3d971b0856d58a92cedb86a2b9b4",
+        "bytes": 9741
+      },
+      {
+        "path": "m6_engine.py",
+        "sha256": "7dc304d860046dda94612296cb92443523b331fb3dc45b14490464c1c0890b87",
+        "bytes": 9616
+      },
+      {
+        "path": "m7_data_gate.py",
+        "sha256": "4f2992fb76a6ccec433391c04f7cd18a6d70c019b2954904b94bde8ec45c62c4",
+        "bytes": 9441
+      }
+    ],
+    "m7_closure": {
+      "path": "auditorias_motor/paquete_cierre_m7_7_v0_1.json",
+      "sha256": "80d892c50d0ee8ace03aaac455349c96d8cbc298d586c5bbbf58daead929019a",
+      "bytes": 15273
+    },
+    "coefficient_artifact": {
+      "path": "auditorias_motor/coeficientes_m6_v0_1_bloqueados.json",
+      "sha256": "55255a4bab7167763df1676069d3200a92ac46f40e5c1593351664f209daf65b",
+      "bytes": 1234
+    },
+    "active_evidence_coefficients": 0,
+    "manual_weights": 0
+  },
+  "eligible_record_contract": {
+    "required_identity": [
+      "analysis_id",
+      "analysis_at",
+      "data_cutoff_at",
+      "symbol",
+      "side",
+      "entry",
+      "take_profit",
+      "stop_loss",
+      "time_horizon",
+      "horizon_seconds",
+      "engine_version"
+    ],
+    "required_pretrade_evidence": "stored snapshot or reconstructible raw observations whose timestamps are all <= analysis_at",
+    "supported_pairs": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "supported_horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "sides": [
+      "long",
+      "short"
+    ],
+    "entry_type": "market",
+    "data_rule": "data_cutoff_at <= analysis_at",
+    "legacy_probability_required": false
+  },
+  "outcome_contract": {
+    "classes": [
+      "tp_first_within_horizon",
+      "sl_first_within_horizon",
+      "neither_barrier_before_expiry"
+    ],
+    "label_source": "chronological market observations after analysis_at and no later than expiry_at",
+    "expiry_formula": "expiry_at=analysis_at+horizon_seconds",
+    "same_bar_ambiguity": "ambiguous unless finer timestamped observations establish which barrier was first",
+    "manual_close_before_resolved_barrier": "right_censored_not_a_class",
+    "missing_market_coverage": "censored_or_excluded_with_reason",
+    "forced_tp_or_sl_label": false
+  },
+  "chronological_partition_policy": {
+    "partitions": [
+      {
+        "id": "development",
+        "allowed_uses": [
+          "fit candidate coefficients",
+          "select predeclared regularization",
+          "diagnose implementation defects"
+        ]
+      },
+      {
+        "id": "calibration",
+        "allowed_uses": [
+          "probability calibration",
+          "single model selection between frozen candidates"
+        ]
+      },
+      {
+        "id": "final_test",
+        "allowed_uses": [
+          "one final evaluation",
+          "paired comparison with frozen comparators"
+        ]
+      }
+    ],
+    "ordering": "development_end < calibration_start <= calibration_end < final_test_start",
+    "cut_selection": "Exact timestamps are selected in M8.2 using only analysis_at counts and pair-side-horizon coverage, never outcomes, PnL or predicted probabilities.",
+    "final_test_is_latest_period": true,
+    "final_test_reuse_after_failure": false,
+    "minimum_50_rule": "rejected",
+    "insufficient_evidence_policy": "Declare insufficient_evidence when class or subgroup coverage cannot support stable uncertainty estimates."
+  },
+  "models_to_compare": [
+    {
+      "id": "M8-MODEL-A",
+      "name": "first_passage_baseline",
+      "fit_allowed": false,
+      "role": "new_design_mathematical_baseline"
+    },
+    {
+      "id": "M8-MODEL-B",
+      "name": "estimated_competing_risk_evidence",
+      "fit_allowed": "development_only",
+      "calibration_allowed": "calibration_only",
+      "role": "new_design_with_rules"
+    },
+    {
+      "id": "M8-COMPARATOR-LEGACY",
+      "name": "stored_legacy_engine_probabilities",
+      "fit_allowed": false,
+      "role": "final_comparator_only_not_ground_truth"
+    },
+    {
+      "id": "M8-COMPARATOR-EMPIRICAL",
+      "name": "development_class_frequency",
+      "fit_allowed": "development_only",
+      "role": "naive_reference"
+    }
+  ],
+  "metrics": [
+    {
+      "id": "M8-METRIC-BRIER-3C",
+      "name": "unscaled_multiclass_brier",
+      "formula": "BS=(1/N)*sum_i sum_c (p_ic-y_ic)^2",
+      "direction": "lower_is_better",
+      "primary": true
+    },
+    {
+      "id": "M8-METRIC-LOGLOSS-3C",
+      "name": "multiclass_log_loss",
+      "formula": "LL=-(1/N)*sum_i log(max(p_i,true_class,1e-15))",
+      "direction": "lower_is_better",
+      "primary": true
+    },
+    {
+      "id": "M8-METRIC-CALIBRATION",
+      "name": "one_vs_rest_reliability",
+      "formula": "For each class use chronological equal-count bins, at most 10 and at least 20 observations per bin; publish mean forecast, observed frequency and weighted absolute calibration error.",
+      "direction": "closer_to_diagonal_is_better",
+      "primary": true
+    },
+    {
+      "id": "M8-METRIC-AUC-OVR",
+      "name": "macro_one_vs_rest_rank_auc",
+      "formula": "Mean rank AUC across classes containing both positive and negative observations.",
+      "direction": "higher_is_better",
+      "primary": false
+    }
+  ],
+  "uncertainty_protocol": {
+    "method": "paired_UTC_day_block_bootstrap",
+    "resamples": 2000,
+    "seed": 20260728,
+    "confidence_level": 0.95,
+    "paired_differences": [
+      "Brier_new_minus_comparator",
+      "logloss_new_minus_comparator"
+    ],
+    "few_calendar_blocks": "insufficient_evidence",
+    "subgroup_reporting": [
+      "pair",
+      "side",
+      "time_horizon",
+      "outcome",
+      "predeclared_regime"
+    ]
+  },
+  "rule_evaluation": {
+    "coefficient_source": "development_partition_only",
+    "manual_coefficients_allowed": false,
+    "interactions": "Only combinations already registered in M4/M5 may be tested; new combinations require return to an earlier phase.",
+    "ablation": "Remove one rule or registered group at a time without refitting on final_test.",
+    "double_counting_check_required": true
+  },
+  "final_decision_states": [
+    {
+      "state": "approved_for_M9_consideration",
+      "condition": "Final-test probabilistic metrics and uncertainty support the frozen candidate without critical subgroup failure."
+    },
+    {
+      "state": "rejected",
+      "condition": "Frozen candidate is materially worse or violates a probabilistic invariant."
+    },
+    {
+      "state": "return_to_earlier_phase",
+      "condition": "A quantified model, rule, formula or data-contract defect requires redesign."
+    },
+    {
+      "state": "insufficient_evidence",
+      "condition": "Coverage or uncertainty is inadequate for a reliable decision."
+    }
+  ],
+  "prohibited_actions": [
+    "inspect closed-operation performance before protocol freeze",
+    "use legacy score or probability as an outcome label",
+    "use post-analysis data as a predictive feature",
+    "choose chronological cuts from outcomes or PnL",
+    "tune any rule after opening final_test",
+    "force ambiguous or censored records into TP or SL",
+    "declare profitability from Brier or log-loss alone",
+    "activate production during M8"
+  ],
+  "phase_plan": [
+    "M8.1 protocol and embargo",
+    "M8.2 eligibility inventory without performance",
+    "M8.3 labels and chronological cuts",
+    "M8.4 frozen baseline evaluation",
+    "M8.5 development fit and calibration",
+    "M8.6 locked final test, stability and ablation",
+    "M8.7 secondary economics and quantified decision"
+  ],
+  "boundaries": {
+    "production_effect": "none",
+    "m8_started": true,
+    "m8_closed": false,
+    "m9_started": false
+  },
+  "inputs": [
+    {
+      "path": "auditorias_motor/paquete_cierre_m7_7_v0_1.json",
+      "sha256": "80d892c50d0ee8ace03aaac455349c96d8cbc298d586c5bbbf58daead929019a",
+      "bytes": 15273
+    },
+    {
+      "path": "auditorias_motor/contrato_semantico_m2_v0_1.json",
+      "sha256": "4eeb152ca84d69aa1035128120915159a9783ec5a2b81d350dfe32c0c3363139",
+      "bytes": 17353
+    },
+    {
+      "path": "auditorias_motor/catalogo_contratos_datos_m3_v0_1.json",
+      "sha256": "c6b4166d4a71fc6bd146b9352d4b2893a8a8c33ef98999406463a4ac3ac38e3d",
+      "bytes": 52125
+    },
+    {
+      "path": "auditorias_motor/coeficientes_m6_v0_1_bloqueados.json",
+      "sha256": "55255a4bab7167763df1676069d3200a92ac46f40e5c1593351664f209daf65b",
+      "bytes": 1234
+    }
+  ],
+  "next_step": {
+    "id": "M8.2",
+    "name": "Inventario de elegibilidad sin evaluar resultados",
+    "historical_performance_access_allowed": false,
+    "started": false
+  },
+  "canonical_payload_sha256": "68cc3f968e9f93a716b50a6307253e877036125b61bed79ee2fba8b9556ebea8"
+}

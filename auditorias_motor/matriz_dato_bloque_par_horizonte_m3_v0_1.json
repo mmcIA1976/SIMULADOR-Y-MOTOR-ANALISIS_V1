@@ -1,0 +1,5273 @@
+{
+  "matrix_version": "M3-data-block-pair-horizon-matrix-v0.1",
+  "phase": "M3",
+  "status": "completed_owner_approved",
+  "approved_at": "2026-07-27",
+  "meaning": "M3 maps data to P0 analytical blocks, pairs and horizons. Exact rule IDs do not exist until M4 and are not fabricated here.",
+  "summary": {
+    "p0_blocks": 12,
+    "symbols": 6,
+    "horizons": 3,
+    "rows": 216,
+    "current_ready_rows": 0
+  },
+  "rows": [
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 1,
+      "block_name": "Estructura del precio",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-004"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 3,
+      "block_name": "Multi-timeframe",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 7,
+      "block_name": "Order flow",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-007",
+        "M3-DATA-015"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-006"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-007": "implemented_noncompliant",
+        "M3-DATA-015": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 9,
+      "block_name": "Open interest",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-013",
+        "M3-DATA-014"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-013": "implemented_noncompliant",
+        "M3-DATA-014": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 10,
+      "block_name": "Funding",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 15,
+      "block_name": "Spot contra futuros",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-008",
+        "M3-DATA-016",
+        "M3-DATA-017"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-010"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-016": "not_implemented",
+        "M3-DATA-017": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 24,
+      "block_name": "Regimen de mercado",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-009"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 26,
+      "block_name": "Estadistica y cuantitativo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 28,
+      "block_name": "Probabilidad TP/SL",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-005"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-007",
+        "M3-DATA-010",
+        "M3-DATA-014",
+        "M3-DATA-015",
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-005": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 29,
+      "block_name": "Ejecucion y costes",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002",
+        "M3-DATA-003",
+        "M3-DATA-006",
+        "M3-DATA-008",
+        "M3-DATA-010",
+        "M3-DATA-011",
+        "M3-DATA-012",
+        "M3-DATA-018"
+      ],
+      "conditional_data_ids": [
+        "M3-DATA-017"
+      ],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented",
+        "M3-DATA-003": "not_implemented",
+        "M3-DATA-006": "implemented_noncompliant",
+        "M3-DATA-008": "not_implemented",
+        "M3-DATA-010": "implemented_noncompliant",
+        "M3-DATA-011": "implemented_noncompliant",
+        "M3-DATA-012": "not_implemented",
+        "M3-DATA-018": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 30,
+      "block_name": "Gestion de riesgo",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001",
+        "M3-DATA-002"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant",
+        "M3-DATA-002": "not_implemented"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": null
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BTCUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "ETHUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "SOLUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "BNBUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "XRPUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_short",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "intraday_wide",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    },
+    {
+      "block_id": 32,
+      "block_name": "Evaluacion del rendimiento",
+      "rule_contract_status": "not_defined_until_M4",
+      "symbol": "INJUSDT",
+      "time_horizon": "short_swing",
+      "required_data_ids": [
+        "M3-DATA-001"
+      ],
+      "conditional_data_ids": [],
+      "current_required_statuses": {
+        "M3-DATA-001": "implemented_noncompliant"
+      },
+      "rigorous_candidate_ready": false,
+      "missing_policy": "block_block_or_rule; never synthesize neutral evidence",
+      "note": "M3 covers only the immutable pre-trade identity; outcome data remain outside this phase."
+    }
+  ],
+  "matrix_sha256": "fe1f471dd375049347990ec1d01c2830b3eccd9db7eab06f26dc5d3fadad009b"
+}

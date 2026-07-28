@@ -1,0 +1,350 @@
+{
+  "version": "M7.2-mathematical-verification-v0.1",
+  "phase": "M7",
+  "subphase": "M7.2",
+  "status": "passed_no_critical_defects",
+  "date": "2026-07-28",
+  "objective": "Try to refute M6 mathematical behavior with an implementation-independent PDE oracle and adversarial properties.",
+  "independent_oracle_audit": {
+    "artifact": {
+      "path": "m7_independent_oracle.py",
+      "sha256": "0f8f7f8eaf86f92ed6b51b41498e4bad105cf804824d987276985ea2f5cadd2b",
+      "bytes": 6199
+    },
+    "imports": [
+      "__future__",
+      "dataclasses",
+      "math",
+      "typing"
+    ],
+    "forbidden_M6_imports": [],
+    "independent": true
+  },
+  "oracle_tolerance": 0.0025,
+  "oracle_comparisons": [
+    {
+      "case": {
+        "tp": 0.03,
+        "sl": 0.05,
+        "sigma": 0.04,
+        "fraction": 1.0
+      },
+      "m6": {
+        "p_tp": 0.45210268883502325,
+        "p_sl": 0.20534017294802723,
+        "p_expiry": 0.34255713821694955
+      },
+      "independent_oracle": {
+        "p_tp": 0.4519767757692188,
+        "p_sl": 0.20524791757491595,
+        "p_expiry": 0.34277530665586525,
+        "spatial_intervals": 240,
+        "time_steps": 1200,
+        "mass_error": 0.0,
+        "oracle_version": "M7-independent-implicit-PDE-v0.1",
+        "numerical_method": "backward_euler_finite_difference_absorbing_boundaries"
+      },
+      "absolute_errors": {
+        "p_tp": 0.0001259130658044505,
+        "p_sl": 9.22553731112774e-05,
+        "p_expiry": 0.00021816843891570015
+      },
+      "max_absolute_error": 0.00021816843891570015
+    },
+    {
+      "case": {
+        "tp": 0.02,
+        "sl": 0.06,
+        "sigma": 0.04,
+        "fraction": 1.0
+      },
+      "m6": {
+        "p_tp": 0.6166166146400884,
+        "p_sl": 0.12119510978496878,
+        "p_expiry": 0.2621882755749428
+      },
+      "independent_oracle": {
+        "p_tp": 0.6165091537544083,
+        "p_sl": 0.12113524828052584,
+        "p_expiry": 0.26235559796506586,
+        "spatial_intervals": 240,
+        "time_steps": 1200,
+        "mass_error": 0.0,
+        "oracle_version": "M7-independent-implicit-PDE-v0.1",
+        "numerical_method": "backward_euler_finite_difference_absorbing_boundaries"
+      },
+      "absolute_errors": {
+        "p_tp": 0.000107460885680144,
+        "p_sl": 5.986150444294014e-05,
+        "p_expiry": 0.00016732239012307026
+      },
+      "max_absolute_error": 0.00016732239012307026
+    },
+    {
+      "case": {
+        "tp": 0.08,
+        "sl": 0.03,
+        "sigma": 0.05,
+        "fraction": 1.0
+      },
+      "m6": {
+        "p_tp": 0.10448832471083327,
+        "p_sl": 0.5483621127154406,
+        "p_expiry": 0.3471495625737262
+      },
+      "independent_oracle": {
+        "p_tp": 0.10445389062101132,
+        "p_sl": 0.5482526642222414,
+        "p_expiry": 0.3472934451567473,
+        "spatial_intervals": 240,
+        "time_steps": 1200,
+        "mass_error": 0.0,
+        "oracle_version": "M7-independent-implicit-PDE-v0.1",
+        "numerical_method": "backward_euler_finite_difference_absorbing_boundaries"
+      },
+      "absolute_errors": {
+        "p_tp": 3.443408982195528e-05,
+        "p_sl": 0.00010944849319916017,
+        "p_expiry": 0.00014388258302111545
+      },
+      "max_absolute_error": 0.00014388258302111545
+    },
+    {
+      "case": {
+        "tp": 0.04,
+        "sl": 0.04,
+        "sigma": 0.05,
+        "fraction": 1.0
+      },
+      "m6": {
+        "p_tp": 0.407379046366689,
+        "p_sl": 0.407379046366689,
+        "p_expiry": 0.18524190726662204
+      },
+      "independent_oracle": {
+        "p_tp": 0.4072344623265357,
+        "p_sl": 0.40723446232658383,
+        "p_expiry": 0.18553107534688046,
+        "spatial_intervals": 240,
+        "time_steps": 1200,
+        "mass_error": 0.0,
+        "oracle_version": "M7-independent-implicit-PDE-v0.1",
+        "numerical_method": "backward_euler_finite_difference_absorbing_boundaries"
+      },
+      "absolute_errors": {
+        "p_tp": 0.00014458404015327275,
+        "p_sl": 0.00014458404010514458,
+        "p_expiry": 0.00028916808025841734
+      },
+      "max_absolute_error": 0.00028916808025841734
+    },
+    {
+      "case": {
+        "tp": 0.015,
+        "sl": 0.09,
+        "sigma": 0.03,
+        "fraction": 0.5
+      },
+      "m6": {
+        "p_tp": 0.4795001221869533,
+        "p_sl": 2.2075079740585535e-05,
+        "p_expiry": 0.5204778027333061
+      },
+      "independent_oracle": {
+        "p_tp": 0.4794009321397029,
+        "p_sl": 2.2875727059515305e-05,
+        "p_expiry": 0.5205761921332376,
+        "spatial_intervals": 240,
+        "time_steps": 1200,
+        "mass_error": 0.0,
+        "oracle_version": "M7-independent-implicit-PDE-v0.1",
+        "numerical_method": "backward_euler_finite_difference_absorbing_boundaries"
+      },
+      "absolute_errors": {
+        "p_tp": 9.919004725039704e-05,
+        "p_sl": 8.006473189297706e-07,
+        "p_expiry": 9.838939993145335e-05
+      },
+      "max_absolute_error": 9.919004725039704e-05
+    }
+  ],
+  "checks": [
+    {
+      "gate": "M7-GATE-REVIEW-012",
+      "name": "independent_oracle_import_isolation",
+      "status": "passed",
+      "observed": [],
+      "expected": "no imports from M6 modules"
+    },
+    {
+      "gate": "M7-GATE-SHAPE-003",
+      "name": "independent_PDE_oracle_agreement",
+      "status": "passed",
+      "observed": 0.00028916808025841734,
+      "expected": "max absolute error <= 0.0025"
+    },
+    {
+      "gate": "M7-GATE-EDGE-001",
+      "name": "adversarial_grid_solver_convergence",
+      "status": "passed",
+      "observed": {
+        "cases": 175,
+        "failures": []
+      },
+      "expected": "all finite valid cases return a result"
+    },
+    {
+      "gate": "M7-GATE-MASS-004",
+      "name": "adversarial_grid_probability_bounds",
+      "status": "passed",
+      "observed": {
+        "cases": 175,
+        "bounds_passed": true
+      },
+      "expected": "all probabilities in [0,1]"
+    },
+    {
+      "gate": "M7-GATE-MASS-004",
+      "name": "adversarial_grid_probability_mass",
+      "status": "passed",
+      "observed": 0.0,
+      "expected": "maximum mass error <= 1e-12"
+    },
+    {
+      "gate": "M7-GATE-SYMMETRY-002",
+      "name": "barrier_reflection_symmetry",
+      "status": "passed",
+      "observed": {
+        "cases": 25,
+        "max_absolute_error": 2.220446049250313e-16
+      },
+      "expected": "maximum reflected error <= 1e-11"
+    },
+    {
+      "gate": "M7-GATE-SHAPE-003",
+      "name": "farther_TP_never_increases_TP_probability",
+      "status": "passed",
+      "observed": {
+        "comparisons": 12,
+        "passed": true
+      },
+      "expected": "non-increasing P_TP as TP distance increases"
+    },
+    {
+      "gate": "M7-GATE-SHAPE-003",
+      "name": "cumulative_events_monotone_in_time",
+      "status": "passed",
+      "observed": {
+        "comparisons": 6,
+        "passed": true
+      },
+      "expected": "TP/SL non-decreasing and expiry non-increasing"
+    },
+    {
+      "gate": "M7-GATE-SHAPE-003",
+      "name": "local_continuity_under_small_geometry_change",
+      "status": "passed",
+      "observed": {
+        "cases": 3,
+        "max_probability_delta": 4.7117183404887797e-07
+      },
+      "expected": "maximum probability delta <= 2e-6"
+    },
+    {
+      "gate": "M7-GATE-EDGE-001",
+      "name": "dimensionless_common_scale_invariance",
+      "status": "passed",
+      "observed": 1.1102230246251565e-16,
+      "expected": "maximum scale error <= 1e-11"
+    },
+    {
+      "gate": "M7-GATE-EDGE-001",
+      "name": "invalid_mathematical_inputs_fail_closed",
+      "status": "passed",
+      "observed": {
+        "rejected": 7,
+        "total": 7
+      },
+      "expected": "every invalid input rejected"
+    }
+  ],
+  "summary": {
+    "checks_total": 11,
+    "checks_passed": 11,
+    "adversarial_grid_cases": 175,
+    "symmetry_cases": 25,
+    "max_probability_mass_error": 0.0,
+    "max_independent_oracle_error": 0.00028916808025841734,
+    "defects_total": 0,
+    "critical_defects_open": 0
+  },
+  "defects": [],
+  "corrected_defects": [
+    {
+      "id": "M7-DEFECT-CONVERGENCE-001",
+      "status": "corrected_and_retested",
+      "pre_correction_record": {
+        "path": "auditorias_motor/2026-07-28_M7_2_defecto_convergencia_pre_correccion_v0_1.json",
+        "sha256": "efe0fc153b7925233b5fa50e2f760e0ef7160f865ef882e9f3a58f9224b0a9e0",
+        "bytes": 1802
+      },
+      "correction_record": {
+        "path": "auditorias_motor/2026-07-28_M7_2_correccion_convergencia_v0_1.json",
+        "sha256": "c11dbac889c879595bc94ed09b7623e947798e4d646129534708bd369bc26515",
+        "bytes": 1203
+      }
+    }
+  ],
+  "boundaries": {
+    "probability_calibration_performed": false,
+    "empirical_performance_measured": false,
+    "production_effect": "none",
+    "m8_started": false
+  },
+  "verification_commands": {
+    "status": "passed_2026_07_28",
+    "m7_tests_passed": 22,
+    "full_suite_tests_passed": 501,
+    "m7_specific": ".\\.venv\\Scripts\\python.exe -m unittest tests.test_m7_verification_contract tests.test_m7_math_verification",
+    "full_suite": ".\\.venv\\Scripts\\python.exe -m unittest discover -s tests",
+    "reproduce": ".\\.venv\\Scripts\\python.exe build_m7_math_verification.py --check"
+  },
+  "inputs": [
+    {
+      "path": "auditorias_motor/contrato_verificacion_m7_1_v0_1.json",
+      "sha256": "942e542fa50aa2bd8d405ed614286d1b9cbafb1c94bcdea197e7d4c7f80c20d9",
+      "bytes": 7903
+    },
+    {
+      "path": "auditorias_motor/paquete_cierre_m6_6_v0_1.json",
+      "sha256": "2879011fcbecaf12190e3d0f60ddacb6e82a4aab23d39242869dca35061af4ba",
+      "bytes": 14167
+    },
+    {
+      "path": "m6_first_passage.py",
+      "sha256": "6d70c67e84980dc4245c0181e7ce9a0d8dc51fea90a7b8e28319c9eb8ca746f1",
+      "bytes": 7471
+    },
+    {
+      "path": "m7_independent_oracle.py",
+      "sha256": "0f8f7f8eaf86f92ed6b51b41498e4bad105cf804824d987276985ea2f5cadd2b",
+      "bytes": 6199
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_2_defecto_convergencia_pre_correccion_v0_1.json",
+      "sha256": "efe0fc153b7925233b5fa50e2f760e0ef7160f865ef882e9f3a58f9224b0a9e0",
+      "bytes": 1802
+    },
+    {
+      "path": "auditorias_motor/2026-07-28_M7_2_correccion_convergencia_v0_1.json",
+      "sha256": "c11dbac889c879595bc94ed09b7623e947798e4d646129534708bd369bc26515",
+      "bytes": 1203
+    }
+  ],
+  "next_step": {
+    "id": "M7.3",
+    "name": "Datos ausentes, obsoletos, parciales y contradictorios",
+    "started": false
+  },
+  "canonical_payload_sha256": "31f38cd645c5553a608ac6201c97709677fc509559666ccd67d525fc3a0e0969"
+}

@@ -1,0 +1,36 @@
+{
+  "version": "M7.6-resilience-defects-v0.1",
+  "phase": "M7",
+  "subphase": "M7.6",
+  "date": "2026-07-28",
+  "status": "observed_before_correction",
+  "solver_sha256_before_correction": "dbc9d79c0d1f178f9413bff73fc21fd2cbfd3872ecc806f7490f12f40100941e",
+  "defects": [
+    {
+      "id": "M7-DEFECT-NUMERIC-002",
+      "severity": "high",
+      "name": "unhandled_overflow_in_evidence_softmax",
+      "trigger": "finite eta_tp=1000 and eta_sl=-1000",
+      "observed": "OverflowError: math range error escapes M6 engine",
+      "impact": "A formally valid estimated artifact can crash the internal analysis instead of failing closed.",
+      "status": "open_at_observation"
+    },
+    {
+      "id": "M7-DEFECT-RESOURCE-003",
+      "severity": "high",
+      "name": "unbounded_interval_count",
+      "trigger": "arbitrarily large positive integer or boolean interval_count",
+      "observed": "No upper resource bound and bool accepted as int",
+      "impact": "A malformed internal request can consume unbounded CPU or use an unintended discretization.",
+      "status": "open_at_observation"
+    }
+  ],
+  "required_corrections": [
+    "Use a three-state log-sum-exp normalization for interval hazards.",
+    "Reject non-finite linear predictors before exponentiation.",
+    "Reject boolean interval counts and enforce a documented maximum.",
+    "Retain fail-closed behavior at the M6 engine boundary."
+  ],
+  "production_effect": "none",
+  "m8_started": false
+}

@@ -1,0 +1,1061 @@
+{
+  "version": "M8.2-eligibility-inventory-v0.1",
+  "phase": "M8",
+  "subphase": "M8.2",
+  "status": "inventory_captured_outcome_blind",
+  "captured_at": "2026-07-28T10:58:44.907958+00:00",
+  "source": "supabase_postgres_read_only",
+  "outcome_embargo": {
+    "outcome_columns_selected": [],
+    "legacy_probability_columns_selected": [],
+    "performance_evaluated": false,
+    "pnl_read": false
+  },
+  "query_contract": {
+    "totals_sha256": "9ea5c187ecb48b7ae661c710145fe26b0dd290652d40490efc4351710f8c1eef",
+    "metadata_rows_sha256": "9360f5a69b8d5fcb0782c490f129251db0031d4631334cb802f0f2e3b8db051b",
+    "forbidden_tokens": [
+      "close_reason",
+      "close_price",
+      "closed_at",
+      "final_pnl",
+      "learning_outcome",
+      "observation_result",
+      "tp_probability",
+      "sl_probability",
+      "range_probability"
+    ],
+    "outcome_blind": true
+  },
+  "totals": {
+    "operations_total": 247,
+    "recommendations_total": 895,
+    "linked_recommendations_total": 247,
+    "metadata_rows_read": 247,
+    "structurally_eligible_before_outcomes": 201,
+    "structurally_ineligible_before_outcomes": 46
+  },
+  "date_coverage": {
+    "first_analysis_date": "2026-05-22",
+    "last_analysis_date": "2026-07-27",
+    "distinct_analysis_dates": 63
+  },
+  "structural_exclusion_reasons": [
+    {
+      "reason": "analysis_json_missing_or_invalid",
+      "records": 7
+    },
+    {
+      "reason": "non_market_entry",
+      "records": 39
+    }
+  ],
+  "coverage": [
+    {
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 9
+    },
+    {
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 34
+    },
+    {
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 12
+    },
+    {
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 16
+    },
+    {
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 37
+    },
+    {
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 23
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 5
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 1
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 6
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 8
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 3
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 4
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 4
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 4
+    },
+    {
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 5
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 6
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 6
+    }
+  ],
+  "chronological_cuts": {
+    "status": "frozen_from_analysis_dates_only",
+    "development_end": "2026-07-04",
+    "calibration_end": "2026-07-16",
+    "final_test_start": "2026-07-17",
+    "distinct_analysis_dates": 53,
+    "selection_uses_outcomes": false,
+    "selection_uses_pnl": false,
+    "selection_uses_probabilities": false
+  },
+  "partition_counts_before_outcomes": {
+    "development": 145,
+    "calibration": 35,
+    "final_test": 21
+  },
+  "partition_coverage_before_outcomes": [
+    {
+      "partition": "development",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 7
+    },
+    {
+      "partition": "development",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 26
+    },
+    {
+      "partition": "development",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 6
+    },
+    {
+      "partition": "development",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 12
+    },
+    {
+      "partition": "development",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 24
+    },
+    {
+      "partition": "development",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 16
+    },
+    {
+      "partition": "development",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 4
+    },
+    {
+      "partition": "development",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "partition": "development",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 5
+    },
+    {
+      "partition": "development",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 6
+    },
+    {
+      "partition": "development",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 2
+    },
+    {
+      "partition": "development",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 2
+    },
+    {
+      "partition": "development",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "development",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 4
+    },
+    {
+      "partition": "development",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "development",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "partition": "development",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "development",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "partition": "development",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "development",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "development",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 5
+    },
+    {
+      "partition": "development",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 4
+    },
+    {
+      "partition": "development",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "partition": "development",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "partition": "development",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 3
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 3
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 4
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 8
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 5
+    },
+    {
+      "partition": "calibration",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 1
+    },
+    {
+      "partition": "calibration",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "calibration",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "partition": "calibration",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 1
+    },
+    {
+      "partition": "calibration",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "calibration",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "calibration",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "calibration",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 3
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 1
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 5
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 4
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 5
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 2
+    },
+    {
+      "partition": "final_test",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 1
+    },
+    {
+      "partition": "final_test",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 1
+    },
+    {
+      "partition": "final_test",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BNBUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "BNBUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "records": 0
+    },
+    {
+      "partition": "final_test",
+      "symbol": "INJUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "records": 0
+    }
+  ],
+  "limitations": [
+    "Counts precede outcome eligibility and may decrease in M8.3.",
+    "No claim is made about closed-operation success or class balance.",
+    "Historical pre-trade raw data may still be insufficient for exact reconstruction."
+  ],
+  "boundaries": {
+    "production_effect": "none",
+    "m8_closed": false,
+    "m9_started": false
+  },
+  "next_step": {
+    "id": "M8.3",
+    "name": "Reconstruccion de outcomes y confirmacion de cortes",
+    "outcome_embargo_release_authorized": true,
+    "started": false
+  },
+  "canonical_payload_sha256": "15042ed2233d11b8b310ed7c56214047ec30c94e67547b9111a5bcef1cee11f7"
+}

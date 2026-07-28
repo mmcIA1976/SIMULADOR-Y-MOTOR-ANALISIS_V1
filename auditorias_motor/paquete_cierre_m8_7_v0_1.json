@@ -1,0 +1,73 @@
+{
+  "version": "M8.7-closure-package-v0.1",
+  "phase": "M8",
+  "subphase": "M8.7",
+  "status": "m8_closed",
+  "decision": {
+    "state": "return_to_earlier_phase",
+    "reason": "m6_discrete_hazard_mass_defect",
+    "m9_unblocked": false
+  },
+  "inputs": [
+    {
+      "path": "protocolo_evaluacion_m8_1_v0_1.json",
+      "sha256": "5527a37ae97b1e307362be50c55a57d3e9f1058874ae5f8b2ae2a48c7f34b1d8"
+    },
+    {
+      "path": "inventario_elegibilidad_m8_2_v0_1.json",
+      "sha256": "e103f8b7dc29708a98a0e508c9253c81d4ed4e0fd7de681423c545434c5c5023"
+    },
+    {
+      "path": "contrato_ejecucion_m8_3_v0_1.json",
+      "sha256": "d583975650e6c3c65089f7b8e3f4d37171dbebe8e42086ba0219d2889973983d"
+    },
+    {
+      "path": "dataset_desarrollo_calibracion_m8_3_v0_1.json",
+      "sha256": "b055fe260222082ae23a9f9c298cb5fd7330d0ca42f6fe8fbb9f73bc6099e36a"
+    },
+    {
+      "path": "dataset_final_sellado_m8_3_v0_1.json",
+      "sha256": "4ebeb25c5c4ca82e6694f20f8261e0fb22f09c279ad3ee297f4107a030938e77"
+    },
+    {
+      "path": "evaluacion_baseline_m8_4_v0_1.json",
+      "sha256": "97b42992f46010ac153d7240bba3c2672ee7fbdb605a0234524846c445b8a8ee"
+    },
+    {
+      "path": "modelo_estimado_calibrado_m8_5_v0_1.json",
+      "sha256": "074b3fb4be8735b6f0c70e4c534bca2c8df5f940de666d220ed1517f54c918bd"
+    },
+    {
+      "path": "evaluacion_final_m8_6_v0_1.json",
+      "sha256": "bb58cb94acd823a46f0d9618e2a6739bc80591680251cf8df05a2755b1569e20"
+    }
+  ],
+  "secondary_economics": {
+    "labeled_final_records": 21,
+    "mean_realized_plan_r": 0.302897841850785,
+    "actual_user_pnl_records": 21,
+    "mean_actual_user_pnl": 7.925352380952381,
+    "actual_user_pnl_role": "secondary_descriptive_only_mixes_execution_leverage_and_user_behavior",
+    "fees_slippage_funding": "not_reconstructible_consistently",
+    "profitability_claim": false
+  },
+  "quantified_blockers": {
+    "historical_records_without_stored_exact_horizon": 200,
+    "formal_final_records": 1,
+    "final_labeled_retrospective_records": 21
+  },
+  "required_next_actions": [
+    "Store analysis_at, data_cutoff_at and exact horizon_seconds for every new analysis.",
+    "Run the frozen M5/M6 design prospectively without production effect.",
+    "Accumulate a temporally later final cohort containing resolved TP, SL and expiry classes.",
+    "Repeat M8 final evaluation without reusing the opened 2026-07 final period."
+  ],
+  "boundaries": {
+    "m8_closed": true,
+    "m9_started": false,
+    "m9_blocked": true,
+    "production_effect": "none",
+    "production_authorized": false
+  },
+  "canonical_payload_sha256": "bc7743ca548da751144e9a0bcbc2656236a1f03922cdab459329c69c049a4b48"
+}

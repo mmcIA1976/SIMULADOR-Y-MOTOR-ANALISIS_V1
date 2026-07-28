@@ -1,0 +1,74 @@
+{
+  "version": "M6-R1-closure-v0.1",
+  "phase": "M6-R1",
+  "status": "completed_remediation_no_predictive_revalidation",
+  "scope": {
+    "numerical_defect_corrected": true,
+    "historical_records_checked": 201,
+    "historical_records_blocked_after": 0,
+    "property_grid_cases": 500,
+    "property_grid_failures": 0,
+    "rules_reviewed": 5,
+    "local_source_files_changed": true,
+    "pretrade_audit_metadata_modified": true,
+    "probability_scores_modified": false,
+    "online_deployed": false
+  },
+  "artifacts": [
+    {
+      "path": "diagnostico_m6_r1_v0_1.json",
+      "sha256": "ae184419d20a6c7b74e282d0516c534793036f9496e60a297608689e0d1dcd88"
+    },
+    {
+      "path": "decision_reglas_m6_r1_post_m8_v0_1.json",
+      "sha256": "f6b9f39aa768b4a5fd878f3f5dd704c3046b88076026a72066998660ec425db5"
+    }
+  ],
+  "implementation": [
+    {
+      "path": "m6_remediated_competing_risks.py",
+      "sha256": "495b7aedfb97e389b04abf57801d927943cc7f626ce8091dea7adf1f95dbe87a"
+    },
+    {
+      "path": "m6_remediation_engine.py",
+      "sha256": "1152aa912f4f32b7647c65bf316efb1a92a32b5b50d3853d969f4705b9ae3b45"
+    },
+    {
+      "path": "shadow_runtime.py",
+      "sha256": "82611078050603bad96eed9871826095acaab8d023939633fc067d87aca12a05"
+    },
+    {
+      "path": "versioning.py",
+      "sha256": "801eb0a8a12d1ba41bf3c11bb2f54cc4e4e6d0bc9a262ebc114760b14c54d75c"
+    }
+  ],
+  "data_contract_change": {
+    "new_analysis_fields": [
+      "analysis_at",
+      "data_cutoff_at",
+      "evaluation_horizon_seconds",
+      "evaluation_expires_at"
+    ],
+    "data_cutoff_policy": "local_snapshot_sealed_upper_bound_v0.1",
+    "probability_effect": "none"
+  },
+  "decision": {
+    "m6_r1_closed": true,
+    "m8_result_overturned": false,
+    "m9_unblocked": false,
+    "reason": "Numerical compatibility is repaired, but predictive superiority still requires a new temporal holdout."
+  },
+  "next_phase": {
+    "id": "M6-R2",
+    "objective": "Prepare a new internal candidate without the rejected H-path feature and collect prospectively stamped analyses; do not reuse the opened July final period.",
+    "started": false
+  },
+  "boundaries": {
+    "probability_effect": "none",
+    "online_deployed": false,
+    "local_metadata_effect": "pretrade_audit_fields_added",
+    "m8_closed": true,
+    "m9_started": false
+  },
+  "canonical_payload_sha256": "537793238c0af09a4e0cdbbacb4dd5989d3c13b531bed8ed6eda1ff4bf6fcef6"
+}

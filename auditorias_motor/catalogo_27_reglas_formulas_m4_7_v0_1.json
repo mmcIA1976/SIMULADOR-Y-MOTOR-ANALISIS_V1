@@ -1,0 +1,3556 @@
+{
+  "version": "M4.7-consolidated-rule-audit-v0.1",
+  "phase": "M4",
+  "subphase": "M4.7",
+  "status": "owner_audit_material_m4_not_closed",
+  "date": "2026-07-27",
+  "purpose": "Single audit surface for every formal M4 rule and exact formula.",
+  "scope": {
+    "rules": 27,
+    "rules_by_subphase": {
+      "M4.2": 6,
+      "M4.3": 6,
+      "M4.4": 7,
+      "M4.5": 8
+    },
+    "predictive_hypotheses": 15,
+    "direct_probability_effects_authorized": 0,
+    "numeric_weights_authorized": 0,
+    "production_rules_authorized": 0,
+    "m4_closed": false,
+    "m5_started": false
+  },
+  "reading_contract": {
+    "formula_is_documented_operator": true,
+    "formula_is_empirically_validated_probability": false,
+    "hypotheses_are_unverified": true,
+    "implementation_is_deferred_to_m5": true,
+    "probability_integration_is_deferred_to_m6": true
+  },
+  "formula_index": [
+    {
+      "sequence": 1,
+      "id": "M4-RULE-HORIZON-SAMPLING-001",
+      "subphase": "M4.2",
+      "name": "Seleccion exacta de intervalo para el horizonte",
+      "formula": [
+        "I={delta in profile_intervals: H mod delta=0 and H/delta>=24}",
+        "delta*=max(I)",
+        "N_H=H/delta*"
+      ]
+    },
+    {
+      "sequence": 2,
+      "id": "M4-RULE-PLAN-GEOMETRY-001",
+      "subphase": "M4.2",
+      "name": "Geometria logaritmica long/short",
+      "formula": [
+        "s=+1 long; s=-1 short",
+        "d_TP=s*ln(TP/E)",
+        "d_SL=-s*ln(SL/E)",
+        "valid iff d_TP>0 and d_SL>0"
+      ]
+    },
+    {
+      "sequence": 3,
+      "id": "M4-RULE-LOG-RETURNS-001",
+      "subphase": "M4.2",
+      "name": "Retornos logaritmicos de velas cerradas",
+      "formula": [
+        "r_i=ln(C_i/C_(i-1))"
+      ]
+    },
+    {
+      "sequence": 4,
+      "id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "subphase": "M4.2",
+      "name": "Volatilidad realizada del horizonte anterior",
+      "formula": [
+        "RV_prev(H)=sum_(i=1..N_H)(r_i^2)",
+        "sigma_prev(H)=sqrt(RV_prev(H))"
+      ]
+    },
+    {
+      "sequence": 5,
+      "id": "M4-RULE-BARRIER-REACHABILITY-001",
+      "subphase": "M4.2",
+      "name": "Distancia TP/SL normalizada por volatilidad",
+      "formula": [
+        "z_TP=d_TP/sigma_prev(H)",
+        "z_SL=d_SL/sigma_prev(H)",
+        "b=ln(d_TP/d_SL)"
+      ]
+    },
+    {
+      "sequence": 6,
+      "id": "M4-RULE-PENDING-ACTIVATION-001",
+      "subphase": "M4.2",
+      "name": "Distancia de activacion para entrada pendiente",
+      "formula": [
+        "market: d_entry=0, z_entry=0",
+        "pending: d_entry=abs(ln(E/P_analysis))",
+        "z_entry=d_entry/sigma_prev(H)"
+      ]
+    },
+    {
+      "sequence": 7,
+      "id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "subphase": "M4.3",
+      "name": "Operador de suavizado exponencial",
+      "formula": [
+        "S_0=x_0",
+        "S_t=alpha*x_t+(1-alpha)*S_(t-1), 0<alpha<=1"
+      ]
+    },
+    {
+      "sequence": 8,
+      "id": "M4-RULE-PATH-STRUCTURE-001",
+      "subphase": "M4.3",
+      "name": "Desplazamiento y eficiencia de trayectoria",
+      "formula": [
+        "D_W=sum(r_i)=ln(C_end/C_start)",
+        "TV_W=sum(abs(r_i))",
+        "E_W=abs(D_W)/TV_W",
+        "SE_W=D_W/TV_W; if TV_W=0, observed flat path gives SE_W=0"
+      ]
+    },
+    {
+      "sequence": 9,
+      "id": "M4-RULE-PRIOR-EXTREMA-001",
+      "subphase": "M4.3",
+      "name": "Extremos observados del horizonte anterior",
+      "formula": [
+        "X_high=max(H_i), X_low=min(L_i) over previous exact H",
+        "long target extreme=X_high; short target extreme=X_low",
+        "between=entry<X_high<TP long; TP<X_low<entry short"
+      ]
+    },
+    {
+      "sequence": 10,
+      "id": "M4-RULE-VOLATILITY-RANK-001",
+      "subphase": "M4.3",
+      "name": "Percentil continuo de volatilidad",
+      "formula": [
+        "q=(count(RV_j<RV_t)+0.5*count(RV_j=RV_t))/60",
+        "j are 60 strictly prior non-overlapping H windows"
+      ]
+    },
+    {
+      "sequence": 11,
+      "id": "M4-RULE-MTF-HIERARCHY-001",
+      "subphase": "M4.3",
+      "name": "Jerarquia multi-timeframe H, 2H y 4H",
+      "formula": [
+        "calculate SE_W for W in {H,2H,4H} on the same closed grid",
+        "sign_W=sign(SE_W)",
+        "agreement in {all_positive,all_negative,mixed,flat_present}"
+      ]
+    },
+    {
+      "sequence": 12,
+      "id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "subphase": "M4.3",
+      "name": "Vector continuo de regimen",
+      "formula": [
+        "R_t=(q_RV,t, SE_H,t)"
+      ]
+    },
+    {
+      "sequence": 13,
+      "id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "subphase": "M4.4",
+      "name": "Desequilibrio de operaciones agresoras ejecutadas",
+      "formula": [
+        "B_H=sum(p_i*q_i where buyer_is_maker=false)",
+        "S_H=sum(p_i*q_i where buyer_is_maker=true)",
+        "ATI_H=(B_H-S_H)/(B_H+S_H)",
+        "periodic alternative=(sum(buyVol)-sum(sellVol))/total"
+      ]
+    },
+    {
+      "sequence": 14,
+      "id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "subphase": "M4.4",
+      "name": "Cambio logaritmico de open interest",
+      "formula": [
+        "dOI_H=ln(OI_t/OI_(t-H))"
+      ]
+    },
+    {
+      "sequence": 15,
+      "id": "M4-RULE-PRICE-OI-STATE-001",
+      "subphase": "M4.4",
+      "name": "Estado conjunto precio y open interest",
+      "formula": [
+        "POI_H=(D_H,dOI_H)"
+      ]
+    },
+    {
+      "sequence": 16,
+      "id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "subphase": "M4.4",
+      "name": "Intervalo observable spot-Futures",
+      "formula": [
+        "mid_F=(F_bid+F_ask)/2; mid_S=(S_bid+S_ask)/2",
+        "b_mid=ln(mid_F/mid_S)",
+        "b_sellF_buyS=ln(F_bid/S_ask)",
+        "b_buyF_sellS=ln(F_ask/S_bid)"
+      ]
+    },
+    {
+      "sequence": 17,
+      "id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "subphase": "M4.4",
+      "name": "Prima sincronizada mark-index",
+      "formula": [
+        "b_mark_index=ln(markPrice/indexPrice)"
+      ]
+    },
+    {
+      "sequence": 18,
+      "id": "M4-RULE-FUNDING-STATE-001",
+      "subphase": "M4.4",
+      "name": "Estado temporal y carga realizada de funding",
+      "formula": [
+        "f_last_hour=lastFundingRate/fundingIntervalHours",
+        "L_prev(H)=sum(f_j where t-H<fundingTime_j<=t)",
+        "L_prev_hour(H)=L_prev(H)/H_hours",
+        "N_schedule=count configured event times within future H"
+      ]
+    },
+    {
+      "sequence": 19,
+      "id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "subphase": "M4.4",
+      "name": "Vector continuo de contexto de derivados",
+      "formula": [
+        "DC_H=(ATI_H,dOI_H,b_mid,f_last_hour)"
+      ]
+    },
+    {
+      "sequence": 20,
+      "id": "M4-RULE-QUOTED-SPREAD-001",
+      "subphase": "M4.5",
+      "name": "Spread cotizado en el instante de llegada",
+      "formula": [
+        "mid=(best_bid+best_ask)/2",
+        "spread_quote=best_ask-best_bid",
+        "spread_fraction_mid=spread_quote/mid"
+      ]
+    },
+    {
+      "sequence": 21,
+      "id": "M4-RULE-DEPTH-SWEEP-001",
+      "subphase": "M4.5",
+      "name": "Barrido visible e implementation shortfall",
+      "formula": [
+        "buy consume asks; sell consume bids",
+        "VWAP=sum(price_i*filled_qty_i)/requested_qty",
+        "D=+1 buy, -1 sell",
+        "IS_fraction=D*(VWAP-arrival_mid)/arrival_mid",
+        "fill_ratio=filled_qty/requested_qty"
+      ]
+    },
+    {
+      "sequence": 22,
+      "id": "M4-RULE-FEE-SCENARIOS-001",
+      "subphase": "M4.5",
+      "name": "Comision por rol de liquidez autenticado",
+      "formula": [
+        "fee(role)=notional*commission_rate(role)",
+        "lower=min(fee(role)); upper=max(fee(role))",
+        "exact iff one execution role is known"
+      ]
+    },
+    {
+      "sequence": 23,
+      "id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "subphase": "M4.5",
+      "name": "Flujo monetario firmado de funding",
+      "formula": [
+        "position_sign=+1 long, -1 short",
+        "cashflow_event=-position_sign*quantity*mark_price*rate",
+        "cashflow_total=sum(cashflow_event)"
+      ]
+    },
+    {
+      "sequence": 24,
+      "id": "M4-RULE-PLAN-EXPOSURE-001",
+      "subphase": "M4.5",
+      "name": "Exposicion monetaria lineal del plan",
+      "formula": [
+        "notional=margin*leverage",
+        "quantity=notional/entry",
+        "gross_pnl(P)=direction*quantity*(P-entry)",
+        "gross_reward=gross_pnl(TP)",
+        "gross_risk=-gross_pnl(SL)",
+        "gross_RR=gross_reward/gross_risk",
+        "risk_fraction_margin=gross_risk/margin"
+      ]
+    },
+    {
+      "sequence": 25,
+      "id": "M4-RULE-NET-PAYOFFS-001",
+      "subphase": "M4.5",
+      "name": "Vector monetario neto por resultado",
+      "formula": [
+        "net_payoff_k=gross_price_pnl_k-fee_k-IS_cost_k+funding_k",
+        "no_entry direct trading cashflow=0"
+      ]
+    },
+    {
+      "sequence": 26,
+      "id": "M4-RULE-EXPECTED-VALUE-001",
+      "subphase": "M4.5",
+      "name": "Identidad de valor esperado por resultados",
+      "formula": [
+        "0<=p_k<=1",
+        "sum(p_k)=1",
+        "EV=sum(p_k*y_k)"
+      ]
+    },
+    {
+      "sequence": 27,
+      "id": "M4-RULE-EVALUATION-READINESS-001",
+      "subphase": "M4.5",
+      "name": "Estado explicito de disponibilidad economica",
+      "formula": [
+        "economic_ready=all(required economic statuses available|N/A)",
+        "account_risk_ready=(account_risk status=available)",
+        "decision_authorized=false until governance is defined"
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "sequence": 1,
+      "source_subphase": "M4.2",
+      "id": "M4-RULE-HORIZON-SAMPLING-001",
+      "version": "0.1",
+      "name": "Seleccion exacta de intervalo para el horizonte",
+      "analytical_blocks": [
+        26
+      ],
+      "concrete_objective": "Select a closed-kline interval that divides the exact horizon without temporal interpolation.",
+      "rule_type": "deterministic_policy",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "I={delta in profile_intervals: H mod delta=0 and H/delta>=24}",
+        "delta*=max(I)",
+        "N_H=H/delta*"
+      ],
+      "pseudocode": [
+        "validate horizon profile and exact H",
+        "retain supported intervals that divide H exactly",
+        "retain intervals with at least 24 returns",
+        "select the largest retained interval or block"
+      ],
+      "cross_pair_normalization": "Same algorithm for every pair; only H and profile select delta.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "valid exact horizon inside approved profile"
+      ],
+      "non_application_conditions": [
+        "no supported exact divisor with at least 24 returns"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USDM-KLINES",
+          "level": "definition",
+          "claim": "Supported kline intervals and timestamp fields."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "The minimum of 24 returns is project policy, not an academic optimum."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "No TP/SL direction; data-resolution policy only.",
+      "related_rules": [
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "double_counting_control": "Produces one interval identity, no evidence.",
+      "missing_data_behavior": "Block reachability family.",
+      "unit_tests_limits_and_invariants": [
+        "H is never rounded",
+        "delta divides H exactly",
+        "N_H>=24",
+        "selection is pair-independent"
+      ],
+      "trace_output": [
+        "time_horizon",
+        "horizon_seconds",
+        "interval",
+        "interval_seconds",
+        "returns_per_horizon",
+        "selection_policy"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Suspend if M7 shows unstable or aliased RV at the selected grid.",
+        "Change only by versioned M4 amendment before empirical testing."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 2,
+      "source_subphase": "M4.2",
+      "id": "M4-RULE-PLAN-GEOMETRY-001",
+      "version": "0.1",
+      "name": "Geometria logaritmica long/short",
+      "analytical_blocks": [
+        26,
+        28
+      ],
+      "concrete_objective": "Represent TP and SL distance symmetrically across sides.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "s=+1 long; s=-1 short",
+        "d_TP=s*ln(TP/E)",
+        "d_SL=-s*ln(SL/E)",
+        "valid iff d_TP>0 and d_SL>0"
+      ],
+      "pseudocode": [
+        "validate side and positive finite prices",
+        "validate side-specific barrier ordering",
+        "calculate d_TP and d_SL in log-price space"
+      ],
+      "cross_pair_normalization": "Log ratios are dimensionless and scale-invariant.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "valid plan geometry"
+      ],
+      "non_application_conditions": [
+        "invalid side, price or barrier ordering"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTIC-CONTRACT",
+          "level": "definition",
+          "claim": "Approved side-symmetric geometry."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "Holding all else fixed, a farther same-side barrier cannot be declared easier to reach.",
+      "related_rules": [
+        "M4-RULE-BARRIER-REACHABILITY-001"
+      ],
+      "double_counting_control": "Single canonical geometry for all later blocks.",
+      "missing_data_behavior": "Block the complete analysis.",
+      "unit_tests_limits_and_invariants": [
+        "long/short mirror symmetry",
+        "positive distances",
+        "price-scale invariance",
+        "continuous response to barrier movement"
+      ],
+      "trace_output": [
+        "side_sign",
+        "entry",
+        "take_profit",
+        "stop_loss",
+        "tp_log_distance",
+        "sl_log_distance"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Withdraw any implementation that differs from M2."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 3,
+      "source_subphase": "M4.2",
+      "id": "M4-RULE-LOG-RETURNS-001",
+      "version": "0.1",
+      "name": "Retornos logaritmicos de velas cerradas",
+      "analytical_blocks": [
+        26
+      ],
+      "concrete_objective": "Create the only return series used by M4.2 volatility.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "r_i=ln(C_i/C_(i-1))"
+      ],
+      "pseudocode": [
+        "take consecutive closed adjusted-free USD-M closes",
+        "reject non-positive, missing, stale, future or gapped observations",
+        "calculate natural log price ratios"
+      ],
+      "cross_pair_normalization": "Dimensionless return; same formula for every pair.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "M3-compliant consecutive closed klines"
+      ],
+      "non_application_conditions": [
+        "gap, open bar, invalid close or insufficient history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+          "level": "definition",
+          "claim": "High-frequency return inputs for realized volatility."
+        },
+        {
+          "source_id": "BINANCE-USDM-KLINES",
+          "level": "definition",
+          "claim": "Close price and close timestamp semantics."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "No direction or probability by itself.",
+      "related_rules": [
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "double_counting_control": "One canonical return series per selected interval.",
+      "missing_data_behavior": "Block realized volatility and dependent rules.",
+      "unit_tests_limits_and_invariants": [
+        "constant price gives zero returns",
+        "multiplying all prices by a constant does not change returns",
+        "gaps and invalid prices block"
+      ],
+      "trace_output": [
+        "close_count",
+        "return_count",
+        "first_close_time",
+        "last_close_time",
+        "return_series_hash"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Withdraw any fallback that inserts zero returns."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 4,
+      "source_subphase": "M4.2",
+      "id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "version": "0.1",
+      "name": "Volatilidad realizada del horizonte anterior",
+      "analytical_blocks": [
+        26
+      ],
+      "concrete_objective": "Measure observed log-price variation over the immediately preceding exact horizon without scaling from another horizon.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "RV_prev(H)=sum_(i=1..N_H)(r_i^2)",
+        "sigma_prev(H)=sqrt(RV_prev(H))"
+      ],
+      "pseudocode": [
+        "select delta with M4-RULE-HORIZON-SAMPLING-001",
+        "take N_H+1 consecutive closes ending at latest closed bar",
+        "verify exact H span and M3 freshness",
+        "calculate N_H log returns, RV and sigma"
+      ],
+      "cross_pair_normalization": "Log-volatility is dimensionless and calculated over the same exact H for every pair.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete previous-H window with at least 24 returns"
+      ],
+      "non_application_conditions": [
+        "missing/gapped/future/stale bars",
+        "zero sigma blocks normalized reachability"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+          "level": "technical_foundation",
+          "claim": "Sum-of-squared high-frequency returns measures RV."
+        },
+        {
+          "source_id": "XIE-ET-AL-2019-BITCOIN-RV",
+          "level": "external_predictive_evidence",
+          "claim": "Bitcoin RV can be forecast, but competing model specifications matter."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "Lagged sigma_prev(H) is not labelled a forecast.",
+        "No persistence coefficient is assumed."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REACH-001",
+        "status": "proposed_unverified",
+        "statement": "Previous-horizon RV may provide a useful reference scale for next-horizon barrier distance.",
+        "not_a_claim": "It is not assumed equal to future volatility and receives no probability weight."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Higher sigma lowers both normalized barrier distances; it does not choose TP versus SL direction.",
+      "related_rules": [
+        "M4-RULE-LOG-RETURNS-001",
+        "M4-RULE-BARRIER-REACHABILITY-001"
+      ],
+      "double_counting_control": "RV is one scale input. M4.3 regime may classify it but cannot re-add the same value as independent evidence.",
+      "missing_data_behavior": "Block all sigma-normalized M4.2 outputs.",
+      "unit_tests_limits_and_invariants": [
+        "exact previous-H span",
+        "RV>=0",
+        "sigma=sqrt(RV)",
+        "scale invariance",
+        "no annualization or cross-horizon square-root scaling"
+      ],
+      "trace_output": [
+        "interval",
+        "horizon_seconds",
+        "return_count",
+        "window_start_close_time",
+        "window_end_close_time",
+        "realized_variance",
+        "realized_volatility",
+        "forecast_status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Reject M4-HYP-REACH-001 if independent evaluation shows no incremental reachability value or unstable pair behavior.",
+        "A future forecast model belongs to M6 and needs a new rule ID."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 5,
+      "source_subphase": "M4.2",
+      "id": "M4-RULE-BARRIER-REACHABILITY-001",
+      "version": "0.1",
+      "name": "Distancia TP/SL normalizada por volatilidad",
+      "analytical_blocks": [
+        26,
+        28
+      ],
+      "concrete_objective": "Express both barriers in comparable horizon-volatility units.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "z_TP=d_TP/sigma_prev(H)",
+        "z_SL=d_SL/sigma_prev(H)",
+        "b=ln(d_TP/d_SL)"
+      ],
+      "pseudocode": [
+        "obtain valid geometry and sigma_prev(H)>0",
+        "divide each positive log distance by the common sigma",
+        "record balance b without converting it to probability"
+      ],
+      "cross_pair_normalization": "Dimensionless z values comparable across price scales.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "valid geometry and finite sigma_prev(H)>0"
+      ],
+      "non_application_conditions": [
+        "invalid geometry, missing history or sigma<=0"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTIC-CONTRACT",
+          "level": "definition",
+          "claim": "Mandatory z_TP and z_SL geometry."
+        },
+        {
+          "source_id": "POETZELBERGER-WANG-2001",
+          "level": "technical_foundation",
+          "claim": "Actual crossing probability requires a specified path process and boundary treatment."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "z is not a normal CDF input until M6 selects and validates a model.",
+        "No threshold such as one or two sigma is a decision boundary."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REACH-002",
+        "status": "mathematical_constraint_for_future_model",
+        "statement": "Holding all other state fixed, increasing only z_TP must not increase P(TP first); likewise for z_SL and P(SL first)."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Continuous monotonic geometry constraint, not a probability or directional signal.",
+      "related_rules": [
+        "M4-RULE-PLAN-GEOMETRY-001",
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "double_counting_control": "Geometry appears once in M6. Raw percentage, ATR bands and price-vs-entry bonuses cannot re-enter separately.",
+      "missing_data_behavior": "Block probability publication.",
+      "unit_tests_limits_and_invariants": [
+        "z_TP>0 and z_SL>0",
+        "barrier monotonicity",
+        "volatility monotonicity",
+        "long/short mirror symmetry",
+        "continuity"
+      ],
+      "trace_output": [
+        "tp_log_distance",
+        "sl_log_distance",
+        "sigma_prev_horizon",
+        "z_tp",
+        "z_sl",
+        "distance_balance_log_ratio",
+        "probability"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Any later model violating monotonicity fails M7.",
+        "Withdraw any score bands attached directly to z."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 6,
+      "source_subphase": "M4.2",
+      "id": "M4-RULE-PENDING-ACTIVATION-001",
+      "version": "0.1",
+      "name": "Distancia de activacion para entrada pendiente",
+      "analytical_blocks": [
+        28
+      ],
+      "concrete_objective": "Represent the pre-entry barrier separately from TP/SL after entry under the M2 event tree.",
+      "rule_type": "deterministic_calculation",
+      "raw_data_and_provider": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-004",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "exact_transformation_and_formula": [
+        "market: d_entry=0, z_entry=0",
+        "pending: d_entry=abs(ln(E/P_analysis))",
+        "z_entry=d_entry/sigma_prev(H)"
+      ],
+      "pseudocode": [
+        "require entry_type and trigger_condition from the immutable plan",
+        "reject a pending trigger already satisfied at analysis_at",
+        "calculate distance and z_entry for a waiting trigger",
+        "do not calculate activation probability in M4"
+      ],
+      "cross_pair_normalization": "Dimensionless log distance over the same sigma_prev(H).",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "market entry or valid unsatisfied pending trigger"
+      ],
+      "non_application_conditions": [
+        "missing trigger_condition",
+        "pending condition already satisfied",
+        "invalid or stale current price"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTIC-CONTRACT",
+          "level": "definition",
+          "claim": "No-entry and post-entry expiry are separate outcomes."
+        },
+        {
+          "source_id": "M3-DATA-CONTRACTS",
+          "level": "definition",
+          "claim": "Plan trigger, analysis price and timestamps are pre-trade data."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, weight or threshold.",
+        "No source proves transfer to all six pairs and three horizons.",
+        "Distance alone does not define activation probability."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-PENDING-001",
+        "status": "mathematical_constraint_for_future_model",
+        "statement": "Holding path law fixed, moving an unsatisfied entry trigger farther away must not increase activation probability."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Feeds a future P(entry within H) branch; never adds points to conditional P(TP first | entry).",
+      "related_rules": [
+        "M4-RULE-BARRIER-REACHABILITY-001",
+        "M2 event tree"
+      ],
+      "double_counting_control": "Entry activation is evaluated once before conditional TP/SL.",
+      "missing_data_behavior": "Block pending-order probability analysis.",
+      "unit_tests_limits_and_invariants": [
+        "market z_entry=0",
+        "pending z_entry>0",
+        "trigger direction preserved",
+        "already-satisfied pending trigger rejected",
+        "activation probability remains null"
+      ],
+      "trace_output": [
+        "entry_type",
+        "trigger_condition",
+        "entry_order_type",
+        "current_price",
+        "entry",
+        "entry_log_distance",
+        "z_entry",
+        "activation_status",
+        "activation_probability"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Any future activation model must preserve M2 probability mass.",
+        "Withdraw any zone score or fixed activation band."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 7,
+      "source_subphase": "M4.3",
+      "id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "version": "0.1",
+      "name": "Operador de suavizado exponencial",
+      "analytical_blocks": [
+        1,
+        3
+      ],
+      "concrete_objective": "Preserve the standard recursive operator while refusing unsupported EMA periods and crossover meanings.",
+      "rule_type": "deterministic_operator_not_p0_evidence",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "S_0=x_0",
+        "S_t=alpha*x_t+(1-alpha)*S_(t-1), 0<alpha<=1"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "NIST-SINGLE-EXPONENTIAL-SMOOTHING",
+          "level": "definition",
+          "claim": "Recursive exponential smoothing and initialization."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "No alpha or 9/21/50/200 period is approved.",
+        "Price above/below a smoother is not a directional rule."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "None; operator is descriptive only.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001"
+      ],
+      "double_counting_control": "Cannot enter P0 alongside path displacement.",
+      "missing_data_behavior": "Do not calculate; never replace history with a shorter EMA.",
+      "unit_tests_limits_and_invariants": [
+        "0<alpha<=1",
+        "explicit initialization",
+        "constant input remains constant"
+      ],
+      "trace_output": [
+        "alpha",
+        "initialization",
+        "input_count",
+        "smoothed_value"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Withdraw any fixed period introduced without a new rule card."
+      ],
+      "lifecycle_status": "documented_operator_not_admitted_as_p0_evidence",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 8,
+      "source_subphase": "M4.3",
+      "id": "M4-RULE-PATH-STRUCTURE-001",
+      "version": "0.1",
+      "name": "Desplazamiento y eficiencia de trayectoria",
+      "analytical_blocks": [
+        1,
+        24
+      ],
+      "concrete_objective": "Separate net displacement from total path variation over an exact closed window.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "D_W=sum(r_i)=ln(C_end/C_start)",
+        "TV_W=sum(abs(r_i))",
+        "E_W=abs(D_W)/TV_W",
+        "SE_W=D_W/TV_W; if TV_W=0, observed flat path gives SE_W=0"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "MOSKOWITZ-OOI-PEDERSEN-2012",
+          "level": "external_predictive_evidence",
+          "claim": "Past return sign showed momentum at monthly horizons in traditional futures."
+        },
+        {
+          "source_id": "HUDSON-URQUHART-2021",
+          "level": "external_predictive_evidence",
+          "claim": "Crypto technical-rule performance varied by asset and failed OOS for Bitcoin in their selected test."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "Path efficiency itself is a project deterministic measure.",
+        "Positive displacement is not automatically bullish evidence."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-STRUCTURE-001",
+        "status": "proposed_unverified",
+        "statement": "Side-aligned signed path efficiency may condition which barrier is reached first within the same horizon."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "No direct effect; future models may test side-aligned SE_W under regime and horizon controls.",
+      "related_rules": [
+        "M4-RULE-MTF-HIERARCHY-001",
+        "M4-RULE-CONTINUOUS-REGIME-001"
+      ],
+      "double_counting_control": "D_W, E_W and SE_W are one price-path evidence family.",
+      "missing_data_behavior": "Block structure and all dependent combinations.",
+      "unit_tests_limits_and_invariants": [
+        "0<=E_W<=1",
+        "-1<=SE_W<=1",
+        "scale invariance",
+        "D_W equals log endpoint ratio"
+      ],
+      "trace_output": [
+        "window_seconds",
+        "return_count",
+        "log_displacement",
+        "total_log_variation",
+        "path_efficiency",
+        "signed_path_efficiency",
+        "direction_descriptor",
+        "prediction"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if no stable independent incremental value.",
+        "Reject any implementation that thresholds SE_W without amendment."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 9,
+      "source_subphase": "M4.3",
+      "id": "M4-RULE-PRIOR-EXTREMA-001",
+      "version": "0.1",
+      "name": "Extremos observados del horizonte anterior",
+      "analytical_blocks": [
+        1,
+        28
+      ],
+      "concrete_objective": "Record prior-H high/low and whether the target-side extreme lies strictly between entry and TP.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "X_high=max(H_i), X_low=min(L_i) over previous exact H",
+        "long target extreme=X_high; short target extreme=X_low",
+        "between=entry<X_high<TP long; TP<X_low<entry short"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "OSLER-2000-SUPPORT-RESISTANCE",
+          "level": "external_predictive_evidence",
+          "claim": "Published FX levels predicted some intraday trend interruptions with heterogeneous performance."
+        },
+        {
+          "source_id": "CURCIO-ET-AL-2014-PRICE-MEMORY",
+          "level": "technical_foundation",
+          "claim": "Local extrema, bounce count and time scale can be studied as price-memory candidates."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "A rolling high/low is not called support or resistance.",
+        "An extreme between entry and TP receives no penalty."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-LEVEL-001",
+        "status": "proposed_unverified",
+        "statement": "A prior target-side extreme between entry and TP may condition first-passage behavior."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown until independently tested; both interruption and breakout continuation remain possible.",
+      "related_rules": [
+        "M4-RULE-BARRIER-REACHABILITY-001"
+      ],
+      "double_counting_control": "Replaces support, level and technical-barrier penalties with one extrema descriptor.",
+      "missing_data_behavior": "Rule not evaluated; no synthetic level.",
+      "unit_tests_limits_and_invariants": [
+        "prior_low<=prior_high",
+        "strict between relation",
+        "long/short mirror handling",
+        "no support/resistance label"
+      ],
+      "trace_output": [
+        "prior_high",
+        "prior_low",
+        "target_side_extreme",
+        "adverse_side_extreme",
+        "target_extreme_between_entry_and_tp",
+        "target_extreme_log_distance",
+        "barrier_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if effect is unstable by pair/horizon.",
+        "A richer bounce detector requires a new rule and source claims."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 10,
+      "source_subphase": "M4.3",
+      "id": "M4-RULE-VOLATILITY-RANK-001",
+      "version": "0.1",
+      "name": "Percentil continuo de volatilidad",
+      "analytical_blocks": [
+        24,
+        26
+      ],
+      "concrete_objective": "Locate current previous-H RV within 60 strictly prior non-overlapping H windows without categorical bands.",
+      "rule_type": "deterministic_context_measure",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "q=(count(RV_j<RV_t)+0.5*count(RV_j=RV_t))/60",
+        "j are 60 strictly prior non-overlapping H windows"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HAMILTON-1989-REGIME-SWITCHING",
+          "level": "technical_foundation",
+          "claim": "Regimes require a specified estimated state model."
+        },
+        {
+          "source_id": "CORSI-2009-HAR-RV",
+          "level": "technical_foundation",
+          "claim": "Volatility contains heterogeneous temporal components."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "Sixty windows is project policy, not a published optimum.",
+        "q is not labelled low, medium or high."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REGIME-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Volatility rank may alter the reliability of structure signals but has no directional effect alone."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Context only; no direct TP-versus-SL direction.",
+      "related_rules": [
+        "M4-RULE-REALIZED-VOLATILITY-001",
+        "M4-RULE-CONTINUOUS-REGIME-001"
+      ],
+      "double_counting_control": "Rank is a transformation of M4.2 RV, not independent evidence.",
+      "missing_data_behavior": "Block regime context; retain geometry if otherwise valid.",
+      "unit_tests_limits_and_invariants": [
+        "0<=q<=1",
+        "exactly 60 prior windows",
+        "current window excluded from reference",
+        "midrank tie handling"
+      ],
+      "trace_output": [
+        "current_realized_variance",
+        "reference_window_count",
+        "reference_cutoff",
+        "volatility_percentile",
+        "ranking_method",
+        "regime_label"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Change reference length only through versioned amendment.",
+        "Retire interaction if no stable conditional value."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 11,
+      "source_subphase": "M4.3",
+      "id": "M4-RULE-MTF-HIERARCHY-001",
+      "version": "0.1",
+      "name": "Jerarquia multi-timeframe H, 2H y 4H",
+      "analytical_blocks": [
+        1,
+        3,
+        24
+      ],
+      "concrete_objective": "Expose structure at the plan horizon and two slower contexts without votes, weights or duplicate penalties.",
+      "rule_type": "deterministic_interaction_descriptor",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "calculate SE_W for W in {H,2H,4H} on the same closed grid",
+        "sign_W=sign(SE_W)",
+        "agreement in {all_positive,all_negative,mixed,flat_present}"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "CORSI-2009-HAR-RV",
+          "level": "technical_foundation",
+          "claim": "Different horizons can carry distinct temporal information."
+        },
+        {
+          "source_id": "HUDSON-URQUHART-2021",
+          "level": "transfer_limit",
+          "claim": "Technical-rule effects are asset and sample dependent."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "H/2H/4H is project context policy, not a cited optimum.",
+        "Agreement has no score or automatic direction."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-MTF-001",
+        "status": "proposed_unverified",
+        "statement": "Sign agreement across H, 2H and 4H may condition first-passage behavior beyond H structure alone."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Only an interaction candidate; mixed signs are not a penalty.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001"
+      ],
+      "double_counting_control": "MTF consumes the three SE values once; no trend score plus HTF contradiction penalty.",
+      "missing_data_behavior": "Do not collapse available windows into a partial vote.",
+      "unit_tests_limits_and_invariants": [
+        "exact windows H,2H,4H",
+        "same sampling grid",
+        "no numeric aggregation",
+        "order and signs preserved"
+      ],
+      "trace_output": [
+        "window_multipliers",
+        "signed_path_efficiencies",
+        "direction_signs",
+        "agreement_descriptor",
+        "aggregate_score",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire if no incremental value beyond H structure.",
+        "Any weights require a new documented integration rule."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 12,
+      "source_subphase": "M4.3",
+      "id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "version": "0.1",
+      "name": "Vector continuo de regimen",
+      "analytical_blocks": [
+        24
+      ],
+      "concrete_objective": "Represent current state by volatility percentile and signed path efficiency without arbitrary regime names.",
+      "rule_type": "context_vector_no_label",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "R_t=(q_RV,t, SE_H,t)"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HAMILTON-1989-REGIME-SWITCHING",
+          "level": "transfer_limit",
+          "claim": "A genuine latent regime requires model estimation; this rule therefore remains an observed state vector."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "The vector is not a Markov regime model.",
+        "No low/high or bull/bear labels are assigned."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REGIME-002",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "The interaction of q_RV and SE_H may identify conditions where directional structure behaves differently."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown interaction; no marginal directional effect.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-VOLATILITY-RANK-001"
+      ],
+      "double_counting_control": "Vector references its atomic inputs; it does not add evidence.",
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "unit_tests_limits_and_invariants": [
+        "q_RV in [0,1]",
+        "SE_H in [-1,1]",
+        "regime_label is null",
+        "directional_score is null"
+      ],
+      "trace_output": [
+        "volatility_percentile",
+        "signed_path_efficiency",
+        "regime_label",
+        "directional_score",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "A categorical or latent regime requires a separate model card.",
+        "Retire interaction if M8 finds no stable conditional effect."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 13,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "version": "0.1",
+      "name": "Desequilibrio de operaciones agresoras ejecutadas",
+      "analytical_blocks": [
+        7
+      ],
+      "concrete_objective": "Measure buyer-taker versus seller-taker executed volume over one exact window without calling it full order flow.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-005",
+          "M3-DATA-007",
+          "M3-DATA-015"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "B_H=sum(p_i*q_i where buyer_is_maker=false)",
+        "S_H=sum(p_i*q_i where buyer_is_maker=true)",
+        "ATI_H=(B_H-S_H)/(B_H+S_H)",
+        "periodic alternative=(sum(buyVol)-sum(sellVol))/total"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Trade side, price, quantity and taker volumes."
+        },
+        {
+          "source_id": "CONT-KUKANOV-STOIKOV-2014",
+          "level": "transfer_limit",
+          "claim": "Trade imbalance is weaker than full order-book event imbalance in the studied equity data."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "ATI_H is not OFI or CVD.",
+        "Limit orders and cancellations are absent.",
+        "Event and periodic measures cannot be added or averaged."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-FLOW-001",
+        "status": "proposed_unverified",
+        "statement": "Side-aligned ATI_H may condition first-barrier behavior after controlling for path, volatility and activity."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown; no direct TP/SL effect.",
+      "related_rules": [
+        "M4-RULE-DERIVATIVES-CONTEXT-001"
+      ],
+      "double_counting_control": "aggTrades, taker endpoint and kline taker volume are alternative measurements of one evidence family.",
+      "missing_data_behavior": "Rule unavailable; no zero or neutral imbalance.",
+      "unit_tests_limits_and_invariants": [
+        "-1<=ATI_H<=1",
+        "exact complete window",
+        "buyer-maker means seller taker",
+        "source alternatives are not averaged"
+      ],
+      "trace_output": [
+        "window_start",
+        "window_end",
+        "source",
+        "buy_taker_volume",
+        "sell_taker_volume",
+        "total_activity",
+        "ATI_H",
+        "coverage_complete",
+        "prediction"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire if no stable incremental value after full controls.",
+        "A true OFI rule requires book-event capture and a new card."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 14,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "version": "0.1",
+      "name": "Cambio logaritmico de open interest",
+      "analytical_blocks": [
+        9
+      ],
+      "concrete_objective": "Measure the change in outstanding contract quantity over the same exact horizon without inferring long/short direction.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-013",
+          "M3-DATA-014"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "dOI_H=ln(OI_t/OI_(t-H))"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Current and historical total open interest."
+        },
+        {
+          "source_id": "HONG-YOGO-2012",
+          "level": "external_predictive_evidence",
+          "claim": "OI changes carried information in traditional futures samples."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "Gross OI does not identify net long or net short pressure.",
+        "OI value is not substituted for contract quantity."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-OI-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "dOI_H may alter the conditional value of price-path and aggressor-flow observations."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Context only; no standalone direction.",
+      "related_rules": [
+        "M4-RULE-PRICE-OI-STATE-001"
+      ],
+      "double_counting_control": "Current OI and historical OI form one endpoint change.",
+      "missing_data_behavior": "Rule unavailable; no assumed unchanged OI.",
+      "unit_tests_limits_and_invariants": [
+        "OI_t>0 and OI_(t-H)>0",
+        "exact endpoint separation H",
+        "dimensionless log change",
+        "long_short_direction is null"
+      ],
+      "trace_output": [
+        "previous_timestamp",
+        "current_timestamp",
+        "previous_open_interest",
+        "current_open_interest",
+        "dOI_H",
+        "long_short_direction"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if unstable by pair or horizon.",
+        "Reject any implementation that labels OI rise as longs."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 15,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-PRICE-OI-STATE-001",
+      "version": "0.1",
+      "name": "Estado conjunto precio y open interest",
+      "analytical_blocks": [
+        1,
+        9
+      ],
+      "concrete_objective": "Preserve the joint continuous state (D_H,dOI_H) without legacy quadrant narratives or duplicate points.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-005",
+          "M3-DATA-013",
+          "M3-DATA-014"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "POI_H=(D_H,dOI_H)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HONG-YOGO-2012",
+          "level": "transfer_limit",
+          "claim": "OI may contain information beyond futures price."
+        },
+        {
+          "source_id": "M4.3-STRUCTURE",
+          "level": "internal_definition",
+          "claim": "D_H is the exact-H log price displacement."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "No quadrant means new longs, new shorts, covering or exit.",
+        "The vector adds no evidence beyond its components."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-PRICE-OI-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "The joint continuous state may condition first-passage behavior beyond price displacement alone."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown interaction; no quadrant score.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001"
+      ],
+      "double_counting_control": "References D_H and dOI_H; cannot be added as a third signal.",
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "unit_tests_limits_and_invariants": [
+        "continuous values preserved",
+        "positioning_label is null",
+        "aggregate_score is null"
+      ],
+      "trace_output": [
+        "D_H",
+        "dOI_H",
+        "price_sign",
+        "oi_sign",
+        "state_descriptor",
+        "positioning_label",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire interaction if no incremental conditional value.",
+        "Any semantic quadrant requires separately verified evidence."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 16,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "version": "0.1",
+      "name": "Intervalo observable spot-Futures",
+      "analytical_blocks": [
+        15
+      ],
+      "concrete_objective": "Measure synchronized midpoint and executable quote ratios between Binance Spot and USD-M perpetual.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-008",
+          "M3-DATA-016",
+          "M3-DATA-017"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "mid_F=(F_bid+F_ask)/2; mid_S=(S_bid+S_ask)/2",
+        "b_mid=ln(mid_F/mid_S)",
+        "b_sellF_buyS=ln(F_bid/S_ask)",
+        "b_buyF_sellS=ln(F_ask/S_bid)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-SPOT-MARKET-DATA",
+          "level": "definition",
+          "claim": "Spot best bid and ask."
+        },
+        {
+          "source_id": "BAUR-DIMPFL-2019",
+          "level": "external_predictive_evidence",
+          "claim": "Spot led futures in their Bitcoin sample."
+        },
+        {
+          "source_id": "FRINO-ET-AL-2025",
+          "level": "external_predictive_evidence",
+          "claim": "Futures generally led spot in a later sample, with daily variation."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "No market is assigned permanent price leadership.",
+        "The raw interval excludes fees, latency and fill uncertainty."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-BASIS-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Basis magnitude and sign may condition price discovery when combined with flow, OI and freshness."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown; no automatic convergence direction.",
+      "related_rules": [
+        "M4-RULE-MARK-INDEX-PREMIUM-001"
+      ],
+      "double_counting_control": "Midpoint and executable bounds are one basis observation.",
+      "missing_data_behavior": "Block basis; mark-index premium is not a silent substitute.",
+      "unit_tests_limits_and_invariants": [
+        "bid<=ask on both venues",
+        "capture skew<=2000ms",
+        "log ratios are scale invariant",
+        "price_leadership is null"
+      ],
+      "trace_output": [
+        "four_quotes",
+        "requested_at",
+        "received_at",
+        "capture_skew_ms",
+        "b_mid",
+        "executable_basis_bounds",
+        "fees_included"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire if capture uncertainty dominates observed basis.",
+        "Price leadership requires a separate time-series model."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 17,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "version": "0.1",
+      "name": "Prima sincronizada mark-index",
+      "analytical_blocks": [
+        10,
+        15
+      ],
+      "concrete_objective": "Measure the same-timestamp USD-M mark-to-index log ratio without presenting the index as Binance Spot.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-010"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "b_mark_index=ln(markPrice/indexPrice)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Mark price, index price and provider time."
+        },
+        {
+          "source_id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+          "level": "technical_foundation",
+          "claim": "Perpetual prices can deviate from spot anchors."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "Index price is not Binance Spot bookTicker.",
+        "Premium sign is not a return forecast."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-PREMIUM-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "The synchronized mark-index premium may improve basis context when cross-venue capture is noisy."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Context only; no convergence assumption.",
+      "related_rules": [
+        "M4-RULE-SPOT-FUTURES-BASIS-001"
+      ],
+      "double_counting_control": "Cross-venue basis and mark-index premium share one family and cannot both receive independent effects.",
+      "missing_data_behavior": "Rule unavailable; no zero premium.",
+      "unit_tests_limits_and_invariants": [
+        "markPrice>0 and indexPrice>0",
+        "same provider timestamp",
+        "binance_spot_basis is null"
+      ],
+      "trace_output": [
+        "provider_time",
+        "mark_price",
+        "index_price",
+        "mark_index_log_premium",
+        "binance_spot_basis"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if it adds no value beyond actual basis."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 18,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-FUNDING-STATE-001",
+      "version": "0.1",
+      "name": "Estado temporal y carga realizada de funding",
+      "analytical_blocks": [
+        10
+      ],
+      "concrete_objective": "Normalize the current rate by its configured interval and record realized prior-H funding without forecasting rates.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-010",
+          "M3-DATA-011",
+          "M3-DATA-012"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "f_last_hour=lastFundingRate/fundingIntervalHours",
+        "L_prev(H)=sum(f_j where t-H<fundingTime_j<=t)",
+        "L_prev_hour(H)=L_prev(H)/H_hours",
+        "N_schedule=count configured event times within future H"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "level": "definition",
+          "claim": "Funding rate, funding time, next time and adjusted interval configuration."
+        },
+        {
+          "source_id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+          "level": "technical_foundation",
+          "claim": "Funding is an anchoring cash-flow mechanism."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "Last observed funding is not the next funding rate.",
+        "Historical average is not a future rate.",
+        "Scheduled events do not imply a projected funding cost."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-FUNDING-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Funding state may condition basis and positioning interactions but has no standalone price direction."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "No direct TP/SL effect; economic cost is M4.5.",
+      "related_rules": [
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-DERIVATIVES-CONTEXT-001"
+      ],
+      "double_counting_control": "Current, normalized and historical funding describe one funding family.",
+      "missing_data_behavior": "Funding context unavailable; never assume zero.",
+      "unit_tests_limits_and_invariants": [
+        "fundingIntervalHours>0",
+        "funding events ordered and <=analysis_at",
+        "future_funding_rate_assumption is null",
+        "projected_funding_cost is null"
+      ],
+      "trace_output": [
+        "last_funding_rate",
+        "interval_hours",
+        "last_rate_per_hour",
+        "next_funding_time",
+        "scheduled_events_under_current_config",
+        "previous_horizon_funding_load",
+        "projected_funding_cost"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire interaction if no stable independent value.",
+        "Projected cost requires M4.5 execution assumptions."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 19,
+      "source_subphase": "M4.4",
+      "id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "version": "0.1",
+      "name": "Vector continuo de contexto de derivados",
+      "analytical_blocks": [
+        7,
+        9,
+        10,
+        15
+      ],
+      "concrete_objective": "Expose flow, OI, basis and funding jointly without crowding labels, votes or additive scores.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-007",
+          "M3-DATA-008",
+          "M3-DATA-010",
+          "M3-DATA-012",
+          "M3-DATA-014",
+          "M3-DATA-016",
+          "M3-DATA-017"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at and cross-venue skew is bounded",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "exact_transformation_and_formula": [
+        "DC_H=(ATI_H,dOI_H,b_mid,f_last_hour)"
+      ],
+      "cross_pair_normalization": "Natural-log changes and bounded ratios; raw activity is not compared across pairs.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M4.3-STRUCTURE",
+          "level": "internal_methodology",
+          "claim": "Interaction vectors reference atomic components without adding them as separate evidence."
+        },
+        {
+          "source_id": "M3-DATA-CONTRACTS",
+          "level": "data_foundation",
+          "claim": "Every component has a separate data contract."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project probability, score, threshold or weight.",
+        "Evidence from another asset, venue or horizon is not transferred.",
+        "The vector is not a crowding index.",
+        "No component has a numeric coefficient."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-DERIVATIVES-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Joint derivatives state may contain conditional value not present in any marginal observation."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown interaction; no direct probability.",
+      "related_rules": [
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "double_counting_control": "The vector references four atomic families and adds no fifth piece of evidence.",
+      "missing_data_behavior": "Vector unavailable if any required component is absent.",
+      "unit_tests_limits_and_invariants": [
+        "ATI_H in [-1,1]",
+        "all components continuous",
+        "crowding_label is null",
+        "aggregate_score is null"
+      ],
+      "trace_output": [
+        "ATI_H",
+        "dOI_H",
+        "b_mid",
+        "f_last_hour",
+        "crowding_label",
+        "aggregate_score",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire interaction if no incremental validated value.",
+        "Any coefficient requires M6 and independent validation."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 20,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-QUOTED-SPREAD-001",
+      "version": "0.1",
+      "name": "Spread cotizado en el instante de llegada",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        29
+      ],
+      "concrete_objective": "Descriptor actual de coste cotizado; no penalizacion.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-CURRENT-EXECUTION",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "best_bid>0",
+        "best_ask>=best_bid",
+        "receive_time"
+      ],
+      "raw_data_and_provider": [
+        "best_bid>0",
+        "best_ask>=best_bid",
+        "receive_time"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "mid=(best_bid+best_ask)/2",
+        "spread_quote=best_ask-best_bid",
+        "spread_fraction_mid=spread_quote/mid"
+      ],
+      "output": "Descriptor actual de coste cotizado; no penalizacion.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Libro cruzado, dato no positivo o timestamp ausente."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-MARKET-DATA",
+          "claim": "Bid y ask son observables oficiales del mercado."
+        },
+        {
+          "source_id": "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019",
+          "claim": "El midpoint de llegada es referencia de ejecucion."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Que un spread concreto prediga TP o SL.",
+        "Que el spread actual sea el spread de salida futuro."
+      ],
+      "transfer_and_observability_limits": [
+        "Snapshot actual; puede cambiar antes de ejecutar."
+      ],
+      "rejection_or_block_conditions": [
+        "Libro cruzado, dato no positivo o timestamp ausente."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-CURRENT-EXECUTION"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Snapshot actual; puede cambiar antes de ejecutar.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Libro cruzado, dato no positivo o timestamp ausente.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 21,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-DEPTH-SWEEP-001",
+      "version": "0.1",
+      "name": "Barrido visible e implementation shortfall",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        29
+      ],
+      "concrete_objective": "Estimacion del barrido visible actual solo si fill_ratio=1.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-CURRENT-EXECUTION",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "side buy|sell",
+        "base_quantity>0",
+        "bids descendentes",
+        "asks ascendentes",
+        "arrival midpoint"
+      ],
+      "raw_data_and_provider": [
+        "side buy|sell",
+        "base_quantity>0",
+        "bids descendentes",
+        "asks ascendentes",
+        "arrival midpoint"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "buy consume asks; sell consume bids",
+        "VWAP=sum(price_i*filled_qty_i)/requested_qty",
+        "D=+1 buy, -1 sell",
+        "IS_fraction=D*(VWAP-arrival_mid)/arrival_mid",
+        "fill_ratio=filled_qty/requested_qty"
+      ],
+      "output": "Estimacion del barrido visible actual solo si fill_ratio=1.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Fill ratio menor que uno bloquea el coste completo.",
+        "Orden o niveles invalidos bloquean."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019",
+          "claim": "VWAP firmado contra midpoint mide shortfall."
+        },
+        {
+          "source_id": "ALMGREN-CHRISS-2001",
+          "claim": "Coste e impacto pertenecen al problema de ejecucion."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Impacto permanente exacto.",
+        "Slippage de una salida futura.",
+        "Minimo universal de 0.02%."
+      ],
+      "transfer_and_observability_limits": [
+        "Solo profundidad visible solicitada.",
+        "No garantiza fills ni incorpora latencia o cola.",
+        "El IS desde midpoint ya contiene medio spread y barrido; no se suma de nuevo el spread."
+      ],
+      "rejection_or_block_conditions": [
+        "Fill ratio menor que uno bloquea el coste completo.",
+        "Orden o niveles invalidos bloquean."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-CURRENT-EXECUTION"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Solo profundidad visible solicitada.",
+        "No garantiza fills ni incorpora latencia o cola.",
+        "El IS desde midpoint ya contiene medio spread y barrido; no se suma de nuevo el spread.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Fill ratio menor que uno bloquea el coste completo.",
+        "Orden o niveles invalidos bloquean.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 22,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-FEE-SCENARIOS-001",
+      "version": "0.1",
+      "name": "Comision por rol de liquidez autenticado",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        29
+      ],
+      "concrete_objective": "Coste exacto por rol conocido o intervalo de escenarios.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-FEES",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "notional>=0",
+        "allowed_roles subset maker|taker|rpi",
+        "authenticated commission rates"
+      ],
+      "raw_data_and_provider": [
+        "notional>=0",
+        "allowed_roles subset maker|taker|rpi",
+        "authenticated commission rates"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "fee(role)=notional*commission_rate(role)",
+        "lower=min(fee(role)); upper=max(fee(role))",
+        "exact iff one execution role is known"
+      ],
+      "output": "Coste exacto por rol conocido o intervalo de escenarios.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Sin autenticacion o tasa requerida, el coste exacto bloquea."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "BINANCE-USD-M-ACCOUNT",
+          "claim": "La cuenta expone tasas maker, taker y RPI."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Comision universal de ida y vuelta de 0.08%.",
+        "Rol de liquidez de una salida futura desconocida."
+      ],
+      "transfer_and_observability_limits": [
+        "RPI solo entra cuando el tipo de orden lo permite.",
+        "Cada tramo y resultado usa su propio notional y rol."
+      ],
+      "rejection_or_block_conditions": [
+        "Sin autenticacion o tasa requerida, el coste exacto bloquea."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-FEES"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "RPI solo entra cuando el tipo de orden lo permite.",
+        "Cada tramo y resultado usa su propio notional y rol.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Sin autenticacion o tasa requerida, el coste exacto bloquea.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 23,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "version": "0.1",
+      "name": "Flujo monetario firmado de funding",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        10,
+        29
+      ],
+      "concrete_objective": "Flujo firmado para eventos realizados o escenarios explicitos.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-FUNDING-CASHFLOW",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "side long|short",
+        "base_quantity>0",
+        "event mark_price>0",
+        "event funding_rate signed"
+      ],
+      "raw_data_and_provider": [
+        "side long|short",
+        "base_quantity>0",
+        "event mark_price>0",
+        "event funding_rate signed"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "position_sign=+1 long, -1 short",
+        "cashflow_event=-position_sign*quantity*mark_price*rate",
+        "cashflow_total=sum(cashflow_event)"
+      ],
+      "output": "Flujo firmado para eventos realizados o escenarios explicitos.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Eventos futuros desconocidos bloquean el funding exacto."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+          "claim": "Funding positivo transfiere de largos a cortos."
+        },
+        {
+          "source_id": "M4.4-DERIVATIVES",
+          "claim": "La ultima tasa observada no es una tasa futura."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Usar abs(rate) una vez como coste para ambas direcciones.",
+        "Proyectar la ultima tasa durante todo el horizonte."
+      ],
+      "transfer_and_observability_limits": [
+        "Antes del cierre solo admite escenarios, no forecast exacto."
+      ],
+      "rejection_or_block_conditions": [
+        "Eventos futuros desconocidos bloquean el funding exacto."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-FUNDING-CASHFLOW"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Antes del cierre solo admite escenarios, no forecast exacto.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Eventos futuros desconocidos bloquean el funding exacto.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 24,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-PLAN-EXPOSURE-001",
+      "version": "0.1",
+      "name": "Exposicion monetaria lineal del plan",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        30
+      ],
+      "concrete_objective": "Exposicion, recompensa y perdida brutas; sin score ni probabilidad.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-EXPOSURE-RISK",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "side",
+        "entry, TP, SL",
+        "margin>0",
+        "leverage>0"
+      ],
+      "raw_data_and_provider": [
+        "side",
+        "entry, TP, SL",
+        "margin>0",
+        "leverage>0"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "notional=margin*leverage",
+        "quantity=notional/entry",
+        "gross_pnl(P)=direction*quantity*(P-entry)",
+        "gross_reward=gross_pnl(TP)",
+        "gross_risk=-gross_pnl(SL)",
+        "gross_RR=gross_reward/gross_risk",
+        "risk_fraction_margin=gross_risk/margin"
+      ],
+      "output": "Exposicion, recompensa y perdida brutas; sin score ni probabilidad.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Geometria direccional invalida o entrada/margen/leverage no positivos."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTICS",
+          "claim": "La geometria valida depende de la direccion."
+        },
+        {
+          "source_id": "INVESTOR-GOV-LEVERAGED-INVESTING",
+          "claim": "El apalancamiento amplifica ganancias y perdidas."
+        },
+        {
+          "source_id": "M3-DATA-CONTRACTS",
+          "claim": "Margen y apalancamiento pertenecen al plan de usuario."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Que el apalancamiento altere la probabilidad de mercado.",
+        "RR minimo 3 o distancias 0.25%/3% como universales.",
+        "Precio de liquidacion exacto."
+      ],
+      "transfer_and_observability_limits": [
+        "Modelo lineal USD-M bruto, antes de costes.",
+        "No incluye equity, margin mode ni maintenance brackets."
+      ],
+      "rejection_or_block_conditions": [
+        "Geometria direccional invalida o entrada/margen/leverage no positivos."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-EXPOSURE-RISK"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Modelo lineal USD-M bruto, antes de costes.",
+        "No incluye equity, margin mode ni maintenance brackets.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Geometria direccional invalida o entrada/margen/leverage no positivos.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 25,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-NET-PAYOFFS-001",
+      "version": "0.1",
+      "name": "Vector monetario neto por resultado",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        32
+      ],
+      "concrete_objective": "Payoff neto separado para TP, SL, expiry y no-entry.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-ECONOMIC-EVALUATION",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "gross_price_pnl by outcome",
+        "fee_cost by outcome",
+        "execution_shortfall_cost by outcome",
+        "signed funding_cashflow by outcome"
+      ],
+      "raw_data_and_provider": [
+        "gross_price_pnl by outcome",
+        "fee_cost by outcome",
+        "execution_shortfall_cost by outcome",
+        "signed funding_cashflow by outcome"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "net_payoff_k=gross_price_pnl_k-fee_k-IS_cost_k+funding_k",
+        "no_entry direct trading cashflow=0"
+      ],
+      "output": "Payoff neto separado para TP, SL, expiry y no-entry.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Payoff exacto bloqueado por cualquier componente desconocido."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTICS",
+          "claim": "Cada rama pre-trade es un resultado distinto."
+        },
+        {
+          "source_id": "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019",
+          "claim": "La ejecucion aporta coste y falta de fill observables."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Un unico coste restado a todas las ramas.",
+        "Incluir opportunity cost no modelado en no-entry."
+      ],
+      "transfer_and_observability_limits": [
+        "Si un coste de una rama falta, esa rama queda incompleta."
+      ],
+      "rejection_or_block_conditions": [
+        "Payoff exacto bloqueado por cualquier componente desconocido."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-ECONOMIC-EVALUATION"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Si un coste de una rama falta, esa rama queda incompleta.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Payoff exacto bloqueado por cualquier componente desconocido.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 26,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-EXPECTED-VALUE-001",
+      "version": "0.1",
+      "name": "Identidad de valor esperado por resultados",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        32
+      ],
+      "concrete_objective": "Valor esperado monetario, solo cuando todos los datos existen.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-ECONOMIC-EVALUATION",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "coherent probabilities p_k",
+        "complete net payoff y_k for identical outcomes"
+      ],
+      "raw_data_and_provider": [
+        "coherent probabilities p_k",
+        "complete net payoff y_k for identical outcomes"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "0<=p_k<=1",
+        "sum(p_k)=1",
+        "EV=sum(p_k*y_k)"
+      ],
+      "output": "Valor esperado monetario, solo cuando todos los datos existen.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Claves distintas, probabilidades que no suman uno o payoff incompleto."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M2-SEMANTICS",
+          "claim": "Las probabilidades y payoffs deben compartir resultados."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "El EV actual calculado con TP% y SL% no calibrados.",
+        "Una decision automatica basada solo en EV."
+      ],
+      "transfer_and_observability_limits": [
+        "Probabilidades coherentes no existiran antes de M6.",
+        "Costes futuros incompletos impiden un EV exacto."
+      ],
+      "rejection_or_block_conditions": [
+        "Claves distintas, probabilidades que no suman uno o payoff incompleto."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-ECONOMIC-EVALUATION"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Probabilidades coherentes no existiran antes de M6.",
+        "Costes futuros incompletos impiden un EV exacto.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Claves distintas, probabilidades que no suman uno o payoff incompleto.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    },
+    {
+      "sequence": 27,
+      "source_subphase": "M4.5",
+      "id": "M4-RULE-EVALUATION-READINESS-001",
+      "version": "0.1",
+      "name": "Estado explicito de disponibilidad economica",
+      "kind": "deterministic_economic_operator",
+      "analytical_blocks": [
+        30,
+        32
+      ],
+      "concrete_objective": "Estados y faltantes; nunca score, grade o recomendacion.",
+      "rule_type": "deterministic_economic_operator",
+      "evidence_family": "M4-EVIDENCE-ECONOMIC-EVALUATION",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "INJUSDT"
+      ],
+      "horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        "status market probabilities",
+        "status entry and exit execution",
+        "status fees and funding",
+        "status payoffs and account risk"
+      ],
+      "raw_data_and_provider": [
+        "status market probabilities",
+        "status entry and exit execution",
+        "status fees and funding",
+        "status payoffs and account risk"
+      ],
+      "market_symbol_timestamp_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "exact_transformation_and_formula": [
+        "economic_ready=all(required economic statuses available|N/A)",
+        "account_risk_ready=(account_risk status=available)",
+        "decision_authorized=false until governance is defined"
+      ],
+      "output": "Estados y faltantes; nunca score, grade o recomendacion.",
+      "cross_pair_normalization": "Dimensionless ratios remain comparable; quote-money outputs are never compared across pairs without explicit normalization.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Claves o estados fuera del contrato."
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "M3-DATA-CONTRACTS",
+          "claim": "Ausencia y degradacion deben declararse por dato."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "Convertir disponibilidad en confianza numerica.",
+        "Grados A/B/C o GO/NO-GO sin politica validada."
+      ],
+      "transfer_and_observability_limits": [
+        "Es control de completitud, no evidencia de rentabilidad."
+      ],
+      "rejection_or_block_conditions": [
+        "Claves o estados fuera del contrato."
+      ],
+      "expected_relation_to_tp_sl_or_expiry": "No direct market-probability relation is authorized. The output describes execution, exposure or payoff after market outcomes.",
+      "related_rules": [
+        "M4-EVIDENCE-ECONOMIC-EVALUATION"
+      ],
+      "double_counting_control": "Use the canonical M4.6 slot for this family; derived values, containers and overlapping costs are not additional votes.",
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "unit_tests_limits_and_invariants": [
+        "Es control de completitud, no evidencia de rentabilidad.",
+        "long/short signs must follow the declared direction",
+        "no execution or exposure value may change market probability"
+      ],
+      "trace_output": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Claves o estados fuera del contrato.",
+        "Suspend if provider semantics or units no longer match the documented contract."
+      ],
+      "lifecycle_status": "formal_documented_operator_not_implemented_in_production",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false,
+      "separate_predictive_hypothesis": null
+    }
+  ],
+  "source_registries": {
+    "M4.2": [
+      {
+        "id": "M2-SEMANTIC-CONTRACT",
+        "type": "approved_internal_contract",
+        "title": "M2 - Semantica, geometria e invariantes",
+        "url": null,
+        "supported_claim": "Long/short barrier geometry, exact horizon and mandatory normalization by an approved horizon log-volatility scale.",
+        "does_not_support": "A volatility estimator or probability model."
+      },
+      {
+        "id": "M3-DATA-CONTRACTS",
+        "type": "approved_internal_contract",
+        "title": "M3 - Contratos de datos pre-trade",
+        "url": null,
+        "supported_claim": "Plan identity, closed Binance USD-M klines, timestamps, freshness and missing-data behavior.",
+        "does_not_support": "Predictive value of price history."
+      },
+      {
+        "id": "BINANCE-USDM-KLINES",
+        "type": "official_provider_documentation",
+        "title": "Binance USD-M Futures Kline/Candlestick Data",
+        "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+        "supported_claim": "Kline fields, intervals, timestamps and units.",
+        "does_not_support": "Volatility forecasts or TP/SL prediction."
+      },
+      {
+        "id": "ANDERSEN-BOLLERSLEV-DIEBOLD-LABYS-2003",
+        "type": "primary_academic_publication",
+        "title": "Modeling and Forecasting Realized Volatility",
+        "url": "https://doi.org/10.1111/1468-0262.00418",
+        "supported_claim": "Realized volatility constructed from high-frequency returns is linked to quadratic variation and can be modeled over time.",
+        "does_not_support": "Using one lagged horizon as an exact forecast for crypto, a universal sampling interval, or a TP/SL probability."
+      },
+      {
+        "id": "POETZELBERGER-WANG-2001",
+        "type": "primary_academic_publication",
+        "title": "Boundary Crossing Probability for Brownian Motion",
+        "url": "https://doi.org/10.1239/jap/996986650",
+        "supported_claim": "Boundary crossing is a path-dependent first-passage problem that requires a specified stochastic process and boundary.",
+        "does_not_support": "Brownian motion as an accepted crypto model or any project probability before M6."
+      },
+      {
+        "id": "XIE-ET-AL-2019-BITCOIN-RV",
+        "type": "primary_academic_publication",
+        "title": "Forecast Bitcoin Volatility with Least Squares Model Averaging",
+        "url": "https://doi.org/10.3390/econometrics7030040",
+        "supported_claim": "Bitcoin realized-volatility forecasting is an empirical model selection problem with competing specifications.",
+        "does_not_support": "Transfer to all six pairs, barrier probabilities, or a fixed project estimator without independent validation."
+      }
+    ],
+    "M4.3": [
+      {
+        "id": "M3-DATA-CONTRACTS",
+        "type": "approved_internal_contract",
+        "url": null,
+        "supported_claim": "Closed OHLC timestamps, plan and missing-data policy.",
+        "does_not_support": "Trend, regime or level predictiveness."
+      },
+      {
+        "id": "M4.2-REACHABILITY",
+        "type": "completed_internal_milestone",
+        "url": null,
+        "supported_claim": "Exact horizon sampling, log returns and previous-horizon RV.",
+        "does_not_support": "Directional inference or regime labels."
+      },
+      {
+        "id": "NIST-SINGLE-EXPONENTIAL-SMOOTHING",
+        "type": "institutional_methodology",
+        "url": "https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc431.htm",
+        "supported_claim": "Recursive exponential smoothing and dependence on alpha and initialization.",
+        "does_not_support": "EMA periods 9/21/50/200, crossover signals or crypto returns."
+      },
+      {
+        "id": "HAMILTON-1989-REGIME-SWITCHING",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.2307/1912559",
+        "supported_claim": "Time-series parameters may change through latent regimes that must be estimated by a specified model.",
+        "does_not_support": "Calling arbitrary indicator bands regimes or assigning direction."
+      },
+      {
+        "id": "CORSI-2009-HAR-RV",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1093/jjfinec/nbp001",
+        "supported_claim": "Realized-volatility components across heterogeneous horizons may contain distinct temporal information.",
+        "does_not_support": "The project H/2H/4H price-direction hierarchy or fixed weights."
+      },
+      {
+        "id": "MOSKOWITZ-OOI-PEDERSEN-2012",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1016/j.jfineco.2011.11.003",
+        "supported_claim": "Time-series momentum was documented for 58 traditional futures at monthly horizons.",
+        "does_not_support": "Crypto intraday transfer, TP-first probabilities or EMA stacks."
+      },
+      {
+        "id": "HUDSON-URQUHART-2021",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1007/s10479-019-03357-1",
+        "supported_claim": "Technical-rule results in cryptocurrencies vary by asset and out-of-sample period; Bitcoin lacked OOS predictability in their test.",
+        "does_not_support": "Any selected project rule, period, threshold or pair-wide transfer."
+      },
+      {
+        "id": "OSLER-2000-SUPPORT-RESISTANCE",
+        "type": "primary_institutional_research",
+        "url": "https://www.newyorkfed.org/medialibrary/media/research/epr/00v06n2/0007osle.pdf",
+        "supported_claim": "Published FX support/resistance levels predicted some intraday trend interruptions, with performance varying by pair and firm.",
+        "does_not_support": "Rolling extrema as equivalent levels, crypto transfer or a penalty."
+      },
+      {
+        "id": "CURCIO-ET-AL-2014-PRICE-MEMORY",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1038/srep04487",
+        "supported_claim": "Local extrema and prior bounces can be studied as price-memory candidates, with time scale and bounce count as parameters.",
+        "does_not_support": "A universal extrema detector or project TP/SL probability."
+      }
+    ],
+    "M4.4": [
+      {
+        "id": "M3-DATA-CONTRACTS",
+        "type": "approved_internal_contract",
+        "url": null,
+        "supported_claim": "Fields, timestamps, retention and absence policy for Binance Futures and Spot observations.",
+        "does_not_support": "Any predictive sign, threshold, weight or score."
+      },
+      {
+        "id": "M4.2-REACHABILITY",
+        "type": "completed_internal_milestone",
+        "url": null,
+        "supported_claim": "Exact horizon, closed-window and log-geometry conventions.",
+        "does_not_support": "A derivatives-context probability effect."
+      },
+      {
+        "id": "M4.3-STRUCTURE",
+        "type": "completed_internal_milestone",
+        "url": null,
+        "supported_claim": "Price displacement and non-additive interaction conventions.",
+        "does_not_support": "Price-OI quadrant meanings or weights."
+      },
+      {
+        "id": "BINANCE-USD-M-MARKET-DATA",
+        "type": "official_provider_documentation",
+        "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+        "supported_claim": "Official meanings and availability of aggregate trades, taker volume, open interest, mark/index prices and funding fields.",
+        "does_not_support": "Predictiveness, full-book order flow, complete retention or universal funding interpretation."
+      },
+      {
+        "id": "BINANCE-SPOT-MARKET-DATA",
+        "type": "official_provider_documentation",
+        "url": "https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/market",
+        "supported_claim": "Official Spot best bid and ask fields.",
+        "does_not_support": "Provider event time for REST bookTicker or basis predictiveness."
+      },
+      {
+        "id": "CONT-KUKANOV-STOIKOV-2014",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1093/jjfinec/nbt003",
+        "supported_claim": "Short-interval price changes in the studied equities were more robustly related to full order-book event imbalance than to trade volume or trade imbalance alone.",
+        "does_not_support": "Calling Binance taker-trade imbalance OFI, crypto transfer, project horizons or a TP/SL probability."
+      },
+      {
+        "id": "HONG-YOGO-2012",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1016/j.jfineco.2011.05.008",
+        "supported_claim": "Open-interest changes contained information in the traditional futures markets and horizons studied by the authors.",
+        "does_not_support": "Crypto perpetual intraday transfer, long/short direction from gross OI, quadrant labels or project weights."
+      },
+      {
+        "id": "BAUR-DIMPFL-2019",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1002/fut.22004",
+        "supported_claim": "Their Bitcoin sample found spot leading the restricted exchange-traded futures market in price discovery.",
+        "does_not_support": "Binance perpetual leadership, basis direction or all crypto pairs and horizons."
+      },
+      {
+        "id": "FRINO-ET-AL-2025",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.1002/fut.22560",
+        "supported_claim": "A later Bitcoin study found futures generally leading spot with daily variation after accounting for noise.",
+        "does_not_support": "A fixed leader, Binance perpetual transfer or a basis signal."
+      },
+      {
+        "id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+        "type": "primary_academic_preprint",
+        "url": "https://arxiv.org/abs/2212.06888",
+        "supported_claim": "Funding is an anchoring cash-flow mechanism for perpetuals and spot-perpetual deviations can remain material.",
+        "does_not_support": "Funding sign as a standalone return forecast, Binance-specific thresholds or ignoring trading costs."
+      }
+    ],
+    "M4.5": [
+      {
+        "id": "M2-SEMANTICS",
+        "type": "approved_internal_contract",
+        "url": null,
+        "supported_claim": "Pre-trade outcome space, TP/SL geometry, pending-entry branches and immutable analysis identity.",
+        "does_not_support": "Probabilities, trading costs or decision policy."
+      },
+      {
+        "id": "M3-DATA-CONTRACTS",
+        "type": "approved_internal_contract",
+        "url": null,
+        "supported_claim": "Available bid/ask, depth, mark/funding, exchange filters, user-plan margin/leverage and authenticated commission fields.",
+        "does_not_support": "Future exit liquidity, future funding, account liquidation price or predictive effects."
+      },
+      {
+        "id": "M4.2-REACHABILITY",
+        "type": "completed_internal_milestone",
+        "url": null,
+        "supported_claim": "Direction-safe TP/SL price geometry.",
+        "does_not_support": "Monetary exposure or expected value."
+      },
+      {
+        "id": "M4.4-DERIVATIVES",
+        "type": "completed_internal_milestone",
+        "url": null,
+        "supported_claim": "Observed funding state and the prohibition on treating the last funding rate as a future rate.",
+        "does_not_support": "Exact future funding cash flows."
+      },
+      {
+        "id": "BINANCE-USD-M-MARKET-DATA",
+        "type": "official_provider_documentation",
+        "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+        "supported_claim": "Official availability and field meanings for order-book, best-quote, mark-price and funding observations.",
+        "does_not_support": "Guaranteed fills, future order-book state, slippage thresholds or TP/SL probability."
+      },
+      {
+        "id": "BINANCE-USD-M-ACCOUNT",
+        "type": "official_provider_documentation",
+        "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account",
+        "supported_claim": "Authenticated maker, taker and RPI commission-rate fields.",
+        "does_not_support": "A universal rate, the liquidity role of an unknown future fill or future exit notional."
+      },
+      {
+        "id": "FINRA-INSTITUTIONAL-ORDER-HANDLING-2019",
+        "type": "primary_regulatory_research",
+        "url": "https://www.finra.org/sites/default/files/OCE_WP_jan2019.pdf",
+        "supported_claim": "Implementation shortfall compares signed execution VWAP with the arrival midpoint; fill rate and unfilled quantity matter.",
+        "does_not_support": "Crypto-specific impact coefficients, future exit slippage or a fixed minimum slippage."
+      },
+      {
+        "id": "ALMGREN-CHRISS-2001",
+        "type": "primary_academic_publication",
+        "url": "https://doi.org/10.21314/JOR.2001.041",
+        "supported_claim": "Execution has transaction-cost, market-impact and timing-risk components.",
+        "does_not_support": "The exact project book-sweep estimator, universal parameters or directional market probability."
+      },
+      {
+        "id": "HE-MANELA-ROSS-VON-WACHTER-2022",
+        "type": "primary_academic_preprint",
+        "url": "https://arxiv.org/abs/2212.06888",
+        "supported_claim": "Positive perpetual funding transfers value from long positions to short positions and anchors perpetual prices.",
+        "does_not_support": "Future Binance funding rates, a standalone return forecast or project probability weights."
+      },
+      {
+        "id": "INVESTOR-GOV-LEVERAGED-INVESTING",
+        "type": "official_investor_guidance",
+        "url": "https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-bulletins/leveraged-investing-strategies-know-risks-using-these-advanced-investment-tools",
+        "supported_claim": "Leverage magnifies gains and losses relative to invested capital.",
+        "does_not_support": "Binance perpetual liquidation mechanics, maintenance-margin brackets or a safe leverage threshold."
+      }
+    ]
+  },
+  "source_files": [
+    {
+      "path": "auditorias_motor/catalogo_alcanzabilidad_m4_2_v0_1.json",
+      "sha256": "fa87cfa3c418a6df38915cd53e7940439a762f06f73131394c74461ebce0bcd7"
+    },
+    {
+      "path": "auditorias_motor/catalogo_regimen_estructura_mtf_m4_3_v0_1.json",
+      "sha256": "c28d9ffa316ea2a7e1e858299e0bf4a95e070906b7c70e5cb2b12a736ec497ce"
+    },
+    {
+      "path": "auditorias_motor/catalogo_contexto_derivados_m4_4_v0_1.json",
+      "sha256": "0be239b19d4b3fc7127b0fdf1e2bfb3047f1dd62d5004bc9b7087d67dd7802f5"
+    },
+    {
+      "path": "auditorias_motor/catalogo_ejecucion_riesgo_m4_5_v0_1.json",
+      "sha256": "bfd6adeeb65c4015fbed79df6f7cf4ae798d70019866480ea647f75dee10fffd"
+    }
+  ],
+  "catalog_sha256": "474758f48c96a9b923332d94e10e70b91b4568b9d5ee6b05cfd32465d3092e53"
+}

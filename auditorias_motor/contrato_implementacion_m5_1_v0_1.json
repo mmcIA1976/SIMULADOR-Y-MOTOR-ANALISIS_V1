@@ -1,0 +1,4033 @@
+{
+  "version": "M5.1-implementation-contract-v0.1",
+  "phase": "M5",
+  "subphase": "M5.1",
+  "status": "completed_contract_frozen_implementation_pending",
+  "date": "2026-07-27",
+  "owner_authorization": {
+    "authorized": true,
+    "statement": "bien inicia m5",
+    "authorized_at": "2026-07-27",
+    "scope": "start_m5_traceable_internal_implementation",
+    "production_authorized": false,
+    "probability_integration_authorized": false,
+    "learning_engine_authorized": false
+  },
+  "scope": {
+    "rules": 27,
+    "p0_core_rules": 26,
+    "auxiliary_operators": 1,
+    "formulas": 80,
+    "invariants": 108,
+    "dag_edges": 32,
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "m5_started": true,
+    "m5_closed": false,
+    "m6_started": false
+  },
+  "implementation_boundary": {
+    "execution_mode": "internal_shadow_only",
+    "production_output_effect": "none",
+    "probability_output_effect": "none",
+    "numeric_weights_allowed": false,
+    "learning_feedback_allowed": false,
+    "automatic_trading_allowed": false,
+    "presentation_layer_change_allowed": false,
+    "deferred_outside_scope": [
+      "pending_order_automation",
+      "analysis_revalidation_policy",
+      "automatic_time_expiry_execution",
+      "production_first_passage_correction"
+    ]
+  },
+  "trace_contract": {
+    "schema_version": "M5-rule-trace-v0.1",
+    "required_fields": [
+      "analysis_id",
+      "rule_id",
+      "implementation_version",
+      "executed_at",
+      "status",
+      "source_observations",
+      "inputs",
+      "outputs",
+      "formula_ids",
+      "invariant_results",
+      "reason_codes",
+      "dependencies",
+      "canonical_family",
+      "production_effect"
+    ],
+    "allowed_statuses": [
+      "evaluated",
+      "blocked",
+      "not_applicable",
+      "deferred",
+      "error"
+    ],
+    "rules": [
+      "evaluated requires validated inputs and explicit outputs",
+      "blocked requires reason_codes and forbids synthetic neutral outputs",
+      "not_applicable requires a declared non-application condition",
+      "deferred requires an owner-approved scope reason",
+      "every output names the formula_ids and invariant results used",
+      "production_effect is always none throughout M5"
+    ]
+  },
+  "dag": {
+    "acyclic": true,
+    "topological_order": [
+      "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "M4-RULE-FEE-SCENARIOS-001",
+      "M4-RULE-FUNDING-STATE-001",
+      "M4-RULE-HORIZON-SAMPLING-001",
+      "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "M4-RULE-PLAN-GEOMETRY-001",
+      "M4-RULE-QUOTED-SPREAD-001",
+      "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "M4-RULE-DEPTH-SWEEP-001",
+      "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "M4-RULE-FUNDING-CASHFLOW-001",
+      "M4-RULE-LOG-RETURNS-001",
+      "M4-RULE-PLAN-EXPOSURE-001",
+      "M4-RULE-PRIOR-EXTREMA-001",
+      "M4-RULE-NET-PAYOFFS-001",
+      "M4-RULE-PATH-STRUCTURE-001",
+      "M4-RULE-REALIZED-VOLATILITY-001",
+      "M4-RULE-EXPECTED-VALUE-001",
+      "M4-RULE-MTF-HIERARCHY-001",
+      "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "M4-RULE-PENDING-ACTIVATION-001",
+      "M4-RULE-PRICE-OI-STATE-001",
+      "M4-RULE-VOLATILITY-RANK-001",
+      "M4-RULE-CONTINUOUS-REGIME-001",
+      "M4-RULE-EVALUATION-READINESS-001"
+    ],
+    "edges": [
+      {
+        "from": "M4-RULE-HORIZON-SAMPLING-001",
+        "to": "M4-RULE-LOG-RETURNS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-HORIZON-SAMPLING-001",
+        "to": "M4-RULE-REALIZED-VOLATILITY-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-LOG-RETURNS-001",
+        "to": "M4-RULE-REALIZED-VOLATILITY-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PLAN-GEOMETRY-001",
+        "to": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-REALIZED-VOLATILITY-001",
+        "to": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PLAN-GEOMETRY-001",
+        "to": "M4-RULE-PENDING-ACTIVATION-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-REALIZED-VOLATILITY-001",
+        "to": "M4-RULE-PENDING-ACTIVATION-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-HORIZON-SAMPLING-001",
+        "to": "M4-RULE-PATH-STRUCTURE-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-LOG-RETURNS-001",
+        "to": "M4-RULE-PATH-STRUCTURE-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PLAN-GEOMETRY-001",
+        "to": "M4-RULE-PRIOR-EXTREMA-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-REALIZED-VOLATILITY-001",
+        "to": "M4-RULE-VOLATILITY-RANK-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PATH-STRUCTURE-001",
+        "to": "M4-RULE-MTF-HIERARCHY-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PATH-STRUCTURE-001",
+        "to": "M4-RULE-CONTINUOUS-REGIME-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-VOLATILITY-RANK-001",
+        "to": "M4-RULE-CONTINUOUS-REGIME-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PATH-STRUCTURE-001",
+        "to": "M4-RULE-PRICE-OI-STATE-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "to": "M4-RULE-PRICE-OI-STATE-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "to": "M4-RULE-DERIVATIVES-CONTEXT-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "to": "M4-RULE-DERIVATIVES-CONTEXT-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "to": "M4-RULE-DERIVATIVES-CONTEXT-001",
+        "relation": "alternative_basis_input"
+      },
+      {
+        "from": "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "to": "M4-RULE-DERIVATIVES-CONTEXT-001",
+        "relation": "alternative_basis_input"
+      },
+      {
+        "from": "M4-RULE-FUNDING-STATE-001",
+        "to": "M4-RULE-DERIVATIVES-CONTEXT-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-QUOTED-SPREAD-001",
+        "to": "M4-RULE-DEPTH-SWEEP-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-FUNDING-STATE-001",
+        "to": "M4-RULE-FUNDING-CASHFLOW-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PLAN-GEOMETRY-001",
+        "to": "M4-RULE-PLAN-EXPOSURE-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PLAN-GEOMETRY-001",
+        "to": "M4-RULE-NET-PAYOFFS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-DEPTH-SWEEP-001",
+        "to": "M4-RULE-NET-PAYOFFS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-FEE-SCENARIOS-001",
+        "to": "M4-RULE-NET-PAYOFFS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-FUNDING-CASHFLOW-001",
+        "to": "M4-RULE-NET-PAYOFFS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-PLAN-EXPOSURE-001",
+        "to": "M4-RULE-NET-PAYOFFS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-NET-PAYOFFS-001",
+        "to": "M4-RULE-EXPECTED-VALUE-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-NET-PAYOFFS-001",
+        "to": "M4-RULE-EVALUATION-READINESS-001",
+        "relation": "declared_computational_dependency"
+      },
+      {
+        "from": "M4-RULE-EXPECTED-VALUE-001",
+        "to": "M4-RULE-EVALUATION-READINESS-001",
+        "relation": "declared_computational_dependency"
+      }
+    ],
+    "alternative_input_groups": [
+      {
+        "id": "M4-ALT-BASIS-MODE-001",
+        "target_rule": "M4-RULE-DERIVATIVES-CONTEXT-001",
+        "members": [
+          "M4-RULE-SPOT-FUTURES-BASIS-001",
+          "M4-RULE-MARK-INDEX-PREMIUM-001"
+        ],
+        "simultaneous_additive_use_authorized": false
+      }
+    ]
+  },
+  "rules": [
+    {
+      "sequence": 1,
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "rule_version": "0.2",
+      "name": "Seleccion exacta de intervalo para el horizonte",
+      "source_subphase": "M4.2",
+      "card_role": "p0_core_rule",
+      "computational_role": "policy_operator",
+      "canonical_family": "M4-FAMILY-SAMPLING",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-01-01",
+          "ordinal": 1,
+          "expression": "I={delta in profile_intervals: H mod delta=0 and H/delta>=24}",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-01-02",
+          "ordinal": 2,
+          "expression": "delta*=max(I)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-01-03",
+          "ordinal": 3,
+          "expression": "N_H=H/delta*",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [
+        "validate horizon profile and exact H",
+        "retain supported intervals that divide H exactly",
+        "retain intervals with at least 24 returns",
+        "select the largest retained interval or block"
+      ],
+      "pseudocode_status": "source_preserved",
+      "activation_conditions": [
+        "valid exact horizon inside approved profile"
+      ],
+      "non_application_conditions": [
+        "no supported exact divisor with at least 24 returns"
+      ],
+      "missing_data_behavior": "Block reachability family.",
+      "required_trace_outputs": [
+        "time_horizon",
+        "horizon_seconds",
+        "interval",
+        "interval_seconds",
+        "returns_per_horizon",
+        "selection_policy"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-01-01",
+          "m5_test_id": "M5-TEST-01-01",
+          "statement": "H is never rounded",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-01-02",
+          "m5_test_id": "M5-TEST-01-02",
+          "statement": "delta divides H exactly",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-01-03",
+          "m5_test_id": "M5-TEST-01-03",
+          "statement": "N_H>=24",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-01-04",
+          "m5_test_id": "M5-TEST-01-04",
+          "statement": "selection is pair-independent",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 2,
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "rule_version": "0.2",
+      "name": "Geometria logaritmica long/short",
+      "source_subphase": "M4.2",
+      "card_role": "p0_core_rule",
+      "computational_role": "atomic_plan_input",
+      "canonical_family": "M4-FAMILY-PLAN-GEOMETRY",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-02-01",
+          "ordinal": 1,
+          "expression": "s=+1 long; s=-1 short",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-02-02",
+          "ordinal": 2,
+          "expression": "d_TP=s*ln(TP/E)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-02-03",
+          "ordinal": 3,
+          "expression": "d_SL=-s*ln(SL/E)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-02-04",
+          "ordinal": 4,
+          "expression": "valid iff d_TP>0 and d_SL>0",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [
+        "validate side and positive finite prices",
+        "validate side-specific barrier ordering",
+        "calculate d_TP and d_SL in log-price space"
+      ],
+      "pseudocode_status": "source_preserved",
+      "activation_conditions": [
+        "valid plan geometry"
+      ],
+      "non_application_conditions": [
+        "invalid side, price or barrier ordering"
+      ],
+      "missing_data_behavior": "Block the complete analysis.",
+      "required_trace_outputs": [
+        "side_sign",
+        "entry",
+        "take_profit",
+        "stop_loss",
+        "tp_log_distance",
+        "sl_log_distance"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-02-01",
+          "m5_test_id": "M5-TEST-02-01",
+          "statement": "long/short mirror symmetry",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-02-02",
+          "m5_test_id": "M5-TEST-02-02",
+          "statement": "positive distances",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-02-03",
+          "m5_test_id": "M5-TEST-02-03",
+          "statement": "price-scale invariance",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-02-04",
+          "m5_test_id": "M5-TEST-02-04",
+          "statement": "continuous response to barrier movement",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 3,
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "rule_version": "0.2",
+      "name": "Retornos logaritmicos de velas cerradas",
+      "source_subphase": "M4.2",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_transformation",
+      "canonical_family": "M4-FAMILY-RETURNS-VOLATILITY",
+      "dependencies": [
+        "M4-RULE-HORIZON-SAMPLING-001"
+      ],
+      "input_contract": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-03-01",
+          "ordinal": 1,
+          "expression": "r_i=ln(C_i/C_(i-1))",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [
+        "take consecutive closed adjusted-free USD-M closes",
+        "reject non-positive, missing, stale, future or gapped observations",
+        "calculate natural log price ratios"
+      ],
+      "pseudocode_status": "source_preserved",
+      "activation_conditions": [
+        "M3-compliant consecutive closed klines"
+      ],
+      "non_application_conditions": [
+        "gap, open bar, invalid close or insufficient history"
+      ],
+      "missing_data_behavior": "Block realized volatility and dependent rules.",
+      "required_trace_outputs": [
+        "close_count",
+        "return_count",
+        "first_close_time",
+        "last_close_time",
+        "return_series_hash"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-03-01",
+          "m5_test_id": "M5-TEST-03-01",
+          "statement": "constant price gives zero returns",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-03-02",
+          "m5_test_id": "M5-TEST-03-02",
+          "statement": "multiplying all prices by a constant does not change returns",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-03-03",
+          "m5_test_id": "M5-TEST-03-03",
+          "statement": "gaps and invalid prices block",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 4,
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "rule_version": "0.2",
+      "name": "Volatilidad realizada del horizonte anterior",
+      "source_subphase": "M4.2",
+      "card_role": "p0_core_rule",
+      "computational_role": "statistical_estimator",
+      "canonical_family": "M4-FAMILY-RETURNS-VOLATILITY",
+      "dependencies": [
+        "M4-RULE-HORIZON-SAMPLING-001",
+        "M4-RULE-LOG-RETURNS-001"
+      ],
+      "input_contract": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-04-01",
+          "ordinal": 1,
+          "expression": "RV_prev(H)=sum_(i=1..N_H)(r_i^2)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-04-02",
+          "ordinal": 2,
+          "expression": "sigma_prev(H)=sqrt(RV_prev(H))",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [
+        "select delta with M4-RULE-HORIZON-SAMPLING-001",
+        "take N_H+1 consecutive closes ending at latest closed bar",
+        "verify exact H span and M3 freshness",
+        "calculate N_H log returns, RV and sigma"
+      ],
+      "pseudocode_status": "source_preserved",
+      "activation_conditions": [
+        "complete previous-H window with at least 24 returns"
+      ],
+      "non_application_conditions": [
+        "missing/gapped/future/stale bars",
+        "zero sigma blocks normalized reachability"
+      ],
+      "missing_data_behavior": "Block all sigma-normalized M4.2 outputs.",
+      "required_trace_outputs": [
+        "interval",
+        "horizon_seconds",
+        "return_count",
+        "window_start_close_time",
+        "window_end_close_time",
+        "realized_variance",
+        "realized_volatility",
+        "forecast_status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-04-01",
+          "m5_test_id": "M5-TEST-04-01",
+          "statement": "exact previous-H span",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-04-02",
+          "m5_test_id": "M5-TEST-04-02",
+          "statement": "RV>=0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-04-03",
+          "m5_test_id": "M5-TEST-04-03",
+          "statement": "sigma=sqrt(RV)",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-04-04",
+          "m5_test_id": "M5-TEST-04-04",
+          "statement": "scale invariance",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-04-05",
+          "m5_test_id": "M5-TEST-04-05",
+          "statement": "no annualization or cross-horizon square-root scaling",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 5,
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "rule_version": "0.2",
+      "name": "Geometria de barreras normalizada por volatilidad",
+      "source_subphase": "M4.2",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_derived",
+      "canonical_family": "M4-FAMILY-REACHABILITY",
+      "dependencies": [
+        "M4-RULE-PLAN-GEOMETRY-001",
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "input_contract": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-05-01",
+          "ordinal": 1,
+          "expression": "z_TP=d_TP/sigma_prev(H)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-05-02",
+          "ordinal": 2,
+          "expression": "z_SL=d_SL/sigma_prev(H)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-05-03",
+          "ordinal": 3,
+          "expression": "b=ln(d_TP/d_SL)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [
+        "obtain valid geometry and sigma_prev(H)>0",
+        "divide each positive log distance by the common sigma",
+        "record balance b without converting it to probability"
+      ],
+      "pseudocode_status": "source_preserved",
+      "activation_conditions": [
+        "valid geometry and finite sigma_prev(H)>0"
+      ],
+      "non_application_conditions": [
+        "invalid geometry, missing history or sigma<=0"
+      ],
+      "missing_data_behavior": "Block probability publication.",
+      "required_trace_outputs": [
+        "tp_log_distance",
+        "sl_log_distance",
+        "sigma_prev_horizon",
+        "z_tp",
+        "z_sl",
+        "distance_balance_log_ratio"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-05-01",
+          "m5_test_id": "M5-TEST-05-01",
+          "statement": "z_TP>0 and z_SL>0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-05-02",
+          "m5_test_id": "M5-TEST-05-02",
+          "statement": "barrier monotonicity",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-05-03",
+          "m5_test_id": "M5-TEST-05-03",
+          "statement": "volatility monotonicity",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-05-04",
+          "m5_test_id": "M5-TEST-05-04",
+          "statement": "long/short mirror symmetry",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-05-05",
+          "m5_test_id": "M5-TEST-05-05",
+          "statement": "continuity",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 6,
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "rule_version": "0.2",
+      "name": "Distancia de activacion para entrada pendiente",
+      "source_subphase": "M4.2",
+      "card_role": "p0_core_rule",
+      "computational_role": "deferred_branch_operator",
+      "canonical_family": "M4-FAMILY-PENDING-ACTIVATION",
+      "dependencies": [
+        "M4-RULE-PLAN-GEOMETRY-001",
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "input_contract": {
+        "provider": "user_plan_and_binance_usdm",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-004",
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-06-01",
+          "ordinal": 1,
+          "expression": "market: d_entry=0, z_entry=0",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-06-02",
+          "ordinal": 2,
+          "expression": "pending: d_entry=abs(ln(E/P_analysis))",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-06-03",
+          "ordinal": 3,
+          "expression": "z_entry=d_entry/sigma_prev(H)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [
+        "require entry_type and trigger_condition from the immutable plan",
+        "reject a pending trigger already satisfied at analysis_at",
+        "calculate distance and z_entry for a waiting trigger",
+        "do not calculate activation probability in M4"
+      ],
+      "pseudocode_status": "source_preserved",
+      "activation_conditions": [
+        "market entry or valid unsatisfied pending trigger"
+      ],
+      "non_application_conditions": [
+        "missing trigger_condition",
+        "pending condition already satisfied",
+        "invalid or stale current price"
+      ],
+      "missing_data_behavior": "Block pending-order probability analysis.",
+      "required_trace_outputs": [
+        "entry_type",
+        "trigger_condition",
+        "entry_order_type",
+        "current_price",
+        "entry",
+        "entry_log_distance",
+        "z_entry",
+        "activation_status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-06-01",
+          "m5_test_id": "M5-TEST-06-01",
+          "statement": "market z_entry=0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-06-02",
+          "m5_test_id": "M5-TEST-06-02",
+          "statement": "pending z_entry>0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-06-03",
+          "m5_test_id": "M5-TEST-06-03",
+          "statement": "trigger direction preserved",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-06-04",
+          "m5_test_id": "M5-TEST-06-04",
+          "statement": "already-satisfied pending trigger rejected",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-06-05",
+          "m5_test_id": "M5-TEST-06-05",
+          "statement": "activation probability remains null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "market_branch_only",
+        "reason": "Owner scope admits MARKET entries; pending-order branches remain deferred."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 7,
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "rule_version": "0.2",
+      "name": "Operador de suavizado exponencial",
+      "source_subphase": "M4.3",
+      "card_role": "auxiliary_operator",
+      "computational_role": "auxiliary_operator",
+      "canonical_family": null,
+      "dependencies": [],
+      "input_contract": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-07-01",
+          "ordinal": 1,
+          "expression": "S_0=x_0",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-07-02",
+          "ordinal": 2,
+          "expression": "S_t=alpha*x_t+(1-alpha)*S_(t-1), 0<alpha<=1",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Do not calculate; never replace history with a shorter EMA.",
+      "required_trace_outputs": [
+        "alpha",
+        "initialization",
+        "input_count",
+        "smoothed_value"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-07-01",
+          "m5_test_id": "M5-TEST-07-01",
+          "statement": "0<alpha<=1",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-07-02",
+          "m5_test_id": "M5-TEST-07-02",
+          "statement": "explicit initialization",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-07-03",
+          "m5_test_id": "M5-TEST-07-03",
+          "statement": "constant input remains constant",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 8,
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "rule_version": "0.2",
+      "name": "Desplazamiento y eficiencia de trayectoria",
+      "source_subphase": "M4.3",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_derived",
+      "canonical_family": "M4-FAMILY-PATH-STRUCTURE",
+      "dependencies": [
+        "M4-RULE-HORIZON-SAMPLING-001",
+        "M4-RULE-LOG-RETURNS-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-08-01",
+          "ordinal": 1,
+          "expression": "D_W=sum(r_i)=ln(C_end/C_start)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-08-02",
+          "ordinal": 2,
+          "expression": "TV_W=sum(abs(r_i))",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-08-03",
+          "ordinal": 3,
+          "expression": "if TV_W>0: E_W=abs(D_W)/TV_W; SE_W=D_W/TV_W",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-08-04",
+          "ordinal": 4,
+          "expression": "if TV_W=0: E_W=0; SE_W=0; flat_path=true",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Block structure and all dependent combinations.",
+      "required_trace_outputs": [
+        "window_seconds",
+        "return_count",
+        "log_displacement",
+        "total_log_variation",
+        "path_efficiency",
+        "signed_path_efficiency",
+        "direction_descriptor"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-08-01",
+          "m5_test_id": "M5-TEST-08-01",
+          "statement": "0<=E_W<=1",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-08-02",
+          "m5_test_id": "M5-TEST-08-02",
+          "statement": "-1<=SE_W<=1",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-08-03",
+          "m5_test_id": "M5-TEST-08-03",
+          "statement": "TV_W=0 implies E_W=SE_W=0 and flat_path=true",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-08-04",
+          "m5_test_id": "M5-TEST-08-04",
+          "statement": "scale invariance",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-08-05",
+          "m5_test_id": "M5-TEST-08-05",
+          "statement": "D_W equals log endpoint ratio",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 9,
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "rule_version": "0.2",
+      "name": "Extremos observados del horizonte anterior",
+      "source_subphase": "M4.3",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_derived",
+      "canonical_family": "M4-FAMILY-PATH-STRUCTURE",
+      "dependencies": [
+        "M4-RULE-PLAN-GEOMETRY-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-09-01",
+          "ordinal": 1,
+          "expression": "X_high=max(H_i), X_low=min(L_i) over previous exact H",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-09-02",
+          "ordinal": 2,
+          "expression": "long target extreme=X_high; short target extreme=X_low",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-09-03",
+          "ordinal": 3,
+          "expression": "between=entry<X_high<TP long; TP<X_low<entry short",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Rule not evaluated; no synthetic level.",
+      "required_trace_outputs": [
+        "prior_high",
+        "prior_low",
+        "target_side_extreme",
+        "adverse_side_extreme",
+        "target_extreme_between_entry_and_tp",
+        "target_extreme_log_distance",
+        "barrier_effect"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-09-01",
+          "m5_test_id": "M5-TEST-09-01",
+          "statement": "prior_low<=prior_high",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-09-02",
+          "m5_test_id": "M5-TEST-09-02",
+          "statement": "strict between relation",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-09-03",
+          "m5_test_id": "M5-TEST-09-03",
+          "statement": "long/short mirror handling",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-09-04",
+          "m5_test_id": "M5-TEST-09-04",
+          "statement": "no support/resistance label",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 10,
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "rule_version": "0.2",
+      "name": "Percentil continuo de volatilidad",
+      "source_subphase": "M4.3",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_derived",
+      "canonical_family": "M4-FAMILY-VOLATILITY-REGIME",
+      "dependencies": [
+        "M4-RULE-REALIZED-VOLATILITY-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-10-01",
+          "ordinal": 1,
+          "expression": "q=(count(RV_j<RV_t)+0.5*count(RV_j=RV_t))/60",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-10-02",
+          "ordinal": 2,
+          "expression": "j are 60 strictly prior non-overlapping H windows",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Block regime context; retain geometry if otherwise valid.",
+      "required_trace_outputs": [
+        "current_realized_variance",
+        "reference_window_count",
+        "reference_cutoff",
+        "volatility_percentile",
+        "ranking_method"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-10-01",
+          "m5_test_id": "M5-TEST-10-01",
+          "statement": "0<=q<=1",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-10-02",
+          "m5_test_id": "M5-TEST-10-02",
+          "statement": "exactly 60 prior windows",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-10-03",
+          "m5_test_id": "M5-TEST-10-03",
+          "statement": "current window excluded from reference",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-10-04",
+          "m5_test_id": "M5-TEST-10-04",
+          "statement": "midrank tie handling",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 11,
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "rule_version": "0.2",
+      "name": "Jerarquia multi-timeframe H, 2H y 4H",
+      "source_subphase": "M4.3",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_derived",
+      "canonical_family": "M4-FAMILY-PATH-STRUCTURE",
+      "dependencies": [
+        "M4-RULE-PATH-STRUCTURE-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-11-01",
+          "ordinal": 1,
+          "expression": "calculate SE_W for W in {H,2H,4H} on the same closed grid",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-11-02",
+          "ordinal": 2,
+          "expression": "sign_W=sign(SE_W)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-11-03",
+          "ordinal": 3,
+          "expression": "agreement in {all_positive,all_negative,mixed,flat_present}",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Do not collapse available windows into a partial vote.",
+      "required_trace_outputs": [
+        "window_multipliers",
+        "signed_path_efficiencies",
+        "direction_signs",
+        "agreement_descriptor"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-11-01",
+          "m5_test_id": "M5-TEST-11-01",
+          "statement": "exact windows H,2H,4H",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-11-02",
+          "m5_test_id": "M5-TEST-11-02",
+          "statement": "same sampling grid",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-11-03",
+          "m5_test_id": "M5-TEST-11-03",
+          "statement": "no numeric aggregation",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-11-04",
+          "m5_test_id": "M5-TEST-11-04",
+          "statement": "order and signs preserved",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 12,
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "rule_version": "0.2",
+      "name": "Vector continuo de regimen",
+      "source_subphase": "M4.3",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_derived",
+      "canonical_family": "M4-FAMILY-VOLATILITY-REGIME",
+      "dependencies": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-VOLATILITY-RANK-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-12-01",
+          "ordinal": 1,
+          "expression": "R_t=(q_RV,t, SE_H,t)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "required_trace_outputs": [
+        "volatility_percentile",
+        "signed_path_efficiency"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-12-01",
+          "m5_test_id": "M5-TEST-12-01",
+          "statement": "q_RV in [0,1]",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-12-02",
+          "m5_test_id": "M5-TEST-12-02",
+          "statement": "SE_H in [-1,1]",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-12-03",
+          "m5_test_id": "M5-TEST-12-03",
+          "statement": "regime_label is null",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-12-04",
+          "m5_test_id": "M5-TEST-12-04",
+          "statement": "directional_score is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 13,
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "rule_version": "0.2",
+      "name": "Desequilibrio de operaciones agresoras ejecutadas",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "observed_derived",
+      "canonical_family": "M4-FAMILY-AGGRESSOR-FLOW",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "Binance USD-M",
+        "m3_data_contract_ids": [
+          "M3-DATA-005",
+          "M3-DATA-007",
+          "M3-DATA-015"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-13-01",
+          "ordinal": 1,
+          "expression": "B_H=sum(p_i*q_i where buyer_is_maker=false)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-13-02",
+          "ordinal": 2,
+          "expression": "S_H=sum(p_i*q_i where buyer_is_maker=true)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-13-03",
+          "ordinal": 3,
+          "expression": "ATI_H=(B_H-S_H)/(B_H+S_H)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-13-04",
+          "ordinal": 4,
+          "expression": "periodic alternative=(sum(buyVol)-sum(sellVol))/total",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Rule unavailable; no zero or neutral imbalance.",
+      "required_trace_outputs": [
+        "window_start_ms",
+        "window_end_ms",
+        "coverage_start_ms",
+        "coverage_end_ms",
+        "ati_source",
+        "activity_unit",
+        "aggregation_method",
+        "source_retention_status",
+        "buy_taker_volume",
+        "sell_taker_volume",
+        "total_activity",
+        "ATI_H",
+        "coverage_complete"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-13-01",
+          "m5_test_id": "M5-TEST-13-01",
+          "statement": "-1<=ATI_H<=1",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-13-02",
+          "m5_test_id": "M5-TEST-13-02",
+          "statement": "exact complete window",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-13-03",
+          "m5_test_id": "M5-TEST-13-03",
+          "statement": "buyer-maker means seller taker",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-13-04",
+          "m5_test_id": "M5-TEST-13-04",
+          "statement": "source alternatives are not averaged",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 14,
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "rule_version": "0.2",
+      "name": "Cambio logaritmico de open interest",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "observed_derived",
+      "canonical_family": "M4-FAMILY-OPEN-INTEREST",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "Binance USD-M",
+        "m3_data_contract_ids": [
+          "M3-DATA-013",
+          "M3-DATA-014"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-14-01",
+          "ordinal": 1,
+          "expression": "dOI_H=ln(OI_t/OI_(t-H))",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-14-02",
+          "ordinal": 2,
+          "expression": "current_timestamp_ms-previous_timestamp_ms=H*1000",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Rule unavailable; no assumed unchanged OI.",
+      "required_trace_outputs": [
+        "previous_timestamp_ms",
+        "current_timestamp_ms",
+        "horizon_seconds",
+        "actual_separation_seconds",
+        "alignment_error_seconds",
+        "previous_open_interest",
+        "current_open_interest",
+        "dOI_H",
+        "long_short_direction"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-14-01",
+          "m5_test_id": "M5-TEST-14-01",
+          "statement": "OI_t>0 and OI_(t-H)>0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-14-02",
+          "m5_test_id": "M5-TEST-14-02",
+          "statement": "exact endpoint separation H",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-14-03",
+          "m5_test_id": "M5-TEST-14-03",
+          "statement": "dimensionless log change",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-14-04",
+          "m5_test_id": "M5-TEST-14-04",
+          "statement": "long_short_direction is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 15,
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "rule_version": "0.2",
+      "name": "Estado conjunto precio y open interest",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "composite_container",
+      "canonical_family": "M4-FAMILY-OPEN-INTEREST",
+      "dependencies": [
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PATH-STRUCTURE-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M",
+        "m3_data_contract_ids": [
+          "M3-DATA-005",
+          "M3-DATA-013",
+          "M3-DATA-014"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-15-01",
+          "ordinal": 1,
+          "expression": "POI_H=(D_H,dOI_H)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "required_trace_outputs": [
+        "D_H",
+        "dOI_H",
+        "price_sign",
+        "oi_sign",
+        "state_descriptor"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-15-01",
+          "m5_test_id": "M5-TEST-15-01",
+          "statement": "continuous values preserved",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-15-02",
+          "m5_test_id": "M5-TEST-15-02",
+          "statement": "positioning_label is null",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-15-03",
+          "m5_test_id": "M5-TEST-15-03",
+          "statement": "aggregate_score is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 16,
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "rule_version": "0.2",
+      "name": "Intervalo observable spot-Futures",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "observed_derived",
+      "canonical_family": "M4-FAMILY-BASIS",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "Binance USD-M and Binance Spot",
+        "m3_data_contract_ids": [
+          "M3-DATA-008",
+          "M3-DATA-016",
+          "M3-DATA-017"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant receive times only; cross-venue receive-time skew is bounded by a provisional project policy",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-16-01",
+          "ordinal": 1,
+          "expression": "mid_F=(F_bid+F_ask)/2; mid_S=(S_bid+S_ask)/2",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-16-02",
+          "ordinal": 2,
+          "expression": "b_mid=ln(mid_F/mid_S)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-16-03",
+          "ordinal": 3,
+          "expression": "b_sellF_buyS=ln(F_bid/S_ask)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-16-04",
+          "ordinal": 4,
+          "expression": "b_buyF_sellS=ln(F_ask/S_bid)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Block basis; mark-index premium is not a silent substitute.",
+      "required_trace_outputs": [
+        "four_quotes",
+        "futures_received_at_ms",
+        "spot_received_at_ms",
+        "capture_skew_ms",
+        "capture_time_basis",
+        "market_timestamp_synchronized",
+        "basis_capture_uncertainty_status",
+        "capture_limit_status",
+        "b_mid",
+        "executable_basis_bounds",
+        "fees_included"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-16-01",
+          "m5_test_id": "M5-TEST-16-01",
+          "statement": "bid<=ask on both venues",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-16-02",
+          "m5_test_id": "M5-TEST-16-02",
+          "statement": "capture skew<=2000ms",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-16-03",
+          "m5_test_id": "M5-TEST-16-03",
+          "statement": "capture times are local receive times, not synchronized market times",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-16-04",
+          "m5_test_id": "M5-TEST-16-04",
+          "statement": "log ratios are scale invariant",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-16-05",
+          "m5_test_id": "M5-TEST-16-05",
+          "statement": "price_leadership is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 17,
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "rule_version": "0.2",
+      "name": "Prima sincronizada mark-index",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "observed_derived",
+      "canonical_family": "M4-FAMILY-BASIS",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "Binance USD-M",
+        "m3_data_contract_ids": [
+          "M3-DATA-010"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-17-01",
+          "ordinal": 1,
+          "expression": "b_mark_index=ln(markPrice/indexPrice)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Rule unavailable; no zero premium.",
+      "required_trace_outputs": [
+        "provider_time",
+        "mark_price",
+        "index_price",
+        "mark_index_log_premium",
+        "binance_spot_basis"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-17-01",
+          "m5_test_id": "M5-TEST-17-01",
+          "statement": "markPrice>0 and indexPrice>0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-17-02",
+          "m5_test_id": "M5-TEST-17-02",
+          "statement": "same provider timestamp",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-17-03",
+          "m5_test_id": "M5-TEST-17-03",
+          "statement": "binance_spot_basis is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 18,
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "rule_version": "0.2",
+      "name": "Estado temporal y carga realizada de funding",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "observed_derived",
+      "canonical_family": "M4-FAMILY-FUNDING",
+      "dependencies": [],
+      "input_contract": {
+        "provider": "Binance USD-M",
+        "m3_data_contract_ids": [
+          "M3-DATA-010",
+          "M3-DATA-011",
+          "M3-DATA-012"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-18-01",
+          "ordinal": 1,
+          "expression": "linearized_f_last_hour=lastFundingRate/fundingIntervalHours",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-18-02",
+          "ordinal": 2,
+          "expression": "L_prev(H)=sum(f_j where t-H<fundingTime_j<=t)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-18-03",
+          "ordinal": 3,
+          "expression": "L_prev_hour(H)=L_prev(H)/H_hours",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-18-04",
+          "ordinal": 4,
+          "expression": "N_schedule=count configured event times within future H",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Funding context unavailable; never assume zero.",
+      "required_trace_outputs": [
+        "last_funding_rate",
+        "interval_hours",
+        "linearized_last_funding_rate_per_hour",
+        "next_funding_time",
+        "scheduled_events_under_current_config",
+        "previous_horizon_funding_load",
+        "projected_funding_cost"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-18-01",
+          "m5_test_id": "M5-TEST-18-01",
+          "statement": "fundingIntervalHours>0",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-18-02",
+          "m5_test_id": "M5-TEST-18-02",
+          "statement": "funding events ordered and <=analysis_at",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-18-03",
+          "m5_test_id": "M5-TEST-18-03",
+          "statement": "future_funding_rate_assumption is null",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-18-04",
+          "m5_test_id": "M5-TEST-18-04",
+          "statement": "projected_funding_cost is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 19,
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "rule_version": "0.2",
+      "name": "Vector continuo de contexto de derivados",
+      "source_subphase": "M4.4",
+      "card_role": "p0_core_rule",
+      "computational_role": "composite_container",
+      "canonical_family": "M4-FAMILY-DERIVATIVES-CONTAINER",
+      "dependencies": [
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-FUNDING-STATE-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001"
+      ],
+      "input_contract": {
+        "provider": "Binance USD-M",
+        "m3_data_contract_ids": [
+          "M3-DATA-007",
+          "M3-DATA-008",
+          "M3-DATA-010",
+          "M3-DATA-012",
+          "M3-DATA-014",
+          "M3-DATA-016",
+          "M3-DATA-017"
+        ]
+      },
+      "market_time_unit_freshness": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "formulas": [
+        {
+          "id": "M5-FORMULA-19-01",
+          "ordinal": 1,
+          "expression": "DC_H=(ATI_H,dOI_H,b_mid,linearized_f_last_hour)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Vector unavailable if any required component is absent.",
+      "required_trace_outputs": [
+        "ATI_H",
+        "dOI_H",
+        "b_mid",
+        "linearized_f_last_hour"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-19-01",
+          "m5_test_id": "M5-TEST-19-01",
+          "statement": "ATI_H in [-1,1]",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-19-02",
+          "m5_test_id": "M5-TEST-19-02",
+          "statement": "all components continuous",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-19-03",
+          "m5_test_id": "M5-TEST-19-03",
+          "statement": "crowding_label is null",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-19-04",
+          "m5_test_id": "M5-TEST-19-04",
+          "statement": "aggregate_score is null",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 20,
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "rule_version": "0.2",
+      "name": "Spread cotizado en el instante de llegada",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "observed_derived",
+      "canonical_family": "M4-FAMILY-EXECUTION",
+      "dependencies": [],
+      "input_contract": [
+        "best_bid>0",
+        "best_ask>=best_bid",
+        "receive_time"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-20-01",
+          "ordinal": 1,
+          "expression": "mid=(best_bid+best_ask)/2",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-20-02",
+          "ordinal": 2,
+          "expression": "spread_quote=best_ask-best_bid",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-20-03",
+          "ordinal": 3,
+          "expression": "spread_fraction_mid=spread_quote/mid",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Libro cruzado, dato no positivo o timestamp ausente."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-20-01",
+          "m5_test_id": "M5-TEST-20-01",
+          "statement": "Snapshot actual; puede cambiar antes de ejecutar.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-20-02",
+          "m5_test_id": "M5-TEST-20-02",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-20-03",
+          "m5_test_id": "M5-TEST-20-03",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 21,
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "rule_version": "0.2",
+      "name": "Barrido visible e implementation shortfall",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "execution_derived",
+      "canonical_family": "M4-FAMILY-EXECUTION",
+      "dependencies": [
+        "M4-RULE-QUOTED-SPREAD-001"
+      ],
+      "input_contract": [
+        "side buy|sell",
+        "base_quantity>0",
+        "bids descendentes",
+        "asks ascendentes",
+        "arrival midpoint"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-21-01",
+          "ordinal": 1,
+          "expression": "buy consume asks; sell consume bids",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-21-02",
+          "ordinal": 2,
+          "expression": "VWAP_filled=sum(price_i*filled_qty_i)/filled_qty",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-21-03",
+          "ordinal": 3,
+          "expression": "D=+1 buy, -1 sell",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-21-04",
+          "ordinal": 4,
+          "expression": "IS_filled_quote=D*(sum(price_i*filled_qty_i)-arrival_mid*filled_qty)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-21-05",
+          "ordinal": 5,
+          "expression": "IS_filled_fraction=IS_filled_quote/(arrival_mid*filled_qty)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-21-06",
+          "ordinal": 6,
+          "expression": "complete_VWAP=VWAP_filled iff filled_qty=requested_qty",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-21-07",
+          "ordinal": 7,
+          "expression": "fill_ratio=filled_qty/requested_qty",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Fill ratio menor que uno bloquea el coste completo.",
+        "Orden o niveles invalidos bloquean."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-21-01",
+          "m5_test_id": "M5-TEST-21-01",
+          "statement": "Solo profundidad visible solicitada.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-21-02",
+          "m5_test_id": "M5-TEST-21-02",
+          "statement": "No garantiza fills ni incorpora latencia o cola.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-21-03",
+          "m5_test_id": "M5-TEST-21-03",
+          "statement": "El coste del tramo llenado no representa el coste de la cantidad no llenada.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-21-04",
+          "m5_test_id": "M5-TEST-21-04",
+          "statement": "El IS desde midpoint ya contiene medio spread y barrido; no se suma de nuevo el spread.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-21-05",
+          "m5_test_id": "M5-TEST-21-05",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-21-06",
+          "m5_test_id": "M5-TEST-21-06",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 22,
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "rule_version": "0.2",
+      "name": "Comision por rol de liquidez autenticado",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "economic_scenario",
+      "canonical_family": "M4-FAMILY-FEES",
+      "dependencies": [],
+      "input_contract": [
+        "notional>=0",
+        "allowed_roles subset maker|taker|rpi",
+        "authenticated commission rates",
+        "observed_execution flag",
+        "fee_asset required for observed exact cost"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-22-01",
+          "ordinal": 1,
+          "expression": "fee(role)=notional*commission_rate(role)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-22-02",
+          "ordinal": 2,
+          "expression": "lower=min(fee(role)); upper=max(fee(role))",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-22-03",
+          "ordinal": 3,
+          "expression": "pretrade one-role input is a scenario point, not an observation",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-22-04",
+          "ordinal": 4,
+          "expression": "exact iff execution is observed, role is unique, notional is executed and fee_asset is known",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Sin autenticacion o tasa requerida, el coste exacto bloquea."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-22-01",
+          "m5_test_id": "M5-TEST-22-01",
+          "statement": "RPI solo entra cuando el tipo de orden lo permite.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-22-02",
+          "m5_test_id": "M5-TEST-22-02",
+          "statement": "Cada tramo y resultado usa su propio notional y rol.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-22-03",
+          "m5_test_id": "M5-TEST-22-03",
+          "statement": "El basis bruto no se netea con comisiones; ambos conservan campos y unidades separados.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-22-04",
+          "m5_test_id": "M5-TEST-22-04",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-22-05",
+          "m5_test_id": "M5-TEST-22-05",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 23,
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "rule_version": "0.2",
+      "name": "Flujo monetario firmado de funding",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "economic_scenario",
+      "canonical_family": "M4-FAMILY-FUNDING-CASHFLOW",
+      "dependencies": [
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "input_contract": [
+        "side long|short",
+        "base_quantity>0",
+        "event mark_price>0",
+        "event funding_rate signed"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-23-01",
+          "ordinal": 1,
+          "expression": "position_sign=+1 long, -1 short",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-23-02",
+          "ordinal": 2,
+          "expression": "cashflow_event=-position_sign*quantity*mark_price*rate",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-23-03",
+          "ordinal": 3,
+          "expression": "cashflow_total=sum(cashflow_event)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Eventos futuros desconocidos bloquean el funding exacto."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-23-01",
+          "m5_test_id": "M5-TEST-23-01",
+          "statement": "Antes del cierre solo admite escenarios, no forecast exacto.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-23-02",
+          "m5_test_id": "M5-TEST-23-02",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-23-03",
+          "m5_test_id": "M5-TEST-23-03",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 24,
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "rule_version": "0.2",
+      "name": "Exposicion monetaria lineal del plan",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "deterministic_from_plan",
+      "canonical_family": "M4-FAMILY-EXPOSURE",
+      "dependencies": [
+        "M4-RULE-PLAN-GEOMETRY-001"
+      ],
+      "input_contract": [
+        "side",
+        "entry, TP, SL",
+        "margin>0",
+        "leverage>0"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-24-01",
+          "ordinal": 1,
+          "expression": "notional=margin*leverage",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-24-02",
+          "ordinal": 2,
+          "expression": "quantity=notional/entry",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-24-03",
+          "ordinal": 3,
+          "expression": "gross_pnl(P)=direction*quantity*(P-entry)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-24-04",
+          "ordinal": 4,
+          "expression": "gross_reward=gross_pnl(TP)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-24-05",
+          "ordinal": 5,
+          "expression": "gross_risk=-gross_pnl(SL)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-24-06",
+          "ordinal": 6,
+          "expression": "gross_RR=gross_reward/gross_risk",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-24-07",
+          "ordinal": 7,
+          "expression": "risk_fraction_margin=gross_risk/margin",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Geometria direccional invalida o entrada/margen/leverage no positivos."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-24-01",
+          "m5_test_id": "M5-TEST-24-01",
+          "statement": "Modelo lineal USD-M bruto, antes de costes.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-24-02",
+          "m5_test_id": "M5-TEST-24-02",
+          "statement": "No incluye equity, margin mode ni maintenance brackets.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-24-03",
+          "m5_test_id": "M5-TEST-24-03",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-24-04",
+          "m5_test_id": "M5-TEST-24-04",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 25,
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "rule_version": "0.2",
+      "name": "Vector monetario neto por resultado",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "economic_derived",
+      "canonical_family": "M4-FAMILY-ECONOMIC-EVALUATION",
+      "dependencies": [
+        "M4-RULE-DEPTH-SWEEP-001",
+        "M4-RULE-FEE-SCENARIOS-001",
+        "M4-RULE-FUNDING-CASHFLOW-001",
+        "M4-RULE-PLAN-EXPOSURE-001",
+        "M4-RULE-PLAN-GEOMETRY-001"
+      ],
+      "input_contract": [
+        "gross_price_pnl by outcome",
+        "fee_cost by outcome",
+        "execution_shortfall_cost by outcome",
+        "signed funding_cashflow by outcome"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-25-01",
+          "ordinal": 1,
+          "expression": "net_payoff_k=gross_price_pnl_k-fee_k-IS_cost_k+funding_k",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-25-02",
+          "ordinal": 2,
+          "expression": "no_entry direct trading cashflow=0",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Payoff exacto bloqueado por cualquier componente desconocido."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-25-01",
+          "m5_test_id": "M5-TEST-25-01",
+          "statement": "Si un coste de una rama falta, esa rama queda incompleta.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-25-02",
+          "m5_test_id": "M5-TEST-25-02",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-25-03",
+          "m5_test_id": "M5-TEST-25-03",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 26,
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "rule_version": "0.2",
+      "name": "Identidad de valor esperado por resultados",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "economic_derived",
+      "canonical_family": "M4-FAMILY-ECONOMIC-EVALUATION",
+      "dependencies": [
+        "M4-RULE-NET-PAYOFFS-001"
+      ],
+      "input_contract": [
+        "coherent probabilities p_k",
+        "complete net payoff y_k for identical outcomes"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-26-01",
+          "ordinal": 1,
+          "expression": "0<=p_k<=1",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-26-02",
+          "ordinal": 2,
+          "expression": "sum(p_k)=1",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-26-03",
+          "ordinal": 3,
+          "expression": "EV=sum(p_k*y_k)",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Claves distintas, probabilidades que no suman uno o payoff incompleto."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-26-01",
+          "m5_test_id": "M5-TEST-26-01",
+          "statement": "Probabilidades coherentes no existiran antes de M6.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-26-02",
+          "m5_test_id": "M5-TEST-26-02",
+          "statement": "Costes futuros incompletos impiden un EV exacto.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-26-03",
+          "m5_test_id": "M5-TEST-26-03",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-26-04",
+          "m5_test_id": "M5-TEST-26-04",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "blocked_until_m6_probabilities",
+        "reason": "The identity must be implemented in M5 but cannot be evaluated before coherent probabilities exist in M6."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "sequence": 27,
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "rule_version": "0.2",
+      "name": "Estado explicito de disponibilidad economica",
+      "source_subphase": "M4.5",
+      "card_role": "p0_core_rule",
+      "computational_role": "readiness_gate",
+      "canonical_family": "M4-FAMILY-ECONOMIC-EVALUATION",
+      "dependencies": [
+        "M4-RULE-EXPECTED-VALUE-001",
+        "M4-RULE-NET-PAYOFFS-001"
+      ],
+      "input_contract": [
+        "status market probabilities",
+        "status entry and exit execution",
+        "status fees and funding",
+        "status payoffs and account risk"
+      ],
+      "market_time_unit_freshness": [
+        "symbol must belong to the six-pair scope",
+        "timestamps and freshness follow the referenced M3 contracts",
+        "price and money use quote asset; quantity uses base asset",
+        "rates and fractions are dimensionless unless explicitly stated"
+      ],
+      "formulas": [
+        {
+          "id": "M5-FORMULA-27-01",
+          "ordinal": 1,
+          "expression": "economic_ready=all(required economic statuses available|N/A)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-27-02",
+          "ordinal": 2,
+          "expression": "account_risk_ready=(account_risk status=available)",
+          "implementation_status": "pending_m5_code"
+        },
+        {
+          "id": "M5-FORMULA-27-03",
+          "ordinal": 3,
+          "expression": "decision_authorized=false until governance is defined",
+          "implementation_status": "pending_m5_code"
+        }
+      ],
+      "pseudocode": [],
+      "pseudocode_status": "not_declared_in_m4_use_formulas_only",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Claves o estados fuera del contrato."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "required_trace_outputs": [
+        "rule id and version",
+        "input values and units",
+        "provider/receive timestamps when market data is used",
+        "formula branch, output and availability status"
+      ],
+      "invariants": [
+        {
+          "m4_invariant_id": "M4-INV-27-01",
+          "m5_test_id": "M5-TEST-27-01",
+          "statement": "Es control de completitud, no evidencia de rentabilidad.",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-27-02",
+          "m5_test_id": "M5-TEST-27-02",
+          "statement": "long/short signs must follow the declared direction",
+          "implementation_status": "pending_m5_test"
+        },
+        {
+          "m4_invariant_id": "M4-INV-27-03",
+          "m5_test_id": "M5-TEST-27-03",
+          "statement": "no execution or exposure value may change market probability",
+          "implementation_status": "pending_m5_test"
+        }
+      ],
+      "runtime_activation": {
+        "state": "internal_shadow_only",
+        "reason": "Implement and trace without changing production output."
+      },
+      "implementation_requirement": "required_in_m5",
+      "implementation_status": "contract_frozen_code_pending",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    }
+  ],
+  "m5_test_registry": [
+    {
+      "test_id": "M5-TEST-01-01",
+      "m4_invariant_id": "M4-INV-01-01",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "H is never rounded",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-01-02",
+      "m4_invariant_id": "M4-INV-01-02",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "delta divides H exactly",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-01-03",
+      "m4_invariant_id": "M4-INV-01-03",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "N_H>=24",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-01-04",
+      "m4_invariant_id": "M4-INV-01-04",
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "statement": "selection is pair-independent",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-02-01",
+      "m4_invariant_id": "M4-INV-02-01",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "long/short mirror symmetry",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-02-02",
+      "m4_invariant_id": "M4-INV-02-02",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "positive distances",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-02-03",
+      "m4_invariant_id": "M4-INV-02-03",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "price-scale invariance",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-02-04",
+      "m4_invariant_id": "M4-INV-02-04",
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "statement": "continuous response to barrier movement",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-03-01",
+      "m4_invariant_id": "M4-INV-03-01",
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "statement": "constant price gives zero returns",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-03-02",
+      "m4_invariant_id": "M4-INV-03-02",
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "statement": "multiplying all prices by a constant does not change returns",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-03-03",
+      "m4_invariant_id": "M4-INV-03-03",
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "statement": "gaps and invalid prices block",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-04-01",
+      "m4_invariant_id": "M4-INV-04-01",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "exact previous-H span",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-04-02",
+      "m4_invariant_id": "M4-INV-04-02",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "RV>=0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-04-03",
+      "m4_invariant_id": "M4-INV-04-03",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "sigma=sqrt(RV)",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-04-04",
+      "m4_invariant_id": "M4-INV-04-04",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "scale invariance",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-04-05",
+      "m4_invariant_id": "M4-INV-04-05",
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "statement": "no annualization or cross-horizon square-root scaling",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-05-01",
+      "m4_invariant_id": "M4-INV-05-01",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "z_TP>0 and z_SL>0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-05-02",
+      "m4_invariant_id": "M4-INV-05-02",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "barrier monotonicity",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-05-03",
+      "m4_invariant_id": "M4-INV-05-03",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "volatility monotonicity",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-05-04",
+      "m4_invariant_id": "M4-INV-05-04",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "long/short mirror symmetry",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-05-05",
+      "m4_invariant_id": "M4-INV-05-05",
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "statement": "continuity",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-06-01",
+      "m4_invariant_id": "M4-INV-06-01",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "market z_entry=0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-06-02",
+      "m4_invariant_id": "M4-INV-06-02",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "pending z_entry>0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-06-03",
+      "m4_invariant_id": "M4-INV-06-03",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "trigger direction preserved",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-06-04",
+      "m4_invariant_id": "M4-INV-06-04",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "already-satisfied pending trigger rejected",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-06-05",
+      "m4_invariant_id": "M4-INV-06-05",
+      "rule_id": "M4-RULE-PENDING-ACTIVATION-001",
+      "statement": "activation probability remains null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-07-01",
+      "m4_invariant_id": "M4-INV-07-01",
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "statement": "0<alpha<=1",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-07-02",
+      "m4_invariant_id": "M4-INV-07-02",
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "statement": "explicit initialization",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-07-03",
+      "m4_invariant_id": "M4-INV-07-03",
+      "rule_id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "statement": "constant input remains constant",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-08-01",
+      "m4_invariant_id": "M4-INV-08-01",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "0<=E_W<=1",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-08-02",
+      "m4_invariant_id": "M4-INV-08-02",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "-1<=SE_W<=1",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-08-03",
+      "m4_invariant_id": "M4-INV-08-03",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "TV_W=0 implies E_W=SE_W=0 and flat_path=true",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-08-04",
+      "m4_invariant_id": "M4-INV-08-04",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "scale invariance",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-08-05",
+      "m4_invariant_id": "M4-INV-08-05",
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "statement": "D_W equals log endpoint ratio",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-09-01",
+      "m4_invariant_id": "M4-INV-09-01",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "prior_low<=prior_high",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-09-02",
+      "m4_invariant_id": "M4-INV-09-02",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "strict between relation",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-09-03",
+      "m4_invariant_id": "M4-INV-09-03",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "long/short mirror handling",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-09-04",
+      "m4_invariant_id": "M4-INV-09-04",
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "statement": "no support/resistance label",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-10-01",
+      "m4_invariant_id": "M4-INV-10-01",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "0<=q<=1",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-10-02",
+      "m4_invariant_id": "M4-INV-10-02",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "exactly 60 prior windows",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-10-03",
+      "m4_invariant_id": "M4-INV-10-03",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "current window excluded from reference",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-10-04",
+      "m4_invariant_id": "M4-INV-10-04",
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "statement": "midrank tie handling",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-11-01",
+      "m4_invariant_id": "M4-INV-11-01",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "exact windows H,2H,4H",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-11-02",
+      "m4_invariant_id": "M4-INV-11-02",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "same sampling grid",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-11-03",
+      "m4_invariant_id": "M4-INV-11-03",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "no numeric aggregation",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-11-04",
+      "m4_invariant_id": "M4-INV-11-04",
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "statement": "order and signs preserved",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-12-01",
+      "m4_invariant_id": "M4-INV-12-01",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "q_RV in [0,1]",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-12-02",
+      "m4_invariant_id": "M4-INV-12-02",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "SE_H in [-1,1]",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-12-03",
+      "m4_invariant_id": "M4-INV-12-03",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "regime_label is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-12-04",
+      "m4_invariant_id": "M4-INV-12-04",
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "statement": "directional_score is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-13-01",
+      "m4_invariant_id": "M4-INV-13-01",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "-1<=ATI_H<=1",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-13-02",
+      "m4_invariant_id": "M4-INV-13-02",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "exact complete window",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-13-03",
+      "m4_invariant_id": "M4-INV-13-03",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "buyer-maker means seller taker",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-13-04",
+      "m4_invariant_id": "M4-INV-13-04",
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "statement": "source alternatives are not averaged",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-14-01",
+      "m4_invariant_id": "M4-INV-14-01",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "OI_t>0 and OI_(t-H)>0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-14-02",
+      "m4_invariant_id": "M4-INV-14-02",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "exact endpoint separation H",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-14-03",
+      "m4_invariant_id": "M4-INV-14-03",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "dimensionless log change",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-14-04",
+      "m4_invariant_id": "M4-INV-14-04",
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "statement": "long_short_direction is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-15-01",
+      "m4_invariant_id": "M4-INV-15-01",
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "statement": "continuous values preserved",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-15-02",
+      "m4_invariant_id": "M4-INV-15-02",
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "statement": "positioning_label is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-15-03",
+      "m4_invariant_id": "M4-INV-15-03",
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "statement": "aggregate_score is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-16-01",
+      "m4_invariant_id": "M4-INV-16-01",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "bid<=ask on both venues",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-16-02",
+      "m4_invariant_id": "M4-INV-16-02",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "capture skew<=2000ms",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-16-03",
+      "m4_invariant_id": "M4-INV-16-03",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "capture times are local receive times, not synchronized market times",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-16-04",
+      "m4_invariant_id": "M4-INV-16-04",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "log ratios are scale invariant",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-16-05",
+      "m4_invariant_id": "M4-INV-16-05",
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "statement": "price_leadership is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-17-01",
+      "m4_invariant_id": "M4-INV-17-01",
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "statement": "markPrice>0 and indexPrice>0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-17-02",
+      "m4_invariant_id": "M4-INV-17-02",
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "statement": "same provider timestamp",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-17-03",
+      "m4_invariant_id": "M4-INV-17-03",
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "statement": "binance_spot_basis is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-18-01",
+      "m4_invariant_id": "M4-INV-18-01",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "fundingIntervalHours>0",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-18-02",
+      "m4_invariant_id": "M4-INV-18-02",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "funding events ordered and <=analysis_at",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-18-03",
+      "m4_invariant_id": "M4-INV-18-03",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "future_funding_rate_assumption is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-18-04",
+      "m4_invariant_id": "M4-INV-18-04",
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "statement": "projected_funding_cost is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-19-01",
+      "m4_invariant_id": "M4-INV-19-01",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "ATI_H in [-1,1]",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-19-02",
+      "m4_invariant_id": "M4-INV-19-02",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "all components continuous",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-19-03",
+      "m4_invariant_id": "M4-INV-19-03",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "crowding_label is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-19-04",
+      "m4_invariant_id": "M4-INV-19-04",
+      "rule_id": "M4-RULE-DERIVATIVES-CONTEXT-001",
+      "statement": "aggregate_score is null",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-20-01",
+      "m4_invariant_id": "M4-INV-20-01",
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "statement": "Snapshot actual; puede cambiar antes de ejecutar.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-20-02",
+      "m4_invariant_id": "M4-INV-20-02",
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-20-03",
+      "m4_invariant_id": "M4-INV-20-03",
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-21-01",
+      "m4_invariant_id": "M4-INV-21-01",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "Solo profundidad visible solicitada.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-21-02",
+      "m4_invariant_id": "M4-INV-21-02",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "No garantiza fills ni incorpora latencia o cola.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-21-03",
+      "m4_invariant_id": "M4-INV-21-03",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "El coste del tramo llenado no representa el coste de la cantidad no llenada.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-21-04",
+      "m4_invariant_id": "M4-INV-21-04",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "El IS desde midpoint ya contiene medio spread y barrido; no se suma de nuevo el spread.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-21-05",
+      "m4_invariant_id": "M4-INV-21-05",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-21-06",
+      "m4_invariant_id": "M4-INV-21-06",
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-22-01",
+      "m4_invariant_id": "M4-INV-22-01",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "RPI solo entra cuando el tipo de orden lo permite.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-22-02",
+      "m4_invariant_id": "M4-INV-22-02",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "Cada tramo y resultado usa su propio notional y rol.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-22-03",
+      "m4_invariant_id": "M4-INV-22-03",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "El basis bruto no se netea con comisiones; ambos conservan campos y unidades separados.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-22-04",
+      "m4_invariant_id": "M4-INV-22-04",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-22-05",
+      "m4_invariant_id": "M4-INV-22-05",
+      "rule_id": "M4-RULE-FEE-SCENARIOS-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-23-01",
+      "m4_invariant_id": "M4-INV-23-01",
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "statement": "Antes del cierre solo admite escenarios, no forecast exacto.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-23-02",
+      "m4_invariant_id": "M4-INV-23-02",
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-23-03",
+      "m4_invariant_id": "M4-INV-23-03",
+      "rule_id": "M4-RULE-FUNDING-CASHFLOW-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-24-01",
+      "m4_invariant_id": "M4-INV-24-01",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "Modelo lineal USD-M bruto, antes de costes.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-24-02",
+      "m4_invariant_id": "M4-INV-24-02",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "No incluye equity, margin mode ni maintenance brackets.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-24-03",
+      "m4_invariant_id": "M4-INV-24-03",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-24-04",
+      "m4_invariant_id": "M4-INV-24-04",
+      "rule_id": "M4-RULE-PLAN-EXPOSURE-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-25-01",
+      "m4_invariant_id": "M4-INV-25-01",
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "statement": "Si un coste de una rama falta, esa rama queda incompleta.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-25-02",
+      "m4_invariant_id": "M4-INV-25-02",
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-25-03",
+      "m4_invariant_id": "M4-INV-25-03",
+      "rule_id": "M4-RULE-NET-PAYOFFS-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-26-01",
+      "m4_invariant_id": "M4-INV-26-01",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "Probabilidades coherentes no existiran antes de M6.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-26-02",
+      "m4_invariant_id": "M4-INV-26-02",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "Costes futuros incompletos impiden un EV exacto.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-26-03",
+      "m4_invariant_id": "M4-INV-26-03",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-26-04",
+      "m4_invariant_id": "M4-INV-26-04",
+      "rule_id": "M4-RULE-EXPECTED-VALUE-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-27-01",
+      "m4_invariant_id": "M4-INV-27-01",
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "statement": "Es control de completitud, no evidencia de rentabilidad.",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-27-02",
+      "m4_invariant_id": "M4-INV-27-02",
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "statement": "long/short signs must follow the declared direction",
+      "status": "required_not_implemented"
+    },
+    {
+      "test_id": "M5-TEST-27-03",
+      "m4_invariant_id": "M4-INV-27-03",
+      "rule_id": "M4-RULE-EVALUATION-READINESS-001",
+      "statement": "no execution or exposure value may change market probability",
+      "status": "required_not_implemented"
+    }
+  ],
+  "production_source_hashes_at_start": [
+    {
+      "path": "app.py",
+      "sha256": "58046ca5eec1e5e00649bdb99339e4cca258421374e95ee470ffc74172b4a263",
+      "bytes": 233770
+    },
+    {
+      "path": "analysis_engine.py",
+      "sha256": "a267b7557c69b062c400c89f873bbba3b95c3783fcb9eaa58ed1ff292aa0e55a",
+      "bytes": 119801
+    },
+    {
+      "path": "data_engine.py",
+      "sha256": "90b683febb1930ddde5182e128d57df41c26acaa1d69913fdcf82166f8365028",
+      "bytes": 27626
+    },
+    {
+      "path": "market_data.py",
+      "sha256": "be0ffb8cdcb954d0f8dfb119d036d13f01f14c4de76f337bd90bb0b27dd8a19d",
+      "bytes": 14585
+    },
+    {
+      "path": "liquidation_data.py",
+      "sha256": "817de5c66f1d52066989492e1e3cad32300bebc0df3474820777d10cdb803fd9",
+      "bytes": 9921
+    },
+    {
+      "path": "challenger_engine.py",
+      "sha256": "767b2cf514e49256c5a326667a84986417aae235acbb9b7760e033ec880183a9",
+      "bytes": 22553
+    }
+  ],
+  "frozen_sources": [
+    {
+      "path": "auditorias_motor/catalogo_27_reglas_formulas_m4_7_v0_2.json",
+      "sha256": "0ec5395c8ac2ebaa9702d229ae4ff9a849cf2cbf562b0be6745435e2e7e7be04",
+      "bytes": 159252
+    },
+    {
+      "path": "auditorias_motor/integracion_dag_invariantes_m4_7_v0_2.json",
+      "sha256": "a4f508e0b0ee4a10530873865fc11e85aa5ac8bf1405e330f663405d9fd4a24a",
+      "bytes": 72275
+    },
+    {
+      "path": "auditorias_motor/paquete_revision_m4_7_v0_3.json",
+      "sha256": "11541f86f4207ffa565c5c42533a278e4ec4e9ecb382d7a05ff9c283e578f945",
+      "bytes": 42978
+    },
+    {
+      "path": "build_m5_implementation_contract.py",
+      "sha256": "5a529e782df5247f858484181af443dc7bcec830a4c42177cf5c8c162798f9a5",
+      "bytes": 15156
+    },
+    {
+      "path": "tests/test_m5_implementation_contract.py",
+      "sha256": "7b6a43aca5b5998bb85ce8df4e35f00e5ef96f26d82d7afaaa339dd2d937a073",
+      "bytes": 8305
+    }
+  ],
+  "next_subphase": {
+    "id": "M5.2",
+    "name": "Contratos de entrada, salida y traza en codigo",
+    "authorized": false,
+    "required_action": "continue M5 after reporting M5.1 closure"
+  },
+  "canonical_payload_sha256": "b3d8d7f43aee5ab3984748f479970570d1b686a64b0265f59faf03608be76106"
+}

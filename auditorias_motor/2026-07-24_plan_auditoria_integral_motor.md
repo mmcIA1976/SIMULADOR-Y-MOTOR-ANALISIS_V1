@@ -1,7 +1,7 @@
 # Plan extraordinario - Auditoria integral del motor de analisis
 
 Fecha de apertura: 2026-07-24
-Estado: ACTIVO
+Estado: COMPLETADO EL 2026-07-25
 Motor congelado: `rules-v0.12.1-liquidations-readable`
 Scoring congelado: `scoring-v0.11-underweighted-risk-cluster`
 Commit de partida: `ac16ccdd1d2a71bd5214ab3bcc8151e44adb8350`
@@ -263,6 +263,11 @@ Artefactos:
 
 Decision: AUDITORIA EXTRAORDINARIA E1 COMPLETADA.
 
-E1.1-E1.5 estan cerradas sin modificar el champion. La siguiente fase del plan
-auditable es la Fase 5 - Reevaluacion legacy append-only. Queda desbloqueada,
-pero no iniciada hasta la aprobacion expresa del usuario.
+E1.1-E1.5 estan cerradas sin modificar el champion. Las fases 5 y 6 del plan
+anterior se ejecutaron posteriormente, pero no corrigieron el scoring.
+
+Desde el 2026-07-27, la continuidad de esta auditoria se rige por
+`HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md`. El siguiente trabajo unico es M1:
+decidir, una por una, que hacer con las 86 reglas o transformaciones del motor
+actual. No se continua hacia aprendizaje ni validacion temporal antes de
+definir e implementar la mejora.

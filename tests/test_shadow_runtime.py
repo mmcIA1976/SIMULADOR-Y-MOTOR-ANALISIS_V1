@@ -17,6 +17,7 @@ from shadow_runtime import (
     rollback_shadow,
     select_shadow_model,
     sha256_json,
+    stamp_pre_trade_horizon,
 )
 
 
@@ -251,10 +252,41 @@ def plan_only_artifact(matrix_sha):
 
 
 class ShadowRuntimeTests(unittest.TestCase):
+    def setUp(self):
+        prospective = patch(
+            "shadow_runtime.execute_prospective_validation",
+            return_value={
+                "status": "recorded",
+                "production_effect": "none",
+            },
+        )
+        prospective_audit = patch(
+            "shadow_runtime.build_user_prospective_audit",
+            return_value={
+                "summary": {"total_runs": 0},
+                "production_effect": "none",
+            },
+        )
+        self.prospective_run = prospective.start()
+        self.prospective_audit = prospective_audit.start()
+        self.addCleanup(prospective.stop)
+        self.addCleanup(prospective_audit.stop)
+
     def test_fixed_deadlines_preserve_the_three_product_frames(self):
         self.assertEqual(fixed_horizon_seconds("intraday_short"), 4 * 60 * 60)
         self.assertEqual(fixed_horizon_seconds("intraday_wide"), 24 * 60 * 60)
         self.assertEqual(fixed_horizon_seconds("short_swing"), 7 * 24 * 60 * 60)
+
+    def test_pre_trade_stamp_records_exact_horizon_and_data_cutoff(self):
+        snapshot = {}
+        stamp = stamp_pre_trade_horizon(snapshot, "intraday_wide")
+        self.assertEqual(stamp["horizon_seconds"], 24 * 60 * 60)
+        self.assertEqual(stamp["data_cutoff_at"], stamp["analysis_at"])
+        self.assertEqual(snapshot["data_cutoff_at"], snapshot["analysis_at"])
+        self.assertEqual(
+            snapshot["data_cutoff_policy"],
+            "local_snapshot_sealed_upper_bound_v0.1",
+        )
 
     def test_disabled_shadow_records_block_without_changing_champion(self):
         champion = champion_result()
@@ -285,6 +317,12 @@ class ShadowRuntimeTests(unittest.TestCase):
             "market",
         )
         self.assertEqual(db.shadow_insert_params[17], "none")
+        self.prospective_run.assert_called_once_with(
+            db=db,
+            recommendation_id=501,
+            proposal=unittest.mock.ANY,
+            champion_result=champion,
+        )
 
     def test_enabled_registered_artifact_produces_shadow_prediction_only(self):
         matrix = json.loads(
@@ -465,6 +503,11 @@ class ShadowRuntimeTests(unittest.TestCase):
         self.assertEqual(report["runs"][0]["champion"]["tp_probability"], 0.6)
         self.assertIsNone(
             report["runs"][0]["challenger"]["probabilities"]
+        )
+        self.prospective_audit.assert_called_once_with(
+            unittest.mock.ANY,
+            7,
+            500,
         )
         self.assertEqual(
             report["runs"][0]["comparison"]["served_output"],

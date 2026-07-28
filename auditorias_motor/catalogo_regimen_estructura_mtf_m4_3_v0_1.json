@@ -1,0 +1,828 @@
+{
+  "version": "M4.3-structure-regime-v0.1",
+  "phase": "M4",
+  "subphase": "M4.3",
+  "status": "completed_internal_milestone_m4_still_in_progress",
+  "date": "2026-07-27",
+  "scope": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "INJUSDT"
+    ],
+    "horizons": [
+      "intraday_short",
+      "intraday_wide",
+      "short_swing"
+    ],
+    "rules": 6,
+    "direct_probability_effects": 0,
+    "numeric_weights": 0,
+    "production_modified": false,
+    "analysis_engine_modified": false,
+    "learning_engine_used": false,
+    "m5_started": false,
+    "m4_next_subphase": "M4.4"
+  },
+  "operational_policies": {
+    "volatility_reference_windows": 60,
+    "volatility_reference_policy": "60 strictly prior non-overlapping exact-H windows",
+    "mtf_window_multipliers": [
+      1,
+      2,
+      4
+    ],
+    "mtf_policy": "same closed sampling grid; H, 2H and 4H",
+    "classification": "project policies, not published optimal parameters",
+    "categorical_regime_labels_allowed": false,
+    "mtf_numeric_weights_allowed": false,
+    "ema_periods_approved": []
+  },
+  "sources": [
+    {
+      "id": "M3-DATA-CONTRACTS",
+      "type": "approved_internal_contract",
+      "url": null,
+      "supported_claim": "Closed OHLC timestamps, plan and missing-data policy.",
+      "does_not_support": "Trend, regime or level predictiveness."
+    },
+    {
+      "id": "M4.2-REACHABILITY",
+      "type": "completed_internal_milestone",
+      "url": null,
+      "supported_claim": "Exact horizon sampling, log returns and previous-horizon RV.",
+      "does_not_support": "Directional inference or regime labels."
+    },
+    {
+      "id": "NIST-SINGLE-EXPONENTIAL-SMOOTHING",
+      "type": "institutional_methodology",
+      "url": "https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc431.htm",
+      "supported_claim": "Recursive exponential smoothing and dependence on alpha and initialization.",
+      "does_not_support": "EMA periods 9/21/50/200, crossover signals or crypto returns."
+    },
+    {
+      "id": "HAMILTON-1989-REGIME-SWITCHING",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.2307/1912559",
+      "supported_claim": "Time-series parameters may change through latent regimes that must be estimated by a specified model.",
+      "does_not_support": "Calling arbitrary indicator bands regimes or assigning direction."
+    },
+    {
+      "id": "CORSI-2009-HAR-RV",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1093/jjfinec/nbp001",
+      "supported_claim": "Realized-volatility components across heterogeneous horizons may contain distinct temporal information.",
+      "does_not_support": "The project H/2H/4H price-direction hierarchy or fixed weights."
+    },
+    {
+      "id": "MOSKOWITZ-OOI-PEDERSEN-2012",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1016/j.jfineco.2011.11.003",
+      "supported_claim": "Time-series momentum was documented for 58 traditional futures at monthly horizons.",
+      "does_not_support": "Crypto intraday transfer, TP-first probabilities or EMA stacks."
+    },
+    {
+      "id": "HUDSON-URQUHART-2021",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1007/s10479-019-03357-1",
+      "supported_claim": "Technical-rule results in cryptocurrencies vary by asset and out-of-sample period; Bitcoin lacked OOS predictability in their test.",
+      "does_not_support": "Any selected project rule, period, threshold or pair-wide transfer."
+    },
+    {
+      "id": "OSLER-2000-SUPPORT-RESISTANCE",
+      "type": "primary_institutional_research",
+      "url": "https://www.newyorkfed.org/medialibrary/media/research/epr/00v06n2/0007osle.pdf",
+      "supported_claim": "Published FX support/resistance levels predicted some intraday trend interruptions, with performance varying by pair and firm.",
+      "does_not_support": "Rolling extrema as equivalent levels, crypto transfer or a penalty."
+    },
+    {
+      "id": "CURCIO-ET-AL-2014-PRICE-MEMORY",
+      "type": "primary_academic_publication",
+      "url": "https://doi.org/10.1038/srep04487",
+      "supported_claim": "Local extrema and prior bounces can be studied as price-memory candidates, with time scale and bounce count as parameters.",
+      "does_not_support": "A universal extrema detector or project TP/SL probability."
+    }
+  ],
+  "rules": [
+    {
+      "id": "M4-RULE-EXPONENTIAL-SMOOTHER-001",
+      "version": "0.1",
+      "name": "Operador de suavizado exponencial",
+      "analytical_blocks": [
+        1,
+        3
+      ],
+      "concrete_objective": "Preserve the standard recursive operator while refusing unsupported EMA periods and crossover meanings.",
+      "rule_type": "deterministic_operator_not_p0_evidence",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "S_0=x_0",
+        "S_t=alpha*x_t+(1-alpha)*S_(t-1), 0<alpha<=1"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "NIST-SINGLE-EXPONENTIAL-SMOOTHING",
+          "level": "definition",
+          "claim": "Recursive exponential smoothing and initialization."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "No alpha or 9/21/50/200 period is approved.",
+        "Price above/below a smoother is not a directional rule."
+      ],
+      "separate_predictive_hypothesis": null,
+      "expected_relation_to_tp_sl_or_expiry": "None; operator is descriptive only.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001"
+      ],
+      "double_counting_control": "Cannot enter P0 alongside path displacement.",
+      "missing_data_behavior": "Do not calculate; never replace history with a shorter EMA.",
+      "unit_tests_limits_and_invariants": [
+        "0<alpha<=1",
+        "explicit initialization",
+        "constant input remains constant"
+      ],
+      "trace_output": [
+        "alpha",
+        "initialization",
+        "input_count",
+        "smoothed_value"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Withdraw any fixed period introduced without a new rule card."
+      ],
+      "lifecycle_status": "documented_operator_not_admitted_as_p0_evidence",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PATH-STRUCTURE-001",
+      "version": "0.1",
+      "name": "Desplazamiento y eficiencia de trayectoria",
+      "analytical_blocks": [
+        1,
+        24
+      ],
+      "concrete_objective": "Separate net displacement from total path variation over an exact closed window.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "D_W=sum(r_i)=ln(C_end/C_start)",
+        "TV_W=sum(abs(r_i))",
+        "E_W=abs(D_W)/TV_W",
+        "SE_W=D_W/TV_W; if TV_W=0, observed flat path gives SE_W=0"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "MOSKOWITZ-OOI-PEDERSEN-2012",
+          "level": "external_predictive_evidence",
+          "claim": "Past return sign showed momentum at monthly horizons in traditional futures."
+        },
+        {
+          "source_id": "HUDSON-URQUHART-2021",
+          "level": "external_predictive_evidence",
+          "claim": "Crypto technical-rule performance varied by asset and failed OOS for Bitcoin in their selected test."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "Path efficiency itself is a project deterministic measure.",
+        "Positive displacement is not automatically bullish evidence."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-STRUCTURE-001",
+        "status": "proposed_unverified",
+        "statement": "Side-aligned signed path efficiency may condition which barrier is reached first within the same horizon."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "No direct effect; future models may test side-aligned SE_W under regime and horizon controls.",
+      "related_rules": [
+        "M4-RULE-MTF-HIERARCHY-001",
+        "M4-RULE-CONTINUOUS-REGIME-001"
+      ],
+      "double_counting_control": "D_W, E_W and SE_W are one price-path evidence family.",
+      "missing_data_behavior": "Block structure and all dependent combinations.",
+      "unit_tests_limits_and_invariants": [
+        "0<=E_W<=1",
+        "-1<=SE_W<=1",
+        "scale invariance",
+        "D_W equals log endpoint ratio"
+      ],
+      "trace_output": [
+        "window_seconds",
+        "return_count",
+        "log_displacement",
+        "total_log_variation",
+        "path_efficiency",
+        "signed_path_efficiency",
+        "direction_descriptor",
+        "prediction"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if no stable independent incremental value.",
+        "Reject any implementation that thresholds SE_W without amendment."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-PRIOR-EXTREMA-001",
+      "version": "0.1",
+      "name": "Extremos observados del horizonte anterior",
+      "analytical_blocks": [
+        1,
+        28
+      ],
+      "concrete_objective": "Record prior-H high/low and whether the target-side extreme lies strictly between entry and TP.",
+      "rule_type": "deterministic_measure_with_separate_hypothesis",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "X_high=max(H_i), X_low=min(L_i) over previous exact H",
+        "long target extreme=X_high; short target extreme=X_low",
+        "between=entry<X_high<TP long; TP<X_low<entry short"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "OSLER-2000-SUPPORT-RESISTANCE",
+          "level": "external_predictive_evidence",
+          "claim": "Published FX levels predicted some intraday trend interruptions with heterogeneous performance."
+        },
+        {
+          "source_id": "CURCIO-ET-AL-2014-PRICE-MEMORY",
+          "level": "technical_foundation",
+          "claim": "Local extrema, bounce count and time scale can be studied as price-memory candidates."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "A rolling high/low is not called support or resistance.",
+        "An extreme between entry and TP receives no penalty."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-LEVEL-001",
+        "status": "proposed_unverified",
+        "statement": "A prior target-side extreme between entry and TP may condition first-passage behavior."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown until independently tested; both interruption and breakout continuation remain possible.",
+      "related_rules": [
+        "M4-RULE-BARRIER-REACHABILITY-001"
+      ],
+      "double_counting_control": "Replaces support, level and technical-barrier penalties with one extrema descriptor.",
+      "missing_data_behavior": "Rule not evaluated; no synthetic level.",
+      "unit_tests_limits_and_invariants": [
+        "prior_low<=prior_high",
+        "strict between relation",
+        "long/short mirror handling",
+        "no support/resistance label"
+      ],
+      "trace_output": [
+        "prior_high",
+        "prior_low",
+        "target_side_extreme",
+        "adverse_side_extreme",
+        "target_extreme_between_entry_and_tp",
+        "target_extreme_log_distance",
+        "barrier_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire hypothesis if effect is unstable by pair/horizon.",
+        "A richer bounce detector requires a new rule and source claims."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-VOLATILITY-RANK-001",
+      "version": "0.1",
+      "name": "Percentil continuo de volatilidad",
+      "analytical_blocks": [
+        24,
+        26
+      ],
+      "concrete_objective": "Locate current previous-H RV within 60 strictly prior non-overlapping H windows without categorical bands.",
+      "rule_type": "deterministic_context_measure",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "q=(count(RV_j<RV_t)+0.5*count(RV_j=RV_t))/60",
+        "j are 60 strictly prior non-overlapping H windows"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HAMILTON-1989-REGIME-SWITCHING",
+          "level": "technical_foundation",
+          "claim": "Regimes require a specified estimated state model."
+        },
+        {
+          "source_id": "CORSI-2009-HAR-RV",
+          "level": "technical_foundation",
+          "claim": "Volatility contains heterogeneous temporal components."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "Sixty windows is project policy, not a published optimum.",
+        "q is not labelled low, medium or high."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REGIME-001",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "Volatility rank may alter the reliability of structure signals but has no directional effect alone."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Context only; no direct TP-versus-SL direction.",
+      "related_rules": [
+        "M4-RULE-REALIZED-VOLATILITY-001",
+        "M4-RULE-CONTINUOUS-REGIME-001"
+      ],
+      "double_counting_control": "Rank is a transformation of M4.2 RV, not independent evidence.",
+      "missing_data_behavior": "Block regime context; retain geometry if otherwise valid.",
+      "unit_tests_limits_and_invariants": [
+        "0<=q<=1",
+        "exactly 60 prior windows",
+        "current window excluded from reference",
+        "midrank tie handling"
+      ],
+      "trace_output": [
+        "current_realized_variance",
+        "reference_window_count",
+        "reference_cutoff",
+        "volatility_percentile",
+        "ranking_method",
+        "regime_label"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Change reference length only through versioned amendment.",
+        "Retire interaction if no stable conditional value."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-MTF-HIERARCHY-001",
+      "version": "0.1",
+      "name": "Jerarquia multi-timeframe H, 2H y 4H",
+      "analytical_blocks": [
+        1,
+        3,
+        24
+      ],
+      "concrete_objective": "Expose structure at the plan horizon and two slower contexts without votes, weights or duplicate penalties.",
+      "rule_type": "deterministic_interaction_descriptor",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-001",
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "calculate SE_W for W in {H,2H,4H} on the same closed grid",
+        "sign_W=sign(SE_W)",
+        "agreement in {all_positive,all_negative,mixed,flat_present}"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "CORSI-2009-HAR-RV",
+          "level": "technical_foundation",
+          "claim": "Different horizons can carry distinct temporal information."
+        },
+        {
+          "source_id": "HUDSON-URQUHART-2021",
+          "level": "transfer_limit",
+          "claim": "Technical-rule effects are asset and sample dependent."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "H/2H/4H is project context policy, not a cited optimum.",
+        "Agreement has no score or automatic direction."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-MTF-001",
+        "status": "proposed_unverified",
+        "statement": "Sign agreement across H, 2H and 4H may condition first-passage behavior beyond H structure alone."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Only an interaction candidate; mixed signs are not a penalty.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001"
+      ],
+      "double_counting_control": "MTF consumes the three SE values once; no trend score plus HTF contradiction penalty.",
+      "missing_data_behavior": "Do not collapse available windows into a partial vote.",
+      "unit_tests_limits_and_invariants": [
+        "exact windows H,2H,4H",
+        "same sampling grid",
+        "no numeric aggregation",
+        "order and signs preserved"
+      ],
+      "trace_output": [
+        "window_multipliers",
+        "signed_path_efficiencies",
+        "direction_signs",
+        "agreement_descriptor",
+        "aggregate_score",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "Retire if no incremental value beyond H structure.",
+        "Any weights require a new documented integration rule."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    },
+    {
+      "id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "version": "0.1",
+      "name": "Vector continuo de regimen",
+      "analytical_blocks": [
+        24
+      ],
+      "concrete_objective": "Represent current state by volatility percentile and signed path efficiency without arbitrary regime names.",
+      "rule_type": "context_vector_no_label",
+      "raw_data_and_provider": {
+        "provider": "Binance USD-M and immutable user plan",
+        "m3_data_contract_ids": [
+          "M3-DATA-005"
+        ]
+      },
+      "market_symbol_timestamp_unit_freshness": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "exact_transformation_and_formula": [
+        "R_t=(q_RV,t, SE_H,t)"
+      ],
+      "cross_pair_normalization": "Natural-log ratios, path ratios or within-pair empirical ranks.",
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "source_and_exact_supported_claim": [
+        {
+          "source_id": "HAMILTON-1989-REGIME-SWITCHING",
+          "level": "transfer_limit",
+          "claim": "A genuine latent regime requires model estimation; this rule therefore remains an observed state vector."
+        }
+      ],
+      "claims_not_supported_by_source": [
+        "No source supplies a project score, probability, weight or threshold.",
+        "Evidence from other assets or horizons is not assumed transferable.",
+        "The vector is not a Markov regime model.",
+        "No low/high or bull/bear labels are assigned."
+      ],
+      "separate_predictive_hypothesis": {
+        "id": "M4-HYP-REGIME-002",
+        "status": "proposed_unverified_interaction_only",
+        "statement": "The interaction of q_RV and SE_H may identify conditions where directional structure behaves differently."
+      },
+      "expected_relation_to_tp_sl_or_expiry": "Unknown interaction; no marginal directional effect.",
+      "related_rules": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-VOLATILITY-RANK-001"
+      ],
+      "double_counting_control": "Vector references its atomic inputs; it does not add evidence.",
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "unit_tests_limits_and_invariants": [
+        "q_RV in [0,1]",
+        "SE_H in [-1,1]",
+        "regime_label is null",
+        "directional_score is null"
+      ],
+      "trace_output": [
+        "volatility_percentile",
+        "signed_path_efficiency",
+        "regime_label",
+        "directional_score",
+        "probability_effect"
+      ],
+      "refutation_suspension_or_withdrawal": [
+        "A categorical or latent regime requires a separate model card.",
+        "Retire interaction if M8 finds no stable conditional effect."
+      ],
+      "lifecycle_status": "documented_candidate_no_predictive_weight",
+      "direct_probability_effect_authorized": false,
+      "numeric_weight_authorized": false,
+      "production_authorized": false
+    }
+  ],
+  "preregistered_hypotheses": [
+    {
+      "id": "M4-HYP-STRUCTURE-001",
+      "status": "proposed_unverified",
+      "statement": "Side-aligned signed path efficiency may condition which barrier is reached first within the same horizon."
+    },
+    {
+      "id": "M4-HYP-LEVEL-001",
+      "status": "proposed_unverified",
+      "statement": "A prior target-side extreme between entry and TP may condition first-passage behavior."
+    },
+    {
+      "id": "M4-HYP-REGIME-001",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "Volatility rank may alter the reliability of structure signals but has no directional effect alone."
+    },
+    {
+      "id": "M4-HYP-MTF-001",
+      "status": "proposed_unverified",
+      "statement": "Sign agreement across H, 2H and 4H may condition first-passage behavior beyond H structure alone."
+    },
+    {
+      "id": "M4-HYP-REGIME-002",
+      "status": "proposed_unverified_interaction_only",
+      "statement": "The interaction of q_RV and SE_H may identify conditions where directional structure behaves differently."
+    }
+  ],
+  "evidence_families": [
+    {
+      "id": "M4-EVIDENCE-PRICE-PATH",
+      "members": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-MTF-HIERARCHY-001"
+      ],
+      "additive_members_allowed": false
+    },
+    {
+      "id": "M4-EVIDENCE-VOLATILITY-STATE",
+      "members": [
+        "M4-RULE-REALIZED-VOLATILITY-001",
+        "M4-RULE-VOLATILITY-RANK-001",
+        "M4-RULE-CONTINUOUS-REGIME-001"
+      ],
+      "additive_members_allowed": false
+    },
+    {
+      "id": "M4-EVIDENCE-PRIOR-EXTREMA",
+      "members": [
+        "M4-RULE-PRIOR-EXTREMA-001"
+      ],
+      "additive_members_allowed": false
+    }
+  ],
+  "supersedes_current_elements": {
+    "IND-EMA-CORE": "Operator retained without approved alpha or predictive role.",
+    "IND-EMA200-FALLBACK": "Retired; insufficient history blocks.",
+    "IND-EMA-STACK": "Replaced by H/2H/4H path-state descriptor.",
+    "IND-SUPPORT-RESISTANCE": "Replaced by prior extrema without support/resistance label.",
+    "SCORE-TREND_BIAS": "Points and timeframe weights retired.",
+    "SCORE-TECHNICAL_DIRECTION_BIAS": "Opaque aggregate retired.",
+    "SCORE-MARKET_REGIME_BIAS": "Directional regime points retired.",
+    "SCORE-OVEREXTENSION_PENALTY": "EMA-distance penalty retired.",
+    "SCORE-LEVEL_PENALTY": "Merged into prior-extrema family.",
+    "SCORE-HIGHER_TIMEFRAME_PENALTY": "Merged into MTF descriptor.",
+    "SCORE-TECHNICAL_ENTRY_TIMING_PENALTY": "Retired without replacement.",
+    "SCORE-TECHNICAL_BARRIER_PENALTY": "Merged into prior-extrema family."
+  },
+  "summary": {
+    "rules": 6,
+    "nonpredictive_operator_rules": 1,
+    "hypotheses": 5,
+    "evidence_families": 3,
+    "rules_with_probability_effect": 0,
+    "rules_with_numeric_weight": 0,
+    "production_modified": false
+  },
+  "source_files": [
+    {
+      "path": "HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md",
+      "sha256": "e8c94206059c91a13530da551da79ac72c09dde497dc6b215eff867e32af7ea5"
+    },
+    {
+      "path": "auditorias_motor\\catalogo_contratos_datos_m3_v0_1.json",
+      "sha256": "c6b4166d4a71fc6bd146b9352d4b2893a8a8c33ef98999406463a4ac3ac38e3d"
+    },
+    {
+      "path": "auditorias_motor\\reconciliacion_candidatos_m4_v0_1.json",
+      "sha256": "a888e6ab08c1729b71e2a74f68db5e58cf1d527011ba04f285293d172e9e4348"
+    },
+    {
+      "path": "auditorias_motor\\catalogo_alcanzabilidad_m4_2_v0_1.json",
+      "sha256": "fa87cfa3c418a6df38915cd53e7940439a762f06f73131394c74461ebce0bcd7"
+    }
+  ],
+  "catalog_sha256": "839f2f190c81e944c792bf8c5ee5bc7bbc2a61281ed707253113daab1ca3aabd"
+}

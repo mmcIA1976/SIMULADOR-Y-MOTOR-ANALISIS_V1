@@ -1,9 +1,30 @@
 # Plan auditable del motor de aprendizaje
 
 Fecha de propuesta: 2026-07-23  
-Estado general: ACTIVO Y APROBADO  
+Estado general: PAUSADO Y SUSTITUIDO COMO HOJA DE RUTA ACTIVA EL 2026-07-27
 Motor champion congelado: `rules-v0.12.1-liquidations-readable`  
 Commit de partida: `5135245`
+
+## 0. Cambio de prioridad
+
+Este documento conserva el registro y cierre de las fases 0-6. Ya no determina
+el siguiente trabajo del proyecto.
+
+La hoja de ruta vigente es:
+
+`HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md`
+
+Motivo:
+
+- el motor actual produce scores heuristicos no calibrados;
+- no existe todavia una revision con reglas y formulas rigurosas;
+- no procede aprender, reunir un minimo arbitrario de casos o validar una
+  revision inexistente;
+- la prioridad unica es mejorar el motor de analisis actual.
+
+Las antiguas fases 7 y 8 quedan sustituidas y bloqueadas segun la nueva hoja de
+ruta. Ninguna parte de este plan autoriza trabajo de aprendizaje mientras esa
+pausa siga vigente.
 
 ## 1. Objetivo
 
@@ -292,13 +313,14 @@ Estado: COMPLETADA EL 2026-07-26
 
 Objetivo:
 
-- Calcular nuevas reglas sin permitir que intervengan en produccion.
+- Preparar infraestructura apagada para ejecutar y revertir una futura
+  revision del motor sin permitir que intervenga en produccion.
 
-Alcance:
+Alcance real:
 
 - Champion actual congelado.
-- Challenger calculado sobre las mismas operaciones reales.
-- Registro de ambas probabilidades y decisiones.
+- Contrato para una futura revision interna.
+- Registro disponible cuando exista una revision real.
 - Feature flag, kill switch y rollback.
 
 No se crearon operaciones sombra. El baseline real al inicio de la fase fue de
@@ -322,68 +344,20 @@ Criterio de salida:
 
 ### Fase 7 - Validacion temporal
 
-Objetivo:
+Estado: CANCELADA COMO SIGUIENTE FASE; SUSTITUIDA POR M1-M8
 
-- Decidir con evidencia fuera de muestra si un challenger puede sustituir al
-  champion.
-
-Minimos:
-
-- 50 operaciones nuevas comparables.
-- Al menos 10 exitos y 10 fallos.
-- Casos posteriores a la definicion del challenger.
-
-Metricas:
-
-- Brier score.
-- Log-loss.
-- Curva de calibracion.
-- R-multiple.
-- Drawdown.
-- Intervalos de confianza.
-- Resultados por lado y horizonte.
-
-Regla de activacion:
-
-- No basta con mejorar PnL.
-- Debe mejorar calibracion o riesgo sin deterioro material en las demas
-  metricas.
-- La activacion requiere aprobacion humana explicita y una nueva
-  `scoring_version`.
-
-Criterio de salida:
-
-- Challenger aprobado, rechazado o prolongado con motivo cuantificado.
+El objetivo historico no se ejecuto. No puede validarse una revision del motor
+antes de definir e implementar sus reglas y formulas. Sus controles validos se
+han reformulado en M8, despues de M1-M7, sin conservar un numero arbitrario como
+siguiente objetivo.
 
 ### Fase 8 - Liquidaciones y multi-exchange
 
-Objetivo:
+Estado: PAUSADA; SU ALCANCE PASA A M10
 
-- Validar el mapa Hyperliquid y estudiar un mapa estimado de Binance/Bybit.
-
-Condiciones previas:
-
-- Fases 0 a 7 cerradas.
-- Pipeline champion/challenger operativo.
-
-Alcance:
-
-- Hyperliquid permanece como `real_onchain`.
-- Binance/Bybit se etiquetan `estimated_from_oi`.
-- Fuentes, antiguedad, cobertura y confianza visibles.
-- Sin scoring inicial.
-
-Gate de revision:
-
-- 30 casos permiten auditoria formal.
-- 50 casos comparables y 10/10 permiten validacion.
-- Ajuste inicial maximo, si se aprueba: +/-2 o 3 puntos.
-
-Criterio de salida:
-
-- Comparacion fuera de muestra contra el champion.
-- Kill switch probado.
-- Decision documentada de activar, mantener en sombra o retirar.
+La ampliacion de liquidaciones no es trabajo activo. Cualquier futura
+incorporacion debe cumplir M10 y repetir los contratos de datos, reglas,
+implementacion, verificacion, evaluacion y activacion de la nueva hoja de ruta.
 
 ## 6. Estado de seguimiento
 
@@ -397,8 +371,8 @@ Criterio de salida:
 | E1 | Completada; E1.1-E1.5 cerradas | `8066f24` | `auditorias_motor/2026-07-25_E1_5_contrato_challenger_resultado.md` | Autorizada |
 | 5 | Completada | `d5c35e5` | `2026-07-25_fase_5_reevaluacion_legacy_resultado.md` | Autorizada |
 | 6 | Completada | `d6a3225` | `2026-07-26_fase_6_champion_challenger_resultado.md` | Autorizada |
-| 7 | Siguiente; pipeline listo, gate estadistico no alcanzado | - | - | Pendiente |
-| 8 | Bloqueada por fase 7 | - | - | - |
+| 7 | Cancelada como siguiente fase; sustituida por M1-M8 | - | `HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md` | - |
+| 8 | Pausada; absorbida por M10 | - | `HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md` | - |
 
 ## 7. Cambios al plan
 
@@ -410,3 +384,6 @@ implementarse, indicando:
 - Riesgo nuevo.
 - Criterio de aceptacion actualizado.
 - Aprobacion del usuario.
+
+Desde el 2026-07-27, los cambios nuevos se registran primero en
+`HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md`.

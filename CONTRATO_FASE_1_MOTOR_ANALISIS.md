@@ -4,6 +4,21 @@ Fecha de formalizacion: 2026-07-24
 Estado: VIGENTE
 Precedencia: maxima para cualquier trabajo sobre el motor de analisis
 
+## 0. Prioridad operativa vigente
+
+Desde el 2026-07-27, la ejecucion de este contrato se rige por
+`HOJA_RUTA_MEJORA_MOTOR_ANALISIS.md`.
+
+La prioridad unica es mejorar el motor de analisis actual. La version
+productiva se conserva congelada como baseline mientras se documentan,
+corrigen, desactivan o incorporan sus reglas de forma versionada. Esto no
+significa abandonar el motor actual ni crear un proyecto independiente.
+
+El motor de aprendizaje y cualquier acumulacion de casos destinada a
+aprendizaje quedan pausados hasta que exista una revision rigurosa del motor de
+analisis. La validacion empirica posterior sigue siendo obligatoria, pero no
+puede preceder a la definicion e implementacion de reglas y formulas.
+
 ## 1. Motivo
 
 Este documento materializa las instrucciones expresas del propietario del
@@ -90,8 +105,9 @@ disponible hasta el momento del analisis.
 
 El resultado real solo existe posteriormente. Cuando el mercado alcance TP,
 alcance SL o finalice el horizonte sin resolver el plan, ese outcome se
-vinculara al analisis original para aprendizaje. La observacion posterior no
-puede alterar retrospectivamente los datos ni las reglas preoperacion.
+vinculara al analisis original para aprendizaje. En ordenes pendientes debe
+distinguirse entre `no_entry` y `expiry_after_entry`. La observacion posterior
+no puede alterar retrospectivamente los datos ni las reglas preoperacion.
 
 ### Marcos temporales vigentes
 
@@ -270,7 +286,8 @@ La explicacion visible nunca puede contradecir la traza ejecutable.
 
 Cuando la operacion termine o venza su horizonte, debe enlazarse con:
 
-- TP, SL, cierre manual o expiracion/no resolucion;
+- TP primero, SL primero, no entrada, expiracion posterior a entrada, cierre
+  manual u otro estado censurado;
 - primera barrera alcanzada;
 - hora real del evento;
 - precio real del evento;
@@ -293,6 +310,12 @@ Los cierres ambiguos deben conservar su ambiguedad y no forzarse a una etiqueta.
 
 El motor de aprendizaje existe exclusivamente para valorar y mejorar el motor
 de analisis mediante resultados auditados.
+
+Estado operativo desde el 2026-07-27: PAUSADO. Esta seccion define su funcion
+futura y no autoriza trabajo actual sobre aprendizaje. No existe nada fiable
+que aprender de los porcentajes heuristicos actuales para asignar nuevos pesos.
+Su reanudacion exige completar la hoja de ruta del motor y autorizacion expresa
+del propietario.
 
 Debe medir para cada regla y combinacion:
 
@@ -383,8 +406,11 @@ motor probabilistico:
   estadistica;
 - las pruebas existentes verifican ejecucion, no validez financiera.
 
-Debe tratarse como referencia historica congelada, no como base valida para las
-Fases 2 o 3.
+La version productiva concreta debe tratarse como referencia historica
+congelada. La base de codigo del motor actual si es el objeto de mejora, pero
+ninguna de sus reglas se considera valida por herencia. Las Fases 2 y 3 del
+proyecto solo pueden apoyarse en una revision del motor que cumpla este
+contrato.
 
 ## 15. Criterios de aceptacion de la Fase 1
 

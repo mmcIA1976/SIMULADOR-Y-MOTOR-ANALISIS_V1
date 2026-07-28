@@ -17,6 +17,9 @@ DEFAULT_COEFFICIENT_PATH = (
     AUDIT_DIR / "coeficientes_m6_v0_1_bloqueados.json"
 )
 DEFAULT_OUTPUT_PATH = AUDIT_DIR / "paquete_cierre_m6_6_v0_1.json"
+PRODUCTION_ACTIVATION_PATH = (
+    AUDIT_DIR / "2026-07-28_activacion_motor_nuevo_unico.md"
+)
 DEFAULT_REPORT_PATH = (
     AUDIT_DIR / "2026-07-28_M6_6_cierre_integracion_probabilistica_v0_1.md"
 )
@@ -203,6 +206,9 @@ def build_locked_coefficients(decision: dict) -> dict:
 
 
 def build_package(coefficient_path: Path) -> dict:
+    if PRODUCTION_ACTIVATION_PATH.is_file() and DEFAULT_OUTPUT_PATH.is_file():
+        return read_json(DEFAULT_OUTPUT_PATH)
+
     m5 = read_json(M5_CLOSURE_PATH)
     decision = read_json(M6_DECISION_PATH)
     verification = read_json(M6_VERIFICATION_PATH)

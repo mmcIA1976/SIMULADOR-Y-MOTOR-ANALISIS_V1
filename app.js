@@ -1696,13 +1696,17 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   }
 
   updateAnalysisFullVisibility(true);
-  elements.analysisHeadline.textContent = `Setup ${analysis.setup_grade} · Riesgo ${analysis.risk_level}`;
+  elements.analysisHeadline.textContent = analysis.engine_family === "m6_calibrated_competing_risks"
+    ? `Motor nuevo · SL ${percent(analysis.sl_probability)}`
+    : `Setup ${analysis.setup_grade} · Riesgo ${analysis.risk_level}`;
   elements.tpProbability.textContent = analysis.probability_ranges?.tp?.label || percent(analysis.tp_probability);
   elements.slProbability.textContent = analysis.probability_ranges?.sl?.label || percent(analysis.sl_probability);
   elements.rangeProbability.textContent = analysis.probability_ranges?.range?.label || percent(analysis.range_probability);
   const evLabel = analysis.expected_value ? ` · EV ${analysis.expected_value.label}` : "";
   const regimeLabel = analysis.market_regime ? ` · ${String(analysis.market_regime.name).replaceAll("_", " ")}` : "";
-  elements.analysisDecision.textContent = `${analysis.training_decision} · confianza ${analysis.confidence}${evLabel}${regimeLabel}`;
+  elements.analysisDecision.textContent = analysis.engine_family === "m6_calibrated_competing_risks"
+    ? `M6 calibrado · ${timeHorizonLabel(analysis.time_horizon)} · decision del usuario`
+    : `${analysis.training_decision} · confianza ${analysis.confidence}${evLabel}${regimeLabel}`;
   elements.analysisSummary.textContent = analysis.plain_summary || fallbackSummary || "";
   renderAnalysisHighlights(analysis);
   renderAnalysisKeypoints(analysis);

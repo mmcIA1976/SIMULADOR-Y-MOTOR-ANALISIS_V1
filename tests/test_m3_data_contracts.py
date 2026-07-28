@@ -383,7 +383,8 @@ class M3DataContractTests(unittest.TestCase):
     def test_current_pipeline_failure_is_explicit_and_nonfunctional(self):
         summary = self.audit["summary"]
         self.assertEqual(summary["findings"], 15)
-        self.assertEqual(summary["critical"], 10)
+        self.assertEqual(summary["critical"], 9)
+        self.assertEqual(summary["resolved"], 1)
         self.assertEqual(summary["high"], 5)
         self.assertFalse(summary["production_modified"])
         self.assertFalse(self.catalog["scope"]["production_modified"])

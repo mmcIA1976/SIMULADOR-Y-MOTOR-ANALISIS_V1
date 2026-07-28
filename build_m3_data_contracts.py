@@ -1224,23 +1224,39 @@ def build_current_audit() -> dict:
     data_source = (ROOT / "data_engine.py").read_text(encoding="utf-8")
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
     analysis_source = (ROOT / "analysis_engine.py").read_text(encoding="utf-8")
+    new_engine_source = (
+        ROOT / "m6_production_analysis.py"
+    ).read_text(encoding="utf-8")
+    old_stamp = 'stamp_pre_trade_horizon(result["snapshot"]'
+    new_cutoff_before_load = (
+        new_engine_source.index("snapshot = {")
+        < new_engine_source.index("build_prospective_probability_run(")
+    )
     findings = [
         {
             "id": "M3-CURRENT-FAIL-01",
-            "severity": "critical",
+            "severity": (
+                "resolved"
+                if "from m6_production_analysis import" in app_source
+                and new_cutoff_before_load
+                else "critical"
+            ),
             "reason": (
-                "analysis_at is stamped after analyze_trade finishes and no "
-                "analysis_started_at or source-level data_cutoff is recorded."
+                "The active M6 engine stamps analysis_at and the data cutoff "
+                "before loading the closed pre-trade candles."
             ),
             "observation": {
                 "analyze_before_stamp": (
-                    app_source.index("result = analyze_trade(proposal)")
-                    < app_source.index(
-                        'stamp_pre_trade_horizon(result["snapshot"]'
-                    )
-                )
+                    old_stamp in app_source
+                    and app_source.index("result = analyze_trade(proposal)")
+                    < app_source.index(old_stamp)
+                ),
+                "new_engine_cutoff_before_data_load": new_cutoff_before_load,
             },
-            "source_refs": ["app.py:4080", "app.py:4096"],
+            "source_refs": [
+                "app.py:/api/analyze",
+                "m6_production_analysis.py:analyze_trade",
+            ],
         },
         {
             "id": "M3-CURRENT-FAIL-02",
@@ -1456,14 +1472,20 @@ def build_current_audit() -> dict:
         },
     ]
     for item in findings:
-        item["status"] = "fail"
+        item["status"] = (
+            "resolved" if item["severity"] == "resolved" else "fail"
+        )
+    failures = [item for item in findings if item["status"] == "fail"]
     return {
         "audit_version": CURRENT_AUDIT_VERSION,
         "phase": "M3",
-        "status": "current_data_pipeline_fails_m3_contract_as_expected",
+        "status": "current_data_pipeline_partially_remediated",
         "summary": {
             "findings": len(findings),
-            "failures": len(findings),
+            "failures": len(failures),
+            "resolved": sum(
+                1 for item in findings if item["status"] == "resolved"
+            ),
             "critical": sum(
                 1 for item in findings if item["severity"] == "critical"
             ),

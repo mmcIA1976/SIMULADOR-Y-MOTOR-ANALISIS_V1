@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 import market_data
 import data_engine
-from analysis_engine import TradeProposal, analyze_trade, build_explained_metrics
+from analysis_engine import TradeProposal, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import close_pool, connect, init_db, row_to_dict
 from economic_metrics import (
@@ -29,11 +29,13 @@ from learning_evidence import (
     build_historical_evidence,
     reconstruction_window,
 )
+from m6_production_analysis import (
+    NewEngineAnalysisError,
+    analyze_trade,
+)
 from security import create_token, hash_password, read_token, verify_password
 from shadow_runtime import (
     build_user_shadow_audit,
-    execute_live_shadow_run,
-    stamp_pre_trade_horizon,
 )
 from versioning import (
     APP_SEMVER,
@@ -4022,36 +4024,6 @@ def market_snapshot(symbol: str = "BTCUSDT") -> dict:
     return data_engine.build_market_snapshot(symbol)
 
 
-def persist_live_shadow_safely(
-    db,
-    recommendation_id: int,
-    proposal: TradeProposal,
-    champion_result: dict,
-) -> dict:
-    db.execute("SAVEPOINT challenger_shadow_run")
-    try:
-        audit = execute_live_shadow_run(
-            db=db,
-            recommendation_id=recommendation_id,
-            proposal=proposal,
-            champion_result=champion_result,
-        )
-        db.execute("RELEASE SAVEPOINT challenger_shadow_run")
-        return audit
-    except Exception as exc:
-        db.execute("ROLLBACK TO SAVEPOINT challenger_shadow_run")
-        db.execute("RELEASE SAVEPOINT challenger_shadow_run")
-        logger.exception(
-            "Challenger shadow audit failed for recommendation %s",
-            recommendation_id,
-        )
-        return {
-            "status": "technical_error_isolated",
-            "error_type": type(exc).__name__,
-            "production_effect": "none",
-        }
-
-
 @app.post("/api/analyze")
 def analyze(payload: TradePayload, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)
@@ -4059,6 +4031,14 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     trigger_condition = payload.trigger_condition if entry_type == "pending" else None
     side = payload.side.lower()
     validate_entry_order(entry_type, trigger_condition)
+    if entry_type != "market":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "El nuevo motor activo analiza exclusivamente entradas "
+                "a precio de mercado."
+            ),
+        )
     if side not in {"long", "short"}:
         raise HTTPException(status_code=400, detail="Direccion no valida")
     proposal = TradeProposal(
@@ -4077,7 +4057,24 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     if proposal.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
     validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
-    result = analyze_trade(proposal)
+    try:
+        result = analyze_trade(proposal)
+    except NewEngineAnalysisError as exc:
+        logger.exception(
+            "New analysis engine blocked the request: %s",
+            exc.code,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": exc.code,
+                "message": (
+                    "El nuevo motor no pudo completar un calculo fiable. "
+                    "No se ha usado el motor anterior como sustituto."
+                ),
+                "details": exc.details,
+            },
+        ) from exc
     entry_context = {
         "entry_type": entry_type,
         "trigger_condition": trigger_condition,
@@ -4093,7 +4090,6 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     }
     result["entry_order_context"] = entry_context
     result.setdefault("snapshot", {})["entry_order_context"] = entry_context
-    stamp_pre_trade_horizon(result["snapshot"], proposal.time_horizon)
     version_contract = current_version_contract()
     result["version_contract"] = version_contract
     result["snapshot"]["version_contract"] = version_contract
@@ -4139,12 +4135,6 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             ),
         )
         recommendation_id = int(cursor.lastrowid)
-        persist_live_shadow_safely(
-            db=db,
-            recommendation_id=recommendation_id,
-            proposal=proposal,
-            champion_result=result,
-        )
     return {"recommendation_id": recommendation_id, **result}
 
 

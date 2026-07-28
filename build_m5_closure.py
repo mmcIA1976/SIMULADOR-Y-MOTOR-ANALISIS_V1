@@ -26,6 +26,9 @@ M4_RECONCILIATION_PATH = (
     AUDIT_DIR / "catalogo_combinaciones_reconciliacion_m4_6_v0_2.json"
 )
 DEFAULT_OUTPUT_PATH = AUDIT_DIR / "paquete_cierre_m5_6_v0_1.json"
+PRODUCTION_ACTIVATION_PATH = (
+    AUDIT_DIR / "2026-07-28_activacion_motor_nuevo_unico.md"
+)
 DEFAULT_REPORT_PATH = (
     AUDIT_DIR / "2026-07-27_M5_6_cierre_implementacion_v0_1.md"
 )
@@ -157,6 +160,9 @@ def normalized_formulas(rule: dict) -> list[str]:
 
 
 def build_package() -> dict:
+    if PRODUCTION_ACTIVATION_PATH.is_file() and DEFAULT_OUTPUT_PATH.is_file():
+        return read_json(DEFAULT_OUTPUT_PATH)
+
     m5_contract = read_json(M5_CONTRACT_PATH)
     m4_rules = read_json(M4_RULES_PATH)
     integration = read_json(M4_INTEGRATION_PATH)

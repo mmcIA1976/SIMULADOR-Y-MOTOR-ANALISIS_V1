@@ -229,7 +229,13 @@ class VersionedDataContractTests(unittest.TestCase):
             "parameter_advice": {},
             "reasons": [],
             "alerts": [],
-            "snapshot": {"market_regime": {"name": "tendencia_alcista"}},
+            "snapshot": {
+                "market_regime": {"name": "tendencia_alcista"},
+                "analysis_at": "2026-07-28T12:00:00+00:00",
+                "data_cutoff_at": "2026-07-28T12:00:00+00:00",
+                "evaluation_horizon_seconds": 4 * 60 * 60,
+                "evaluation_expires_at": "2026-07-28T16:00:00+00:00",
+            },
         }
         db = self.CaptureDb()
         payload = TradePayload(
@@ -244,8 +250,7 @@ class VersionedDataContractTests(unittest.TestCase):
         )
 
         with patch("app.connect", return_value=self.DbContext(db)):
-            with patch("app.persist_live_shadow_safely") as shadow_audit:
-                result = analyze(payload, "session")
+            result = analyze(payload, "session")
 
         self.assertEqual(result["recommendation_id"], 42)
         self.assertEqual(result["version_contract"]["scoring_version"], SCORING_VERSION)
@@ -259,7 +264,8 @@ class VersionedDataContractTests(unittest.TestCase):
         self.assertNotIn("data_contract", result["data_contract"]["pre_trade_features"])
         self.assertEqual(db.query.count("?"), len(db.params))
         self.assertEqual(len(db.params), 24)
-        shadow_audit.assert_called_once()
+        self.assertIn(ENGINE_VERSION, db.params)
+        self.assertIn(SCORING_VERSION, db.params)
 
 
 if __name__ == "__main__":

@@ -3,10 +3,10 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.19.0-frozen-candidate-shadow"
-APP_SEMVER = "0.19.0"
-ENGINE_VERSION = "rules-v0.12.1-liquidations-readable"
-SCORING_VERSION = "scoring-v0.11-underweighted-risk-cluster"
+APP_VERSION = "app-v0.20.0-new-engine-only"
+APP_SEMVER = "0.20.0"
+ENGINE_VERSION = "M6-CANDIDATE-NO-H-RIDGE-10-v0.2"
+SCORING_VERSION = "M6-calibrated-competing-risks-v0.2"
 LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.5-economic-normalization"
 DATA_SOURCE_VERSION = "data-sources-v0.12.1-binance-hyperperps"
@@ -14,8 +14,8 @@ DATA_CONTRACT_VERSION = "data-contract-v0.5-exact-pretrade-cutoff-horizon"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.1-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
-CHALLENGER_RUNTIME_VERSION = "challenger-shadow-runtime-v0.2-data-cutoff"
-PROSPECTIVE_RUNTIME_VERSION = "m6-prospective-validation-v0.2-frozen-no-h"
+CHALLENGER_RUNTIME_VERSION = "inactive-history-only"
+PROSPECTIVE_RUNTIME_VERSION = "inactive-promoted-to-production-v0.2"
 
 
 def current_version_contract() -> dict:
@@ -58,6 +58,8 @@ def predictive_features_from_contract(data_contract: dict) -> dict:
 def scoring_version_for_legacy_engine(engine_version: str | None) -> str | None:
     if not engine_version:
         return None
-    if engine_version.startswith("rules-v0.12") or engine_version.startswith("rules-v0.11"):
+    if engine_version == ENGINE_VERSION:
         return SCORING_VERSION
+    if engine_version.startswith("rules-v0.12") or engine_version.startswith("rules-v0.11"):
+        return "scoring-v0.11-underweighted-risk-cluster"
     return f"legacy-engine:{engine_version}"

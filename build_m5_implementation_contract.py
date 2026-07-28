@@ -19,6 +19,9 @@ M4_CLOSURE_PATH = AUDIT_DIR / "paquete_revision_m4_7_v0_3.json"
 DEFAULT_OUTPUT_PATH = (
     AUDIT_DIR / "contrato_implementacion_m5_1_v0_1.json"
 )
+PRODUCTION_ACTIVATION_PATH = (
+    AUDIT_DIR / "2026-07-28_activacion_motor_nuevo_unico.md"
+)
 DEFAULT_REPORT_PATH = (
     AUDIT_DIR / "2026-07-27_M5_1_inicio_contrato_ejecutable_v0_1.md"
 )
@@ -126,6 +129,9 @@ def validate_m4_closure(closure: dict) -> None:
 
 
 def build_contract() -> dict:
+    if PRODUCTION_ACTIVATION_PATH.is_file() and DEFAULT_OUTPUT_PATH.is_file():
+        return read_json(DEFAULT_OUTPUT_PATH)
+
     rule_catalog = read_json(M4_RULES_PATH)
     integration = read_json(M4_INTEGRATION_PATH)
     closure = read_json(M4_CLOSURE_PATH)

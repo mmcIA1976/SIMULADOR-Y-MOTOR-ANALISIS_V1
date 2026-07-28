@@ -27,6 +27,7 @@ from versioning import APP_VERSION, PROSPECTIVE_RUNTIME_VERSION
 
 
 PRODUCTION_EFFECT_NONE = "none"
+PRODUCTION_EFFECT_SERVED = "served"
 ENABLED_ENV = "M6_PROSPECTIVE_VALIDATION_ENABLED"
 CANDIDATE_PATH = (
     Path(__file__).resolve().parent
@@ -186,6 +187,7 @@ def build_prospective_probability_run(
     *,
     loader: Callable[..., list[list]] = market_data.get_klines,
     analysis_id: str,
+    active_output: bool = False,
 ) -> dict:
     plan = build_plan(proposal, snapshot)
     if plan["entry_type"] != "market":
@@ -310,6 +312,11 @@ def build_prospective_probability_run(
         core_m6_result.get("status") == "evaluated_internal_only"
     )
     if evaluated:
+        production_effect = (
+            PRODUCTION_EFFECT_SERVED
+            if active_output
+            else PRODUCTION_EFFECT_NONE
+        )
         temperature = float(artifact["calibration"]["temperature"])
         calibrated = temperature_calibration(
             core_m6_result["probabilities"],
@@ -320,13 +327,17 @@ def build_prospective_probability_run(
             "candidate_version": candidate_payload["version"],
             "coefficient_artifact_id": artifact["id"],
             "coefficient_artifact_sha256": artifact["artifact_sha256"],
-            "status": "evaluated_internal_only",
+            "status": (
+                "evaluated_active"
+                if active_output
+                else "evaluated_internal_only"
+            ),
             "block_code": None,
             "probabilities": calibrated,
             "raw_probabilities": core_m6_result["probabilities"],
             "calibration": artifact["calibration"],
             "core_result": core_m6_result,
-            "production_effect": PRODUCTION_EFFECT_NONE,
+            "production_effect": production_effect,
         }
         m6_result["result_sha256"] = sha256_json(m6_result)
     else:
@@ -350,10 +361,14 @@ def build_prospective_probability_run(
             "removed_predictive_features": candidate_payload[
                 "selection"
             ]["removed_feature"],
-            "visible_to_user": False,
-            "m9_authorized": False,
+            "visible_to_user": active_output,
+            "owner_authorized": active_output,
         },
-        "production_effect": PRODUCTION_EFFECT_NONE,
+        "production_effect": (
+            PRODUCTION_EFFECT_SERVED
+            if active_output and evaluated
+            else PRODUCTION_EFFECT_NONE
+        ),
     }
 
 

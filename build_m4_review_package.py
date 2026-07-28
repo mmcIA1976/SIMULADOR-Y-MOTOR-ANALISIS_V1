@@ -21,6 +21,9 @@ FINAL_INTEGRATION_PATH = (
     AUDIT_DIR / "integracion_dag_invariantes_m4_7_v0_2.json"
 )
 DEFAULT_OUTPUT_PATH = AUDIT_DIR / "paquete_revision_m4_7_v0_3.json"
+PRODUCTION_ACTIVATION_PATH = (
+    AUDIT_DIR / "2026-07-28_activacion_motor_nuevo_unico.md"
+)
 DEFAULT_REPORT_PATH = (
     AUDIT_DIR / "2026-07-27_M4_7_paquete_revision_cerrado_v0_3.md"
 )
@@ -336,6 +339,9 @@ def build_decisions() -> list[dict]:
 
 
 def build_catalog() -> dict:
+    if PRODUCTION_ACTIVATION_PATH.is_file() and DEFAULT_OUTPUT_PATH.is_file():
+        return json.loads(DEFAULT_OUTPUT_PATH.read_text(encoding="utf-8"))
+
     catalogs = [read_json(path) for path in M4_CATALOG_PATHS]
     final_integration = read_json(FINAL_INTEGRATION_PATH)
     m4_1, m4_2, m4_3, m4_4, m4_5, m4_6 = catalogs

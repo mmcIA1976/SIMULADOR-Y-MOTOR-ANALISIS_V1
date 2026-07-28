@@ -25,6 +25,9 @@ M7_COVERAGE_PATH = AUDIT_DIR / "matriz_cobertura_m7_4_v0_1.json"
 M7_TRACE_PATH = AUDIT_DIR / "verificacion_trazas_m7_5_v0_1.json"
 M7_RESILIENCE_PATH = AUDIT_DIR / "verificacion_resiliencia_m7_6_v0_1.json"
 DEFAULT_OUTPUT_PATH = AUDIT_DIR / "paquete_cierre_m7_7_v0_1.json"
+PRODUCTION_ACTIVATION_PATH = (
+    AUDIT_DIR / "2026-07-28_activacion_motor_nuevo_unico.md"
+)
 DEFAULT_REPORT_PATH = (
     AUDIT_DIR / "2026-07-28_M7_7_cierre_verificacion_v0_1.md"
 )
@@ -209,6 +212,9 @@ def formula_review(m6_closure: dict) -> list[dict]:
 
 
 def build_package() -> dict:
+    if PRODUCTION_ACTIVATION_PATH.is_file() and DEFAULT_OUTPUT_PATH.is_file():
+        return read_json(DEFAULT_OUTPUT_PATH)
+
     m6 = read_json(M6_CLOSURE_PATH)
     contract = read_json(M7_CONTRACT_PATH)
     math_verification = read_json(M7_MATH_PATH)

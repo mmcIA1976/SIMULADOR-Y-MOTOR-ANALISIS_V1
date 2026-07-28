@@ -6,7 +6,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app import persist_live_shadow_safely
 from challenger_engine import MODEL_SCHEMA_VERSION
 from shadow_runtime import (
     build_user_shadow_audit,
@@ -459,37 +458,6 @@ class ShadowRuntimeTests(unittest.TestCase):
         self.assertEqual(params[2], "model-v1")
         self.assertEqual(params[3], 20)
         self.assertEqual(params[5], 19)
-
-    def test_shadow_failure_rolls_back_only_savepoint(self):
-        class SavepointDb:
-            def __init__(self):
-                self.queries = []
-
-            def execute(self, query, params=None):
-                self.queries.append(" ".join(query.split()))
-                return Cursor()
-
-        db = SavepointDb()
-        with patch(
-            "app.execute_live_shadow_run",
-            side_effect=RuntimeError("shadow failed"),
-        ), patch("app.logger.exception"):
-            result = persist_live_shadow_safely(
-                    db,
-                    504,
-                    proposal(),
-                    champion_result(),
-                )
-
-        self.assertEqual(result["status"], "technical_error_isolated")
-        self.assertEqual(
-            db.queries,
-            [
-                "SAVEPOINT challenger_shadow_run",
-                "ROLLBACK TO SAVEPOINT challenger_shadow_run",
-                "RELEASE SAVEPOINT challenger_shadow_run",
-            ],
-        )
 
     def test_authenticated_audit_separates_champion_and_challenger(self):
         report = build_user_shadow_audit(AuditDb(), user_id=7, limit=500)

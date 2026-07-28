@@ -306,6 +306,7 @@ class M53RuleImplementationTests(unittest.TestCase):
                 "spot_ask": 100,
                 "futures_received_at_ms": BASE_MS,
                 "spot_received_at_ms": BASE_MS,
+                "spot_symbol_status": "TRADING",
                 "capture_limit_ms": 10,
             },
         )
@@ -368,6 +369,7 @@ class M53RuleImplementationTests(unittest.TestCase):
                 "spot_ask": 100,
                 "futures_received_at_ms": BASE_MS,
                 "spot_received_at_ms": BASE_MS,
+                "spot_symbol_status": "TRADING",
             },
         )
         premium = run_rule(

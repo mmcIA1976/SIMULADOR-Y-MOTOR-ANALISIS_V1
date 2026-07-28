@@ -5,16 +5,17 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 import market_data
-from m8_evaluation import HORIZON_SECONDS
+from m5_input_assembly import trace_map
+from m5_live_inputs import collect_live_rule_context
+from m8_evaluation import HORIZON_SECONDS, selected_interval_seconds
 from prospective_validation import (
     build_prospective_probability_run,
     load_frozen_candidate,
 )
+from versioning import ENGINE_VERSION, SCORING_VERSION
 
 
 ENGINE_FAMILY = "m6_calibrated_competing_risks"
-ENGINE_VERSION = "M6-CANDIDATE-NO-H-RIDGE-10-v0.2"
-SCORING_VERSION = "M6-calibrated-competing-risks-v0.2"
 OWNER_ACTIVATION = "owner_explicit_activation_2026-07-28"
 
 
@@ -25,7 +26,11 @@ class NewEngineAnalysisError(RuntimeError):
         self.details = details or {}
 
 
-def _analysis_stamp(time_horizon: str) -> dict:
+def _analysis_stamp(
+    time_horizon: str,
+    *,
+    request_received_at: datetime,
+) -> dict:
     try:
         horizon_seconds = int(HORIZON_SECONDS[time_horizon])
     except KeyError as exc:
@@ -36,6 +41,7 @@ def _analysis_stamp(time_horizon: str) -> dict:
         tz=timezone.utc,
     )
     return {
+        "request_received_at": request_received_at.isoformat(),
         "analysis_at": analysis_at.isoformat(),
         "data_cutoff_at": analysis_at.isoformat(),
         "data_cutoff_policy": "closed_market_data_at_analysis_time_v0.1",
@@ -105,7 +111,6 @@ def _explained_metrics(run: dict) -> list[dict]:
         load_frozen_candidate()["coefficient_artifact"],
     )
     labels = {
-        "directional_path_efficiency_h": "Eficiencia direccional del horizonte",
         "directional_path_efficiency_2h": "Eficiencia direccional en 2 horizontes",
         "directional_path_efficiency_4h": "Eficiencia direccional en 4 horizontes",
         "volatility_percentile_60": "Percentil de volatilidad",
@@ -126,6 +131,46 @@ def _explained_metrics(run: dict) -> list[dict]:
                     f"{contribution['tp_linear_contribution']:+.4f}; "
                     "contribucion lineal SL "
                     f"{contribution['sl_linear_contribution']:+.4f}."
+                ),
+                "trace": contribution,
+            }
+        )
+    overlay_labels = {
+        "M4-RULE-PATH-STRUCTURE-001": "Estructura direccional del horizonte",
+        "M4-RULE-CONTINUOUS-REGIME-001": "Regimen continuo",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001": "Desequilibrio taker",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001": "Variacion de open interest",
+        "M4-RULE-PRICE-OI-STATE-001": "Relacion precio y open interest",
+        "M4-RULE-SPOT-FUTURES-BASIS-001": "Basis Spot/Futures",
+        "M4-RULE-MARK-INDEX-PREMIUM-001": "Prima mark/index",
+        "M4-RULE-FUNDING-STATE-001": "Funding",
+    }
+    overlay = run["m6_result"].get("active_rule_overlay") or {}
+    for rule_id, contribution in overlay.get(
+        "rule_contributions",
+        {},
+    ).items():
+        signal = float(contribution["signal"])
+        if contribution["effect_mode"] == "movement":
+            bias = "movimiento"
+        elif signal > 0:
+            bias = "favorable"
+        elif signal < 0:
+            bias = "desfavorable"
+        else:
+            bias = "neutral"
+        metrics.append(
+            {
+                "id": rule_id,
+                "label": overlay_labels[rule_id],
+                "value": f"{signal:+.4f}",
+                "score": round(50 + signal * 50),
+                "bias": bias,
+                "explanation": (
+                    "Efecto sobre TP "
+                    f"{contribution['tp_probability_delta'] * 100:+.2f} pp; "
+                    "efecto sobre SL "
+                    f"{contribution['sl_probability_delta'] * 100:+.2f} pp."
                 ),
                 "trace": contribution,
             }
@@ -151,18 +196,42 @@ def analyze_trade(
     proposal: Any,
     *,
     loader: Callable[..., list[list]] = market_data.get_klines,
+    context_loader: Callable[..., dict] = collect_live_rule_context,
 ) -> dict:
     if str(getattr(proposal, "entry_type", "market")).lower() != "market":
         raise NewEngineAnalysisError("market_entry_required")
 
+    request_received_at = datetime.now(timezone.utc)
+    time_horizon = str(proposal.time_horizon)
+    try:
+        horizon_seconds = int(HORIZON_SECONDS[time_horizon])
+        interval_seconds = selected_interval_seconds(
+            time_horizon,
+            horizon_seconds,
+        )
+        live_context = context_loader(
+            symbol=str(proposal.symbol).upper(),
+            horizon_seconds=horizon_seconds,
+            interval_seconds=interval_seconds,
+            request_cutoff_at=request_received_at.isoformat(),
+        )
+    except Exception as exc:
+        raise NewEngineAnalysisError(
+            "new_engine_live_context_unavailable",
+            {"exception_type": type(exc).__name__},
+        ) from exc
+
     snapshot = {
         "symbol": str(proposal.symbol).upper(),
         "side": str(proposal.side).lower(),
-        "time_horizon": str(proposal.time_horizon),
+        "time_horizon": time_horizon,
         "entry": float(proposal.entry),
         "take_profit": float(proposal.take_profit),
         "stop_loss": float(proposal.stop_loss),
-        **_analysis_stamp(str(proposal.time_horizon)),
+        **_analysis_stamp(
+            time_horizon,
+            request_received_at=request_received_at,
+        ),
     }
     analysis_id = (
         f"live-{snapshot['symbol']}-"
@@ -175,6 +244,7 @@ def analyze_trade(
             loader=loader,
             analysis_id=analysis_id,
             active_output=True,
+            live_context=live_context,
         )
     except Exception as exc:
         raise NewEngineAnalysisError(
@@ -205,22 +275,44 @@ def analyze_trade(
 
     artifact = candidate["coefficient_artifact"]
     geometry = _geometry(proposal)
+    active_predictive_rule_ids = run["feature_snapshot"].get(
+        "active_predictive_rule_ids",
+        [],
+    )
     feature_contributions = _feature_contributions(
         run["feature_snapshot"],
         artifact,
     )
+    m5_traces = trace_map(run["m5_analysis"])
+    m5_statuses = {
+        rule_id: trace["status"]
+        for rule_id, trace in m5_traces.items()
+    }
     snapshot.update(
         {
             **geometry,
+            "data_cutoff_at": run["data_cutoff_at"],
             "availability": {
-                "futures_price": False,
+                "futures_price": bool(live_context.get("futures_book")),
                 "futures_klines": True,
-                "order_book": False,
-                "futures_trade_flow": False,
+                "order_book": (
+                    m5_statuses.get("M4-RULE-QUOTED-SPREAD-001")
+                    == "evaluated"
+                ),
+                "futures_trade_flow": (
+                    m5_statuses.get("M4-RULE-AGGRESSOR-IMBALANCE-001")
+                    == "evaluated"
+                ),
                 "ticker_24h": False,
                 "fibonacci": False,
-                "funding": False,
-                "open_interest": False,
+                "funding": (
+                    m5_statuses.get("M4-RULE-FUNDING-STATE-001")
+                    == "evaluated"
+                ),
+                "open_interest": (
+                    m5_statuses.get("M4-RULE-OPEN-INTEREST-CHANGE-001")
+                    == "evaluated"
+                ),
                 "long_short_ratio": False,
                 "taker_futures_ratio": False,
                 "liquidation_heatmap": False,
@@ -235,6 +327,11 @@ def analyze_trade(
             "legacy_engine_executed": False,
             "feature_snapshot": run["feature_snapshot"],
             "m5_rule_trace": run["m5_analysis"],
+            "m5_pre_probability_trace": run[
+                "m5_pre_probability_analysis"
+            ],
+            "m5_rule_statuses": m5_statuses,
+            "m5_rule_effects": run["m5_rule_effects"],
             "m6_probability_trace": m6_result,
             "feature_contributions": feature_contributions,
         }
@@ -272,8 +369,8 @@ def analyze_trade(
                 f"{_probability_label(probabilities['range'])}."
             ),
             (
-                "El calculo usa geometria TP/SL, volatilidad realizada y "
-                "eficiencia direccional obtenidas de velas cerradas."
+                f"El calculo ha aplicado {len(active_predictive_rule_ids)} "
+                "reglas predictivas con datos disponibles."
             ),
         ],
         "alerts": [
@@ -286,7 +383,8 @@ def analyze_trade(
             f"Nuevo motor: TP {_probability_label(probabilities['tp'])}, "
             f"SL {_probability_label(probabilities['sl'])} y "
             f"sin toque {_probability_label(probabilities['range'])} "
-            f"dentro de {proposal.time_horizon}."
+            f"dentro de {proposal.time_horizon}, con "
+            f"{len(active_predictive_rule_ids)} reglas activas."
         ),
         "explained_metrics": _explained_metrics(run),
         "snapshot": snapshot,
@@ -297,10 +395,19 @@ def analyze_trade(
             "calibration": artifact["calibration"],
             "raw_probabilities": m6_result["raw_probabilities"],
             "calibrated_probabilities": m6_result["probabilities"],
+            "probabilities_before_rule_overlay": m6_result.get(
+                "probabilities_before_rule_overlay"
+            ),
+            "active_predictive_rule_ids": active_predictive_rule_ids,
+            "active_rule_overlay": m6_result.get("active_rule_overlay"),
             "feature_contributions": feature_contributions,
+            "m5_rule_effects": run["m5_rule_effects"],
             "m5_analysis_trace_sha256": run["m5_analysis"].get(
                 "analysis_trace_sha256"
             ),
+            "m5_pre_probability_trace_sha256": run[
+                "m5_pre_probability_analysis"
+            ].get("analysis_trace_sha256"),
             "m6_result_sha256": m6_result.get("result_sha256"),
             "source_data_sha256": run["source_data_sha256"],
             "data_cutoff_at": run["data_cutoff_at"],

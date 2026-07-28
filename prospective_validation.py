@@ -13,11 +13,21 @@ import market_data
 from db import row_to_dict
 from m5_engine import ENGINE_VERSION as M5_ENGINE_VERSION
 from m5_engine import run_internal_analysis
+from m5_input_assembly import (
+    build_rule_inputs,
+    candidate_features_from_m5,
+    rule_effect_registry,
+    trace_map,
+)
 from m6_active_engine import ACTIVE_ENGINE_VERSION
 from m6_active_engine import run_internal_probability_analysis
+from m6_predictive_rules import (
+    ACTIVE_PREDICTIVE_RULE_IDS,
+    FITTED_RULE_IDS,
+    apply_provisional_rule_overlay,
+    build_provisional_rule_signals,
+)
 from m8_evaluation import (
-    PROFILE_INTERVALS_SECONDS,
-    derive_pretrade_features,
     fetch_klines_range,
     normalize_kline,
     parse_utc,
@@ -159,6 +169,8 @@ def build_plan(proposal: Any, snapshot: dict) -> dict:
         "symbol": str(proposal.symbol).upper(),
         "side": str(proposal.side).lower(),
         "entry": float(proposal.entry),
+        "margin": float(proposal.margin),
+        "leverage": float(proposal.leverage),
         "take_profit": float(proposal.take_profit),
         "stop_loss": float(proposal.stop_loss),
         "entry_type": str(getattr(proposal, "entry_type", "market")).lower(),
@@ -169,18 +181,6 @@ def build_plan(proposal: Any, snapshot: dict) -> dict:
     }
 
 
-def _source_observation(pretrade: dict) -> tuple[dict, ...]:
-    return (
-        {
-            "provider": "binance_usdm_futures",
-            "dataset": "closed_klines",
-            "data_cutoff_at": pretrade["data_cutoff_at"],
-            "interval": pretrade["interval"],
-            "pretrade_candle_sha256": pretrade["pretrade_candle_sha256"],
-        },
-    )
-
-
 def build_prospective_probability_run(
     proposal: Any,
     snapshot: dict,
@@ -188,6 +188,7 @@ def build_prospective_probability_run(
     loader: Callable[..., list[list]] = market_data.get_klines,
     analysis_id: str,
     active_output: bool = False,
+    live_context: dict | None = None,
 ) -> dict:
     plan = build_plan(proposal, snapshot)
     if plan["entry_type"] != "market":
@@ -233,77 +234,83 @@ def build_prospective_probability_run(
         loader=loader,
     )
     candles = [normalize_kline(row) for row in raw]
-    pretrade = derive_pretrade_features(plan, candles)
-    if pretrade.get("status") != "evaluated":
+    try:
+        rule_inputs, material, source_observations = build_rule_inputs(
+            plan=plan,
+            candles=candles,
+            live_context=live_context,
+        )
+    except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
         return _blocked_payload(
             analysis_id=analysis_id,
             plan=plan,
-            code=str(pretrade.get("status") or "pretrade_features_blocked"),
-            details={"pretrade": pretrade},
+            code=str(exc) or "m5_input_assembly_blocked",
+            details={"exception_type": type(exc).__name__},
         )
 
-    closed = [
-        row for row in candles if row["close_time_ms"] <= analysis_ms
-    ]
-    current = closed[-(return_count + 1) :]
-    closes = [
-        {
-            "close": row["close"],
-            "close_time": row["close_time_ms"],
-            "closed": True,
-        }
-        for row in current
-    ]
-    rule_inputs = {
-        "M4-RULE-HORIZON-SAMPLING-001": {
-            "time_horizon": plan["time_horizon"],
-            "horizon_seconds": plan["horizon_seconds"],
-            "profile_intervals_seconds": list(
-                PROFILE_INTERVALS_SECONDS[plan["time_horizon"]]
-            ),
-        },
-        "M4-RULE-PLAN-GEOMETRY-001": {
-            "side": plan["side"],
-            "entry": plan["entry"],
-            "take_profit": plan["take_profit"],
-            "stop_loss": plan["stop_loss"],
-        },
-        "M4-RULE-LOG-RETURNS-001": {
-            "interval_seconds": interval_seconds,
-            "closes": closes,
-        },
-    }
-    observation = _source_observation(pretrade)
-    source_observations = {
-        "M4-RULE-HORIZON-SAMPLING-001": observation,
-        "M4-RULE-LOG-RETURNS-001": observation,
-        "M4-RULE-REALIZED-VOLATILITY-001": observation,
-    }
-    m5_analysis = run_internal_analysis(
-        analysis_id=f"{analysis_id}:m5",
+    m5_pre_probability = run_internal_analysis(
+        analysis_id=f"{analysis_id}:m5-pre-probability",
         rule_inputs=rule_inputs,
         source_observations=source_observations,
         executed_at=plan["analysis_at"],
     )
+    try:
+        feature_values = candidate_features_from_m5(
+            m5_pre_probability,
+            side=plan["side"],
+        )
+    except ValueError as exc:
+        return _blocked_payload(
+            analysis_id=analysis_id,
+            plan=plan,
+            code="m5_candidate_source_rules_unavailable",
+            details={
+                "message": str(exc),
+                "m5_status_counts": m5_pre_probability["status_counts"],
+            },
+        )
+    data_cutoff_at = datetime.fromtimestamp(
+        material["data_cutoff_at_ms"] / 1000,
+        tz=timezone.utc,
+    ).isoformat()
     feature_snapshot = {
         "status": "evaluated",
-        "values": pretrade["feature_values"],
-        "interval": pretrade["interval"],
-        "interval_seconds": pretrade["interval_seconds"],
-        "return_count_per_horizon": pretrade["return_count_per_horizon"],
-        "data_cutoff_at": pretrade["data_cutoff_at"],
-        "pretrade_candle_sha256": pretrade["pretrade_candle_sha256"],
-        "source_rule_ids": pretrade["source_rule_ids"],
+        "values": feature_values,
+        "interval_seconds": material["interval_seconds"],
+        "return_count_per_horizon": material["return_count"],
+        "data_cutoff_at": data_cutoff_at,
+        "pretrade_candle_sha256": material["data_sha256"],
+        "source_rule_ids": {
+            "directional_path_efficiency_h": (
+                "M4-RULE-PATH-STRUCTURE-001"
+            ),
+            "directional_path_efficiency_2h": (
+                "M4-RULE-MTF-HIERARCHY-001"
+            ),
+            "directional_path_efficiency_4h": (
+                "M4-RULE-MTF-HIERARCHY-001"
+            ),
+            "volatility_percentile_60": (
+                "M4-RULE-VOLATILITY-RANK-001"
+            ),
+            "target_extreme_between_entry_and_tp": (
+                "M4-RULE-PRIOR-EXTREMA-001"
+            ),
+        },
+        "source_m5_analysis_id": m5_pre_probability["analysis_id"],
+        "source_m5_trace_sha256": m5_pre_probability[
+            "analysis_trace_sha256"
+        ],
     }
     candidate_payload = load_frozen_candidate()
     artifact = candidate_payload["coefficient_artifact"]
     standardized_values = standardized_candidate_features(
-        pretrade["feature_values"],
+        feature_values,
         artifact,
     )
     core_m6_result = run_internal_probability_analysis(
         analysis_id=f"{analysis_id}:m6",
-        m5_analysis=m5_analysis,
+        m5_analysis=m5_pre_probability,
         feature_snapshot=standardized_values,
         coefficient_artifact=artifact,
         executed_at=plan["analysis_at"],
@@ -318,10 +325,19 @@ def build_prospective_probability_run(
             else PRODUCTION_EFFECT_NONE
         )
         temperature = float(artifact["calibration"]["temperature"])
-        calibrated = temperature_calibration(
+        calibrated_before_overlay = temperature_calibration(
             core_m6_result["probabilities"],
             temperature,
         )
+        provisional_signals = build_provisional_rule_signals(
+            m5_pre_probability,
+            side=plan["side"],
+        )
+        rule_overlay = apply_provisional_rule_overlay(
+            calibrated_before_overlay,
+            provisional_signals,
+        )
+        calibrated = rule_overlay["probabilities_after"]
         m6_result = {
             "engine_version": core_m6_result["engine_version"],
             "candidate_version": candidate_payload["version"],
@@ -335,6 +351,8 @@ def build_prospective_probability_run(
             "block_code": None,
             "probabilities": calibrated,
             "raw_probabilities": core_m6_result["probabilities"],
+            "probabilities_before_rule_overlay": calibrated_before_overlay,
+            "active_rule_overlay": rule_overlay,
             "calibration": artifact["calibration"],
             "core_result": core_m6_result,
             "production_effect": production_effect,
@@ -342,8 +360,104 @@ def build_prospective_probability_run(
         m6_result["result_sha256"] = sha256_json(m6_result)
     else:
         m6_result = core_m6_result
+
+    pre_traces = trace_map(m5_pre_probability)
+    readiness_statuses = {
+        "market_probabilities": "available" if evaluated else "blocked",
+        "entry_execution": (
+            "available"
+            if pre_traces.get("M4-RULE-DEPTH-SWEEP-001", {}).get("status")
+            == "evaluated"
+            else "blocked"
+        ),
+        "exit_execution": "blocked",
+        "fees": (
+            "available"
+            if pre_traces.get("M4-RULE-FEE-SCENARIOS-001", {}).get("status")
+            == "evaluated"
+            else "blocked"
+        ),
+        "funding": (
+            "available"
+            if pre_traces.get("M4-RULE-FUNDING-CASHFLOW-001", {}).get(
+                "status"
+            )
+            == "evaluated"
+            else "blocked"
+        ),
+        "payoffs": (
+            "available"
+            if pre_traces.get("M4-RULE-NET-PAYOFFS-001", {}).get("status")
+            == "evaluated"
+            else "blocked"
+        ),
+        "account_risk": "blocked",
+    }
+    final_inputs, _, final_sources = build_rule_inputs(
+        plan=plan,
+        candles=candles,
+        live_context=live_context,
+        probabilities=(
+            m6_result.get("probabilities")
+            if evaluated
+            else None
+        ),
+        readiness_statuses=readiness_statuses,
+    )
+    m5_analysis = run_internal_analysis(
+        analysis_id=f"{analysis_id}:m5-final",
+        rule_inputs=final_inputs,
+        source_observations=final_sources,
+        executed_at=plan["analysis_at"],
+    )
+    rule_effects = rule_effect_registry(
+        m5_analysis,
+        coefficient_artifact=artifact,
+    )
+    if evaluated:
+        for rule_id, contribution in rule_overlay[
+            "rule_contributions"
+        ].items():
+            rule_effects[rule_id].update(
+                {
+                    "probability_effect": "provisional_rule_contribution",
+                    "probability_effect_reason": (
+                        "owner_authorized_active_rule_with_live_data"
+                    ),
+                    "provisional_weight": contribution["weight"],
+                    "signal": contribution["signal"],
+                    "tp_probability_delta": contribution[
+                        "tp_probability_delta"
+                    ],
+                    "sl_probability_delta": contribution[
+                        "sl_probability_delta"
+                    ],
+                }
+            )
+        rule_effects["M4-RULE-DERIVATIVES-CONTEXT-001"].update(
+            {
+                "probability_effect": "complementary_container",
+                "probability_effect_reason": (
+                    "duplicate_container_not_an_independent_rule"
+                ),
+            }
+        )
     feature_snapshot["standardized_candidate_values"] = standardized_values
     feature_snapshot["coefficient_artifact_id"] = artifact["id"]
+    feature_snapshot["m5_rule_effects"] = rule_effects
+    feature_snapshot["active_predictive_rule_ids"] = [
+        rule_id
+        for rule_id in ACTIVE_PREDICTIVE_RULE_IDS
+        if (
+            rule_id in FITTED_RULE_IDS
+            and rule_effects[rule_id]["probability_effect"]
+            == "fitted_competing_risk_covariate"
+        )
+        or rule_id in rule_overlay["active_rule_ids"]
+    ] if evaluated else []
+    feature_snapshot["active_rule_overlay"] = (
+        rule_overlay if evaluated else None
+    )
     return {
         "runtime_version": PROSPECTIVE_RUNTIME_VERSION,
         "analysis_id": analysis_id,
@@ -352,15 +466,20 @@ def build_prospective_probability_run(
         "plan": plan,
         "feature_snapshot": feature_snapshot,
         "m5_analysis": m5_analysis,
+        "m5_pre_probability_analysis": m5_pre_probability,
+        "m5_rule_effects": rule_effects,
         "m6_result": m6_result,
-        "data_cutoff_at": pretrade["data_cutoff_at"],
-        "source_data_sha256": pretrade["pretrade_candle_sha256"],
+        "data_cutoff_at": data_cutoff_at,
+        "source_data_sha256": material["data_sha256"],
         "details": {
             "candidate": artifact["id"],
             "candidate_version": candidate_payload["version"],
             "removed_predictive_features": candidate_payload[
                 "selection"
             ]["removed_feature"],
+            "active_predictive_rule_ids": feature_snapshot[
+                "active_predictive_rule_ids"
+            ],
             "visible_to_user": active_output,
             "owner_authorized": active_output,
         },

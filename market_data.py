@@ -20,10 +20,12 @@ BINANCE_USDM_BASE_URLS = (
 )
 BINANCE_USDM_PRICE_PATH = "/fapi/v1/ticker/price?symbol={symbol}"
 BINANCE_USDM_KLINES_PATH = "/fapi/v1/klines?symbol={symbol}&interval={interval}&limit={limit}"
-BINANCE_USDM_DEPTH_PATH = "/fapi/v1/depth?symbol={symbol}&limit=20"
+BINANCE_USDM_DEPTH_PATH = "/fapi/v1/depth?symbol={symbol}&limit={limit}"
+BINANCE_USDM_BOOK_TICKER_PATH = "/fapi/v1/ticker/bookTicker?symbol={symbol}"
 BINANCE_USDM_TICKER_24H_PATH = "/fapi/v1/ticker/24hr?symbol={symbol}"
 BINANCE_USDM_AGG_TRADES_PATH = "/fapi/v1/aggTrades?symbol={symbol}&limit={limit}"
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol={symbol}"
+BINANCE_FUNDING_INFO_URL = "https://fapi.binance.com/fapi/v1/fundingInfo?symbol={symbol}"
 BINANCE_OPEN_INTEREST_URL = "https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}"
 BINANCE_OPEN_INTEREST_HIST_URL = (
     "https://fapi.binance.com/futures/data/openInterestHist?symbol={symbol}&period={period}&limit={limit}"
@@ -34,6 +36,16 @@ BINANCE_GLOBAL_LONG_SHORT_URL = (
 )
 BINANCE_TAKER_LONG_SHORT_URL = (
     "https://fapi.binance.com/futures/data/takerlongshortRatio?symbol={symbol}&period={period}&limit=1"
+)
+BINANCE_TAKER_LONG_SHORT_HISTORY_URL = (
+    "https://fapi.binance.com/futures/data/takerlongshortRatio?"
+    "symbol={symbol}&period={period}&limit={limit}"
+)
+BINANCE_SPOT_BOOK_TICKER_URL = (
+    "https://api.binance.com/api/v3/ticker/bookTicker?symbol={symbol}"
+)
+BINANCE_SPOT_EXCHANGE_INFO_URL = (
+    "https://api.binance.com/api/v3/exchangeInfo?symbol={symbol}"
 )
 COINGECKO_MARKETS_URL = (
     "https://api.coingecko.com/api/v3/coins/markets?"
@@ -261,10 +273,55 @@ def get_klines(
     return payload if isinstance(payload, list) else []
 
 
-def get_depth(symbol: str) -> dict:
+def get_depth(symbol: str, limit: int = 20) -> dict:
     safe_symbol = urllib.parse.quote(symbol.upper())
-    payload = get_futures_json_optional(BINANCE_USDM_DEPTH_PATH.format(symbol=safe_symbol))
+    allowed_limits = (5, 10, 20, 50, 100, 500, 1000)
+    selected_limit = min(
+        allowed_limits,
+        key=lambda value: abs(value - min(max(int(limit), 5), 1000)),
+    )
+    payload = get_futures_json_optional(
+        BINANCE_USDM_DEPTH_PATH.format(
+            symbol=safe_symbol,
+            limit=selected_limit,
+        )
+    )
     return payload if isinstance(payload, dict) else {"bids": [], "asks": []}
+
+
+def get_futures_book_ticker(symbol: str) -> dict | None:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    received_at_ms = _now_ms()
+    payload = get_futures_json_optional(
+        BINANCE_USDM_BOOK_TICKER_PATH.format(symbol=safe_symbol)
+    )
+    if not isinstance(payload, dict):
+        return None
+    return {
+        **payload,
+        "receivedAt": max(received_at_ms, _now_ms()),
+    }
+
+
+def get_spot_book_ticker(symbol: str) -> dict | None:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    payload = get_json_optional(
+        BINANCE_SPOT_BOOK_TICKER_URL.format(symbol=safe_symbol)
+    )
+    if not isinstance(payload, dict):
+        return None
+    return {
+        **payload,
+        "receivedAt": _now_ms(),
+    }
+
+
+def get_spot_exchange_info(symbol: str) -> dict | None:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    payload = get_json_optional(
+        BINANCE_SPOT_EXCHANGE_INFO_URL.format(symbol=safe_symbol)
+    )
+    return payload if isinstance(payload, dict) else None
 
 
 def get_24h_ticker(symbol: str) -> dict:
@@ -302,18 +359,67 @@ def get_open_interest(symbol: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-def get_open_interest_history(symbol: str, period: str = "5m", limit: int = 30) -> list[dict]:
+def get_open_interest_history(
+    symbol: str,
+    period: str = "5m",
+    limit: int = 30,
+    start_time_ms: int | None = None,
+    end_time_ms: int | None = None,
+) -> list[dict]:
     safe_symbol = urllib.parse.quote(symbol.upper())
     capped_limit = min(max(limit, 2), 500)
-    data = get_json_optional(BINANCE_OPEN_INTEREST_HIST_URL.format(symbol=safe_symbol, period=period, limit=capped_limit))
+    url = BINANCE_OPEN_INTEREST_HIST_URL.format(
+        symbol=safe_symbol,
+        period=period,
+        limit=capped_limit,
+    )
+    if start_time_ms is not None:
+        url = f"{url}&startTime={int(start_time_ms)}"
+    if end_time_ms is not None:
+        url = f"{url}&endTime={int(end_time_ms)}"
+    data = get_json_optional(url)
     return data if isinstance(data, list) else []
 
 
-def get_funding_history(symbol: str, limit: int = 8) -> list[dict]:
+def get_funding_history(
+    symbol: str,
+    limit: int = 8,
+    start_time_ms: int | None = None,
+    end_time_ms: int | None = None,
+) -> list[dict]:
     safe_symbol = urllib.parse.quote(symbol.upper())
     capped_limit = min(max(limit, 1), 1000)
-    data = get_json_optional(BINANCE_FUNDING_HISTORY_URL.format(symbol=safe_symbol, limit=capped_limit))
+    url = BINANCE_FUNDING_HISTORY_URL.format(
+        symbol=safe_symbol,
+        limit=capped_limit,
+    )
+    if start_time_ms is not None:
+        url = f"{url}&startTime={int(start_time_ms)}"
+    if end_time_ms is not None:
+        url = f"{url}&endTime={int(end_time_ms)}"
+    data = get_json_optional(url)
     return data if isinstance(data, list) else []
+
+
+def get_funding_info(symbol: str) -> dict | None:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    data = get_json_optional(
+        BINANCE_FUNDING_INFO_URL.format(symbol=safe_symbol)
+    )
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, list):
+        normalized = symbol.upper()
+        return next(
+            (
+                item
+                for item in data
+                if isinstance(item, dict)
+                and str(item.get("symbol", "")).upper() == normalized
+            ),
+            None,
+        )
+    return None
 
 
 def get_global_long_short_ratio(symbol: str, period: str = "5m") -> dict | None:
@@ -330,6 +436,28 @@ def get_taker_long_short_ratio(symbol: str, period: str = "5m") -> dict | None:
     if isinstance(data, list) and data:
         return data[-1]
     return None
+
+
+def get_taker_long_short_ratio_history(
+    symbol: str,
+    period: str = "5m",
+    limit: int = 30,
+    start_time_ms: int | None = None,
+    end_time_ms: int | None = None,
+) -> list[dict]:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    capped_limit = min(max(int(limit), 1), 500)
+    url = BINANCE_TAKER_LONG_SHORT_HISTORY_URL.format(
+        symbol=safe_symbol,
+        period=period,
+        limit=capped_limit,
+    )
+    if start_time_ms is not None:
+        url = f"{url}&startTime={int(start_time_ms)}"
+    if end_time_ms is not None:
+        url = f"{url}&endTime={int(end_time_ms)}"
+    data = get_json_optional(url)
+    return data if isinstance(data, list) else []
 
 
 def get_top_crypto_assets(limit: int = 100) -> list[dict]:

@@ -50,6 +50,10 @@ def selected_dependencies(
     edges: list[dict],
     traces: dict[str, RuleTrace],
 ) -> dict[str, RuleTrace]:
+    if rule_id == "M4-RULE-EVALUATION-READINESS-001":
+        # Readiness reports blocked upstream branches; it must not inherit
+        # their control-flow status before it can expose that report.
+        return {}
     selected = {}
     basis_source = inputs.get("basis_source")
     basis_selection = {

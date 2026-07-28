@@ -3,19 +3,19 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.20.0-new-engine-only"
-APP_SEMVER = "0.20.0"
-ENGINE_VERSION = "M6-CANDIDATE-NO-H-RIDGE-10-v0.2"
-SCORING_VERSION = "M6-calibrated-competing-risks-v0.2"
-LEARNING_EVALUATOR_VERSION = "learning-v0.2-underweighted-risk"
-LEARNING_SCHEMA_VERSION = "learning-schema-v0.5-economic-normalization"
-DATA_SOURCE_VERSION = "data-sources-v0.12.1-binance-hyperperps"
-DATA_CONTRACT_VERSION = "data-contract-v0.5-exact-pretrade-cutoff-horizon"
+APP_VERSION = "app-v0.22.0-active-predictive-rules"
+APP_SEMVER = "0.22.0"
+ENGINE_VERSION = "M6-ACTIVE-PREDICTIVE-RULES-v0.4"
+SCORING_VERSION = "M6-calibrated-plus-active-rules-v0.4"
+LEARNING_EVALUATOR_VERSION = "learning-v0.3-rule-attribution"
+LEARNING_SCHEMA_VERSION = "learning-schema-v0.6-rule-attribution"
+DATA_SOURCE_VERSION = "data-sources-v0.13-binance-public-m5-context"
+DATA_CONTRACT_VERSION = "data-contract-v0.7-active-rule-attribution"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.1-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 CHALLENGER_RUNTIME_VERSION = "inactive-history-only"
-PROSPECTIVE_RUNTIME_VERSION = "inactive-promoted-to-production-v0.2"
+PROSPECTIVE_RUNTIME_VERSION = "active-predictive-rules-production-v0.4"
 
 
 def current_version_contract() -> dict:

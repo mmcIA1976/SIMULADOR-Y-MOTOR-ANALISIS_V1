@@ -1,10 +1,46 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from app import finalize_due_observations
+from app import (
+    finalize_due_observations,
+    predictive_rule_learning_snapshot,
+)
 
 
 class LearningFinalizationTests(unittest.TestCase):
+    def test_predictive_rule_snapshot_joins_pretrade_effect_and_outcome(self):
+        snapshot = {
+            "feature_snapshot": {
+                "active_predictive_rule_ids": ["rule-a"],
+            },
+            "m5_rule_effects": {
+                "rule-a": {
+                    "rule_status": "evaluated",
+                    "probability_effect": "provisional_rule_contribution",
+                    "probability_effect_reason": "active",
+                    "signal": 0.4,
+                    "provisional_weight": 0.1,
+                    "tp_probability_delta": 0.01,
+                    "sl_probability_delta": -0.008,
+                }
+            },
+        }
+
+        result = predictive_rule_learning_snapshot(
+            snapshot,
+            plan_result="plan_success",
+        )
+
+        self.assertEqual(result["active_rule_count"], 1)
+        self.assertEqual(
+            result["observed_outcome"],
+            "tp_first_within_horizon",
+        )
+        self.assertEqual(
+            result["rules"]["rule-a"]["tp_probability_delta"],
+            0.01,
+        )
+
     @patch("app.refresh_learning_evaluations")
     @patch("app.refresh_learning_conclusions")
     @patch("app.finalize_due_observations_with_db")

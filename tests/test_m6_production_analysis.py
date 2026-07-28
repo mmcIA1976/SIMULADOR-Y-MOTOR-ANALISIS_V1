@@ -50,6 +50,11 @@ def evaluated_run() -> dict:
             "analysis_trace_sha256": "m5-sha",
             "traces": [],
         },
+        "m5_pre_probability_analysis": {
+            "analysis_trace_sha256": "m5-pre-sha",
+            "traces": [],
+        },
+        "m5_rule_effects": {},
         "m6_result": {
             "probabilities": {
                 "tp_first_within_horizon": 0.55,
@@ -74,7 +79,10 @@ class M6ProductionAnalysisTests(unittest.TestCase):
         return_value=evaluated_run(),
     )
     def test_new_engine_is_the_visible_result(self, build_run):
-        result = analyze_trade(proposal())
+        result = analyze_trade(
+            proposal(),
+            context_loader=lambda **kwargs: {},
+        )
 
         self.assertEqual(result["engine_version"], ENGINE_VERSION)
         self.assertTrue(result["snapshot"]["new_engine_only"])
@@ -85,7 +93,7 @@ class M6ProductionAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result["range_probability"], 0.10)
         self.assertEqual(
             result["model_trace"]["coefficient_artifact_id"],
-            ENGINE_VERSION,
+            "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
         )
         self.assertIn(
             "volatility_percentile_60",
@@ -98,7 +106,10 @@ class M6ProductionAnalysisTests(unittest.TestCase):
             NewEngineAnalysisError,
             "market_entry_required",
         ):
-            analyze_trade(proposal(entry_type="pending"))
+            analyze_trade(
+                proposal(entry_type="pending"),
+                context_loader=lambda **kwargs: {},
+            )
 
     @patch(
         "m6_production_analysis.build_prospective_probability_run",
@@ -113,7 +124,10 @@ class M6ProductionAnalysisTests(unittest.TestCase):
             NewEngineAnalysisError,
             "insufficient_pretrade_history",
         ):
-            analyze_trade(proposal())
+            analyze_trade(
+                proposal(),
+                context_loader=lambda **kwargs: {},
+            )
 
     def test_app_has_no_live_shadow_execution_path(self):
         app_source = Path("app.py").read_text(encoding="utf-8")

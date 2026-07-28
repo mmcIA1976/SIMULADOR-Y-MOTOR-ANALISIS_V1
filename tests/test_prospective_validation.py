@@ -29,6 +29,8 @@ def proposal(entry_type: str = "market"):
         stop_loss=98.0,
         entry_type=entry_type,
         time_horizon="intraday_wide",
+        margin=100.0,
+        leverage=2.0,
     )
 
 
@@ -81,6 +83,76 @@ def paged_loader(rows: list[list]):
         return selected[:limit]
 
     return loader
+
+
+def live_rule_context() -> dict:
+    end = int(ANALYSIS_AT.timestamp() * 1000)
+    start = end - 24 * HOUR_MS
+    return {
+        "horizon_seconds": 24 * 60 * 60,
+        "interval_seconds": 60 * 60,
+        "request_cutoff_at": ANALYSIS_AT.isoformat(),
+        "captured_at_ms": end - 100,
+        "taker_history": [
+            {
+                "timestamp": start + index * HOUR_MS,
+                "buyVol": str(10 + index / 10),
+                "sellVol": str(9 + index / 20),
+            }
+            for index in range(24)
+        ],
+        "open_interest_history": [
+            {
+                "timestamp": start + index * HOUR_MS,
+                "sumOpenInterest": str(1000 + index),
+            }
+            for index in range(25)
+        ],
+        "futures_book": {
+            "bidPrice": "99.99",
+            "askPrice": "100.01",
+            "receivedAt": end - 90,
+        },
+        "spot_book": {
+            "bidPrice": "99.97",
+            "askPrice": "99.99",
+            "receivedAt": end - 80,
+        },
+        "spot_info": {
+            "symbols": [{"symbol": "BTCUSDT", "status": "TRADING"}]
+        },
+        "depth": {
+            "bids": [
+                [str(99.99 - index * 0.01), "10"]
+                for index in range(100)
+            ],
+            "asks": [
+                [str(100.01 + index * 0.01), "10"]
+                for index in range(100)
+            ],
+        },
+        "funding_snapshot": {
+            "lastFundingRate": "0.0001",
+            "markPrice": "100.0",
+            "indexPrice": "99.98",
+            "nextFundingTime": end + 8 * HOUR_MS,
+            "time": end - 70,
+        },
+        "funding_info": {
+            "symbol": "BTCUSDT",
+            "fundingIntervalHours": 8,
+        },
+        "funding_history": [
+            {
+                "fundingTime": end - 16 * HOUR_MS,
+                "fundingRate": "0.00008",
+            },
+            {
+                "fundingTime": end - 8 * HOUR_MS,
+                "fundingRate": "0.00009",
+            },
+        ],
+    }
 
 
 class ProspectiveValidationTests(unittest.TestCase):
@@ -149,6 +221,90 @@ class ProspectiveValidationTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["block_code"], "m5_market_entry_required")
         self.assertIsNone(result["m6_result"])
+
+    def test_live_context_executes_every_rule_branch_and_m6_uses_m5(self):
+        result = build_prospective_probability_run(
+            proposal(),
+            snapshot(),
+            loader=paged_loader(raw_candles()),
+            analysis_id="integrated-live-test",
+            active_output=True,
+            live_context=live_rule_context(),
+        )
+
+        self.assertEqual(result["status"], "evaluated")
+        self.assertEqual(result["m5_analysis"]["rule_count"], 27)
+        self.assertEqual(
+            result["m5_analysis"]["status_counts"],
+            {
+                "evaluated": 22,
+                "blocked": 3,
+                "not_applicable": 1,
+                "deferred": 1,
+                "error": 0,
+            },
+        )
+        statuses = {
+            trace["rule_id"]: trace
+            for trace in result["m5_analysis"]["traces"]
+        }
+        for rule_id in (
+            "M4-RULE-PATH-STRUCTURE-001",
+            "M4-RULE-PRIOR-EXTREMA-001",
+            "M4-RULE-VOLATILITY-RANK-001",
+            "M4-RULE-MTF-HIERARCHY-001",
+            "M4-RULE-AGGRESSOR-IMBALANCE-001",
+            "M4-RULE-OPEN-INTEREST-CHANGE-001",
+            "M4-RULE-SPOT-FUTURES-BASIS-001",
+            "M4-RULE-MARK-INDEX-PREMIUM-001",
+            "M4-RULE-FUNDING-STATE-001",
+            "M4-RULE-DERIVATIVES-CONTEXT-001",
+            "M4-RULE-QUOTED-SPREAD-001",
+            "M4-RULE-DEPTH-SWEEP-001",
+            "M4-RULE-EVALUATION-READINESS-001",
+        ):
+            self.assertEqual(statuses[rule_id]["status"], "evaluated")
+        self.assertEqual(
+            statuses["M4-RULE-EXPONENTIAL-SMOOTHER-001"]["status"],
+            "not_applicable",
+        )
+        self.assertEqual(
+            statuses["M4-RULE-FEE-SCENARIOS-001"]["reason_codes"],
+            ("missing_commission_rate",),
+        )
+        self.assertEqual(
+            statuses["M4-RULE-FUNDING-CASHFLOW-001"]["status"],
+            "deferred",
+        )
+        self.assertEqual(
+            result["feature_snapshot"]["source_m5_analysis_id"],
+            "integrated-live-test:m5-pre-probability",
+        )
+        self.assertEqual(
+            result["m6_result"]["core_result"]["trace"]["m5_analysis_id"],
+            "integrated-live-test:m5-pre-probability",
+        )
+        self.assertEqual(len(result["m5_rule_effects"]), 27)
+        self.assertEqual(
+            result["m5_rule_effects"][
+                "M4-RULE-AGGRESSOR-IMBALANCE-001"
+            ]["probability_effect_reason"],
+            "owner_authorized_active_rule_with_live_data",
+        )
+        self.assertEqual(
+            len(
+                result["feature_snapshot"][
+                    "active_predictive_rule_ids"
+                ]
+            ),
+            11,
+        )
+        self.assertEqual(
+            result["m5_rule_effects"][
+                "M4-RULE-QUOTED-SPREAD-001"
+            ]["probability_effect"],
+            "separate_economic_layer",
+        )
 
     def test_environment_kill_switch_is_explicit(self):
         with patch.dict(os.environ, {ENABLED_ENV: "false"}):

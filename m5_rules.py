@@ -230,6 +230,11 @@ def pending_activation(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict
 
 
 def exponential_smoother(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
+    if inputs.get("alpha") is None:
+        raise RuleNotApplicable(
+            "alpha_not_approved",
+            "M4 does not approve a smoothing alpha or EMA period",
+        )
     values = [
         require_finite(value, "smoother_value")
         for value in require_sequence(inputs.get("values"), "values")
@@ -515,6 +520,11 @@ def price_oi_state(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
 
 
 def spot_futures_basis(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
+    if str(inputs.get("spot_symbol_status", "")).upper() != "TRADING":
+        raise RuleBlocked(
+            "spot_symbol_not_trading",
+            "spot exchange metadata must confirm a TRADING symbol",
+        )
     f_bid = require_positive(inputs.get("futures_bid"), "futures_bid")
     f_ask = require_positive(inputs.get("futures_ask"), "futures_ask")
     s_bid = require_positive(inputs.get("spot_bid"), "spot_bid")
@@ -558,6 +568,7 @@ def spot_futures_basis(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict
             "simultaneous" if skew == 0 else "non_simultaneous"
         ),
         "capture_limit_status": limit_status,
+        "spot_symbol_status": "TRADING",
         "b_mid": math.log(f_mid / s_mid),
         "executable_basis_bounds": {
             "sell_futures_buy_spot": math.log(f_bid / s_ask),
@@ -778,7 +789,21 @@ def fee_scenarios(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
 def funding_cashflow(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
     position_sign = side_sign(inputs.get("side"))
     quantity = require_positive(inputs.get("base_quantity"), "base_quantity")
-    events = require_sequence(inputs.get("events"), "events")
+    events = inputs.get("events")
+    if events == [] and int(inputs.get("scheduled_event_count", 0)) == 0:
+        return {
+            "position_sign": position_sign,
+            "base_quantity": quantity,
+            "event_cashflows": [],
+            "cashflow_total": 0.0,
+            "scenario_status": "not_applicable_no_scheduled_event",
+        }
+    if events == []:
+        raise RuleDeferred(
+            "future_funding_rate_unknown",
+            "scheduled funding exists but its future rate and mark are unknown",
+        )
+    events = require_sequence(events, "events")
     cashflows = []
     for row in events:
         event = require_mapping(row, "funding_event")
@@ -790,6 +815,9 @@ def funding_cashflow(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
         "base_quantity": quantity,
         "event_cashflows": cashflows,
         "cashflow_total": sum(cashflows),
+        "scenario_status": str(
+            inputs.get("scenario_status") or "observed_events"
+        ),
     }
 
 

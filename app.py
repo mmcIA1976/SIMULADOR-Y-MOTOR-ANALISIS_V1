@@ -2374,6 +2374,90 @@ def recommendation_version_contract(operation: dict, snapshot: dict) -> dict:
     }
 
 
+def predictive_rule_learning_snapshot(
+    snapshot: dict,
+    *,
+    plan_result: str,
+) -> dict:
+    feature_snapshot = (
+        snapshot.get("feature_snapshot")
+        if isinstance(snapshot.get("feature_snapshot"), dict)
+        else {}
+    )
+    effects = (
+        snapshot.get("m5_rule_effects")
+        if isinstance(snapshot.get("m5_rule_effects"), dict)
+        else {}
+    )
+    active_rule_ids = [
+        str(rule_id)
+        for rule_id in feature_snapshot.get(
+            "active_predictive_rule_ids",
+            [],
+        )
+        if str(rule_id) in effects
+    ]
+    raw_feature_values = (
+        feature_snapshot.get("values")
+        if isinstance(feature_snapshot.get("values"), dict)
+        else {}
+    )
+    standardized_feature_values = (
+        feature_snapshot.get("standardized_candidate_values")
+        if isinstance(
+            feature_snapshot.get("standardized_candidate_values"),
+            dict,
+        )
+        else {}
+    )
+    observed_outcome = (
+        "tp_first_within_horizon"
+        if plan_result in {"plan_success", "plan_would_succeed"}
+        else "sl_first_within_horizon"
+        if plan_result in {"plan_failure", "plan_would_fail"}
+        else "neither_or_censored"
+    )
+    return {
+        "active_rule_ids": active_rule_ids,
+        "active_rule_count": len(active_rule_ids),
+        "observed_outcome": observed_outcome,
+        "rules": {
+            rule_id: {
+                "rule_status": effects[rule_id].get("rule_status"),
+                "probability_effect": effects[rule_id].get(
+                    "probability_effect"
+                ),
+                "probability_effect_reason": effects[rule_id].get(
+                    "probability_effect_reason"
+                ),
+                "features": effects[rule_id].get("features", []),
+                "feature_values": {
+                    feature: safe_float(raw_feature_values.get(feature))
+                    for feature in effects[rule_id].get("features", [])
+                },
+                "standardized_feature_values": {
+                    feature: safe_float(
+                        standardized_feature_values.get(feature)
+                    )
+                    for feature in effects[rule_id].get("features", [])
+                },
+                "coefficients": effects[rule_id].get("coefficients"),
+                "signal": safe_float(effects[rule_id].get("signal")),
+                "provisional_weight": safe_float(
+                    effects[rule_id].get("provisional_weight")
+                ),
+                "tp_probability_delta": safe_float(
+                    effects[rule_id].get("tp_probability_delta")
+                ),
+                "sl_probability_delta": safe_float(
+                    effects[rule_id].get("sl_probability_delta")
+                ),
+            }
+            for rule_id in active_rule_ids
+        },
+    }
+
+
 def build_structured_learning_evaluation(
     operation: dict,
     ticks: list[dict],
@@ -2392,6 +2476,10 @@ def build_structured_learning_evaluation(
     reward_margin_pct = safe_float(snapshot.get("reward_margin_pct"))
     close_reason = operation.get("close_reason")
     plan_result = plan_result_from_operation(operation)
+    predictive_rules = predictive_rule_learning_snapshot(
+        snapshot,
+        plan_result=plan_result,
+    )
     evidence_post_close_touch = (
         historical_evidence.get("first_post_close_plan_touch")
         if isinstance(historical_evidence, dict)
@@ -2502,6 +2590,7 @@ def build_structured_learning_evaluation(
             "zone_summary": zone_analysis.get("zone_summary"),
             "probability_summary": zone_probability.get("summary"),
         },
+        "predictive_rules": predictive_rules,
     }
     pre_trade_entry_context = {
         "entry_type": entry_context.get("entry_type"),
@@ -2569,6 +2658,7 @@ def build_structured_learning_evaluation(
             },
             "entry_order_context": pre_trade_entry_context,
             "analysis_context": analysis_context,
+            "predictive_rules": predictive_rules,
         },
         post_trade_outcomes=post_trade_outcomes,
         diagnostic_labels=diagnostic_labels,
@@ -2603,6 +2693,7 @@ def build_structured_learning_evaluation(
             **analysis_context,
             "zone_learning": zone_learning,
             "signal_diagnostics": signal_diagnostics,
+            "predictive_rules": predictive_rules,
         },
         "version_contract": version_contract,
         **data_contract,

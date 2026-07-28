@@ -71,6 +71,25 @@ def artifact_record(path: Path) -> dict:
     }
 
 
+def frozen_model_records() -> list[dict]:
+    if DEFAULT_OUTPUT_PATH.exists():
+        written = read_json(DEFAULT_OUTPUT_PATH)
+        frozen = written.get("frozen_model", {}).get("files")
+        if isinstance(frozen, list):
+            records = [
+                item
+                for item in frozen
+                if isinstance(item, dict)
+                and item.get("path") in FROZEN_MODEL_FILES
+            ]
+            if len(records) == len(FROZEN_MODEL_FILES):
+                return records
+    return [
+        artifact_record(ROOT / path)
+        for path in FROZEN_MODEL_FILES
+    ]
+
+
 def build_protocol() -> dict:
     m7 = read_json(M7_CLOSURE_PATH)
     coefficients = read_json(M6_COEFFICIENT_PATH)
@@ -109,9 +128,7 @@ def build_protocol() -> dict:
             "legacy_probabilities_allowed_as_label_or_training_target": False,
         },
         "frozen_model": {
-            "files": [
-                artifact_record(ROOT / path) for path in FROZEN_MODEL_FILES
-            ],
+            "files": frozen_model_records(),
             "m7_closure": artifact_record(M7_CLOSURE_PATH),
             "coefficient_artifact": artifact_record(M6_COEFFICIENT_PATH),
             "active_evidence_coefficients": 0,

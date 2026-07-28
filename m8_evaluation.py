@@ -257,7 +257,7 @@ def merge_ranges(ranges: Iterable[tuple[int, int]]) -> list[tuple[int, int]]:
 
 
 def normalize_kline(raw: list) -> dict:
-    return {
+    normalized = {
         "open_time_ms": int(raw[0]),
         "open": float(raw[1]),
         "high": float(raw[2]),
@@ -266,6 +266,13 @@ def normalize_kline(raw: list) -> dict:
         "volume": float(raw[5]),
         "close_time_ms": int(raw[6]),
     }
+    if len(raw) > 7:
+        normalized["quote_volume"] = float(raw[7])
+    if len(raw) > 9:
+        normalized["taker_buy_base_volume"] = float(raw[9])
+    if len(raw) > 10:
+        normalized["taker_buy_quote_volume"] = float(raw[10])
+    return normalized
 
 
 def kline_fingerprint(candles: list[dict]) -> str | None:

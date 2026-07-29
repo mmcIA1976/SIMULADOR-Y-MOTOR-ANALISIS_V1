@@ -3,10 +3,10 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.22.0-active-predictive-rules"
-APP_SEMVER = "0.22.0"
-ENGINE_VERSION = "M6-ACTIVE-PREDICTIVE-RULES-v0.4"
-SCORING_VERSION = "M6-calibrated-plus-active-rules-v0.4"
+APP_VERSION = "app-v0.22.1-engine-naming"
+APP_SEMVER = "0.22.1"
+ENGINE_VERSION = "TP-SL-PROBABILITY-ENGINE-v0.4"
+SCORING_VERSION = "calibrated-plus-active-rules-v0.4"
 LEARNING_EVALUATOR_VERSION = "learning-v0.3-rule-attribution"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.6-rule-attribution"
 DATA_SOURCE_VERSION = "data-sources-v0.13-binance-public-m5-context"

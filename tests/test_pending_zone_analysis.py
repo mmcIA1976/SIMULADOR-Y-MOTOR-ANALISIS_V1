@@ -424,7 +424,7 @@ class PendingZoneLearningTests(unittest.TestCase):
         self.assertTrue(learning_summary_needs_refresh(old_summary))
         self.assertFalse(learning_summary_needs_refresh(new_summary))
 
-    def test_new_m6_learning_pattern_uses_traced_probability_inputs(self):
+    def test_probability_engine_learning_pattern_uses_traced_inputs(self):
         rule_ids = (
             "M4-RULE-PATH-STRUCTURE-001",
             "M4-RULE-PRIOR-EXTREMA-001",
@@ -488,6 +488,11 @@ class PendingZoneLearningTests(unittest.TestCase):
 
         pattern = build_learning_pattern_text(operation)
 
+        self.assertIn(
+            "Patron del motor probabilistico TP/SL guardado",
+            pattern,
+        )
+        self.assertNotIn("Patron M6", pattern)
         self.assertIn("probabilidades previas TP 48.56%", pattern)
         self.assertIn("SL 46.19%", pattern)
         self.assertIn("H -0.1901", pattern)
@@ -523,6 +528,14 @@ class PendingZoneLearningTests(unittest.TestCase):
         )
 
         self.assertTrue(learning_summary_needs_refresh(old_m6_summary))
+
+    def test_phase_name_in_learning_pattern_is_marked_for_refresh(self):
+        old_phase_named_summary = (
+            "Patron M6 guardado para aprendizaje: motor "
+            "M6-ACTIVE-PREDICTIVE-RULES-v0.4."
+        )
+
+        self.assertTrue(learning_summary_needs_refresh(old_phase_named_summary))
 
     def test_underweighted_risk_audit_case_and_summary(self):
         risky_evaluation = build_structured_learning_evaluation(

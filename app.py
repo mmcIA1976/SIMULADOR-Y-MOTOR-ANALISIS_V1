@@ -76,6 +76,7 @@ TRAINING_RECHARGE_AMOUNT = 1000.0
 STALE_LEARNING_SUMMARY_MARKERS = (
     "este caso debe reforzar esas senales de riesgo",
     "rating tecnico no disponible --/100",
+    "Patron M6 guardado para aprendizaje",
 )
 NEW_ENGINE_RULE_LABELS = {
     "M4-RULE-PATH-STRUCTURE-001": "estructura H",
@@ -1078,8 +1079,12 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
             o.learning_summary IS NULL
             OR o.learning_summary = ''
             OR o.learning_summary LIKE ?
+            OR o.learning_summary LIKE ?
             OR (
-                r.engine_version LIKE ?
+                (
+                    r.engine_version LIKE ?
+                    OR r.engine_version LIKE ?
+                )
                 AND o.learning_summary LIKE ?
             )
           )
@@ -1087,7 +1092,9 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
         """,
         (
             f"%{STALE_LEARNING_SUMMARY_MARKERS[0]}%",
+            f"%{STALE_LEARNING_SUMMARY_MARKERS[2]}%",
             "M6-ACTIVE-PREDICTIVE-RULES-%",
+            "TP-SL-PROBABILITY-ENGINE-%",
             f"%{STALE_LEARNING_SUMMARY_MARKERS[1]}%",
         ),
     ).fetchall()
@@ -3812,8 +3819,10 @@ def build_new_engine_learning_pattern_text(
     engine_version = (
         operation.get("recommendation_engine_version")
         or (snapshot.get("source") or {}).get("probability_model")
-        or "M6"
+        or ENGINE_VERSION
     )
+    if str(engine_version).startswith("M6-ACTIVE-PREDICTIVE-RULES-"):
+        engine_version = ENGINE_VERSION
     horizon = (
         operation.get("time_horizon")
         or snapshot.get("time_horizon")
@@ -3885,7 +3894,7 @@ def build_new_engine_learning_pattern_text(
         else "sin fuentes complementarias omitidas"
     )
     return (
-        "Patron M6 guardado para aprendizaje: "
+        "Patron del motor probabilistico TP/SL guardado para aprendizaje: "
         f"motor {engine_version}, horizonte {horizon} ({horizon_text}), "
         f"probabilidades previas TP {probability_text(tp_probability)}, "
         f"SL {probability_text(sl_probability)}, "

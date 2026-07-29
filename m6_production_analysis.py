@@ -15,7 +15,7 @@ from prospective_validation import (
 from versioning import ENGINE_VERSION, SCORING_VERSION
 
 
-ENGINE_FAMILY = "m6_calibrated_competing_risks"
+ENGINE_FAMILY = "tp_sl_competing_risks"
 OWNER_ACTIVATION = "owner_explicit_activation_2026-07-28"
 
 

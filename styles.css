@@ -845,8 +845,9 @@ label {
 
 .contest-operation-probability strong {
   color: var(--price);
-  font-size: 1.7rem;
-  line-height: 1;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  text-align: right;
 }
 
 .contest-operation-grid {

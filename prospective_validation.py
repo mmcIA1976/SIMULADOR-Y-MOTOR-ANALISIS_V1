@@ -22,7 +22,9 @@ from m5_input_assembly import (
 from m6_active_engine import ACTIVE_ENGINE_VERSION
 from m6_active_engine import run_internal_probability_analysis
 from m6_predictive_rules import (
+    ACTIVE_EVIDENCE_FAMILIES,
     ACTIVE_PREDICTIVE_RULE_IDS,
+    FITTED_RULE_FEATURES,
     FITTED_RULE_IDS,
     apply_provisional_rule_overlay,
     build_provisional_rule_signals,
@@ -33,6 +35,8 @@ from m8_evaluation import (
     parse_utc,
     selected_interval_seconds,
 )
+from microstructure_rule_runtime import evaluate_microstructure_rule_family
+from technical_rule_runtime import evaluate_technical_rule_family
 from versioning import APP_VERSION, PROSPECTIVE_RUNTIME_VERSION
 
 
@@ -254,6 +258,51 @@ def build_prospective_probability_run(
         source_observations=source_observations,
         executed_at=plan["analysis_at"],
     )
+    technical_rule_observations = evaluate_technical_rule_family(
+        material["selected"],
+        side=plan["side"],
+        analysis_at=plan["analysis_at"],
+        interval_seconds=material["interval_seconds"],
+        source_data_sha256=material["data_sha256"],
+    )
+    microstructure_rule_observations = evaluate_microstructure_rule_family(
+        selected_candles=material["selected"],
+        current_bars=material["current_bars"],
+        live_context=live_context,
+        return_count=material["return_count"],
+        interval_seconds=material["interval_seconds"],
+        side=plan["side"],
+        analysis_at=plan["analysis_at"],
+        source_data_sha256=material["data_sha256"],
+    )
+    observational_traces = (
+        technical_rule_observations["traces"]
+        + microstructure_rule_observations["traces"]
+    )
+    evaluated_observational_count = sum(
+        trace["status"] == "evaluated_shadow"
+        for trace in observational_traces
+    )
+    observational_rule_observations = {
+        "runtime_version": "observational-rule-runtime-v0.2",
+        "status": (
+            "evaluated_shadow"
+            if evaluated_observational_count == len(observational_traces)
+            else "partially_evaluated_shadow"
+            if evaluated_observational_count
+            else "blocked"
+        ),
+        "analysis_at": plan["analysis_at"],
+        "evaluated_rule_count": evaluated_observational_count,
+        "runtimes": [
+            technical_rule_observations,
+            microstructure_rule_observations,
+        ],
+        "traces": observational_traces,
+    }
+    observational_rule_observations["runtime_trace_sha256"] = sha256_json(
+        observational_rule_observations
+    )
     try:
         feature_values = candidate_features_from_m5(
             m5_pre_probability,
@@ -301,6 +350,7 @@ def build_prospective_probability_run(
         "source_m5_trace_sha256": m5_pre_probability[
             "analysis_trace_sha256"
         ],
+        "observational_rule_traces": observational_rule_observations,
     }
     candidate_payload = load_frozen_candidate()
     artifact = candidate_payload["coefficient_artifact"]
@@ -338,6 +388,94 @@ def build_prospective_probability_run(
             provisional_signals,
         )
         calibrated = rule_overlay["probabilities_after"]
+
+        def probabilities_without_rule_ids(
+            removed_rule_ids: set[str],
+        ) -> dict[str, float]:
+            removed_fitted = removed_rule_ids & set(FITTED_RULE_FEATURES)
+            if removed_fitted:
+                ablated_features = dict(standardized_values)
+                for removed_rule_id in removed_fitted:
+                    for feature_name in FITTED_RULE_FEATURES[
+                        removed_rule_id
+                    ]:
+                        ablated_features[feature_name] = 0.0
+                ablated_core = run_internal_probability_analysis(
+                    analysis_id=(
+                        f"{analysis_id}:m6:ablate:"
+                        + ",".join(sorted(removed_rule_ids))
+                    ),
+                    m5_analysis=m5_pre_probability,
+                    feature_snapshot=ablated_features,
+                    coefficient_artifact=artifact,
+                    executed_at=plan["analysis_at"],
+                )
+                if (
+                    ablated_core.get("status")
+                    != "evaluated_internal_only"
+                ):
+                    raise RuntimeError(
+                        "fitted_rule_ablation_failed:"
+                        + ",".join(sorted(removed_rule_ids))
+                    )
+                ablated_before_overlay = temperature_calibration(
+                    ablated_core["probabilities"],
+                    temperature,
+                )
+            else:
+                ablated_before_overlay = calibrated_before_overlay
+            ablated_signals = {
+                **provisional_signals,
+                "active": {
+                    rule_id: value
+                    for rule_id, value in provisional_signals[
+                        "active"
+                    ].items()
+                    if rule_id not in removed_rule_ids
+                },
+            }
+            return apply_provisional_rule_overlay(
+                ablated_before_overlay,
+                ablated_signals,
+            )["probabilities_after"]
+
+        fitted_rule_ablation = {}
+        for rule_id, feature_names in FITTED_RULE_FEATURES.items():
+            probabilities_without = probabilities_without_rule_ids(
+                {rule_id}
+            )
+            fitted_rule_ablation[rule_id] = {
+                "feature_names": list(feature_names),
+                "standardized_values_removed": {
+                    feature_name: standardized_values[feature_name]
+                    for feature_name in feature_names
+                },
+                "probabilities_without_rule": probabilities_without,
+                "ablation_probability_delta": {
+                    name: calibrated[name] - probabilities_without[name]
+                    for name in calibrated
+                },
+            }
+        evidence_family_ablation = {}
+        for family_id, family_rule_ids in (
+            ACTIVE_EVIDENCE_FAMILIES.items()
+        ):
+            active_family_rule_ids = [
+                rule_id
+                for rule_id in family_rule_ids
+                if rule_id in ACTIVE_PREDICTIVE_RULE_IDS
+            ]
+            probabilities_without = probabilities_without_rule_ids(
+                set(active_family_rule_ids)
+            )
+            evidence_family_ablation[family_id] = {
+                "rule_ids": active_family_rule_ids,
+                "probabilities_without_family": probabilities_without,
+                "ablation_probability_delta": {
+                    name: calibrated[name] - probabilities_without[name]
+                    for name in calibrated
+                },
+            }
         m6_result = {
             "engine_version": core_m6_result["engine_version"],
             "candidate_version": candidate_payload["version"],
@@ -353,6 +491,8 @@ def build_prospective_probability_run(
             "raw_probabilities": core_m6_result["probabilities"],
             "probabilities_before_rule_overlay": calibrated_before_overlay,
             "active_rule_overlay": rule_overlay,
+            "fitted_rule_ablation": fitted_rule_ablation,
+            "evidence_family_ablation": evidence_family_ablation,
             "calibration": artifact["calibration"],
             "core_result": core_m6_result,
             "production_effect": production_effect,
@@ -415,6 +555,34 @@ def build_prospective_probability_run(
         coefficient_artifact=artifact,
     )
     if evaluated:
+        family_by_rule = {
+            rule_id: family_id
+            for family_id, rule_ids in ACTIVE_EVIDENCE_FAMILIES.items()
+            for rule_id in rule_ids
+        }
+        for rule_id in ACTIVE_PREDICTIVE_RULE_IDS:
+            family_id = family_by_rule[rule_id]
+            rule_effects[rule_id].update(
+                {
+                    "family_id": family_id,
+                    "family_ablation": m6_result[
+                        "evidence_family_ablation"
+                    ][family_id],
+                }
+            )
+        for rule_id, ablation in m6_result[
+            "fitted_rule_ablation"
+        ].items():
+            rule_effects[rule_id].update(
+                {
+                    "ablation_probabilities_without_rule": ablation[
+                        "probabilities_without_rule"
+                    ],
+                    "ablation_probability_delta": ablation[
+                        "ablation_probability_delta"
+                    ],
+                }
+            )
         for rule_id, contribution in rule_overlay[
             "rule_contributions"
         ].items():
@@ -426,11 +594,24 @@ def build_prospective_probability_run(
                     ),
                     "provisional_weight": contribution["weight"],
                     "signal": contribution["signal"],
+                    "effect_mode": contribution["effect_mode"],
+                    "signal_formula": contribution["signal_formula"],
+                    "tp_log_effect": contribution["tp_log_effect"],
+                    "sl_log_effect": contribution["sl_log_effect"],
+                    "expiry_log_effect": contribution[
+                        "expiry_log_effect"
+                    ],
                     "tp_probability_delta": contribution[
                         "tp_probability_delta"
                     ],
                     "sl_probability_delta": contribution[
                         "sl_probability_delta"
+                    ],
+                    "ablation_probabilities_without_rule": contribution[
+                        "ablation_probabilities_without_rule"
+                    ],
+                    "ablation_probability_delta": contribution[
+                        "ablation_probability_delta"
                     ],
                 }
             )
@@ -468,6 +649,7 @@ def build_prospective_probability_run(
         "m5_analysis": m5_analysis,
         "m5_pre_probability_analysis": m5_pre_probability,
         "m5_rule_effects": rule_effects,
+        "observational_rule_traces": observational_rule_observations,
         "m6_result": m6_result,
         "data_cutoff_at": data_cutoff_at,
         "source_data_sha256": material["data_sha256"],

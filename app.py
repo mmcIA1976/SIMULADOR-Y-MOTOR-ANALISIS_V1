@@ -34,6 +34,7 @@ from m6_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
+from predictive_rule_library import rule_metadata
 from security import create_token, hash_password, read_token, verify_password
 from shadow_runtime import (
     build_user_shadow_audit,
@@ -2440,6 +2441,50 @@ def predictive_rule_learning_snapshot(
         )
         else {}
     )
+    m5_trace_payload = (
+        snapshot.get("m5_rule_trace")
+        if isinstance(snapshot.get("m5_rule_trace"), dict)
+        else {}
+    )
+    m5_traces = {
+        str(trace.get("rule_id")): trace
+        for trace in m5_trace_payload.get("traces", [])
+        if isinstance(trace, dict) and trace.get("rule_id")
+    }
+    baseline_rule_ids = [
+        str(rule_id)
+        for rule_id, effect in effects.items()
+        if isinstance(effect, dict)
+        and effect.get("probability_effect") == "baseline_input"
+    ]
+    observational_payload = (
+        feature_snapshot.get("observational_rule_traces")
+        if isinstance(
+            feature_snapshot.get("observational_rule_traces"),
+            dict,
+        )
+        else {}
+    )
+    observational_traces = [
+        trace
+        for trace in observational_payload.get("traces", [])
+        if isinstance(trace, dict) and trace.get("rule_id")
+    ]
+    library_metadata = {}
+    for rule_id in {
+        *active_rule_ids,
+        *baseline_rule_ids,
+        *(str(trace["rule_id"]) for trace in observational_traces),
+    }:
+        try:
+            library_metadata[rule_id] = rule_metadata(rule_id)
+        except KeyError:
+            library_metadata[rule_id] = {
+                "family_id": "LEGACY-OR-UNKNOWN",
+                "role": "standalone",
+                "interactions": {"parent_rule_ids": []},
+                "evidence": {"source_ids": []},
+            }
     observed_outcome = (
         "tp_first_within_horizon"
         if plan_result in {"plan_success", "plan_would_succeed"}
@@ -2450,9 +2495,68 @@ def predictive_rule_learning_snapshot(
     return {
         "active_rule_ids": active_rule_ids,
         "active_rule_count": len(active_rule_ids),
+        "baseline_rule_ids": baseline_rule_ids,
+        "baseline_rules": {
+            rule_id: {
+                "family_id": library_metadata[rule_id]["family_id"],
+                "role": library_metadata[rule_id]["role"],
+                "formula_ids": (
+                    m5_traces.get(rule_id, {}).get("formula_ids", [])
+                ),
+                "trace_sha256": m5_traces.get(rule_id, {}).get(
+                    "trace_sha256"
+                ),
+                "status": m5_traces.get(rule_id, {}).get(
+                    "status",
+                    effects[rule_id].get("rule_status"),
+                ),
+                "outputs": m5_traces.get(rule_id, {}).get("outputs", {}),
+            }
+            for rule_id in baseline_rule_ids
+        },
+        "observational_rule_ids": [
+            str(trace["rule_id"])
+            for trace in observational_traces
+        ],
+        "observational_rules": {
+            str(trace["rule_id"]): {
+                "family_id": library_metadata[
+                    str(trace["rule_id"])
+                ]["family_id"],
+                "role": library_metadata[str(trace["rule_id"])]["role"],
+                "parent_rule_ids": trace.get("parent_rule_ids", []),
+                "status": trace.get("status"),
+                "formula_ids": trace.get("formula_ids", []),
+                "inputs": trace.get("inputs", {}),
+                "outputs": trace.get("outputs", {}),
+                "source_data_sha256": trace.get(
+                    "source_data_sha256"
+                ),
+                "trace_sha256": trace.get("trace_sha256"),
+                "probability_effect": trace.get(
+                    "probability_effect"
+                ),
+            }
+            for trace in observational_traces
+        },
         "observed_outcome": observed_outcome,
         "rules": {
             rule_id: {
+                "family_id": library_metadata[rule_id]["family_id"],
+                "role": library_metadata[rule_id]["role"],
+                "parent_rule_ids": library_metadata[rule_id][
+                    "interactions"
+                ]["parent_rule_ids"],
+                "source_ids": library_metadata[rule_id]["evidence"][
+                    "source_ids"
+                ],
+                "formula_ids": m5_traces.get(rule_id, {}).get(
+                    "formula_ids",
+                    [],
+                ),
+                "trace_sha256": m5_traces.get(rule_id, {}).get(
+                    "trace_sha256"
+                ),
                 "rule_status": effects[rule_id].get("rule_status"),
                 "probability_effect": effects[rule_id].get(
                     "probability_effect"
@@ -2476,11 +2580,33 @@ def predictive_rule_learning_snapshot(
                 "provisional_weight": safe_float(
                     effects[rule_id].get("provisional_weight")
                 ),
+                "effect_mode": effects[rule_id].get("effect_mode"),
+                "signal_formula": effects[rule_id].get(
+                    "signal_formula"
+                ),
+                "tp_log_effect": safe_float(
+                    effects[rule_id].get("tp_log_effect")
+                ),
+                "sl_log_effect": safe_float(
+                    effects[rule_id].get("sl_log_effect")
+                ),
+                "expiry_log_effect": safe_float(
+                    effects[rule_id].get("expiry_log_effect")
+                ),
                 "tp_probability_delta": safe_float(
                     effects[rule_id].get("tp_probability_delta")
                 ),
                 "sl_probability_delta": safe_float(
                     effects[rule_id].get("sl_probability_delta")
+                ),
+                "ablation_probabilities_without_rule": effects[
+                    rule_id
+                ].get("ablation_probabilities_without_rule"),
+                "ablation_probability_delta": effects[rule_id].get(
+                    "ablation_probability_delta"
+                ),
+                "family_ablation": effects[rule_id].get(
+                    "family_ablation"
                 ),
             }
             for rule_id in active_rule_ids
@@ -3018,14 +3144,48 @@ def save_learning_evaluation(db, evaluation: dict) -> None:
     )
 
 
-def parse_snapshot_json(raw: str | None) -> dict:
+def parse_snapshot_json(raw: str | dict | None) -> dict:
+    if isinstance(raw, dict):
+        return raw
     if not raw:
         return {}
     try:
         parsed = json.loads(raw)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def recommendation_probability_value(
+    operation: dict,
+    cause: str,
+) -> float | None:
+    analysis = parse_snapshot_json(
+        operation.get("recommendation_analysis_json")
+    )
+    ranges = (
+        analysis.get("probability_ranges")
+        if isinstance(analysis.get("probability_ranges"), dict)
+        else {}
+    )
+    range_payload = (
+        ranges.get(cause)
+        if isinstance(ranges.get(cause), dict)
+        else {}
+    )
+    candidates = (
+        range_payload.get("low"),
+        analysis.get(f"{cause}_probability"),
+        operation.get(f"recommendation_{cause}_probability"),
+    )
+    for candidate in candidates:
+        try:
+            value = float(candidate)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value) and 0.0 <= value <= 1.0:
+            return value
+    return None
 
 
 def safe_float(value) -> float | None:
@@ -5377,6 +5537,9 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             o.entry_order_type,
             r.id AS recommendation_id,
             r.tp_probability AS recommendation_tp_probability,
+            r.sl_probability AS recommendation_sl_probability,
+            r.range_probability AS recommendation_range_probability,
+            r.analysis_json AS recommendation_analysis_json,
             r.created_at AS recommendation_created_at
         FROM operations o
         LEFT JOIN recommendations r ON r.id = (
@@ -5397,6 +5560,11 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
     operations_by_user: dict[int, list[dict]] = {}
     for operation_row in operation_rows:
         operation = row_to_dict(operation_row)
+        for cause in ("tp", "sl", "range"):
+            operation[f"recommendation_{cause}_probability"] = (
+                recommendation_probability_value(operation, cause)
+            )
+        operation.pop("recommendation_analysis_json", None)
         for key, value in list(operation.items()):
             if isinstance(value, datetime):
                 operation[key] = value.isoformat()

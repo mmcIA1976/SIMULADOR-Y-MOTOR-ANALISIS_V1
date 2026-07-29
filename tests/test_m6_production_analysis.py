@@ -8,6 +8,7 @@ from unittest.mock import patch
 from m6_production_analysis import (
     ENGINE_VERSION,
     NewEngineAnalysisError,
+    _probability_label,
     analyze_trade,
 )
 
@@ -74,6 +75,10 @@ def evaluated_run() -> dict:
 
 
 class M6ProductionAnalysisTests(unittest.TestCase):
+    def test_tiny_nonzero_probabilities_are_not_labeled_zero(self):
+        self.assertEqual(_probability_label(9.5e-11), "<0.1%")
+        self.assertEqual(_probability_label(0.9999999998), ">99.9%")
+
     @patch(
         "m6_production_analysis.build_prospective_probability_run",
         return_value=evaluated_run(),

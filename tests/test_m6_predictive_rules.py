@@ -116,6 +116,22 @@ class M6PredictiveRulesTests(unittest.TestCase):
                 + abs(contribution["sl_probability_delta"]),
                 0.0,
             )
+            self.assertIn(
+                "ablation_probabilities_without_rule",
+                contribution,
+            )
+            self.assertAlmostEqual(
+                sum(
+                    contribution[
+                        "ablation_probabilities_without_rule"
+                    ].values()
+                ),
+                1.0,
+            )
+            self.assertIn(
+                "ablation_probability_delta",
+                contribution,
+            )
 
     def test_missing_rule_is_excluded_from_active_analysis(self):
         self.m5_analysis["traces"] = self.m5_analysis["traces"][:-1]

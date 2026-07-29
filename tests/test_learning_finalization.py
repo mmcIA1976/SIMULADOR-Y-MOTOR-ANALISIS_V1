@@ -41,6 +41,50 @@ class LearningFinalizationTests(unittest.TestCase):
             0.01,
         )
 
+    def test_observational_rules_are_linked_without_probability_effect(self):
+        snapshot = {
+            "feature_snapshot": {
+                "active_predictive_rule_ids": [],
+                "observational_rule_traces": {
+                    "status": "evaluated_shadow",
+                    "traces": [
+                        {
+                            "rule_id": "LIB-CAND-RSI-WILDER-001",
+                            "status": "evaluated_shadow",
+                            "family_id": "FAMILY-MOMENTUM",
+                            "role": "contextual",
+                            "parent_rule_ids": [],
+                            "formula_ids": ["RSI-FORMULA"],
+                            "inputs": {"closed_candle_count": 260},
+                            "outputs": {"rsi14": 61.2},
+                            "source_data_sha256": "source-sha",
+                            "trace_sha256": "trace-sha",
+                            "probability_effect": "none_shadow_observation",
+                        }
+                    ],
+                },
+            },
+            "m5_rule_effects": {},
+        }
+
+        result = predictive_rule_learning_snapshot(
+            snapshot,
+            plan_result="plan_failure",
+        )
+
+        self.assertEqual(
+            result["observational_rule_ids"],
+            ["LIB-CAND-RSI-WILDER-001"],
+        )
+        observation = result["observational_rules"][
+            "LIB-CAND-RSI-WILDER-001"
+        ]
+        self.assertEqual(observation["outputs"]["rsi14"], 61.2)
+        self.assertEqual(
+            observation["probability_effect"],
+            "none_shadow_observation",
+        )
+
     @patch("app.refresh_learning_evaluations")
     @patch("app.refresh_learning_conclusions")
     @patch("app.finalize_due_observations_with_db")

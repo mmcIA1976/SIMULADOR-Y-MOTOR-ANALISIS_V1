@@ -16,6 +16,19 @@ FITTED_RULE_IDS = (
     "M4-RULE-MTF-HIERARCHY-001",
 )
 
+FITTED_RULE_FEATURES = {
+    "M4-RULE-PRIOR-EXTREMA-001": (
+        "target_extreme_between_entry_and_tp",
+    ),
+    "M4-RULE-VOLATILITY-RANK-001": (
+        "volatility_percentile_60",
+    ),
+    "M4-RULE-MTF-HIERARCHY-001": (
+        "directional_path_efficiency_2h",
+        "directional_path_efficiency_4h",
+    ),
+}
+
 PROVISIONAL_RULE_WEIGHTS = {
     "M4-RULE-PATH-STRUCTURE-001": 0.12,
     "M4-RULE-CONTINUOUS-REGIME-001": 0.08,
@@ -38,6 +51,34 @@ ACTIVE_PREDICTIVE_RULE_IDS = (
     "M4-RULE-MARK-INDEX-PREMIUM-001",
     "M4-RULE-FUNDING-STATE-001",
 )
+
+ACTIVE_EVIDENCE_FAMILIES = {
+    "FAMILY-PRICE-PATH": (
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-MTF-HIERARCHY-001",
+    ),
+    "FAMILY-STRUCTURAL-LEVELS": (
+        "M4-RULE-PRIOR-EXTREMA-001",
+    ),
+    "FAMILY-VOLATILITY": (
+        "M4-RULE-VOLATILITY-RANK-001",
+    ),
+    "FAMILY-PRICE-PATH-X-VOLATILITY": (
+        "M4-RULE-CONTINUOUS-REGIME-001",
+    ),
+    "FAMILY-EXECUTED-FLOW": (
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+    ),
+    "FAMILY-OPEN-INTEREST": (
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+    ),
+    "FAMILY-PERPETUAL-DISLOCATION": (
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001",
+    ),
+}
 
 
 def _finite(value, name: str) -> float:
@@ -196,6 +237,31 @@ def _normalize_log_weights(log_weights: dict[str, float]) -> dict[str, float]:
     return {name: value / total for name, value in weights.items()}
 
 
+def _apply_rule_effects(
+    probabilities: dict[str, float],
+    rules: dict[str, dict],
+) -> dict[str, float]:
+    current = dict(probabilities)
+    for rule in rules.values():
+        current = _normalize_log_weights(
+            {
+                "tp_first_within_horizon": (
+                    math.log(current["tp_first_within_horizon"])
+                    + rule["tp_log_effect"]
+                ),
+                "sl_first_within_horizon": (
+                    math.log(current["sl_first_within_horizon"])
+                    + rule["sl_log_effect"]
+                ),
+                "neither_barrier_before_expiry": (
+                    math.log(current["neither_barrier_before_expiry"])
+                    + rule["expiry_log_effect"]
+                ),
+            }
+        )
+    return current
+
+
 def apply_provisional_rule_overlay(
     probabilities: dict[str, float],
     signal_snapshot: dict,
@@ -238,6 +304,23 @@ def apply_provisional_rule_overlay(
                 current["sl_first_within_horizon"]
                 - prior["sl_first_within_horizon"]
             ),
+        }
+    for rule_id, contribution in contributions.items():
+        rules_without = {
+            other_id: rule
+            for other_id, rule in signal_snapshot["active"].items()
+            if other_id != rule_id
+        }
+        probabilities_without = _apply_rule_effects(
+            before,
+            rules_without,
+        )
+        contribution["ablation_probabilities_without_rule"] = (
+            probabilities_without
+        )
+        contribution["ablation_probability_delta"] = {
+            name: current[name] - probabilities_without[name]
+            for name in names
         }
     return {
         "version": RULE_MODEL_VERSION,

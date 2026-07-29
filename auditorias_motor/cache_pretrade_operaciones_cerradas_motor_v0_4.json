@@ -1,0 +1,1079 @@
+{
+  "version": "v0.4-closed-pretrade-cache-v0.1",
+  "captured_at": "2026-07-28T18:10:49.273261+00:00",
+  "records": [
+    {
+      "recommendation_id": 2,
+      "operation_id": 1,
+      "analysis_at": "2026-05-22T17:51:21+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-22T17:49:59.999000+00:00",
+        "sigma_horizon": 0.008391723475912712,
+        "current_realized_variance": 7.042102289618454e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.13500177894157997,
+          "directional_path_efficiency_2h": -0.10808834695909839,
+          "directional_path_efficiency_4h": -0.10354923278958789,
+          "volatility_percentile_60": 0.85,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "542e3c5a74bb78a50903c80ea34fa1f14408548dc3d665108e459c4e7fd20701"
+      }
+    },
+    {
+      "recommendation_id": 3,
+      "operation_id": 2,
+      "analysis_at": "2026-05-22T18:05:22+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-22T18:04:59.999000+00:00",
+        "sigma_horizon": 0.008147170748151054,
+        "current_realized_variance": 6.637639119952819e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.13079377704432718,
+          "directional_path_efficiency_2h": -0.11716393088448433,
+          "directional_path_efficiency_4h": -0.12189267611774318,
+          "volatility_percentile_60": 0.8,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "801d5aad909a5df115fd187a0b487d9916fbb8bd6e12f0679aa84a99286d2a0f"
+      }
+    },
+    {
+      "recommendation_id": 16,
+      "operation_id": 3,
+      "analysis_at": "2026-05-22T19:09:32+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-22T19:04:59.999000+00:00",
+        "sigma_horizon": 0.009344728208159096,
+        "current_realized_variance": 8.73239452843643e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.12287345931999488,
+          "directional_path_efficiency_2h": -0.16896489323819028,
+          "directional_path_efficiency_4h": -0.15712176344993006,
+          "volatility_percentile_60": 0.8666666666666667,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "9b784721155a14ab5b20d2060c49f3dd3252955c2768f4a4e2c0d8b6846c4531"
+      }
+    },
+    {
+      "recommendation_id": 19,
+      "operation_id": 4,
+      "analysis_at": "2026-05-22T19:19:43+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-22T19:14:59.999000+00:00",
+        "sigma_horizon": 0.00944470652638052,
+        "current_realized_variance": 8.920248136945477e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.14908121664344295,
+          "directional_path_efficiency_2h": -0.1863954775449465,
+          "directional_path_efficiency_4h": -0.16757796368952071,
+          "volatility_percentile_60": 0.8666666666666667,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "49d9e7fa73f0338683478ec0c3e52f254a531402e0ae984a2b78dcb47f43d095"
+      }
+    },
+    {
+      "recommendation_id": 21,
+      "operation_id": 5,
+      "analysis_at": "2026-05-22T20:29:00+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-22T20:24:59.999000+00:00",
+        "sigma_horizon": 0.009746079959158545,
+        "current_realized_variance": 9.498607457031183e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.2632179461167314,
+          "directional_path_efficiency_2h": -0.2438981933835394,
+          "directional_path_efficiency_4h": -0.19504853566009203,
+          "volatility_percentile_60": 0.9166666666666666,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "9b0bb899d06918c38db0ec8ff6f807e89d1c58992af8f63390e5dd390d5ecf51"
+      }
+    },
+    {
+      "recommendation_id": 30,
+      "operation_id": 6,
+      "analysis_at": "2026-05-24T13:19:41+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-24T13:14:59.999000+00:00",
+        "sigma_horizon": 0.00462831198028996,
+        "current_realized_variance": 2.1421271786895568e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.09370033388593381,
+          "directional_path_efficiency_2h": 0.10518403918459251,
+          "directional_path_efficiency_4h": 0.010243816035561187,
+          "volatility_percentile_60": 0.35,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "f85cba4330cbb036045c4373a79289ce44b13b0c9fec772020a34cda9493f133"
+      }
+    },
+    {
+      "recommendation_id": 31,
+      "operation_id": 7,
+      "analysis_at": "2026-05-24T14:38:14+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-05-24T14:34:59.999000+00:00",
+        "sigma_horizon": 0.007036083927150839,
+        "current_realized_variance": 4.9506477029910375e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.29013738884652596,
+          "directional_path_efficiency_2h": 0.05538153332371175,
+          "directional_path_efficiency_4h": 0.005347356186934144,
+          "volatility_percentile_60": 0.6833333333333333,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "b03f65d87b038a014b990549b911fda569bc6501d03fdf275c03f8de2f04c140"
+      }
+    },
+    {
+      "recommendation_id": 290,
+      "operation_id": 105,
+      "analysis_at": "2026-06-15T11:44:59.500192+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-15T05:59:59.999000+00:00",
+        "sigma_horizon": 0.051661033318690396,
+        "current_realized_variance": 0.002668862363554839,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.2405962432499003,
+          "directional_path_efficiency_2h": 0.20497315004719968,
+          "directional_path_efficiency_4h": 0.19671942867692696,
+          "volatility_percentile_60": 0.5666666666666667,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "5edd16b190f0beb422df1b356d9604979b86e0f8d39115b44dd4bbacaca5301c"
+      }
+    },
+    {
+      "recommendation_id": 296,
+      "operation_id": 108,
+      "analysis_at": "2026-06-15T15:43:23.605219+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-15T11:59:59.999000+00:00",
+        "sigma_horizon": 0.05072351534950302,
+        "current_realized_variance": 0.0025728750094112687,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.21816109349058746,
+          "directional_path_efficiency_2h": 0.17398494956070146,
+          "directional_path_efficiency_4h": 0.19561149216614113,
+          "volatility_percentile_60": 0.55,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "c026bae57033e1fe576a58992098989c6008d2a6bad36ade1e58bb2a9b9814a6"
+      }
+    },
+    {
+      "recommendation_id": 308,
+      "operation_id": 110,
+      "analysis_at": "2026-06-16T07:40:40.701543+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-16T05:59:59.999000+00:00",
+        "sigma_horizon": 0.07400115858817441,
+        "current_realized_variance": 0.0054761714723921395,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.14912017625722654,
+          "directional_path_efficiency_2h": -0.16950799315458917,
+          "directional_path_efficiency_4h": -0.17384840514697916,
+          "volatility_percentile_60": 0.4,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "895294421644b3e283cdd22050b8700f5ff12e208e7049f9b87b393e84beaf2f"
+      }
+    },
+    {
+      "recommendation_id": 329,
+      "operation_id": 116,
+      "analysis_at": "2026-06-17T06:50:16.359049+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-17T05:59:59.999000+00:00",
+        "sigma_horizon": 0.04891764157245105,
+        "current_realized_variance": 0.002392935657010791,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.36892644850599643,
+          "directional_path_efficiency_2h": 0.04764912862687142,
+          "directional_path_efficiency_4h": 0.19674966239241948,
+          "volatility_percentile_60": 0.4666666666666667,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "5cc15c895bc02d13255b8920d353058a0ae4aa3e5cd6420c78248206b83dee02"
+      }
+    },
+    {
+      "recommendation_id": 333,
+      "operation_id": 117,
+      "analysis_at": "2026-06-17T09:32:16.660417+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-17T09:29:59.999000+00:00",
+        "sigma_horizon": 0.007963256813941813,
+        "current_realized_variance": 6.341345908479072e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.30138454724646396,
+          "directional_path_efficiency_2h": -0.1064703243737106,
+          "directional_path_efficiency_4h": -0.07618571658955113,
+          "volatility_percentile_60": 0.43333333333333335,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "c4410258860ee8965602afbb904e806a8022bda33cfc3da63f3f72d02cd7d40d"
+      }
+    },
+    {
+      "recommendation_id": 335,
+      "operation_id": 118,
+      "analysis_at": "2026-06-17T09:34:38.283313+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-17T08:59:59.999000+00:00",
+        "sigma_horizon": 0.016106510454179553,
+        "current_realized_variance": 0.00025941967901059525,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.5249271220047289,
+          "directional_path_efficiency_2h": 0.07706131521606734,
+          "directional_path_efficiency_4h": -0.06897524647090078,
+          "volatility_percentile_60": 0.45,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "ed952b85839b6e7470f24dba6888522c3a608039293f9457d3e15ae38741cc81"
+      }
+    },
+    {
+      "recommendation_id": 337,
+      "operation_id": 119,
+      "analysis_at": "2026-06-17T09:41:43.062394+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-17T08:59:59.999000+00:00",
+        "sigma_horizon": 0.016106510454179553,
+        "current_realized_variance": 0.00025941967901059525,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.5249271220047289,
+          "directional_path_efficiency_2h": 0.07706131521606734,
+          "directional_path_efficiency_4h": -0.06897524647090078,
+          "volatility_percentile_60": 0.45,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "ed952b85839b6e7470f24dba6888522c3a608039293f9457d3e15ae38741cc81"
+      }
+    },
+    {
+      "recommendation_id": 339,
+      "operation_id": 120,
+      "analysis_at": "2026-06-17T14:57:06.424428+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-17T14:54:59.999000+00:00",
+        "sigma_horizon": 0.007888890742890814,
+        "current_realized_variance": 6.223459715326838e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.16296506334293276,
+          "directional_path_efficiency_2h": -0.06867620171206962,
+          "directional_path_efficiency_4h": -0.04779473798143202,
+          "volatility_percentile_60": 0.4666666666666667,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "eda16b3ff681d05226cb22e99989fe653bfb1175a3221d0bb06856adfc3af7e5"
+      }
+    },
+    {
+      "recommendation_id": 344,
+      "operation_id": 124,
+      "analysis_at": "2026-06-19T14:51:03.124212+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-19T14:49:59.999000+00:00",
+        "sigma_horizon": 0.009706373961643124,
+        "current_realized_variance": 9.421369548326362e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.2991269255035908,
+          "directional_path_efficiency_2h": 0.10289116878566404,
+          "directional_path_efficiency_4h": 0.04437271098479611,
+          "volatility_percentile_60": 0.7333333333333333,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "83c1fa46c5e0c839521d5bb4910afe55a67fc63d849910b741a1927cb6290f98"
+      }
+    },
+    {
+      "recommendation_id": 345,
+      "operation_id": 125,
+      "analysis_at": "2026-06-19T14:54:05.482194+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-19T14:49:59.999000+00:00",
+        "sigma_horizon": 0.009706373961643124,
+        "current_realized_variance": 9.421369548326362e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.2991269255035908,
+          "directional_path_efficiency_2h": -0.10289116878566404,
+          "directional_path_efficiency_4h": -0.04437271098479611,
+          "volatility_percentile_60": 0.7333333333333333,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "83c1fa46c5e0c839521d5bb4910afe55a67fc63d849910b741a1927cb6290f98"
+      }
+    },
+    {
+      "recommendation_id": 351,
+      "operation_id": 126,
+      "analysis_at": "2026-06-20T10:03:58.034192+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-20T05:59:59.999000+00:00",
+        "sigma_horizon": 0.058905242310026196,
+        "current_realized_variance": 0.0034698275716029004,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.006237394733797731,
+          "directional_path_efficiency_2h": 0.09976061979410197,
+          "directional_path_efficiency_4h": -0.19537091802354875,
+          "volatility_percentile_60": 0.7,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "aaa3a39ce6974b51fbe04121ef441cf87b419fee0f48a01e7a72d60b6535911f"
+      }
+    },
+    {
+      "recommendation_id": 357,
+      "operation_id": 128,
+      "analysis_at": "2026-06-21T08:09:49.367199+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-21T07:59:59.999000+00:00",
+        "sigma_horizon": 0.014017780637649212,
+        "current_realized_variance": 0.00019649817400525316,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.17765424735872062,
+          "directional_path_efficiency_2h": -0.24539481060903046,
+          "directional_path_efficiency_4h": 0.07175833898226477,
+          "volatility_percentile_60": 0.3,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "efec9867f9a63f2376b042df96ff18fda702ac1522d0d75beb8beb776e9cc7ad"
+      }
+    },
+    {
+      "recommendation_id": 360,
+      "operation_id": 129,
+      "analysis_at": "2026-06-22T11:43:57.562009+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-22T05:59:59.999000+00:00",
+        "sigma_horizon": 0.051925228446175545,
+        "current_realized_variance": 0.002696229349187518,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.12080019685255233,
+          "directional_path_efficiency_2h": 0.057596707545550185,
+          "directional_path_efficiency_4h": -0.21895429602695507,
+          "volatility_percentile_60": 0.5666666666666667,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "060009b39fb17685bc031a4c947d0e7cf5142f062844b16e487c0fe6c3043475"
+      }
+    },
+    {
+      "recommendation_id": 361,
+      "operation_id": 130,
+      "analysis_at": "2026-06-22T11:48:52.060783+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-22T05:59:59.999000+00:00",
+        "sigma_horizon": 0.051925228446175545,
+        "current_realized_variance": 0.002696229349187518,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.12080019685255233,
+          "directional_path_efficiency_2h": -0.057596707545550185,
+          "directional_path_efficiency_4h": 0.21895429602695507,
+          "volatility_percentile_60": 0.5666666666666667,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "060009b39fb17685bc031a4c947d0e7cf5142f062844b16e487c0fe6c3043475"
+      }
+    },
+    {
+      "recommendation_id": 384,
+      "operation_id": 135,
+      "analysis_at": "2026-06-23T11:23:12.233035+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-23T10:59:59.999000+00:00",
+        "sigma_horizon": 0.022448752418984298,
+        "current_realized_variance": 0.0005039464851688534,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.34214455077537675,
+          "directional_path_efficiency_2h": -0.21738249202417798,
+          "directional_path_efficiency_4h": -0.013706574706988542,
+          "volatility_percentile_60": 0.7666666666666667,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "db7ede4bc8a41d11cdfa44f093dccba16a2e7b502d9c52ea6a19982a78b56b63"
+      }
+    },
+    {
+      "recommendation_id": 394,
+      "operation_id": 136,
+      "analysis_at": "2026-06-24T11:44:35.403656+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-24T10:59:59.999000+00:00",
+        "sigma_horizon": 0.012296426941085264,
+        "current_realized_variance": 0.00015120211551744752,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.039605682945733654,
+          "directional_path_efficiency_2h": 0.19776111722163173,
+          "directional_path_efficiency_4h": 0.0791918776628121,
+          "volatility_percentile_60": 0.18333333333333332,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "6ab9c0f4ab3891ef029059aac7b6a9c9625c5eee3cc18395ae849aacf854b32f"
+      }
+    },
+    {
+      "recommendation_id": 396,
+      "operation_id": 137,
+      "analysis_at": "2026-06-24T11:49:07.148560+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-24T10:59:59.999000+00:00",
+        "sigma_horizon": 0.012296426941085264,
+        "current_realized_variance": 0.00015120211551744752,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.039605682945733654,
+          "directional_path_efficiency_2h": -0.19776111722163173,
+          "directional_path_efficiency_4h": -0.0791918776628121,
+          "volatility_percentile_60": 0.18333333333333332,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "6ab9c0f4ab3891ef029059aac7b6a9c9625c5eee3cc18395ae849aacf854b32f"
+      }
+    },
+    {
+      "recommendation_id": 403,
+      "operation_id": 138,
+      "analysis_at": "2026-06-25T14:47:40.205136+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-25T14:44:59.999000+00:00",
+        "sigma_horizon": 0.030829670374504188,
+        "current_realized_variance": 0.0009504685754005812,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.23965472352389502,
+          "directional_path_efficiency_2h": 0.23948214866654588,
+          "directional_path_efficiency_4h": 0.10396406688323517,
+          "volatility_percentile_60": 1.0,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "1648eff69292dc7b3f1defd8db0dae1069e56ff8bdb41e19dbd73489c9a8f494"
+      }
+    },
+    {
+      "recommendation_id": 418,
+      "operation_id": 142,
+      "analysis_at": "2026-06-26T08:22:37.040078+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-26T05:59:59.999000+00:00",
+        "sigma_horizon": 0.10513384565339408,
+        "current_realized_variance": 0.011053125501871689,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.24872029814673294,
+          "directional_path_efficiency_2h": 0.09819346875260374,
+          "directional_path_efficiency_4h": 0.19937865586635536,
+          "volatility_percentile_60": 0.75,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "0a4d009c81150664ee82ee11a10c377607ca8375eb6c83d36edda0e07f33a466"
+      }
+    },
+    {
+      "recommendation_id": 420,
+      "operation_id": 144,
+      "analysis_at": "2026-06-26T11:31:27.015306+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-26T10:59:59.999000+00:00",
+        "sigma_horizon": 0.06498094663293431,
+        "current_realized_variance": 0.004222523425312257,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.17244048340476378,
+          "directional_path_efficiency_2h": 0.15748108155394694,
+          "directional_path_efficiency_4h": 0.16928811795705584,
+          "volatility_percentile_60": 1.0,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "4d5c450909fbcec0d00a01be60fbf1e7239c6753dfa36a5e9cce922f65594c7a"
+      }
+    },
+    {
+      "recommendation_id": 427,
+      "operation_id": 145,
+      "analysis_at": "2026-06-26T11:42:40.110392+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-26T10:59:59.999000+00:00",
+        "sigma_horizon": 0.06498094663293431,
+        "current_realized_variance": 0.004222523425312257,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.17244048340476378,
+          "directional_path_efficiency_2h": -0.15748108155394694,
+          "directional_path_efficiency_4h": -0.16928811795705584,
+          "volatility_percentile_60": 1.0,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "4d5c450909fbcec0d00a01be60fbf1e7239c6753dfa36a5e9cce922f65594c7a"
+      }
+    },
+    {
+      "recommendation_id": 438,
+      "operation_id": 149,
+      "analysis_at": "2026-06-27T13:11:11.605043+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "6h",
+        "interval_seconds": 21600,
+        "return_count_per_horizon": 28,
+        "data_cutoff_at": "2026-06-27T11:59:59.999000+00:00",
+        "sigma_horizon": 0.07760395398544748,
+        "current_realized_variance": 0.00602237367417545,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.2179855156992266,
+          "directional_path_efficiency_2h": -0.12392967068434847,
+          "directional_path_efficiency_4h": -0.20750955590409756,
+          "volatility_percentile_60": 0.9,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "4acb15805ef63314d065d2f8ccf052cc2a15c3e1388b19c0a23156fcd68acbdc"
+      }
+    },
+    {
+      "recommendation_id": 439,
+      "operation_id": 150,
+      "analysis_at": "2026-06-27T13:21:21.380220+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-27T12:59:59.999000+00:00",
+        "sigma_horizon": 0.025380475306492484,
+        "current_realized_variance": 0.0006441685267834747,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.2696528156275176,
+          "directional_path_efficiency_2h": 0.05030509898222429,
+          "directional_path_efficiency_4h": 0.06616641914163957,
+          "volatility_percentile_60": 0.8333333333333334,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "04f8a3a0e303f03527fb21c885c13b2731a02a157dd5724dbf70cb8def41aae4"
+      }
+    },
+    {
+      "recommendation_id": 443,
+      "operation_id": 152,
+      "analysis_at": "2026-06-28T06:27:28.081099+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-06-28T05:59:59.999000+00:00",
+        "sigma_horizon": 0.01177988486552888,
+        "current_realized_variance": 0.00013876568744511635,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.09280827670721213,
+          "directional_path_efficiency_2h": 0.003953207964250066,
+          "directional_path_efficiency_4h": -0.10385278691514889,
+          "volatility_percentile_60": 0.16666666666666666,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "5f35ed7eedad64e1e14baf873d94931c31d6a33a8e2355fbcc12208365a57717"
+      }
+    },
+    {
+      "recommendation_id": 447,
+      "operation_id": 153,
+      "analysis_at": "2026-06-28T07:20:25.267878+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-28T07:19:59.999000+00:00",
+        "sigma_horizon": 0.0057699867489045525,
+        "current_realized_variance": 3.329274708253413e-05,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.08150983073825309,
+          "directional_path_efficiency_2h": -0.03189998906280833,
+          "directional_path_efficiency_4h": 0.09512620563737956,
+          "volatility_percentile_60": 0.26666666666666666,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "df64249ad86be21d71d9271635f3c1b19df3926741a642814be8678918f03d06"
+      }
+    },
+    {
+      "recommendation_id": 477,
+      "operation_id": 156,
+      "analysis_at": "2026-06-29T12:16:49.557896+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-29T12:14:59.999000+00:00",
+        "sigma_horizon": 0.010022756417392576,
+        "current_realized_variance": 0.00010045564620238408,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.2443829806938339,
+          "directional_path_efficiency_2h": -0.14210319733309948,
+          "directional_path_efficiency_4h": -0.07212458000750284,
+          "volatility_percentile_60": 0.75,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "5b9ea751d25b2e9736bd158fc86ccd7ff45f2b8e3c3642af6a9ea8dd8cfc4b3b"
+      }
+    },
+    {
+      "recommendation_id": 482,
+      "operation_id": 157,
+      "analysis_at": "2026-06-29T12:19:47.490658+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "5m",
+        "interval_seconds": 300,
+        "return_count_per_horizon": 48,
+        "data_cutoff_at": "2026-06-29T12:14:59.999000+00:00",
+        "sigma_horizon": 0.010022756417392576,
+        "current_realized_variance": 0.00010045564620238408,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.2443829806938339,
+          "directional_path_efficiency_2h": 0.14210319733309948,
+          "directional_path_efficiency_4h": 0.07212458000750284,
+          "volatility_percentile_60": 0.75,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "5b9ea751d25b2e9736bd158fc86ccd7ff45f2b8e3c3642af6a9ea8dd8cfc4b3b"
+      }
+    },
+    {
+      "recommendation_id": 577,
+      "operation_id": 165,
+      "analysis_at": "2026-07-01T11:18:24.108769+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-07-01T10:59:59.999000+00:00",
+        "sigma_horizon": 0.020500426073655754,
+        "current_realized_variance": 0.0004202674692014247,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.15153648759317234,
+          "directional_path_efficiency_2h": 0.16997124629388813,
+          "directional_path_efficiency_4h": 0.11298918960027925,
+          "volatility_percentile_60": 0.6,
+          "target_extreme_between_entry_and_tp": 0.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "c695f584cd0730a0a0054eb941fa6eeb186ba1db8313e9c19725ea4f4722034e"
+      }
+    },
+    {
+      "recommendation_id": 771,
+      "operation_id": 219,
+      "analysis_at": "2026-07-14T11:27:29.229215+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-07-14T10:59:59.999000+00:00",
+        "sigma_horizon": 0.01700383921780753,
+        "current_realized_variance": 0.0002891305481450494,
+        "feature_values": {
+          "directional_path_efficiency_h": -0.01848636372633041,
+          "directional_path_efficiency_2h": -0.13738717416895552,
+          "directional_path_efficiency_4h": -0.12395143662329103,
+          "volatility_percentile_60": 0.43333333333333335,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "6ca15496c1622c209e1831d2179ab2a82b41c2d31f0225f6e1f91b2b4d3864a1"
+      }
+    },
+    {
+      "recommendation_id": 839,
+      "operation_id": 236,
+      "analysis_at": "2026-07-21T14:18:39.628246+00:00",
+      "pretrade": {
+        "status": "evaluated",
+        "interval": "1h",
+        "interval_seconds": 3600,
+        "return_count_per_horizon": 24,
+        "data_cutoff_at": "2026-07-21T13:59:59.999000+00:00",
+        "sigma_horizon": 0.022646357007875654,
+        "current_realized_variance": 0.0005128574857281588,
+        "feature_values": {
+          "directional_path_efficiency_h": 0.4954184414972085,
+          "directional_path_efficiency_2h": 0.243489944808727,
+          "directional_path_efficiency_4h": 0.2833513735318519,
+          "volatility_percentile_60": 0.6833333333333333,
+          "target_extreme_between_entry_and_tp": 1.0
+        },
+        "source_rule_ids": {
+          "directional_path_efficiency_h": "M4-RULE-PATH-STRUCTURE-001",
+          "directional_path_efficiency_2h": "M4-RULE-MTF-HIERARCHY-001",
+          "directional_path_efficiency_4h": "M4-RULE-MTF-HIERARCHY-001",
+          "volatility_percentile_60": "M4-RULE-VOLATILITY-RANK-001",
+          "target_extreme_between_entry_and_tp": "M4-RULE-PRIOR-EXTREMA-001"
+        },
+        "pretrade_candle_sha256": "e57cddd6306576836a4b51771e95ca5a24181d704250d1969834b4407732f509"
+      }
+    }
+  ]
+}

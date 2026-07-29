@@ -1,0 +1,4664 @@
+{
+  "library_version": "TP-SL-RULE-LIBRARY-v0.1",
+  "status": "master_contract_v0_1",
+  "purpose": "Auditable rule library for Phase 1 TP/SL/expiry probability.",
+  "governance": {
+    "production_changes": "none",
+    "new_candidate_weights_authorized": false,
+    "learning_may_self_modify_production": false,
+    "current_active_predictive_rule_ids": [
+      "M4-RULE-PATH-STRUCTURE-001",
+      "M4-RULE-PRIOR-EXTREMA-001",
+      "M4-RULE-VOLATILITY-RANK-001",
+      "M4-RULE-MTF-HIERARCHY-001",
+      "M4-RULE-CONTINUOUS-REGIME-001",
+      "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "M4-RULE-PRICE-OI-STATE-001",
+      "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "M4-RULE-FUNDING-STATE-001"
+    ],
+    "baseline_rule_ids": [
+      "M4-RULE-HORIZON-SAMPLING-001",
+      "M4-RULE-PLAN-GEOMETRY-001",
+      "M4-RULE-LOG-RETURNS-001",
+      "M4-RULE-REALIZED-VOLATILITY-001",
+      "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002"
+    ]
+  },
+  "sources": {
+    "PROJECT_PHASE1_CONTRACT": {
+      "title": "Contrato vinculante - Fase 1 del motor de analisis",
+      "kind": "project_contract",
+      "location": "CONTRATO_FASE_1_MOTOR_ANALISIS.md"
+    },
+    "PROJECT_M2_GEOMETRY": {
+      "title": "M2 - Semantica, geometria e invariantes",
+      "kind": "project_contract",
+      "location": "auditorias_motor/2026-07-27_M2_semantica_geometria_resultado.md"
+    },
+    "BINANCE_USDM_API": {
+      "title": "Binance USD-M Futures market data",
+      "kind": "official_data_definition",
+      "url": "https://developers.binance.com/en/docs/derivatives/usds-margined-futures/market-data/rest-api"
+    },
+    "BINANCE_SPOT_API": {
+      "title": "Binance Spot market data",
+      "kind": "official_data_definition",
+      "url": "https://developers.binance.com/docs/binance-spot-api-docs/rest-api"
+    },
+    "NIST_MAD": {
+      "title": "NIST Median Absolute Deviation",
+      "kind": "statistical_definition",
+      "url": "https://www.itl.nist.gov/div898/software/dataplot/refman2/auxillar/mad.htm"
+    },
+    "NIST_EXPONENTIAL_SMOOTHING": {
+      "title": "NIST Single Exponential Smoothing",
+      "kind": "statistical_definition",
+      "url": "https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc431.htm"
+    },
+    "WILDER_1978": {
+      "title": "Wilder - New Concepts in Technical Trading Systems",
+      "kind": "manual_definition",
+      "year": 1978
+    },
+    "MOSKOWITZ_OOI_PEDERSEN_2012": {
+      "title": "Time Series Momentum",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1016/j.jfineco.2011.11.003"
+    },
+    "HUDSON_URQUHART_2021": {
+      "title": "Technical trading and cryptocurrencies",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1007/s10479-019-03357-1"
+    },
+    "CORSI_2009": {
+      "title": "A Simple Approximate Long-Memory Model of Realized Volatility",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1093/jjfinec/nbp001"
+    },
+    "OSLER_2000": {
+      "title": "Support for Resistance: Technical Analysis and Intraday Exchange Rates",
+      "kind": "external_predictive_evidence",
+      "url": "https://www.newyorkfed.org/medialibrary/media/research/epr/00v06n2/0007osle.pdf"
+    },
+    "CONT_KUKANOV_STOIKOV_2014": {
+      "title": "The Price Impact of Order Book Events",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1093/jjfinec/nbt003"
+    },
+    "SILANTYEV_2019": {
+      "title": "Order flow analysis of cryptocurrency markets",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1007/s42521-019-00007-w"
+    },
+    "HONG_YOGO_2012": {
+      "title": "What does futures market interest tell us about the macroeconomy?",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1016/j.jfineco.2011.05.008"
+    },
+    "HE_MANELA_ROSS_VON_WACHTER_2022": {
+      "title": "Fundamentals of Perpetual Futures",
+      "kind": "external_predictive_evidence",
+      "url": "https://arxiv.org/abs/2212.06888"
+    },
+    "TSINASLANIDIS_ET_AL_2022": {
+      "title": "Automated Fibonacci retracement evaluation",
+      "kind": "external_predictive_evidence",
+      "url": "https://doi.org/10.1016/j.eswa.2021.115893"
+    },
+    "COINGECKO_MARKETS_API": {
+      "title": "CoinGecko Coins Markets",
+      "kind": "official_data_definition",
+      "url": "https://docs.coingecko.com/reference/coins-markets"
+    },
+    "ALTERNATIVE_ME_FNG": {
+      "title": "Alternative.me Crypto Fear and Greed",
+      "kind": "official_data_definition",
+      "url": "https://alternative.me/crypto/fear-and-greed-index/"
+    },
+    "HYPERLIQUID_PUBLIC_STATE": {
+      "title": "Hyperliquid public clearinghouse state",
+      "kind": "official_data_definition",
+      "url": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+    }
+  },
+  "rules": [
+    {
+      "rule_id": "M4-RULE-HORIZON-SAMPLING-001",
+      "version": "0.2",
+      "name": "Seleccion exacta de intervalo para el horizonte",
+      "family_id": "FAMILY-PLAN-GEOMETRY",
+      "role": "baseline",
+      "lifecycle_status": "active_deterministic",
+      "origin": "current_probability_engine",
+      "objective": "Seleccion exacta de intervalo para el horizonte",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "user_plan_and_binance_usdm",
+            "m3_data_contract_ids": [
+              "M3-DATA-001",
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "user_plan_and_binance_usdm",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "return_unit": "natural_log_return",
+            "freshness": "M3-DATA-005 closed-period contract"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-01-01",
+        "M5-FORMULA-01-02",
+        "M5-FORMULA-01-03"
+      ],
+      "deterministic_formulas": [
+        "I={delta in profile_intervals: H mod delta=0 and H/delta>=24}",
+        "delta*=max(I)",
+        "N_H=H/delta*"
+      ],
+      "probability_integration_formula": "required input to the double-barrier baseline",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "activation_conditions": [
+        "valid exact horizon inside approved profile"
+      ],
+      "non_application_conditions": [
+        "no supported exact divisor with at least 24 returns"
+      ],
+      "missing_data_behavior": "Block reachability family.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_M2_GEOMETRY",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This deterministic operator is required to define the plan and baseline; its predictive adequacy remains testable."
+      },
+      "expected_probability_effect": {
+        "mode": "baseline_input",
+        "tp": "structural",
+        "sl": "structural",
+        "expiry": "structural"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "not an additive signal"
+      },
+      "parameters": [],
+      "trace_contract": {
+        "required_outputs": [
+          "time_horizon",
+          "horizon_seconds",
+          "interval",
+          "interval_seconds",
+          "returns_per_horizon",
+          "selection_policy"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Replace only with an approved baseline that preserves geometry, mass, symmetry and monotonicity invariants."
+    },
+    {
+      "rule_id": "M4-RULE-PLAN-GEOMETRY-001",
+      "version": "0.2",
+      "name": "Geometria logaritmica long/short",
+      "family_id": "FAMILY-PLAN-GEOMETRY",
+      "role": "baseline",
+      "lifecycle_status": "active_deterministic",
+      "origin": "current_probability_engine",
+      "objective": "Geometria logaritmica long/short",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "user_plan_and_binance_usdm",
+            "m3_data_contract_ids": [
+              "M3-DATA-001"
+            ]
+          },
+          "provider": "user_plan_and_binance_usdm",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "return_unit": "natural_log_return",
+            "freshness": "M3-DATA-005 closed-period contract"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-02-01",
+        "M5-FORMULA-02-02",
+        "M5-FORMULA-02-03",
+        "M5-FORMULA-02-04"
+      ],
+      "deterministic_formulas": [
+        "s=+1 long; s=-1 short",
+        "d_TP=s*ln(TP/E)",
+        "d_SL=-s*ln(SL/E)",
+        "valid iff d_TP>0 and d_SL>0"
+      ],
+      "probability_integration_formula": "required input to the double-barrier baseline",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "activation_conditions": [
+        "valid plan geometry"
+      ],
+      "non_application_conditions": [
+        "invalid side, price or barrier ordering"
+      ],
+      "missing_data_behavior": "Block the complete analysis.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_M2_GEOMETRY",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This deterministic operator is required to define the plan and baseline; its predictive adequacy remains testable."
+      },
+      "expected_probability_effect": {
+        "mode": "baseline_input",
+        "tp": "structural",
+        "sl": "structural",
+        "expiry": "structural"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "not an additive signal"
+      },
+      "parameters": [],
+      "trace_contract": {
+        "required_outputs": [
+          "side_sign",
+          "entry",
+          "take_profit",
+          "stop_loss",
+          "tp_log_distance",
+          "sl_log_distance"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Replace only with an approved baseline that preserves geometry, mass, symmetry and monotonicity invariants."
+    },
+    {
+      "rule_id": "M4-RULE-LOG-RETURNS-001",
+      "version": "0.2",
+      "name": "Retornos logaritmicos de velas cerradas",
+      "family_id": "FAMILY-REALIZED-VOLATILITY",
+      "role": "baseline",
+      "lifecycle_status": "active_deterministic",
+      "origin": "current_probability_engine",
+      "objective": "Retornos logaritmicos de velas cerradas",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "user_plan_and_binance_usdm",
+            "m3_data_contract_ids": [
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "user_plan_and_binance_usdm",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "return_unit": "natural_log_return",
+            "freshness": "M3-DATA-005 closed-period contract"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-03-01"
+      ],
+      "deterministic_formulas": [
+        "r_i=ln(C_i/C_(i-1))"
+      ],
+      "probability_integration_formula": "required input to the double-barrier baseline",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "activation_conditions": [
+        "M3-compliant consecutive closed klines"
+      ],
+      "non_application_conditions": [
+        "gap, open bar, invalid close or insufficient history"
+      ],
+      "missing_data_behavior": "Block realized volatility and dependent rules.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_M2_GEOMETRY",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This deterministic operator is required to define the plan and baseline; its predictive adequacy remains testable."
+      },
+      "expected_probability_effect": {
+        "mode": "baseline_input",
+        "tp": "structural",
+        "sl": "structural",
+        "expiry": "structural"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-HORIZON-SAMPLING-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "not an additive signal"
+      },
+      "parameters": [],
+      "trace_contract": {
+        "required_outputs": [
+          "close_count",
+          "return_count",
+          "first_close_time",
+          "last_close_time",
+          "return_series_hash"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Replace only with an approved baseline that preserves geometry, mass, symmetry and monotonicity invariants."
+    },
+    {
+      "rule_id": "M4-RULE-REALIZED-VOLATILITY-001",
+      "version": "0.2",
+      "name": "Volatilidad realizada del horizonte anterior",
+      "family_id": "FAMILY-REALIZED-VOLATILITY",
+      "role": "baseline",
+      "lifecycle_status": "active_deterministic",
+      "origin": "current_probability_engine",
+      "objective": "Volatilidad realizada del horizonte anterior",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "user_plan_and_binance_usdm",
+            "m3_data_contract_ids": [
+              "M3-DATA-001",
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "user_plan_and_binance_usdm",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "return_unit": "natural_log_return",
+            "freshness": "M3-DATA-005 closed-period contract"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-04-01",
+        "M5-FORMULA-04-02"
+      ],
+      "deterministic_formulas": [
+        "RV_prev(H)=sum_(i=1..N_H)(r_i^2)",
+        "sigma_prev(H)=sqrt(RV_prev(H))"
+      ],
+      "probability_integration_formula": "required input to the double-barrier baseline",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "activation_conditions": [
+        "complete previous-H window with at least 24 returns"
+      ],
+      "non_application_conditions": [
+        "missing/gapped/future/stale bars",
+        "zero sigma blocks normalized reachability"
+      ],
+      "missing_data_behavior": "Block all sigma-normalized M4.2 outputs.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_M2_GEOMETRY",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This deterministic operator is required to define the plan and baseline; its predictive adequacy remains testable."
+      },
+      "expected_probability_effect": {
+        "mode": "baseline_input",
+        "tp": "structural",
+        "sl": "structural",
+        "expiry": "structural"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-HORIZON-SAMPLING-001",
+          "M4-RULE-LOG-RETURNS-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "not an additive signal"
+      },
+      "parameters": [],
+      "trace_contract": {
+        "required_outputs": [
+          "interval",
+          "horizon_seconds",
+          "return_count",
+          "window_start_close_time",
+          "window_end_close_time",
+          "realized_variance",
+          "realized_volatility",
+          "forecast_status"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Replace only with an approved baseline that preserves geometry, mass, symmetry and monotonicity invariants."
+    },
+    {
+      "rule_id": "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+      "version": "0.2",
+      "name": "Geometria de barreras normalizada por volatilidad",
+      "family_id": "FAMILY-PLAN-GEOMETRY",
+      "role": "baseline",
+      "lifecycle_status": "active_deterministic",
+      "origin": "current_probability_engine",
+      "objective": "Geometria de barreras normalizada por volatilidad",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "user_plan_and_binance_usdm",
+            "m3_data_contract_ids": [
+              "M3-DATA-001",
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "user_plan_and_binance_usdm",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "return_unit": "natural_log_return",
+            "freshness": "M3-DATA-005 closed-period contract"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-05-01",
+        "M5-FORMULA-05-02",
+        "M5-FORMULA-05-03"
+      ],
+      "deterministic_formulas": [
+        "z_TP=d_TP/sigma_prev(H)",
+        "z_SL=d_SL/sigma_prev(H)",
+        "b=ln(d_TP/d_SL)"
+      ],
+      "probability_integration_formula": "required input to the double-barrier baseline",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "timestamps": "M3 provider close_time plus requested_at/received_at; all <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "return_unit": "natural_log_return",
+        "freshness": "M3-DATA-005 closed-period contract"
+      },
+      "activation_conditions": [
+        "valid geometry and finite sigma_prev(H)>0"
+      ],
+      "non_application_conditions": [
+        "invalid geometry, missing history or sigma<=0"
+      ],
+      "missing_data_behavior": "Block probability publication.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_M2_GEOMETRY",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This deterministic operator is required to define the plan and baseline; its predictive adequacy remains testable."
+      },
+      "expected_probability_effect": {
+        "mode": "baseline_input",
+        "tp": "structural",
+        "sl": "structural",
+        "expiry": "structural"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-PLAN-GEOMETRY-001",
+          "M4-RULE-REALIZED-VOLATILITY-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "not an additive signal"
+      },
+      "parameters": [],
+      "trace_contract": {
+        "required_outputs": [
+          "tp_log_distance",
+          "sl_log_distance",
+          "sigma_prev_horizon",
+          "z_tp",
+          "z_sl",
+          "distance_balance_log_ratio"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Replace only with an approved baseline that preserves geometry, mass, symmetry and monotonicity invariants."
+    },
+    {
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "version": "0.2",
+      "name": "Desplazamiento y eficiencia de trayectoria",
+      "family_id": "FAMILY-PRICE-PATH",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Desplazamiento y eficiencia de trayectoria",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M and immutable user plan",
+            "m3_data_contract_ids": [
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "Binance USD-M and immutable user plan",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "normalized_units": "log_return_or_dimensionless"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-08-01",
+        "M5-FORMULA-08-02",
+        "M5-FORMULA-08-03",
+        "M5-FORMULA-08-04"
+      ],
+      "deterministic_formulas": [
+        "D_W=sum(r_i)=ln(C_end/C_start)",
+        "TV_W=sum(abs(r_i))",
+        "if TV_W>0: E_W=abs(D_W)/TV_W; SE_W=D_W/TV_W",
+        "if TV_W=0: E_W=0; SE_W=0; flat_path=true"
+      ],
+      "probability_integration_formula": "signal=clip(side*SE_H,-1,1); log_w_tp+=0.12*signal; log_w_sl-=0.12*signal",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Block structure and all dependent combinations.",
+      "evidence": {
+        "source_ids": [
+          "MOSKOWITZ_OOI_PEDERSEN_2012",
+          "HUDSON_URQUHART_2021"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Side-aligned signed path efficiency may condition which barrier is reached first."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-CONTINUOUS-REGIME-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.12
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "window_seconds",
+          "return_count",
+          "log_displacement",
+          "total_log_variation",
+          "path_efficiency",
+          "signed_path_efficiency",
+          "direction_descriptor"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "version": "0.2",
+      "name": "Extremos observados del horizonte anterior",
+      "family_id": "FAMILY-STRUCTURAL-LEVELS",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Extremos observados del horizonte anterior",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M and immutable user plan",
+            "m3_data_contract_ids": [
+              "M3-DATA-001",
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "Binance USD-M and immutable user plan",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "normalized_units": "log_return_or_dimensionless"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-09-01",
+        "M5-FORMULA-09-02",
+        "M5-FORMULA-09-03"
+      ],
+      "deterministic_formulas": [
+        "X_high=max(H_i), X_low=min(L_i) over previous exact H",
+        "long target extreme=X_high; short target extreme=X_low",
+        "between=entry<X_high<TP long; TP<X_low<entry short"
+      ],
+      "probability_integration_formula": "fitted competing-risk covariate",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Rule not evaluated; no synthetic level.",
+      "evidence": {
+        "source_ids": [
+          "OSLER_2000"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "A prior extreme between entry and TP may alter first-barrier probability."
+      },
+      "expected_probability_effect": {
+        "mode": "fitted_competing_risk_covariate",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "target_extreme_between_entry_and_tp",
+          "origin": "historical_fit",
+          "status": "fitted_provisional",
+          "tp": 0.06992799118212334,
+          "sl": 0.1670447895598004
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "prior_high",
+          "prior_low",
+          "target_side_extreme",
+          "adverse_side_extreme",
+          "target_extreme_between_entry_and_tp",
+          "target_extreme_log_distance",
+          "barrier_effect"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "version": "0.2",
+      "name": "Percentil continuo de volatilidad",
+      "family_id": "FAMILY-VOLATILITY",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Percentil continuo de volatilidad",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M and immutable user plan",
+            "m3_data_contract_ids": [
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "Binance USD-M and immutable user plan",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "normalized_units": "log_return_or_dimensionless"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-10-01",
+        "M5-FORMULA-10-02"
+      ],
+      "deterministic_formulas": [
+        "q=(count(RV_j<RV_t)+0.5*count(RV_j=RV_t))/60",
+        "j are 60 strictly prior non-overlapping H windows"
+      ],
+      "probability_integration_formula": "fitted competing-risk covariate",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Block regime context; retain geometry if otherwise valid.",
+      "evidence": {
+        "source_ids": [
+          "CORSI_2009"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Within-pair volatility rank may alter TP, SL and expiry hazards."
+      },
+      "expected_probability_effect": {
+        "mode": "fitted_competing_risk_covariate",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-CONTINUOUS-REGIME-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "volatility_percentile_60",
+          "origin": "historical_fit",
+          "status": "fitted_provisional",
+          "tp": -0.5446818209064133,
+          "sl": -0.27055081722504065
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "current_realized_variance",
+          "reference_window_count",
+          "reference_cutoff",
+          "volatility_percentile",
+          "ranking_method"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "version": "0.2",
+      "name": "Jerarquia multi-timeframe H, 2H y 4H",
+      "family_id": "FAMILY-PRICE-PATH",
+      "role": "group",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Jerarquia multi-timeframe H, 2H y 4H",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M and immutable user plan",
+            "m3_data_contract_ids": [
+              "M3-DATA-001",
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "Binance USD-M and immutable user plan",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "normalized_units": "log_return_or_dimensionless"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-11-01",
+        "M5-FORMULA-11-02",
+        "M5-FORMULA-11-03"
+      ],
+      "deterministic_formulas": [
+        "calculate SE_W for W in {H,2H,4H} on the same closed grid",
+        "sign_W=sign(SE_W)",
+        "agreement in {all_positive,all_negative,mixed,flat_present}"
+      ],
+      "probability_integration_formula": "two fitted competing-risk covariates",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Do not collapse available windows into a partial vote.",
+      "evidence": {
+        "source_ids": [
+          "MOSKOWITZ_OOI_PEDERSEN_2012",
+          "HUDSON_URQUHART_2021"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Side-aligned path efficiencies at 2H and 4H may add information beyond the exact-horizon path."
+      },
+      "expected_probability_effect": {
+        "mode": "fitted_competing_risk_covariate",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-PATH-STRUCTURE-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "directional_path_efficiency_2h",
+          "origin": "historical_fit",
+          "status": "fitted_provisional",
+          "tp": 0.04656228699988703,
+          "sl": -0.21100274047083908
+        },
+        {
+          "name": "directional_path_efficiency_4h",
+          "origin": "historical_fit",
+          "status": "fitted_provisional",
+          "tp": 0.1730886790956213,
+          "sl": -0.15500924011502018
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "window_multipliers",
+          "signed_path_efficiencies",
+          "direction_signs",
+          "agreement_descriptor"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-CONTINUOUS-REGIME-001",
+      "version": "0.2",
+      "name": "Vector continuo de regimen",
+      "family_id": "FAMILY-PRICE-PATH-X-VOLATILITY",
+      "role": "interaction",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Vector continuo de regimen",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M and immutable user plan",
+            "m3_data_contract_ids": [
+              "M3-DATA-005"
+            ]
+          },
+          "provider": "Binance USD-M and immutable user plan",
+          "unit_policy": {
+            "market": "Binance USD-M perpetual",
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+            "price_unit": "quote_asset_per_base",
+            "normalized_units": "log_return_or_dimensionless"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-12-01"
+      ],
+      "deterministic_formulas": [
+        "R_t=(q_RV,t, SE_H,t)"
+      ],
+      "probability_integration_formula": "signal=clip(side*SE_H*(2*q_RV-1),-1,1); log_w_tp+=0.08*signal; log_w_sl-=0.08*signal",
+      "normalization": {
+        "market": "Binance USD-M perpetual",
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant closed data only; every observation <= analysis_at",
+        "price_unit": "quote_asset_per_base",
+        "normalized_units": "log_return_or_dimensionless"
+      },
+      "activation_conditions": [
+        "complete M4.2-compliant closed history",
+        "same formula and policy for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or invalid data",
+        "insufficient declared history"
+      ],
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "evidence": {
+        "source_ids": [
+          "CORSI_2009",
+          "HUDSON_URQUHART_2021"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "The effect of signed path efficiency may vary with volatility rank."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-PATH-STRUCTURE-001",
+          "M4-RULE-VOLATILITY-RANK-001"
+        ],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-PATH-STRUCTURE-001",
+          "M4-RULE-VOLATILITY-RANK-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.08
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "volatility_percentile",
+          "signed_path_efficiency"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-AGGRESSOR-IMBALANCE-001",
+      "version": "0.2",
+      "name": "Desequilibrio de operaciones agresoras ejecutadas",
+      "family_id": "FAMILY-EXECUTED-FLOW",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Desequilibrio de operaciones agresoras ejecutadas",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M",
+            "m3_data_contract_ids": [
+              "M3-DATA-005",
+              "M3-DATA-007",
+              "M3-DATA-015"
+            ]
+          },
+          "provider": "Binance USD-M",
+          "unit_policy": {
+            "markets": [
+              "Binance USD-M perpetual"
+            ],
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+            "normalized_units": "log_ratio_or_dimensionless_ratio"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-13-01",
+        "M5-FORMULA-13-02",
+        "M5-FORMULA-13-03",
+        "M5-FORMULA-13-04"
+      ],
+      "deterministic_formulas": [
+        "B_H=sum(p_i*q_i where buyer_is_maker=false)",
+        "S_H=sum(p_i*q_i where buyer_is_maker=true)",
+        "ATI_H=(B_H-S_H)/(B_H+S_H)",
+        "periodic alternative=(sum(buyVol)-sum(sellVol))/total"
+      ],
+      "probability_integration_formula": "signal=clip(side*ATI_H,-1,1); log_w_tp+=0.12*signal; log_w_sl-=0.12*signal",
+      "normalization": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Rule unavailable; no zero or neutral imbalance.",
+      "evidence": {
+        "source_ids": [
+          "CONT_KUKANOV_STOIKOV_2014",
+          "SILANTYEV_2019"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Side-aligned executed taker imbalance may condition short-horizon first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.12
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "window_start_ms",
+          "window_end_ms",
+          "coverage_start_ms",
+          "coverage_end_ms",
+          "ati_source",
+          "activity_unit",
+          "aggregation_method",
+          "source_retention_status",
+          "buy_taker_volume",
+          "sell_taker_volume",
+          "total_activity",
+          "ATI_H",
+          "coverage_complete"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-OPEN-INTEREST-CHANGE-001",
+      "version": "0.2",
+      "name": "Cambio logaritmico de open interest",
+      "family_id": "FAMILY-OPEN-INTEREST",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Cambio logaritmico de open interest",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M",
+            "m3_data_contract_ids": [
+              "M3-DATA-013",
+              "M3-DATA-014"
+            ]
+          },
+          "provider": "Binance USD-M",
+          "unit_policy": {
+            "markets": [
+              "Binance USD-M perpetual"
+            ],
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+            "normalized_units": "log_ratio_or_dimensionless_ratio"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-14-01",
+        "M5-FORMULA-14-02"
+      ],
+      "deterministic_formulas": [
+        "dOI_H=ln(OI_t/OI_(t-H))",
+        "current_timestamp_ms-previous_timestamp_ms=H*1000"
+      ],
+      "probability_integration_formula": "signal=tanh(50*abs(dOI_H)); log_w_tp+=0.06*signal; log_w_sl+=0.06*signal; log_w_expiry-=0.06*signal",
+      "normalization": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Rule unavailable; no assumed unchanged OI.",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "HONG_YOGO_2012"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Absolute open-interest change may indicate movement activity without identifying direction."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-PRICE-OI-STATE-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.06
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "previous_timestamp_ms",
+          "current_timestamp_ms",
+          "horizon_seconds",
+          "actual_separation_seconds",
+          "alignment_error_seconds",
+          "previous_open_interest",
+          "current_open_interest",
+          "dOI_H",
+          "long_short_direction"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-PRICE-OI-STATE-001",
+      "version": "0.2",
+      "name": "Estado conjunto precio y open interest",
+      "family_id": "FAMILY-PRICE-X-OPEN-INTEREST",
+      "role": "interaction",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Estado conjunto precio y open interest",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M",
+            "m3_data_contract_ids": [
+              "M3-DATA-005",
+              "M3-DATA-013",
+              "M3-DATA-014"
+            ]
+          },
+          "provider": "Binance USD-M",
+          "unit_policy": {
+            "markets": [
+              "Binance USD-M perpetual"
+            ],
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+            "normalized_units": "log_ratio_or_dimensionless_ratio"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-15-01"
+      ],
+      "deterministic_formulas": [
+        "POI_H=(D_H,dOI_H)"
+      ],
+      "probability_integration_formula": "signal=clip(side*sign(D_H)*tanh(50*dOI_H),-1,1); log_w_tp+=0.10*signal; log_w_sl-=0.10*signal",
+      "normalization": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Vector unavailable if either component is unavailable.",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "HONG_YOGO_2012"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "The joint state of price displacement and open-interest change may condition barrier direction."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-OPEN-INTEREST-CHANGE-001"
+        ],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-OPEN-INTEREST-CHANGE-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.1
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "D_H",
+          "dOI_H",
+          "price_sign",
+          "oi_sign",
+          "state_descriptor"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-SPOT-FUTURES-BASIS-001",
+      "version": "0.2",
+      "name": "Intervalo observable spot-Futures",
+      "family_id": "FAMILY-PERPETUAL-DISLOCATION",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Intervalo observable spot-Futures",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M and Binance Spot",
+            "m3_data_contract_ids": [
+              "M3-DATA-008",
+              "M3-DATA-016",
+              "M3-DATA-017"
+            ]
+          },
+          "provider": "Binance USD-M and Binance Spot",
+          "unit_policy": {
+            "markets": [
+              "Binance USD-M perpetual",
+              "Binance Spot"
+            ],
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant receive times only; cross-venue receive-time skew is bounded by a provisional project policy",
+            "normalized_units": "log_ratio_or_dimensionless_ratio"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-16-01",
+        "M5-FORMULA-16-02",
+        "M5-FORMULA-16-03",
+        "M5-FORMULA-16-04"
+      ],
+      "deterministic_formulas": [
+        "mid_F=(F_bid+F_ask)/2; mid_S=(S_bid+S_ask)/2",
+        "b_mid=ln(mid_F/mid_S)",
+        "b_sellF_buyS=ln(F_bid/S_ask)",
+        "b_buyF_sellS=ln(F_ask/S_bid)"
+      ],
+      "probability_integration_formula": "signal=-side*tanh(100*b_mid); log_w_tp+=0.06*signal; log_w_sl-=0.06*signal",
+      "normalization": {
+        "markets": [
+          "Binance USD-M perpetual",
+          "Binance Spot"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant receive times only; cross-venue receive-time skew is bounded by a provisional project policy",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Block basis; mark-index premium is not a silent substitute.",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "BINANCE_SPOT_API",
+          "HE_MANELA_ROSS_VON_WACHTER_2022"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Synchronized spot-futures basis may condition first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-MARK-INDEX-PREMIUM-001",
+          "M4-RULE-FUNDING-STATE-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.06
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "four_quotes",
+          "futures_received_at_ms",
+          "spot_received_at_ms",
+          "capture_skew_ms",
+          "capture_time_basis",
+          "market_timestamp_synchronized",
+          "basis_capture_uncertainty_status",
+          "capture_limit_status",
+          "b_mid",
+          "executable_basis_bounds",
+          "fees_included"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-MARK-INDEX-PREMIUM-001",
+      "version": "0.2",
+      "name": "Prima sincronizada mark-index",
+      "family_id": "FAMILY-PERPETUAL-DISLOCATION",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Prima sincronizada mark-index",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M",
+            "m3_data_contract_ids": [
+              "M3-DATA-010"
+            ]
+          },
+          "provider": "Binance USD-M",
+          "unit_policy": {
+            "markets": [
+              "Binance USD-M perpetual"
+            ],
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+            "normalized_units": "log_ratio_or_dimensionless_ratio"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-17-01"
+      ],
+      "deterministic_formulas": [
+        "b_mark_index=ln(markPrice/indexPrice)"
+      ],
+      "probability_integration_formula": "signal=-side*tanh(200*mark_index_log_premium); log_w_tp+=0.06*signal; log_w_sl-=0.06*signal",
+      "normalization": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Rule unavailable; no zero premium.",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "HE_MANELA_ROSS_VON_WACHTER_2022"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Synchronized mark-index premium may condition first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-SPOT-FUTURES-BASIS-001",
+          "M4-RULE-FUNDING-STATE-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.06
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "provider_time",
+          "mark_price",
+          "index_price",
+          "mark_index_log_premium",
+          "binance_spot_basis"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "M4-RULE-FUNDING-STATE-001",
+      "version": "0.2",
+      "name": "Estado temporal y carga realizada de funding",
+      "family_id": "FAMILY-PERPETUAL-DISLOCATION",
+      "role": "standalone",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine",
+      "objective": "Estado temporal y carga realizada de funding",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": {
+            "provider": "Binance USD-M",
+            "m3_data_contract_ids": [
+              "M3-DATA-010",
+              "M3-DATA-011",
+              "M3-DATA-012"
+            ]
+          },
+          "provider": "Binance USD-M",
+          "unit_policy": {
+            "markets": [
+              "Binance USD-M perpetual"
+            ],
+            "symbols": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT",
+              "BNBUSDT",
+              "XRPUSDT",
+              "INJUSDT"
+            ],
+            "horizons": [
+              "intraday_short",
+              "intraday_wide",
+              "short_swing"
+            ],
+            "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+            "normalized_units": "log_ratio_or_dimensionless_ratio"
+          }
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-18-01",
+        "M5-FORMULA-18-02",
+        "M5-FORMULA-18-03",
+        "M5-FORMULA-18-04"
+      ],
+      "deterministic_formulas": [
+        "linearized_f_last_hour=lastFundingRate/fundingIntervalHours",
+        "L_prev(H)=sum(f_j where t-H<fundingTime_j<=t)",
+        "L_prev_hour(H)=L_prev(H)/H_hours",
+        "N_schedule=count configured event times within future H"
+      ],
+      "probability_integration_formula": "signal=-side*tanh(last_funding_rate/0.0005); log_w_tp+=0.08*signal; log_w_sl-=0.08*signal",
+      "normalization": {
+        "markets": [
+          "Binance USD-M perpetual"
+        ],
+        "symbols": [
+          "BTCUSDT",
+          "ETHUSDT",
+          "SOLUSDT",
+          "BNBUSDT",
+          "XRPUSDT",
+          "INJUSDT"
+        ],
+        "horizons": [
+          "intraday_short",
+          "intraday_wide",
+          "short_swing"
+        ],
+        "time_rule": "M3-compliant data only; exact windows end at or before analysis_at",
+        "normalized_units": "log_ratio_or_dimensionless_ratio"
+      },
+      "activation_conditions": [
+        "complete M3-compliant observations",
+        "exact horizon or explicitly identified current snapshot",
+        "same formula for every supported pair"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or incomplete data",
+        "provider retention cannot cover the exact window"
+      ],
+      "missing_data_behavior": "Funding context unavailable; never assume zero.",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "HE_MANELA_ROSS_VON_WACHTER_2022"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Funding state relative to the proposed side may condition first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "provisional_log_effect",
+        "tp": "recorded_per_analysis",
+        "sl": "recorded_per_analysis",
+        "expiry": "recorded_per_analysis"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [
+          "M4-RULE-SPOT-FUTURES-BASIS-001",
+          "M4-RULE-MARK-INDEX-PREMIUM-001"
+        ],
+        "double_counting_control": "family ablation required before learned promotion"
+      },
+      "parameters": [
+        {
+          "name": "log_effect_weight",
+          "origin": "project_hypothesis",
+          "status": "unvalidated_provisional",
+          "value": 0.08
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "last_funding_rate",
+          "interval_hours",
+          "linearized_last_funding_rate_per_hour",
+          "next_funding_time",
+          "scheduled_events_under_current_config",
+          "previous_horizon_funding_load",
+          "projected_funding_cost"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
+    },
+    {
+      "rule_id": "LIB-CAND-EMA-TREND-001",
+      "version": "0.1",
+      "name": "EMA trend state and normalized slope",
+      "family_id": "FAMILY-TREND",
+      "role": "contextual",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Continuous EMA alignment and normalized slope may condition first-barrier behavior.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlc"
+          ],
+          "provider": "binance_usdm_closed_klines",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-EMA-TREND-001-FORMULA-01",
+        "LIB-CAND-EMA-TREND-001-FORMULA-02",
+        "LIB-CAND-EMA-TREND-001-FORMULA-03"
+      ],
+      "deterministic_formulas": [
+        "EMA_t=alpha*C_t+(1-alpha)*EMA_(t-1); alpha=2/(n+1)",
+        "slope_ema50=(EMA50_t-EMA50_(t-k))/ATR14",
+        "state=(close>EMA50, EMA50>EMA200, slope_ema50)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "NIST_EXPONENTIAL_SMOOTHING",
+          "HUDSON_URQUHART_2021"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Continuous EMA alignment and normalized slope may condition first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-RSI-WILDER-001",
+      "version": "0.1",
+      "name": "Wilder RSI state",
+      "family_id": "FAMILY-MOMENTUM",
+      "role": "contextual",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Continuous RSI may have regime-dependent incremental value without fixed overbought or oversold points.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlc"
+          ],
+          "provider": "binance_usdm_closed_klines",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-RSI-WILDER-001-FORMULA-01",
+        "LIB-CAND-RSI-WILDER-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "RS=wilders_average(gains,n)/wilders_average(losses,n)",
+        "RSI=100-100/(1+RS)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "WILDER_1978",
+          "HUDSON_URQUHART_2021"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Continuous RSI may have regime-dependent incremental value without fixed overbought or oversold points."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-ATR-EXTENSION-001",
+      "version": "0.1",
+      "name": "ATR-normalized extension from EMA",
+      "family_id": "FAMILY-TREND-X-VOLATILITY",
+      "role": "interaction",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Side-aligned extension from a smoothed price reference may condition continuation versus reversion.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlc"
+          ],
+          "provider": "binance_usdm_closed_klines",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-ATR-EXTENSION-001-FORMULA-01"
+      ],
+      "deterministic_formulas": [
+        "extension=(close-EMA20)/ATR14"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "WILDER_1978",
+          "NIST_EXPONENTIAL_SMOOTHING"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Side-aligned extension from a smoothed price reference may condition continuation versus reversion."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "LIB-CAND-EMA-TREND-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-RELATIVE-VOLUME-001",
+      "version": "0.1",
+      "name": "Exact-horizon relative volume",
+      "family_id": "FAMILY-VOLUME",
+      "role": "standalone",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Volume relative to 60 preceding comparable horizons may condition movement intensity and first-barrier timing.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_kline_volume",
+            "exact_horizon"
+          ],
+          "provider": "binance_usdm_closed_klines",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-RELATIVE-VOLUME-001-FORMULA-01",
+        "LIB-CAND-RELATIVE-VOLUME-001-FORMULA-02",
+        "LIB-CAND-RELATIVE-VOLUME-001-FORMULA-03"
+      ],
+      "deterministic_formulas": [
+        "V_H=sum(volume_i over the exact prior horizon H)",
+        "relative_volume_H=V_H/median(previous_60_non_overlapping_V_H)",
+        "volume_midrank_60=(count(V_j<V_H)+0.5*count(V_j=V_H))/60"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "NIST_MAD"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Volume relative to 60 preceding comparable horizons may condition movement intensity and first-barrier timing."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-ORDERBOOK-IMBALANCE-001",
+      "version": "0.1",
+      "name": "Normalized visible order-book imbalance",
+      "family_id": "FAMILY-ORDER-BOOK",
+      "role": "standalone",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Visible depth imbalance at declared depth D may condition short-horizon first-barrier behavior.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "timestamped_depth_snapshot"
+          ],
+          "provider": "binance_usdm_depth_snapshot_100_levels",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-01",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "obi_D=(bid_notional_D-ask_notional_D)/(bid_notional_D+ask_notional_D)",
+        "D in {top5,top20,10bps,20bps,50bps}"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "CONT_KUKANOV_STOIKOV_2014"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Visible depth imbalance at declared depth D may condition short-horizon first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-CVD-SLOPE-001",
+      "version": "0.1",
+      "name": "Exact-window executed-flow accumulation",
+      "family_id": "FAMILY-EXECUTED-FLOW",
+      "role": "group",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "The trajectory of executed signed flow may add information beyond its terminal imbalance.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "periodic_taker_buy_sell_volume",
+            "closed_kline_taker_quote_volume_fallback"
+          ],
+          "provider": "binance_usdm_taker_buy_sell_history_or_closed_klines",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-CVD-SLOPE-001-FORMULA-01",
+        "LIB-CAND-CVD-SLOPE-001-FORMULA-02",
+        "LIB-CAND-CVD-SLOPE-001-FORMULA-03",
+        "LIB-CAND-CVD-SLOPE-001-FORMULA-04"
+      ],
+      "deterministic_formulas": [
+        "delta_i=buy_taker_volume_i-sell_taker_volume_i",
+        "CVD_t=cumsum(delta_i over exact horizon H)",
+        "cvd_slope=TheilSenSlope(CVD_t)",
+        "normalized_cvd_slope=cvd_slope/mean(total_taker_volume_i)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "SILANTYEV_2019"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "The trajectory of executed signed flow may add information beyond its terminal imbalance."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-AGGRESSOR-IMBALANCE-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-BREADTH-001",
+      "version": "0.1",
+      "name": "Cross-crypto breadth state",
+      "family_id": "FAMILY-MARKET-CONTEXT",
+      "role": "contextual",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Cross-crypto breadth may condition a pair's first-barrier probability after pair-specific controls.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "cross_asset_returns"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-BREADTH-001-FORMULA-01",
+        "LIB-CAND-BREADTH-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "breadth_h=count(return_i_h>0)/count(valid_return_i_h)",
+        "median_return_h=median(valid_return_i_h)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "COINGECKO_MARKETS_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Cross-crypto breadth may condition a pair's first-barrier probability after pair-specific controls."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-FIBONACCI-DISTANCE-001",
+      "version": "0.1",
+      "name": "Fibonacci level distance and confluence",
+      "family_id": "FAMILY-STRUCTURAL-LEVELS",
+      "role": "contextual",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Distance and confluence with reproducible Fibonacci levels may condition barrier behavior; no intrinsic bonus is assumed.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "objective_swing_points",
+            "plan",
+            "volatility"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-01",
+        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "fib_level_r=swing_low+r*(swing_high-swing_low)",
+        "distance_sigma=(fib_level_r-entry)/sigma_price_h"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "TSINASLANIDIS_ET_AL_2022"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Distance and confluence with reproducible Fibonacci levels may condition barrier behavior; no intrinsic bonus is assumed."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
+      "version": "0.1",
+      "name": "Distance to reproducible structural levels",
+      "family_id": "FAMILY-STRUCTURAL-LEVELS",
+      "role": "contextual",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "The distance and prominence of prior levels between entry and a barrier may condition first passage.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlc",
+            "plan",
+            "volatility"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-01",
+        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "level_distance_sigma=(nearest_level-entry)/sigma_price_h",
+        "level_prominence=declared_detector_prominence"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "OSLER_2000"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "The distance and prominence of prior levels between entry and a barrier may condition first passage."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-FUNDING-PERCENTILE-001",
+      "version": "0.1",
+      "name": "Funding relative to its own history",
+      "family_id": "FAMILY-PERPETUAL-DISLOCATION",
+      "role": "contextual",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Funding relative to its pair-specific history may be more informative than an absolute funding threshold.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "historical_funding_rates"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-FUNDING-PERCENTILE-001-FORMULA-01",
+        "LIB-CAND-FUNDING-PERCENTILE-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "funding_percentile=empirical_cdf(last_rate, past_rates)",
+        "funding_robust_z=(last_rate-median)/(1.4826*MAD)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "NIST_MAD",
+          "HE_MANELA_ROSS_VON_WACHTER_2022"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Funding relative to its pair-specific history may be more informative than an absolute funding threshold."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-FUNDING-STATE-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-CROWDING-PERCENTILE-001",
+      "version": "0.1",
+      "name": "Positioning crowding percentile",
+      "family_id": "FAMILY-POSITIONING",
+      "role": "contextual",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Extreme positioning relative to pair history may condition barrier behavior without identifying future direction alone.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "timestamped_long_short_ratios"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-CROWDING-PERCENTILE-001-FORMULA-01"
+      ],
+      "deterministic_formulas": [
+        "crowding_percentile=empirical_cdf(long_short_ratio, history)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API",
+          "NIST_MAD"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Extreme positioning relative to pair history may condition barrier behavior without identifying future direction alone."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-SENTIMENT-PERCENTILE-001",
+      "version": "0.1",
+      "name": "External sentiment percentile",
+      "family_id": "FAMILY-MARKET-CONTEXT",
+      "role": "contextual",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "External sentiment extremes may have context-dependent incremental value.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "fear_greed_history"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-SENTIMENT-PERCENTILE-001-FORMULA-01"
+      ],
+      "deterministic_formulas": [
+        "sentiment_percentile=empirical_cdf(index_value, available_history)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "ALTERNATIVE_ME_FNG",
+          "NIST_MAD"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "External sentiment extremes may have context-dependent incremental value."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-COMPRESSION-001",
+      "version": "0.1",
+      "name": "Volatility-volume compression state",
+      "family_id": "FAMILY-VOLATILITY-X-VOLUME",
+      "role": "interaction",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Jointly low volatility, band width and relative volume may condition expiry and subsequent barrier hazards.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlcv"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-COMPRESSION-001-FORMULA-01",
+        "LIB-CAND-COMPRESSION-001-FORMULA-02",
+        "LIB-CAND-COMPRESSION-001-FORMULA-03"
+      ],
+      "deterministic_formulas": [
+        "atr_rank=empirical_cdf(ATR14/price, history)",
+        "bb_width=(upper_band-lower_band)/middle_band",
+        "compression_vector=(atr_rank,bb_width_rank,relative_volume)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "WILDER_1978",
+          "CORSI_2009"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Jointly low volatility, band width and relative volume may condition expiry and subsequent barrier hazards."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-VOLATILITY-RANK-001",
+          "LIB-CAND-RELATIVE-VOLUME-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-SHOCK-001",
+      "version": "0.1",
+      "name": "Market shock state",
+      "family_id": "FAMILY-EVENT-RISK",
+      "role": "interaction",
+      "lifecycle_status": "data_blocked",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Extreme joint return, volatility, spread and realized liquidation conditions may alter all competing hazards.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlc",
+            "spread_history",
+            "realized_liquidation_history"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-SHOCK-001-FORMULA-01",
+        "LIB-CAND-SHOCK-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "return_robust_z=(return-median)/(1.4826*MAD)",
+        "shock_vector=(abs(return_z),atr_rank,spread_rank,liquidation_z)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "blocked until a reliable realized-liquidation series exists",
+      "evidence": {
+        "source_ids": [
+          "NIST_MAD",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Extreme joint return, volatility, spread and realized liquidation conditions may alter all competing hazards."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-ABSORPTION-001",
+      "version": "0.1",
+      "name": "Flow-volume-price absorption interaction",
+      "family_id": "FAMILY-EXECUTED-FLOW-X-PRICE",
+      "role": "interaction",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Strong aggressive flow with weak displacement and an adverse wick may condition continuation versus reversal.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlcv",
+            "timestamped_aggregate_trades"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-ABSORPTION-001-FORMULA-01",
+        "LIB-CAND-ABSORPTION-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "wick_ratio=wick_length/(high-low) when high>low",
+        "absorption_vector=(ATI_H,relative_volume,return/ATR,wick_ratio)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "SILANTYEV_2019",
+          "WILDER_1978"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Strong aggressive flow with weak displacement and an adverse wick may condition continuation versus reversal."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-AGGRESSOR-IMBALANCE-001",
+          "LIB-CAND-RELATIVE-VOLUME-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-PULLBACK-CONTEXT-001",
+      "version": "0.1",
+      "name": "Trend pullback context",
+      "family_id": "FAMILY-TREND-X-STRUCTURE-X-FLOW",
+      "role": "interaction",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "A user-proposed plan aligned with a reproducible pullback context may have different first-barrier behavior.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "closed_ohlcv",
+            "timestamped_aggregate_trades",
+            "plan"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-PULLBACK-CONTEXT-001-FORMULA-01"
+      ],
+      "deterministic_formulas": [
+        "pullback_vector=(ema_state,extension,local_extrema,relative_volume,ATI_H)"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "NIST_EXPONENTIAL_SMOOTHING",
+          "WILDER_1978",
+          "SILANTYEV_2019"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "A user-proposed plan aligned with a reproducible pullback context may have different first-barrier behavior."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "LIB-CAND-EMA-TREND-001",
+          "LIB-CAND-ATR-EXTENSION-001",
+          "LIB-CAND-RELATIVE-VOLUME-001",
+          "M4-RULE-AGGRESSOR-IMBALANCE-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-LIQUIDATION-ZONE-001",
+      "version": "0.1",
+      "name": "Observed liquidation-zone distance and mass",
+      "family_id": "FAMILY-LIQUIDATION-OBSERVATION",
+      "role": "contextual",
+      "lifecycle_status": "historical_evidence_available_data_limited",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Distance and observed mass of liquidation estimates may condition barrier behavior; no multi-exchange claim is made.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "normalized_hyperliquid_clusters",
+            "market_price"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-01",
+        "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "cluster_distance=(cluster_price-market_price)/market_price",
+        "side_mass_ratio=short_mass_near/long_mass_near when defined"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "HYPERLIQUID_PUBLIC_STATE"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Distance and observed mass of liquidation estimates may condition barrier behavior; no multi-exchange claim is made."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "preserved_legacy_test",
+        "audit_version": "heatmap-historical-preservation-v0.1",
+        "artifact": "auditorias_motor/heatmap_historical_cases_v0_1.json",
+        "recommendations": 107,
+        "observations_available": 104,
+        "linked_closed_resolved_operations": 24,
+        "minimum_originally_planned": 30
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-DATA-FRESHNESS-001",
+      "version": "0.1",
+      "name": "Pre-trade data freshness gate",
+      "family_id": "FAMILY-DATA-QUALITY",
+      "role": "blocking",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "This gate protects validity and has no directional hypothesis.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "provider_timestamps",
+            "receive_timestamps"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-DATA-FRESHNESS-001-FORMULA-01",
+        "LIB-CAND-DATA-FRESHNESS-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "age_ms=analysis_at-provider_or_receive_timestamp",
+        "fresh=age_ms<=source_and_horizon_specific_limit"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_PHASE1_CONTRACT",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This gate protects validity and has no directional hypothesis."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-CANDLE-INTEGRITY-001",
+      "version": "0.1",
+      "name": "Closed-candle integrity gate",
+      "family_id": "FAMILY-DATA-QUALITY",
+      "role": "blocking",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "This gate blocks dependent rules when candle history is not complete and has no directional hypothesis.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "timestamped_closed_klines"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-01",
+        "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "missing_count=expected_intervals-observed_unique_intervals",
+        "duplicate_count=observations-unique_intervals"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_PHASE1_CONTRACT",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This gate blocks dependent rules when candle history is not complete and has no directional hypothesis."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-CROSS-VENUE-DIVERGENCE-001",
+      "version": "0.1",
+      "name": "Synchronized cross-venue price divergence gate",
+      "family_id": "FAMILY-DATA-QUALITY",
+      "role": "blocking",
+      "lifecycle_status": "data_blocked",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "This gate detects a potentially anomalous execution-venue price and has no directional hypothesis.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "synchronized_cross_venue_prices"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-CROSS-VENUE-DIVERGENCE-001-FORMULA-01"
+      ],
+      "deterministic_formulas": [
+        "deviation=abs(exchange_price-median_synced_prices)/median_synced_prices"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_PHASE1_CONTRACT"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "This gate detects a potentially anomalous execution-venue price and has no directional hypothesis."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-SPREAD-EXECUTION-001",
+      "version": "0.1",
+      "name": "Quoted spread execution state",
+      "family_id": "FAMILY-EXECUTION",
+      "role": "economic",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Spread affects executability and cost, not physical market direction.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "best_bid",
+            "best_ask"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-SPREAD-EXECUTION-001-FORMULA-01",
+        "LIB-CAND-SPREAD-EXECUTION-001-FORMULA-02"
+      ],
+      "deterministic_formulas": [
+        "mid=(ask+bid)/2",
+        "spread_fraction=(ask-bid)/mid"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Spread affects executability and cost, not physical market direction."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    },
+    {
+      "rule_id": "LIB-CAND-DEPTH-COVERAGE-001",
+      "version": "0.1",
+      "name": "Order-size depth coverage",
+      "family_id": "FAMILY-EXECUTION",
+      "role": "economic",
+      "lifecycle_status": "proposed",
+      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "objective": "Visible depth coverage affects executability and expected slippage, not physical market direction.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "names": [
+            "timestamped_depth_snapshot",
+            "planned_order_notional"
+          ],
+          "provider": "must_be_approved_before_implementation",
+          "unit_policy": "dimensionless_or_within_pair_normalized"
+        }
+      ],
+      "formula_ids": [
+        "LIB-CAND-DEPTH-COVERAGE-001-FORMULA-01"
+      ],
+      "deterministic_formulas": [
+        "depth_coverage=available_notional_within_band/order_notional"
+      ],
+      "probability_integration_formula": "none_until_implemented_and_approved",
+      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "activation_conditions": [
+        "all declared inputs complete, fresh and pre-trade",
+        "formula valid for the selected pair and horizon"
+      ],
+      "non_application_conditions": [
+        "missing, stale, future, gapped or semantically incompatible data"
+      ],
+      "missing_data_behavior": "not_evaluated",
+      "evidence": {
+        "source_ids": [
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Visible depth coverage affects executability and expected slippage, not physical market direction."
+      },
+      "expected_probability_effect": {
+        "mode": "hypothesis_not_active",
+        "tp": "to_be_estimated",
+        "sl": "to_be_estimated",
+        "expiry": "to_be_estimated"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "declare family and test family ablation"
+      },
+      "parameters": [
+        {
+          "name": "all_thresholds_and_effect_sizes",
+          "origin": "not_assigned",
+          "status": "must_be_preregistered_then_estimated"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "raw_inputs",
+          "normalized_signal",
+          "activation_status",
+          "formula_branch"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": true,
+        "requires_family_ablation": true
+      },
+      "learning_contract": {
+        "outcomes": [
+          "TP_FIRST",
+          "SL_FIRST",
+          "EXPIRY"
+        ],
+        "segment_by": [
+          "pair",
+          "side",
+          "horizon",
+          "regime"
+        ],
+        "may_self_modify_production": false
+      },
+      "historical_evidence": {
+        "status": "not_evaluated"
+      },
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+    }
+  ],
+  "summary": {
+    "rules": 38,
+    "active_baseline": 5,
+    "active_predictive": 11,
+    "candidate_or_blocked": 22
+  },
+  "catalog_sha256": "f84951292caa89ae92adcff4dbb3680b1ebf70d636f35a3256bc0a61416d576f"
+}

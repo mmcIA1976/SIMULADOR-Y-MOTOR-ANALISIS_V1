@@ -14,6 +14,10 @@ from prospective_validation import (
     load_frozen_candidate,
     prospective_validation_enabled,
 )
+from m6_predictive_rules import (
+    ACTIVE_EVIDENCE_FAMILIES,
+    ACTIVE_PREDICTIVE_RULE_IDS,
+)
 
 
 ANALYSIS_AT = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
@@ -304,6 +308,41 @@ class ProspectiveValidationTests(unittest.TestCase):
                 "M4-RULE-QUOTED-SPREAD-001"
             ]["probability_effect"],
             "separate_economic_layer",
+        )
+        for rule_id in ACTIVE_PREDICTIVE_RULE_IDS:
+            effect = result["m5_rule_effects"][rule_id]
+            self.assertIn("ablation_probability_delta", effect)
+            self.assertIn(
+                "ablation_probabilities_without_rule",
+                effect,
+            )
+            self.assertAlmostEqual(
+                sum(
+                    effect[
+                        "ablation_probabilities_without_rule"
+                    ].values()
+                ),
+                1.0,
+            )
+            self.assertIn("family_ablation", effect)
+        self.assertEqual(
+            set(
+                result["m6_result"][
+                    "evidence_family_ablation"
+                ]
+            ),
+            set(ACTIVE_EVIDENCE_FAMILIES),
+        )
+        observations = result["observational_rule_traces"]
+        self.assertEqual(observations["status"], "evaluated_shadow")
+        self.assertEqual(len(observations["traces"]), 6)
+        self.assertEqual(observations["evaluated_rule_count"], 6)
+        self.assertTrue(
+            all(
+                trace["probability_effect"]
+                == "none_shadow_observation"
+                for trace in observations["traces"]
+            )
         )
 
     def test_environment_kill_switch_is_explicit(self):

@@ -52,6 +52,10 @@ def _analysis_stamp(
 
 
 def _probability_label(value: float) -> str:
+    if 0.0 < value < 0.001:
+        return "<0.1%"
+    if 0.999 < value < 1.0:
+        return ">99.9%"
     return f"{value * 100:.1f}%"
 
 
@@ -345,9 +349,9 @@ def analyze_trade(
         "owner_activation": OWNER_ACTIVATION,
         "production_effect": "served",
         "legacy_engine_executed": False,
-        "tp_probability": round(probabilities["tp"], 6),
-        "sl_probability": round(probabilities["sl"], 6),
-        "range_probability": round(probabilities["range"], 6),
+        "tp_probability": probabilities["tp"],
+        "sl_probability": probabilities["sl"],
+        "range_probability": probabilities["range"],
         "probability_ranges": probability_ranges,
         "risk_level": f"{probabilities['sl'] * 100:.1f}% SL",
         "setup_grade": "no aplicable",

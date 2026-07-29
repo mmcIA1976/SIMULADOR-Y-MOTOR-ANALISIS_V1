@@ -719,7 +719,16 @@ function percent(value) {
   if (!Number.isFinite(value)) {
     return "--";
   }
-  return `${Math.round(value * 100)}%`;
+  if (value > 0 && value < 0.001) {
+    return "<0.1%";
+  }
+  if (value < 1 && value > 0.999) {
+    return ">99.9%";
+  }
+  const percentage = value * 100;
+  return Number.isInteger(percentage)
+    ? `${percentage.toFixed(0)}%`
+    : `${percentage.toFixed(1)}%`;
 }
 
 function escapeHtml(value) {
@@ -745,7 +754,14 @@ function clampPercentValue(value) {
 }
 
 function probabilityLabel(recommendation, key, fallbackKey) {
-  return recommendation?.probability_ranges?.[key]?.label || (recommendation ? percent(Number(recommendation[fallbackKey])) : "--");
+  if (!recommendation) {
+    return "--";
+  }
+  const rangeValue = recommendation?.probability_ranges?.[key]?.low;
+  const value = rangeValue === null || rangeValue === undefined
+    ? recommendation[fallbackKey]
+    : rangeValue;
+  return value === null || value === undefined ? "--" : percent(Number(value));
 }
 
 function timeHorizonLabel(value) {
@@ -1703,9 +1719,9 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   elements.analysisHeadline.textContent = isTpSlProbabilityEngine
     ? `Motor probabilístico TP/SL · SL ${percent(analysis.sl_probability)}`
     : `Setup ${analysis.setup_grade} · Riesgo ${analysis.risk_level}`;
-  elements.tpProbability.textContent = analysis.probability_ranges?.tp?.label || percent(analysis.tp_probability);
-  elements.slProbability.textContent = analysis.probability_ranges?.sl?.label || percent(analysis.sl_probability);
-  elements.rangeProbability.textContent = analysis.probability_ranges?.range?.label || percent(analysis.range_probability);
+  elements.tpProbability.textContent = probabilityLabel(analysis, "tp", "tp_probability");
+  elements.slProbability.textContent = probabilityLabel(analysis, "sl", "sl_probability");
+  elements.rangeProbability.textContent = probabilityLabel(analysis, "range", "range_probability");
   const evLabel = analysis.expected_value ? ` · EV ${analysis.expected_value.label}` : "";
   const regimeLabel = analysis.market_regime ? ` · ${String(analysis.market_regime.name).replaceAll("_", " ")}` : "";
   elements.analysisDecision.textContent = isTpSlProbabilityEngine
@@ -2738,9 +2754,12 @@ function contestOperationOutcome(operation) {
   return `${reason}${Number.isFinite(pnl) ? ` · ${money(pnl)}` : ""}`;
 }
 
-function contestAnalysisProbability(operation) {
-  const value = Number(operation.recommendation_tp_probability);
-  return Number.isFinite(value) ? percent(value) : "--";
+function contestAnalysisProbabilities(operation) {
+  const probability = (cause) => {
+    const raw = operation[`recommendation_${cause}_probability`];
+    return raw === null || raw === undefined ? "--" : percent(Number(raw));
+  };
+  return `TP ${probability("tp")} · SL ${probability("sl")} · sin toque ${probability("range")}`;
 }
 
 function renderContestOperationModalContent(operation, row) {
@@ -2768,8 +2787,8 @@ function renderContestOperationModalContent(operation, row) {
       <b class="${resultClass}">${escapeHtml(contestOperationOutcome(operation))}</b>
     </header>
     <section class="contest-operation-probability">
-      <span>Probabilidad previa del analisis</span>
-      <strong>${contestAnalysisProbability(operation)}</strong>
+      <span>Probabilidades previas del analisis</span>
+      <strong>${contestAnalysisProbabilities(operation)}</strong>
     </section>
     <div class="contest-operation-grid">
       <article><span>${escapeHtml(startLabel)}</span><strong>${escapeHtml(formatContestDateTime(operation.triggered_at || operation.created_at))}</strong></article>

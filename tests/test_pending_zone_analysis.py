@@ -10,6 +10,7 @@ from analysis_engine import (
 )
 from app import (
     build_learning_conclusion,
+    build_learning_pattern_text,
     build_structured_learning_evaluation,
     group_liquidation_cases,
     group_pending_zone_cases,
@@ -422,6 +423,106 @@ class PendingZoneLearningTests(unittest.TestCase):
 
         self.assertTrue(learning_summary_needs_refresh(old_summary))
         self.assertFalse(learning_summary_needs_refresh(new_summary))
+
+    def test_new_m6_learning_pattern_uses_traced_probability_inputs(self):
+        rule_ids = (
+            "M4-RULE-PATH-STRUCTURE-001",
+            "M4-RULE-PRIOR-EXTREMA-001",
+            "M4-RULE-VOLATILITY-RANK-001",
+            "M4-RULE-MTF-HIERARCHY-001",
+            "M4-RULE-CONTINUOUS-REGIME-001",
+            "M4-RULE-AGGRESSOR-IMBALANCE-001",
+            "M4-RULE-OPEN-INTEREST-CHANGE-001",
+            "M4-RULE-PRICE-OI-STATE-001",
+            "M4-RULE-SPOT-FUTURES-BASIS-001",
+            "M4-RULE-MARK-INDEX-PREMIUM-001",
+            "M4-RULE-FUNDING-STATE-001",
+        )
+        effects = {
+            rule_id: {
+                "rule_status": "evaluated",
+                "probability_effect": (
+                    "fitted_competing_risk_covariate"
+                    if index in {1, 2, 3}
+                    else "provisional_rule_contribution"
+                ),
+                "tp_probability_delta": (
+                    -0.0108 if index == 0
+                    else 0.0103 if index == 7
+                    else None
+                ),
+            }
+            for index, rule_id in enumerate(rule_ids)
+        }
+        operation = {
+            "time_horizon": "intraday_wide",
+            "recommendation_engine_version": (
+                "M6-ACTIVE-PREDICTIVE-RULES-v0.4"
+            ),
+            "recommendation_tp_probability": 0.485562,
+            "recommendation_sl_probability": 0.461885,
+            "recommendation_range_probability": 0.052553,
+            "recommendation_snapshot_json": json.dumps(
+                {
+                    "new_engine_only": True,
+                    "time_horizon": "intraday_wide",
+                    "evaluation_horizon_seconds": 86400,
+                    "risk_reward_ratio": 0.779594,
+                    "availability": {
+                        "fibonacci": False,
+                        "liquidation_heatmap": False,
+                    },
+                    "feature_snapshot": {
+                        "values": {
+                            "directional_path_efficiency_h": -0.190074,
+                            "directional_path_efficiency_2h": -0.085731,
+                            "directional_path_efficiency_4h": 0.008297,
+                            "volatility_percentile_60": 0.65,
+                            "target_extreme_between_entry_and_tp": 0.0,
+                        }
+                    },
+                    "m5_rule_effects": effects,
+                }
+            ),
+        }
+
+        pattern = build_learning_pattern_text(operation)
+
+        self.assertIn("probabilidades previas TP 48.56%", pattern)
+        self.assertIn("SL 46.19%", pattern)
+        self.assertIn("H -0.1901", pattern)
+        self.assertIn("percentil de volatilidad 65.0%", pattern)
+        self.assertIn("11 reglas predictivas evaluadas", pattern)
+        self.assertIn("estructura H -1.08 pp TP", pattern)
+        self.assertIn("relacion precio/OI +1.03 pp TP", pattern)
+        self.assertIn("Fibonacci, mapa de liquidaciones no participaron", pattern)
+        self.assertNotIn("rating tecnico no disponible", pattern)
+        self.assertNotIn("--/100", pattern)
+        self.assertNotIn(" n/d", pattern)
+
+        operation.update(
+            {
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "final_pnl": 18.98,
+                "close_reason": "take_profit",
+            }
+        )
+        conclusion = build_learning_conclusion(operation)["summary"]
+        self.assertIn("queda registrada como caso ganador", conclusion)
+        self.assertIn("no valida automaticamente todas las reglas", conclusion)
+        self.assertNotIn(
+            "refuerza las condiciones del analisis previo",
+            conclusion,
+        )
+
+    def test_incomplete_m6_pattern_is_marked_for_refresh(self):
+        old_m6_summary = (
+            "Patron guardado para aprendizaje: horizonte intraday_wide, "
+            "rating tecnico no disponible --/100, regimen no disponible."
+        )
+
+        self.assertTrue(learning_summary_needs_refresh(old_m6_summary))
 
     def test_underweighted_risk_audit_case_and_summary(self):
         risky_evaluation = build_structured_learning_evaluation(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import math
 import os
 import re
 from pathlib import Path
@@ -74,7 +75,21 @@ VALID_TIME_HORIZONS = {"intraday_short", "intraday_wide", "short_swing"}
 TRAINING_RECHARGE_AMOUNT = 1000.0
 STALE_LEARNING_SUMMARY_MARKERS = (
     "este caso debe reforzar esas senales de riesgo",
+    "rating tecnico no disponible --/100",
 )
+NEW_ENGINE_RULE_LABELS = {
+    "M4-RULE-PATH-STRUCTURE-001": "estructura H",
+    "M4-RULE-PRIOR-EXTREMA-001": "extremo previo",
+    "M4-RULE-VOLATILITY-RANK-001": "rango de volatilidad",
+    "M4-RULE-MTF-HIERARCHY-001": "jerarquia multitemporal",
+    "M4-RULE-CONTINUOUS-REGIME-001": "regimen continuo",
+    "M4-RULE-AGGRESSOR-IMBALANCE-001": "desequilibrio taker",
+    "M4-RULE-OPEN-INTEREST-CHANGE-001": "variacion OI",
+    "M4-RULE-PRICE-OI-STATE-001": "relacion precio/OI",
+    "M4-RULE-SPOT-FUTURES-BASIS-001": "basis spot/futuros",
+    "M4-RULE-MARK-INDEX-PREMIUM-001": "prima mark/index",
+    "M4-RULE-FUNDING-STATE-001": "funding",
+}
 
 app = FastAPI(title="Trading Trainer", version=APP_SEMVER)
 logger = logging.getLogger(__name__)
@@ -1063,10 +1078,18 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
             o.learning_summary IS NULL
             OR o.learning_summary = ''
             OR o.learning_summary LIKE ?
+            OR (
+                r.engine_version LIKE ?
+                AND o.learning_summary LIKE ?
+            )
           )
         ORDER BY o.closed_at ASC, o.id ASC
         """,
-        (f"%{STALE_LEARNING_SUMMARY_MARKERS[0]}%",),
+        (
+            f"%{STALE_LEARNING_SUMMARY_MARKERS[0]}%",
+            "M6-ACTIVE-PREDICTIVE-RULES-%",
+            f"%{STALE_LEARNING_SUMMARY_MARKERS[1]}%",
+        ),
     ).fetchall()
     conclusions: list[dict] = []
     for row in rows:
@@ -3629,12 +3652,17 @@ def build_learning_conclusion(operation: dict) -> dict:
                     f"no como refuerzo automatico de todas las condiciones del analisis. {pattern_text}"
                 ),
             }
+        success_interpretation = (
+            "Esta operacion queda registrada como caso ganador, pero no valida automaticamente "
+            "todas las reglas: cada contribucion se evaluara por separado y de forma agregada. "
+            if snapshot.get("new_engine_only") or snapshot.get("feature_snapshot")
+            else "Esta operacion refuerza las condiciones del analisis previo como caso ganador. "
+        )
         return {
             "outcome": "plan_success",
             "summary": (
                 f"Aprendizaje: el plan de {symbol} en {side} funciono y alcanzo TAKE PROFIT. "
-                f"Resultado: {pnl:.2f} USDT. Esta operacion refuerza las condiciones del analisis previo como caso ganador. "
-                f"{pattern_text}"
+                f"Resultado: {pnl:.2f} USDT. {success_interpretation}{pattern_text}"
             ),
         }
     if close_reason == "stop_loss":
@@ -3724,6 +3752,8 @@ def build_learning_pattern_text(operation: dict) -> str:
         snapshot = json.loads(raw)
     except json.JSONDecodeError:
         return "Patron guardado: snapshot tecnico no legible."
+    if snapshot.get("new_engine_only") or snapshot.get("feature_snapshot"):
+        return build_new_engine_learning_pattern_text(operation, snapshot)
     timeframes = snapshot.get("analysis_timeframes") or {}
     technical = snapshot.get("technical_rating") or {}
     regime = snapshot.get("market_regime") or {}
@@ -3751,6 +3781,126 @@ def build_learning_pattern_text(operation: dict) -> str:
             f"ajuste zona {zone_probability.get('probability_adjustment', 'n/d')}",
         ])
     return f"Patron guardado para aprendizaje: {', '.join(pieces)}."
+
+
+def build_new_engine_learning_pattern_text(
+    operation: dict,
+    snapshot: dict,
+) -> str:
+    features = (snapshot.get("feature_snapshot") or {}).get("values") or {}
+    effects = snapshot.get("m5_rule_effects") or {}
+    availability = snapshot.get("availability") or {}
+
+    def numeric(value) -> float | None:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        return number if math.isfinite(number) else None
+
+    def number_text(value, digits: int = 4, *, signed: bool = False) -> str:
+        number = numeric(value)
+        if number is None:
+            return "no registrado"
+        sign_prefix = "+" if signed and number > 0 else ""
+        return f"{sign_prefix}{number:.{digits}f}"
+
+    def probability_text(value) -> str:
+        number = numeric(value)
+        return f"{number * 100:.2f}%" if number is not None else "no registrada"
+
+    engine_version = (
+        operation.get("recommendation_engine_version")
+        or (snapshot.get("source") or {}).get("probability_model")
+        or "M6"
+    )
+    horizon = (
+        operation.get("time_horizon")
+        or snapshot.get("time_horizon")
+        or "sin definir"
+    )
+    horizon_seconds = numeric(snapshot.get("evaluation_horizon_seconds"))
+    horizon_text = (
+        f"{horizon_seconds / 3600:.1f} h"
+        if horizon_seconds is not None
+        else "duracion no registrada"
+    )
+    tp_probability = operation.get("recommendation_tp_probability")
+    sl_probability = operation.get("recommendation_sl_probability")
+    range_probability = operation.get("recommendation_range_probability")
+
+    predictive_effects = {
+        rule_id: effect
+        for rule_id, effect in effects.items()
+        if isinstance(effect, dict)
+        and effect.get("rule_status") == "evaluated"
+        and effect.get("probability_effect")
+        in {
+            "fitted_competing_risk_covariate",
+            "provisional_rule_contribution",
+        }
+    }
+    provisional_impacts = []
+    for rule_id, effect in predictive_effects.items():
+        delta = numeric(effect.get("tp_probability_delta"))
+        if delta is None:
+            continue
+        provisional_impacts.append(
+            (
+                abs(delta),
+                (
+                    f"{NEW_ENGINE_RULE_LABELS.get(rule_id, rule_id)} "
+                    f"{delta * 100:+.2f} pp TP"
+                ),
+            )
+        )
+    provisional_impacts.sort(reverse=True)
+    impact_text = (
+        ", ".join(value for _, value in provisional_impacts[:5])
+        if provisional_impacts
+        else "sin ajustes provisionales registrados"
+    )
+    target_extreme = numeric(
+        features.get("target_extreme_between_entry_and_tp")
+    )
+    target_extreme_text = (
+        "si" if target_extreme == 1.0
+        else "no" if target_extreme == 0.0
+        else "no registrado"
+    )
+    volatility = numeric(features.get("volatility_percentile_60"))
+    volatility_text = (
+        f"{volatility * 100:.1f}%"
+        if volatility is not None
+        else "no registrado"
+    )
+    omitted_sources = []
+    if not availability.get("fibonacci"):
+        omitted_sources.append("Fibonacci")
+    if not availability.get("liquidation_heatmap"):
+        omitted_sources.append("mapa de liquidaciones")
+    omitted_text = (
+        ", ".join(omitted_sources) + " no participaron"
+        if omitted_sources
+        else "sin fuentes complementarias omitidas"
+    )
+    return (
+        "Patron M6 guardado para aprendizaje: "
+        f"motor {engine_version}, horizonte {horizon} ({horizon_text}), "
+        f"probabilidades previas TP {probability_text(tp_probability)}, "
+        f"SL {probability_text(sl_probability)}, "
+        f"sin toque {probability_text(range_probability)}, "
+        f"RR {number_text(snapshot.get('risk_reward_ratio'), 3)}, "
+        "recorrido direccional "
+        f"H {number_text(features.get('directional_path_efficiency_h'), signed=True)}, "
+        f"2H {number_text(features.get('directional_path_efficiency_2h'), signed=True)}, "
+        f"4H {number_text(features.get('directional_path_efficiency_4h'), signed=True)}, "
+        f"percentil de volatilidad {volatility_text}, "
+        f"extremo previo entre entrada y TP {target_extreme_text}, "
+        f"{len(predictive_effects)} reglas predictivas evaluadas. "
+        f"Mayores ajustes registrados: {impact_text}. "
+        f"Fuentes complementarias: {omitted_text}."
+    )
 
 
 def build_observation_result(db, operation: dict) -> dict:

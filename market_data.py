@@ -34,6 +34,10 @@ BINANCE_FUNDING_HISTORY_URL = "https://fapi.binance.com/fapi/v1/fundingRate?symb
 BINANCE_GLOBAL_LONG_SHORT_URL = (
     "https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol={symbol}&period={period}&limit=1"
 )
+BINANCE_GLOBAL_LONG_SHORT_HISTORY_URL = (
+    "https://fapi.binance.com/futures/data/globalLongShortAccountRatio?"
+    "symbol={symbol}&period={period}&limit={limit}"
+)
 BINANCE_TAKER_LONG_SHORT_URL = (
     "https://fapi.binance.com/futures/data/takerlongshortRatio?symbol={symbol}&period={period}&limit=1"
 )
@@ -53,7 +57,9 @@ COINGECKO_MARKETS_URL = (
     "&price_change_percentage=1h,24h,7d"
 )
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
-ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json"
+ALTERNATIVE_FEAR_GREED_URL = (
+    "https://api.alternative.me/fng/?limit={limit}&format=json"
+)
 _preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
 _futures_backoff_until_ms = 0
 _price_cache: dict[str, dict] = {}
@@ -280,13 +286,19 @@ def get_depth(symbol: str, limit: int = 20) -> dict:
         allowed_limits,
         key=lambda value: abs(value - min(max(int(limit), 5), 1000)),
     )
+    received_at_ms = _now_ms()
     payload = get_futures_json_optional(
         BINANCE_USDM_DEPTH_PATH.format(
             symbol=safe_symbol,
             limit=selected_limit,
         )
     )
-    return payload if isinstance(payload, dict) else {"bids": [], "asks": []}
+    if not isinstance(payload, dict):
+        return {"bids": [], "asks": []}
+    return {
+        **payload,
+        "receivedAt": max(received_at_ms, _now_ms()),
+    }
 
 
 def get_futures_book_ticker(symbol: str) -> dict | None:
@@ -430,6 +442,28 @@ def get_global_long_short_ratio(symbol: str, period: str = "5m") -> dict | None:
     return None
 
 
+def get_global_long_short_ratio_history(
+    symbol: str,
+    period: str = "5m",
+    limit: int = 30,
+    start_time_ms: int | None = None,
+    end_time_ms: int | None = None,
+) -> list[dict]:
+    safe_symbol = urllib.parse.quote(symbol.upper())
+    capped_limit = min(max(int(limit), 1), 500)
+    url = BINANCE_GLOBAL_LONG_SHORT_HISTORY_URL.format(
+        symbol=safe_symbol,
+        period=period,
+        limit=capped_limit,
+    )
+    if start_time_ms is not None:
+        url = f"{url}&startTime={int(start_time_ms)}"
+    if end_time_ms is not None:
+        url = f"{url}&endTime={int(end_time_ms)}"
+    data = get_json_optional(url)
+    return data if isinstance(data, list) else []
+
+
 def get_taker_long_short_ratio(symbol: str, period: str = "5m") -> dict | None:
     safe_symbol = urllib.parse.quote(symbol.upper())
     data = get_json_optional(BINANCE_TAKER_LONG_SHORT_URL.format(symbol=safe_symbol, period=period))
@@ -479,6 +513,7 @@ def get_top_crypto_assets(limit: int = 100) -> list[dict]:
                 "price_change_percentage_1h_in_currency": item.get("price_change_percentage_1h_in_currency"),
                 "price_change_percentage_24h_in_currency": item.get("price_change_percentage_24h_in_currency"),
                 "price_change_percentage_7d_in_currency": item.get("price_change_percentage_7d_in_currency"),
+                "last_updated": item.get("last_updated"),
                 "binance_usdt_symbol": f"{symbol}USDT",
             }
         )
@@ -491,10 +526,16 @@ def get_global_crypto_market() -> dict | None:
 
 
 def get_fear_greed_index() -> dict | None:
-    data = get_json_optional(ALTERNATIVE_FEAR_GREED_URL)
+    values = get_fear_greed_history(1)
+    return values[0] if values else None
+
+
+def get_fear_greed_history(limit: int = 61) -> list[dict]:
+    capped_limit = min(max(int(limit), 1), 1000)
+    data = get_json_optional(
+        ALTERNATIVE_FEAR_GREED_URL.format(limit=capped_limit)
+    )
     if not isinstance(data, dict):
-        return None
+        return []
     values = data.get("data")
-    if isinstance(values, list) and values:
-        return values[0]
-    return None
+    return values if isinstance(values, list) else []

@@ -3,7 +3,7 @@
   "status": "master_contract_v0_1",
   "purpose": "Auditable rule library for Phase 1 TP/SL/expiry probability.",
   "governance": {
-    "production_changes": "none",
+    "probability_production_changes": "none",
     "new_candidate_weights_authorized": false,
     "learning_may_self_modify_production": false,
     "current_active_predictive_rule_ids": [
@@ -25,6 +25,14 @@
       "M4-RULE-LOG-RETURNS-001",
       "M4-RULE-REALIZED-VOLATILITY-001",
       "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002"
+    ],
+    "active_economic_rule_ids": [
+      "M4-RULE-QUOTED-SPREAD-001",
+      "M4-RULE-DEPTH-SWEEP-001"
+    ],
+    "data_quality_gate_ids": [
+      "LIB-CAND-DATA-FRESHNESS-001",
+      "LIB-CAND-CANDLE-INTEGRITY-001"
     ]
   },
   "sources": {
@@ -62,6 +70,11 @@
       "title": "Wilder - New Concepts in Technical Trading Systems",
       "kind": "manual_definition",
       "year": 1978
+    },
+    "BOLLINGER_2001": {
+      "title": "Bollinger on Bollinger Bands",
+      "kind": "manual_definition",
+      "year": 2001
     },
     "MOSKOWITZ_OOI_PEDERSEN_2012": {
       "title": "Time Series Momentum",
@@ -122,6 +135,11 @@
       "title": "Hyperliquid public clearinghouse state",
       "kind": "official_data_definition",
       "url": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+    },
+    "HYPERPERPS_PUBLIC_HEATMAP": {
+      "title": "HyperPerps public Hyperliquid liquidation heatmap",
+      "kind": "third_party_public_data_definition",
+      "url": "https://trade.hyperperps.app/whales"
     }
   },
   "rules": [
@@ -2401,6 +2419,237 @@
       "refutation_or_retirement": "Suspend or restrict when temporal out-of-sample evidence shows no stable incremental value after family controls."
     },
     {
+      "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+      "version": "0.2",
+      "name": "Spread cotizado en el instante de llegada",
+      "family_id": "FAMILY-EXECUTION",
+      "role": "economic",
+      "lifecycle_status": "active_economic",
+      "origin": "current_execution_economic_runtime",
+      "objective": "Measure current executability and entry cost without changing physical TP, SL or expiry probabilities.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": [
+            "best_bid>0",
+            "best_ask>=best_bid",
+            "receive_time"
+          ],
+          "provider": "binance_usdm_book_ticker",
+          "unit_policy": [
+            "symbol must belong to the six-pair scope",
+            "timestamps and freshness follow the referenced M3 contracts",
+            "price and money use quote asset; quantity uses base asset",
+            "rates and fractions are dimensionless unless explicitly stated"
+          ]
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-20-01",
+        "M5-FORMULA-20-02",
+        "M5-FORMULA-20-03"
+      ],
+      "deterministic_formulas": [
+        "mid=(best_bid+best_ask)/2",
+        "spread_quote=best_ask-best_bid",
+        "spread_fraction_mid=spread_quote/mid"
+      ],
+      "probability_integration_formula": "none; result belongs to the separate execution-economic layer",
+      "normalization": "Quote prices and costs stay in quote asset; base quantity stays in base asset; fractions are dimensionless.",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Libro cruzado, dato no positivo o timestamp ausente."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_PHASE1_CONTRACT",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Current spread and visible-depth sweep measure execution conditions, not future market direction."
+      },
+      "expected_probability_effect": {
+        "mode": "execution_economic_only",
+        "tp": "none",
+        "sl": "none",
+        "expiry": "none"
+      },
+      "interactions": {
+        "parent_rule_ids": [],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "implementation shortfall from midpoint already contains half-spread; spread must not be added again"
+      },
+      "parameters": [
+        {
+          "name": "realtime_snapshot_max_age_ms",
+          "value": 30000,
+          "origin": "project_phase1_data_contract",
+          "status": "active_deterministic_policy"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "rule id and version",
+          "input values and units",
+          "provider/receive timestamps when market data is used",
+          "formula branch, output and availability status"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [],
+        "segment_by": [
+          "pair",
+          "side",
+          "planned_notional"
+        ],
+        "may_self_modify_production": false
+      },
+      "superseded_candidate_rule_ids": [
+        "LIB-CAND-SPREAD-EXECUTION-001"
+      ],
+      "historical_evidence": {
+        "status": "not_a_predictive_rule"
+      },
+      "refutation_or_retirement": "Replace only with a more complete execution model that preserves snapshot timestamps, partial coverage and no double counting."
+    },
+    {
+      "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+      "version": "0.2",
+      "name": "Barrido visible e implementation shortfall",
+      "family_id": "FAMILY-EXECUTION",
+      "role": "economic",
+      "lifecycle_status": "active_economic",
+      "origin": "current_execution_economic_runtime",
+      "objective": "Measure current executability and entry cost without changing physical TP, SL or expiry probabilities.",
+      "applicable_pairs": [
+        "all_application_pairs"
+      ],
+      "applicable_horizons": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ],
+      "inputs": [
+        {
+          "contract": [
+            "side buy|sell",
+            "base_quantity>0",
+            "bids descendentes",
+            "asks ascendentes",
+            "arrival midpoint"
+          ],
+          "provider": "binance_usdm_visible_depth_snapshot",
+          "unit_policy": [
+            "symbol must belong to the six-pair scope",
+            "timestamps and freshness follow the referenced M3 contracts",
+            "price and money use quote asset; quantity uses base asset",
+            "rates and fractions are dimensionless unless explicitly stated"
+          ]
+        }
+      ],
+      "formula_ids": [
+        "M5-FORMULA-21-01",
+        "M5-FORMULA-21-02",
+        "M5-FORMULA-21-03",
+        "M5-FORMULA-21-04",
+        "M5-FORMULA-21-05",
+        "M5-FORMULA-21-06",
+        "M5-FORMULA-21-07"
+      ],
+      "deterministic_formulas": [
+        "buy consume asks; sell consume bids",
+        "VWAP_filled=sum(price_i*filled_qty_i)/filled_qty",
+        "D=+1 buy, -1 sell",
+        "IS_filled_quote=D*(sum(price_i*filled_qty_i)-arrival_mid*filled_qty)",
+        "IS_filled_fraction=IS_filled_quote/(arrival_mid*filled_qty)",
+        "complete_VWAP=VWAP_filled iff filled_qty=requested_qty",
+        "fill_ratio=filled_qty/requested_qty"
+      ],
+      "probability_integration_formula": "none; result belongs to the separate execution-economic layer",
+      "normalization": "Quote prices and costs stay in quote asset; base quantity stays in base asset; fractions are dimensionless.",
+      "activation_conditions": [
+        "all declared inputs are present and valid",
+        "the operator belongs to the applicable execution, exposure or economic branch"
+      ],
+      "non_application_conditions": [
+        "Fill ratio menor que uno bloquea el coste completo.",
+        "Orden o niveles invalidos bloquean."
+      ],
+      "missing_data_behavior": "Block the unavailable result and expose the missing component; do not use a neutral value or universal constant.",
+      "evidence": {
+        "source_ids": [
+          "PROJECT_PHASE1_CONTRACT",
+          "BINANCE_USDM_API"
+        ],
+        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
+        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
+        "project_hypothesis": "Current spread and visible-depth sweep measure execution conditions, not future market direction."
+      },
+      "expected_probability_effect": {
+        "mode": "execution_economic_only",
+        "tp": "none",
+        "sl": "none",
+        "expiry": "none"
+      },
+      "interactions": {
+        "parent_rule_ids": [
+          "M4-RULE-QUOTED-SPREAD-001"
+        ],
+        "shared_evidence_rule_ids": [],
+        "double_counting_control": "implementation shortfall from midpoint already contains half-spread; spread must not be added again"
+      },
+      "parameters": [
+        {
+          "name": "realtime_snapshot_max_age_ms",
+          "value": 30000,
+          "origin": "project_phase1_data_contract",
+          "status": "active_deterministic_policy"
+        }
+      ],
+      "trace_contract": {
+        "required_outputs": [
+          "rule id and version",
+          "input values and units",
+          "provider/receive timestamps when market data is used",
+          "formula branch, output and availability status"
+        ],
+        "requires_source_hash": true,
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
+      },
+      "learning_contract": {
+        "outcomes": [],
+        "segment_by": [
+          "pair",
+          "side",
+          "planned_notional"
+        ],
+        "may_self_modify_production": false
+      },
+      "superseded_candidate_rule_ids": [
+        "LIB-CAND-DEPTH-COVERAGE-001"
+      ],
+      "historical_evidence": {
+        "status": "not_a_predictive_rule"
+      },
+      "refutation_or_retirement": "Replace only with a more complete execution model that preserves snapshot timestamps, partial coverage and no double counting."
+    },
+    {
       "rule_id": "LIB-CAND-EMA-TREND-001",
       "version": "0.1",
       "name": "EMA trend state and normalized slope",
@@ -3024,7 +3273,7 @@
       "name": "Cross-crypto breadth state",
       "family_id": "FAMILY-MARKET-CONTEXT",
       "role": "contextual",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Cross-crypto breadth may condition a pair's first-barrier probability after pair-specific controls.",
       "applicable_pairs": [
@@ -3038,19 +3287,24 @@
       "inputs": [
         {
           "names": [
-            "cross_asset_returns"
+            "coingecko_top_100_constituent_ids",
+            "constituent_returns_1h_24h_7d",
+            "constituent_update_timestamps",
+            "plan_side"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "coingecko_coins_markets_top_100",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-BREADTH-001-FORMULA-01",
-        "LIB-CAND-BREADTH-001-FORMULA-02"
+        "LIB-CAND-BREADTH-001-FORMULA-02",
+        "LIB-CAND-BREADTH-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "breadth_h=count(return_i_h>0)/count(valid_return_i_h)",
-        "median_return_h=median(valid_return_i_h)"
+        "U_t=first_100_assets_ordered_by_current_market_cap_desc",
+        "breadth_w=count(return_i_w>0)/count(valid_return_i_w), w in {1h,24h,7d}",
+        "median_return_w=median(valid_return_i_w)"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3114,7 +3368,11 @@
         "may_self_modify_production": false
       },
       "historical_evidence": {
-        "status": "not_evaluated"
+        "status": "legacy_values_preserved_not_comparable",
+        "artifact": "auditorias_motor/market_context_historical_cases_v0_1.json",
+        "artifact_sha256": "d1a49379ae1e5072881a3caa1e1ee67b141b3343affb3110bec5abee3d12f672",
+        "legacy_observations_available": 718,
+        "reuse_policy": "preserve_identity_and_raw_values_only; legacy_snapshot_lacks_full_constituent_universe"
       },
       "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
     },
@@ -3124,7 +3382,7 @@
       "name": "Fibonacci level distance and confluence",
       "family_id": "FAMILY-STRUCTURAL-LEVELS",
       "role": "contextual",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Distance and confluence with reproducible Fibonacci levels may condition barrier behavior; no intrinsic bonus is assumed.",
       "applicable_pairs": [
@@ -3142,17 +3400,23 @@
             "plan",
             "volatility"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "binance_usdm_closed_klines",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-01",
-        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-02"
+        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-02",
+        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-03",
+        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-04",
+        "LIB-CAND-FIBONACCI-DISTANCE-001-FORMULA-05"
       ],
       "deterministic_formulas": [
-        "fib_level_r=swing_low+r*(swing_high-swing_low)",
-        "distance_sigma=(fib_level_r-entry)/sigma_price_h"
+        "swing=last_two_opposing_confirmed_pivots_in_alternating_series",
+        "retracement_r=start+direction*(1-r)*abs(end-start)",
+        "extension_r=start+direction*r*abs(end-start)",
+        "distance_sigma=abs(log(fib_level/plan_price))/sigma_h",
+        "confluence_sigma=abs(log(pivot_price/fib_level))/sigma_h"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3166,6 +3430,7 @@
       "missing_data_behavior": "not_evaluated",
       "evidence": {
         "source_ids": [
+          "BINANCE_USDM_API",
           "TSINASLANIDIS_ET_AL_2022"
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
@@ -3179,7 +3444,9 @@
         "expiry": "to_be_estimated"
       },
       "interactions": {
-        "parent_rule_ids": [],
+        "parent_rule_ids": [
+          "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"
+        ],
         "shared_evidence_rule_ids": [],
         "double_counting_control": "declare family and test family ablation"
       },
@@ -3216,7 +3483,14 @@
         "may_self_modify_production": false
       },
       "historical_evidence": {
-        "status": "not_evaluated"
+        "status": "available_legacy_formula_not_comparable",
+        "legacy_recommendations": 669,
+        "legacy_observations_available": 666,
+        "legacy_linked_operations": 163,
+        "legacy_closed_operations": 154,
+        "artifact": "auditorias_motor/fibonacci_historical_cases_v0_1.json",
+        "artifact_sha256": "05f5e7b73785520c0a31a4a083a4f3d6b09b19e11083bfb6ec23a7386730a2cb",
+        "reuse_policy": "recompute_new_rule_from_pretrade_klines; do_not_reuse_legacy_scores_or_probability_adjustments"
       },
       "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
     },
@@ -3226,7 +3500,7 @@
       "name": "Distance to reproducible structural levels",
       "family_id": "FAMILY-STRUCTURAL-LEVELS",
       "role": "contextual",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "The distance and prominence of prior levels between entry and a barrier may condition first passage.",
       "applicable_pairs": [
@@ -3244,17 +3518,21 @@
             "plan",
             "volatility"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "binance_usdm_closed_klines",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-01",
-        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-02"
+        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-02",
+        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-03",
+        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001-FORMULA-04"
       ],
       "deterministic_formulas": [
-        "level_distance_sigma=(nearest_level-entry)/sigma_price_h",
-        "level_prominence=declared_detector_prominence"
+        "pivot_high_i=unique_max(high[i-3:i+4])",
+        "pivot_low_i=unique_min(low[i-3:i+4])",
+        "prominence_atr=min(left_excursion,right_excursion)/ATR14",
+        "level_distance_sigma=log(level_price/entry)/sigma_h"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3268,6 +3546,7 @@
       "missing_data_behavior": "not_evaluated",
       "evidence": {
         "source_ids": [
+          "BINANCE_USDM_API",
           "OSLER_2000"
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
@@ -3328,7 +3607,7 @@
       "name": "Funding relative to its own history",
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "contextual",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Funding relative to its pair-specific history may be more informative than an absolute funding threshold.",
       "applicable_pairs": [
@@ -3342,19 +3621,23 @@
       "inputs": [
         {
           "names": [
-            "historical_funding_rates"
+            "current_premium_index_funding_rate",
+            "last_60_strictly_prior_settled_funding_rates",
+            "plan_side"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "binance_usdm_premium_index_and_funding_history",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-FUNDING-PERCENTILE-001-FORMULA-01",
-        "LIB-CAND-FUNDING-PERCENTILE-001-FORMULA-02"
+        "LIB-CAND-FUNDING-PERCENTILE-001-FORMULA-02",
+        "LIB-CAND-FUNDING-PERCENTILE-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "funding_percentile=empirical_cdf(last_rate, past_rates)",
-        "funding_robust_z=(last_rate-median)/(1.4826*MAD)"
+        "funding_midrank_60=(count(r_i<current)+0.5*count(r_i=current))/60",
+        "funding_robust_z_60=(current-median(r_i))/(1.4826*MAD(r_i))",
+        "plan_side_funding_cost_rate=side_sign*current_rate"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3432,7 +3715,7 @@
       "name": "Positioning crowding percentile",
       "family_id": "FAMILY-POSITIONING",
       "role": "contextual",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Extreme positioning relative to pair history may condition barrier behavior without identifying future direction alone.",
       "applicable_pairs": [
@@ -3446,17 +3729,23 @@
       "inputs": [
         {
           "names": [
-            "timestamped_long_short_ratios"
+            "current_global_long_short_account_ratio",
+            "60_strictly_prior_contiguous_ratio_periods",
+            "plan_side"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "binance_usdm_global_long_short_account_ratio_history",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
-        "LIB-CAND-CROWDING-PERCENTILE-001-FORMULA-01"
+        "LIB-CAND-CROWDING-PERCENTILE-001-FORMULA-01",
+        "LIB-CAND-CROWDING-PERCENTILE-001-FORMULA-02",
+        "LIB-CAND-CROWDING-PERCENTILE-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "crowding_percentile=empirical_cdf(long_short_ratio, history)"
+        "log_ratio_t=log(long_account_count/short_account_count)",
+        "crowding_midrank_60=(count(log_ratio_i<current)+0.5*count(log_ratio_i=current))/60",
+        "plan_side_crowding_midrank=p_long if side=long else 1-p_long"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3531,7 +3820,7 @@
       "name": "External sentiment percentile",
       "family_id": "FAMILY-MARKET-CONTEXT",
       "role": "contextual",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "External sentiment extremes may have context-dependent incremental value.",
       "applicable_pairs": [
@@ -3545,17 +3834,24 @@
       "inputs": [
         {
           "names": [
-            "fear_greed_history"
+            "current_fear_greed_value",
+            "60_strictly_prior_daily_values",
+            "provider_timestamps",
+            "plan_side"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "alternative_me_fear_greed_history",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
-        "LIB-CAND-SENTIMENT-PERCENTILE-001-FORMULA-01"
+        "LIB-CAND-SENTIMENT-PERCENTILE-001-FORMULA-01",
+        "LIB-CAND-SENTIMENT-PERCENTILE-001-FORMULA-02",
+        "LIB-CAND-SENTIMENT-PERCENTILE-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "sentiment_percentile=empirical_cdf(index_value, available_history)"
+        "sentiment_midrank_60=(count(v_i<current)+0.5*count(v_i=current))/60",
+        "sentiment_robust_z_60=(current-median(v_i))/(1.4826*MAD(v_i))",
+        "plan_side_alignment=side_sign*(current_value-50)/50"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3620,7 +3916,11 @@
         "may_self_modify_production": false
       },
       "historical_evidence": {
-        "status": "not_evaluated"
+        "status": "legacy_values_preserved_reconstruction_required",
+        "artifact": "auditorias_motor/market_context_historical_cases_v0_1.json",
+        "artifact_sha256": "d1a49379ae1e5072881a3caa1e1ee67b141b3343affb3110bec5abee3d12f672",
+        "legacy_observations_available": 874,
+        "reuse_policy": "preserve_identity_and_raw_value; reconstruct_60_day_reference_before_retrospective_comparison"
       },
       "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
     },
@@ -3630,7 +3930,7 @@
       "name": "Volatility-volume compression state",
       "family_id": "FAMILY-VOLATILITY-X-VOLUME",
       "role": "interaction",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Jointly low volatility, band width and relative volume may condition expiry and subsequent barrier hazards.",
       "applicable_pairs": [
@@ -3646,7 +3946,7 @@
           "names": [
             "closed_ohlcv"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "derived_from_traced_closed_klines_and_parent_rules",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
@@ -3656,9 +3956,9 @@
         "LIB-CAND-COMPRESSION-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "atr_rank=empirical_cdf(ATR14/price, history)",
-        "bb_width=(upper_band-lower_band)/middle_band",
-        "compression_vector=(atr_rank,bb_width_rank,relative_volume)"
+        "atr_rank_60=midrank(ATR14_t/close_t,previous_60_horizon_endpoints)",
+        "bb_width_20_2sigma=4*population_std(close_20)/SMA20",
+        "compression_vector=(atr_rank_60,bb_width_midrank_60,relative_volume,volume_midrank_60)"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3673,6 +3973,7 @@
       "evidence": {
         "source_ids": [
           "WILDER_1978",
+          "BOLLINGER_2001",
           "CORSI_2009"
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
@@ -3839,7 +4140,7 @@
       "name": "Flow-volume-price absorption interaction",
       "family_id": "FAMILY-EXECUTED-FLOW-X-PRICE",
       "role": "interaction",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Strong aggressive flow with weak displacement and an adverse wick may condition continuation versus reversal.",
       "applicable_pairs": [
@@ -3856,17 +4157,19 @@
             "closed_ohlcv",
             "timestamped_aggregate_trades"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "derived_from_traced_flow_volume_and_closed_klines",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-ABSORPTION-001-FORMULA-01",
-        "LIB-CAND-ABSORPTION-001-FORMULA-02"
+        "LIB-CAND-ABSORPTION-001-FORMULA-02",
+        "LIB-CAND-ABSORPTION-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "wick_ratio=wick_length/(high-low) when high>low",
-        "absorption_vector=(ATI_H,relative_volume,return/ATR,wick_ratio)"
+        "upper_wick=max(H_H-max(O_H,C_H),0)/(H_H-L_H)",
+        "lower_wick=max(min(O_H,C_H)-L_H,0)/(H_H-L_H)",
+        "absorption_vector=(ATI_H,relative_volume,log(C_H/O_H)/(ATR14/C_H),flow_opposing_wick_ratio)"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3944,7 +4247,7 @@
       "name": "Trend pullback context",
       "family_id": "FAMILY-TREND-X-STRUCTURE-X-FLOW",
       "role": "interaction",
-      "lifecycle_status": "proposed",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "A user-proposed plan aligned with a reproducible pullback context may have different first-barrier behavior.",
       "applicable_pairs": [
@@ -3962,7 +4265,7 @@
             "timestamped_aggregate_trades",
             "plan"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "composition_of_traced_parent_rules",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
@@ -3970,7 +4273,7 @@
         "LIB-CAND-PULLBACK-CONTEXT-001-FORMULA-01"
       ],
       "deterministic_formulas": [
-        "pullback_vector=(ema_state,extension,local_extrema,relative_volume,ATI_H)"
+        "pullback_vector=(side_adjusted_ema50_vs_ema200,side_adjusted_ema50_slope_atr,side_adjusted_extension_atr,relative_volume,volume_midrank_60,side_adjusted_ATI_H,target_path_level_count,adverse_path_level_count)"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -4003,7 +4306,8 @@
           "LIB-CAND-EMA-TREND-001",
           "LIB-CAND-ATR-EXTENSION-001",
           "LIB-CAND-RELATIVE-VOLUME-001",
-          "M4-RULE-AGGRESSOR-IMBALANCE-001"
+          "M4-RULE-AGGRESSOR-IMBALANCE-001",
+          "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"
         ],
         "shared_evidence_rule_ids": [],
         "double_counting_control": "declare family and test family ablation"
@@ -4051,7 +4355,7 @@
       "name": "Observed liquidation-zone distance and mass",
       "family_id": "FAMILY-LIQUIDATION-OBSERVATION",
       "role": "contextual",
-      "lifecycle_status": "historical_evidence_available_data_limited",
+      "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
       "objective": "Distance and observed mass of liquidation estimates may condition barrier behavior; no multi-exchange claim is made.",
       "applicable_pairs": [
@@ -4065,20 +4369,27 @@
       "inputs": [
         {
           "names": [
-            "normalized_hyperliquid_clusters",
-            "market_price"
+            "timestamped_hyperperps_clusters",
+            "provider_sample_size",
+            "provider_cascade_mass",
+            "plan",
+            "horizon_volatility"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "hyperperps_aggregation_of_hyperliquid_public_positions",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-01",
-        "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-02"
+        "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-02",
+        "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-03",
+        "LIB-CAND-LIQUIDATION-ZONE-001-FORMULA-04"
       ],
       "deterministic_formulas": [
-        "cluster_distance=(cluster_price-market_price)/market_price",
-        "side_mass_ratio=short_mass_near/long_mass_near when defined"
+        "distance_from_entry_log_sigma=log(cluster_price/entry)/sigma_h",
+        "path_mass_b=sum(notional_j for clusters_j between entry and barrier_b)",
+        "target_path_mass_fraction=target_path_mass/(target_path_mass+adverse_path_mass)",
+        "distance_to_barrier_abs_log_sigma=abs(log(cluster_price/barrier_price))/sigma_h"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -4092,6 +4403,7 @@
       "missing_data_behavior": "not_evaluated",
       "evidence": {
         "source_ids": [
+          "HYPERPERPS_PUBLIC_HEATMAP",
           "HYPERLIQUID_PUBLIC_STATE"
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
@@ -4148,19 +4460,21 @@
         "recommendations": 107,
         "observations_available": 104,
         "linked_closed_resolved_operations": 24,
-        "minimum_originally_planned": 30
+        "minimum_originally_planned": 30,
+        "artifact_sha256": "243101dbf49d380baa123d085113429d4aaf63451a7b180b80ad61c721f3f7c4",
+        "reuse_policy": "preserve_case_identity_only; do_not_reuse_legacy_map_read_risk_labels_scores_or_probability_adjustments"
       },
       "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
     },
     {
       "rule_id": "LIB-CAND-DATA-FRESHNESS-001",
       "version": "0.1",
-      "name": "Pre-trade data freshness gate",
+      "name": "Pre-trade closed-candle freshness gate",
       "family_id": "FAMILY-DATA-QUALITY",
       "role": "blocking",
-      "lifecycle_status": "proposed",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
-      "objective": "This gate protects validity and has no directional hypothesis.",
+      "lifecycle_status": "active_blocking",
+      "origin": "project_phase1_data_contract",
+      "objective": "Deterministic input-validity gate; it has no directional or first-barrier hypothesis.",
       "applicable_pairs": [
         "all_application_pairs"
       ],
@@ -4172,31 +4486,31 @@
       "inputs": [
         {
           "names": [
-            "provider_timestamps",
-            "receive_timestamps"
+            "timestamped_closed_klines",
+            "analysis_at",
+            "selected_interval"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "binance_usdm_closed_klines",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-DATA-FRESHNESS-001-FORMULA-01",
-        "LIB-CAND-DATA-FRESHNESS-001-FORMULA-02"
+        "LIB-CAND-DATA-FRESHNESS-001-FORMULA-02",
+        "LIB-CAND-DATA-FRESHNESS-001-FORMULA-03"
       ],
       "deterministic_formulas": [
-        "age_ms=analysis_at-provider_or_receive_timestamp",
-        "fresh=age_ms<=source_and_horizon_specific_limit"
+        "age_ms=analysis_at-latest_closed_candle_timestamp",
+        "freshness_limit_ms=selected_interval_ms+60000",
+        "fresh=0<=age_ms<=freshness_limit_ms"
       ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
-      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "probability_integration_formula": "none; invalid input blocks analysis before probability",
+      "normalization": "No statistical normalization. Compare timestamps and candle grid against the selected interval and analysis_at.",
       "activation_conditions": [
-        "all declared inputs complete, fresh and pre-trade",
-        "formula valid for the selected pair and horizon"
+        "run exactly once during pre-trade input assembly"
       ],
-      "non_application_conditions": [
-        "missing, stale, future, gapped or semantically incompatible data"
-      ],
-      "missing_data_behavior": "not_evaluated",
+      "non_application_conditions": [],
+      "missing_data_behavior": "block_analysis_and_record_exact_reason",
       "evidence": {
         "source_ids": [
           "PROJECT_PHASE1_CONTRACT",
@@ -4204,55 +4518,52 @@
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
         "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
-        "project_hypothesis": "This gate protects validity and has no directional hypothesis."
+        "project_hypothesis": "Deterministic input-validity gate; it has no directional or first-barrier hypothesis."
       },
       "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
+        "mode": "blocking_gate_not_predictive",
+        "tp": "none",
+        "sl": "none",
+        "expiry": "none"
       },
       "interactions": {
         "parent_rule_ids": [],
         "shared_evidence_rule_ids": [],
-        "double_counting_control": "declare family and test family ablation"
+        "double_counting_control": "single validation report reused by every dependent rule"
       },
       "parameters": [
         {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
+          "name": "period_release_grace_ms",
+          "value": 60000,
+          "origin": "project_phase1_data_contract",
+          "status": "active_deterministic_policy"
         }
       ],
       "trace_contract": {
         "required_outputs": [
-          "raw_inputs",
-          "normalized_signal",
-          "activation_status",
-          "formula_branch"
+          "latest_closed_candle_ms",
+          "analysis_at_ms",
+          "age_ms",
+          "freshness_limit_ms",
+          "fresh"
         ],
         "requires_source_hash": true,
-        "requires_probability_ablation": true,
-        "requires_family_ablation": true
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
       },
       "learning_contract": {
-        "outcomes": [
-          "TP_FIRST",
-          "SL_FIRST",
-          "EXPIRY"
-        ],
+        "outcomes": [],
         "segment_by": [
           "pair",
-          "side",
           "horizon",
-          "regime"
+          "provider"
         ],
         "may_self_modify_production": false
       },
       "historical_evidence": {
         "status": "not_evaluated"
       },
-      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+      "refutation_or_retirement": "Replace only with a stricter approved data contract; never convert data quality into directional evidence."
     },
     {
       "rule_id": "LIB-CAND-CANDLE-INTEGRITY-001",
@@ -4260,9 +4571,9 @@
       "name": "Closed-candle integrity gate",
       "family_id": "FAMILY-DATA-QUALITY",
       "role": "blocking",
-      "lifecycle_status": "proposed",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
-      "objective": "This gate blocks dependent rules when candle history is not complete and has no directional hypothesis.",
+      "lifecycle_status": "active_blocking",
+      "origin": "project_phase1_data_contract",
+      "objective": "Deterministic input-validity gate; it has no directional or first-barrier hypothesis.",
       "applicable_pairs": [
         "all_application_pairs"
       ],
@@ -4276,28 +4587,29 @@
           "names": [
             "timestamped_closed_klines"
           ],
-          "provider": "must_be_approved_before_implementation",
+          "provider": "binance_usdm_closed_klines",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-01",
-        "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-02"
+        "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-02",
+        "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-03",
+        "LIB-CAND-CANDLE-INTEGRITY-001-FORMULA-04"
       ],
       "deterministic_formulas": [
         "missing_count=expected_intervals-observed_unique_intervals",
-        "duplicate_count=observations-unique_intervals"
+        "duplicate_count=observations-unique_intervals",
+        "gap_count=count(delta_close_time!=selected_interval_ms)",
+        "valid_ohlc=finite_positive_prices and volume>=0 and high>=max(open,close) and low<=min(open,close)"
       ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
-      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
+      "probability_integration_formula": "none; invalid input blocks analysis before probability",
+      "normalization": "No statistical normalization. Compare timestamps and candle grid against the selected interval and analysis_at.",
       "activation_conditions": [
-        "all declared inputs complete, fresh and pre-trade",
-        "formula valid for the selected pair and horizon"
+        "run exactly once during pre-trade input assembly"
       ],
-      "non_application_conditions": [
-        "missing, stale, future, gapped or semantically incompatible data"
-      ],
-      "missing_data_behavior": "not_evaluated",
+      "non_application_conditions": [],
+      "missing_data_behavior": "block_analysis_and_record_exact_reason",
       "evidence": {
         "source_ids": [
           "PROJECT_PHASE1_CONTRACT",
@@ -4305,55 +4617,47 @@
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
         "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
-        "project_hypothesis": "This gate blocks dependent rules when candle history is not complete and has no directional hypothesis."
+        "project_hypothesis": "Deterministic input-validity gate; it has no directional or first-barrier hypothesis."
       },
       "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
+        "mode": "blocking_gate_not_predictive",
+        "tp": "none",
+        "sl": "none",
+        "expiry": "none"
       },
       "interactions": {
         "parent_rule_ids": [],
         "shared_evidence_rule_ids": [],
-        "double_counting_control": "declare family and test family ablation"
+        "double_counting_control": "single validation report reused by every dependent rule"
       },
-      "parameters": [
-        {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
-        }
-      ],
+      "parameters": [],
       "trace_contract": {
         "required_outputs": [
-          "raw_inputs",
-          "normalized_signal",
-          "activation_status",
-          "formula_branch"
+          "required_candle_count",
+          "observed_closed_candle_count",
+          "missing_count",
+          "duplicate_count",
+          "gap_count",
+          "invalid_ohlc_count",
+          "integrity_valid"
         ],
         "requires_source_hash": true,
-        "requires_probability_ablation": true,
-        "requires_family_ablation": true
+        "requires_probability_ablation": false,
+        "requires_family_ablation": false
       },
       "learning_contract": {
-        "outcomes": [
-          "TP_FIRST",
-          "SL_FIRST",
-          "EXPIRY"
-        ],
+        "outcomes": [],
         "segment_by": [
           "pair",
-          "side",
           "horizon",
-          "regime"
+          "provider"
         ],
         "may_self_modify_production": false
       },
       "historical_evidence": {
         "status": "not_evaluated"
       },
-      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+      "refutation_or_retirement": "Replace only with a stricter approved data contract; never convert data quality into directional evidence."
     },
     {
       "rule_id": "LIB-CAND-CROSS-VENUE-DIVERGENCE-001",
@@ -4452,213 +4756,16 @@
         "status": "not_evaluated"
       },
       "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
-    },
-    {
-      "rule_id": "LIB-CAND-SPREAD-EXECUTION-001",
-      "version": "0.1",
-      "name": "Quoted spread execution state",
-      "family_id": "FAMILY-EXECUTION",
-      "role": "economic",
-      "lifecycle_status": "proposed",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
-      "objective": "Spread affects executability and cost, not physical market direction.",
-      "applicable_pairs": [
-        "all_application_pairs"
-      ],
-      "applicable_horizons": [
-        "intraday_short",
-        "intraday_wide",
-        "short_swing"
-      ],
-      "inputs": [
-        {
-          "names": [
-            "best_bid",
-            "best_ask"
-          ],
-          "provider": "must_be_approved_before_implementation",
-          "unit_policy": "dimensionless_or_within_pair_normalized"
-        }
-      ],
-      "formula_ids": [
-        "LIB-CAND-SPREAD-EXECUTION-001-FORMULA-01",
-        "LIB-CAND-SPREAD-EXECUTION-001-FORMULA-02"
-      ],
-      "deterministic_formulas": [
-        "mid=(ask+bid)/2",
-        "spread_fraction=(ask-bid)/mid"
-      ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
-      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
-      "activation_conditions": [
-        "all declared inputs complete, fresh and pre-trade",
-        "formula valid for the selected pair and horizon"
-      ],
-      "non_application_conditions": [
-        "missing, stale, future, gapped or semantically incompatible data"
-      ],
-      "missing_data_behavior": "not_evaluated",
-      "evidence": {
-        "source_ids": [
-          "BINANCE_USDM_API"
-        ],
-        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
-        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
-        "project_hypothesis": "Spread affects executability and cost, not physical market direction."
-      },
-      "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
-      },
-      "interactions": {
-        "parent_rule_ids": [],
-        "shared_evidence_rule_ids": [],
-        "double_counting_control": "declare family and test family ablation"
-      },
-      "parameters": [
-        {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
-        }
-      ],
-      "trace_contract": {
-        "required_outputs": [
-          "raw_inputs",
-          "normalized_signal",
-          "activation_status",
-          "formula_branch"
-        ],
-        "requires_source_hash": true,
-        "requires_probability_ablation": true,
-        "requires_family_ablation": true
-      },
-      "learning_contract": {
-        "outcomes": [
-          "TP_FIRST",
-          "SL_FIRST",
-          "EXPIRY"
-        ],
-        "segment_by": [
-          "pair",
-          "side",
-          "horizon",
-          "regime"
-        ],
-        "may_self_modify_production": false
-      },
-      "historical_evidence": {
-        "status": "not_evaluated"
-      },
-      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
-    },
-    {
-      "rule_id": "LIB-CAND-DEPTH-COVERAGE-001",
-      "version": "0.1",
-      "name": "Order-size depth coverage",
-      "family_id": "FAMILY-EXECUTION",
-      "role": "economic",
-      "lifecycle_status": "proposed",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
-      "objective": "Visible depth coverage affects executability and expected slippage, not physical market direction.",
-      "applicable_pairs": [
-        "all_application_pairs"
-      ],
-      "applicable_horizons": [
-        "intraday_short",
-        "intraday_wide",
-        "short_swing"
-      ],
-      "inputs": [
-        {
-          "names": [
-            "timestamped_depth_snapshot",
-            "planned_order_notional"
-          ],
-          "provider": "must_be_approved_before_implementation",
-          "unit_policy": "dimensionless_or_within_pair_normalized"
-        }
-      ],
-      "formula_ids": [
-        "LIB-CAND-DEPTH-COVERAGE-001-FORMULA-01"
-      ],
-      "deterministic_formulas": [
-        "depth_coverage=available_notional_within_band/order_notional"
-      ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
-      "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
-      "activation_conditions": [
-        "all declared inputs complete, fresh and pre-trade",
-        "formula valid for the selected pair and horizon"
-      ],
-      "non_application_conditions": [
-        "missing, stale, future, gapped or semantically incompatible data"
-      ],
-      "missing_data_behavior": "not_evaluated",
-      "evidence": {
-        "source_ids": [
-          "BINANCE_USDM_API"
-        ],
-        "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
-        "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
-        "project_hypothesis": "Visible depth coverage affects executability and expected slippage, not physical market direction."
-      },
-      "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
-      },
-      "interactions": {
-        "parent_rule_ids": [],
-        "shared_evidence_rule_ids": [],
-        "double_counting_control": "declare family and test family ablation"
-      },
-      "parameters": [
-        {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
-        }
-      ],
-      "trace_contract": {
-        "required_outputs": [
-          "raw_inputs",
-          "normalized_signal",
-          "activation_status",
-          "formula_branch"
-        ],
-        "requires_source_hash": true,
-        "requires_probability_ablation": true,
-        "requires_family_ablation": true
-      },
-      "learning_contract": {
-        "outcomes": [
-          "TP_FIRST",
-          "SL_FIRST",
-          "EXPIRY"
-        ],
-        "segment_by": [
-          "pair",
-          "side",
-          "horizon",
-          "regime"
-        ],
-        "may_self_modify_production": false
-      },
-      "historical_evidence": {
-        "status": "not_evaluated"
-      },
-      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
     }
   ],
   "summary": {
     "rules": 38,
     "active_baseline": 5,
     "active_predictive": 11,
-    "candidate_or_blocked": 22
+    "active_data_quality_gates": 2,
+    "active_economic": 2,
+    "implemented_observational": 16,
+    "data_blocked": 2
   },
-  "catalog_sha256": "f84951292caa89ae92adcff4dbb3680b1ebf70d636f35a3256bc0a61416d576f"
+  "catalog_sha256": "c31778be090469de4390a3a89bcadc2bcce2c0dd9e5b7ca6ef183be2d0460cfa"
 }

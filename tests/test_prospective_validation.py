@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from data_quality_gate import validate_pretrade_candles
 from prospective_validation import (
     ENABLED_ENV,
     build_prospective_probability_run,
@@ -96,7 +97,8 @@ def live_rule_context() -> dict:
         "horizon_seconds": 24 * 60 * 60,
         "interval_seconds": 60 * 60,
         "request_cutoff_at": ANALYSIS_AT.isoformat(),
-        "captured_at_ms": end - 100,
+        "request_cutoff_ms": end,
+        "captured_at_ms": end + 100,
         "taker_history": [
             {
                 "timestamp": start + index * HOUR_MS,
@@ -148,14 +150,99 @@ def live_rule_context() -> dict:
         },
         "funding_history": [
             {
-                "fundingTime": end - 16 * HOUR_MS,
-                "fundingRate": "0.00008",
-            },
-            {
-                "fundingTime": end - 8 * HOUR_MS,
-                "fundingRate": "0.00009",
-            },
+                "fundingTime": end - (60 - index) * 8 * HOUR_MS,
+                "fundingRate": str(0.00001 + index * 0.000001),
+            }
+            for index in range(60)
         ],
+        "global_long_short_history": [
+            {
+                "timestamp": end - (60 - index) * HOUR_MS,
+                "longShortRatio": str(0.8 + index * 0.005),
+                "longAccount": str(
+                    (0.8 + index * 0.005)
+                    / (1.8 + index * 0.005)
+                ),
+                "shortAccount": str(
+                    1.0 / (1.8 + index * 0.005)
+                ),
+            }
+            for index in range(61)
+        ],
+        "market_breadth_assets": [
+            {
+                "id": f"asset-{index}",
+                "symbol": f"A{index}",
+                "market_cap_rank": index + 1,
+                "last_updated": datetime.fromtimestamp(
+                    (end - 1000 - index) / 1000,
+                    tz=timezone.utc,
+                ).isoformat(),
+                "price_change_percentage_1h_in_currency": index - 50,
+                "price_change_percentage_24h_in_currency": index - 45,
+                "price_change_percentage_7d_in_currency": index - 55,
+            }
+            for index in range(100)
+        ],
+        "fear_greed_history": [
+            {
+                "value": str(20 + index),
+                "value_classification": "test",
+                "timestamp": str(
+                    (end - (60 - index) * 24 * HOUR_MS) // 1000
+                ),
+            }
+            for index in range(61)
+        ],
+        "liquidation_context": {
+            "available": True,
+            "status": "available",
+            "reason": None,
+            "provider": "hyperperps",
+            "scope": "hyperliquid",
+            "symbol": "BTC",
+            "schema": "hyperperps.whale-heatmap.v4",
+            "as_of": ANALYSIS_AT.isoformat(),
+            "age_seconds": 60,
+            "reference_price": 100,
+            "market_price": 100,
+            "reference_basis_pct": 0,
+            "sample_size": 2500,
+            "clusters_above": [
+                {
+                    "position_side": "short",
+                    "price": 102,
+                    "notional_usd": 4_000_000,
+                    "wallet_count": 10,
+                }
+            ],
+            "clusters_below": [
+                {
+                    "position_side": "long",
+                    "price": 99,
+                    "notional_usd": 3_000_000,
+                    "wallet_count": 8,
+                }
+            ],
+            "cascade_mass": {
+                "long": {
+                    "within_1pct": 1_000_000,
+                    "within_2pct": 3_000_000,
+                    "within_5pct": 4_000_000,
+                },
+                "short": {
+                    "within_1pct": 2_000_000,
+                    "within_2pct": 4_000_000,
+                    "within_5pct": 5_000_000,
+                },
+            },
+            "short_to_long_mass_ratio_2pct": 4 / 3,
+            "net_oi_skew": 0.1,
+            "crowd_leverage": {
+                "long_avg": 18,
+                "short_avg": 20,
+            },
+        },
     }
 
 
@@ -225,6 +312,49 @@ class ProspectiveValidationTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["block_code"], "m5_market_entry_required")
         self.assertIsNone(result["m6_result"])
+
+    def test_invalid_candle_grid_blocks_before_rule_execution(self):
+        rows = raw_candles()
+        middle = len(rows) // 2
+        rows[middle][0] += 1
+        rows[middle][6] += 1
+
+        result = build_prospective_probability_run(
+            proposal(),
+            snapshot(),
+            loader=paged_loader(rows),
+            analysis_id="invalid-grid-test",
+        )
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(
+            result["block_code"],
+            "pretrade_candle_integrity_failed",
+        )
+        quality = result["details"]["data_quality"]
+        self.assertEqual(quality["validation_pass_count"], 1)
+        self.assertEqual(quality["status"], "blocked")
+        self.assertEqual(quality["traces"][1]["status"], "failed")
+        self.assertIn(
+            "gapped_or_misaligned_candles",
+            quality["traces"][1]["reason_codes"],
+        )
+        self.assertIsNone(result["m5_analysis"])
+
+    def test_candle_quality_gate_runs_exactly_once_per_analysis(self):
+        with patch(
+            "m5_input_assembly.validate_pretrade_candles",
+            wraps=validate_pretrade_candles,
+        ) as quality_gate:
+            result = build_prospective_probability_run(
+                proposal(),
+                snapshot(),
+                loader=paged_loader(raw_candles()),
+                analysis_id="single-quality-pass-test",
+            )
+
+        self.assertEqual(result["status"], "evaluated")
+        quality_gate.assert_called_once()
 
     def test_live_context_executes_every_rule_branch_and_m6_uses_m5(self):
         result = build_prospective_probability_run(
@@ -335,14 +465,90 @@ class ProspectiveValidationTests(unittest.TestCase):
         )
         observations = result["observational_rule_traces"]
         self.assertEqual(observations["status"], "evaluated_shadow")
-        self.assertEqual(len(observations["traces"]), 6)
-        self.assertEqual(observations["evaluated_rule_count"], 6)
+        self.assertEqual(len(observations["traces"]), 16)
+        self.assertEqual(observations["evaluated_rule_count"], 16)
         self.assertTrue(
             all(
                 trace["probability_effect"]
                 == "none_shadow_observation"
                 for trace in observations["traces"]
             )
+        )
+        quality = result["data_quality"]
+        self.assertEqual(quality["status"], "valid")
+        self.assertEqual(quality["validation_pass_count"], 1)
+        self.assertEqual(len(quality["traces"]), 2)
+        self.assertTrue(
+            all(trace["status"] == "passed" for trace in quality["traces"])
+        )
+        self.assertTrue(
+            all(
+                trace["probability_effect"] == "none_data_quality_gate"
+                for trace in quality["traces"]
+            )
+        )
+        self.assertEqual(
+            result["feature_snapshot"]["data_quality"]["report_sha256"],
+            quality["report_sha256"],
+        )
+        self.assertEqual(
+            statuses["M4-RULE-LOG-RETURNS-001"]["outputs"][
+                "data_quality_report_sha256"
+            ],
+            quality["report_sha256"],
+        )
+
+    def test_insufficient_depth_blocks_execution_not_market_probability(self):
+        complete_context = live_rule_context()
+        complete = build_prospective_probability_run(
+            proposal(),
+            snapshot(),
+            loader=paged_loader(raw_candles()),
+            analysis_id="complete-depth-test",
+            active_output=True,
+            live_context=complete_context,
+        )
+        shallow_context = live_rule_context()
+        shallow_context["depth"]["asks"] = [
+            [price, "0.001"]
+            for price, _ in shallow_context["depth"]["asks"]
+        ]
+        shallow = build_prospective_probability_run(
+            proposal(),
+            snapshot(),
+            loader=paged_loader(raw_candles()),
+            analysis_id="shallow-depth-test",
+            active_output=True,
+            live_context=shallow_context,
+        )
+
+        self.assertEqual(shallow["status"], "evaluated")
+        self.assertEqual(
+            shallow["m6_result"]["probabilities"],
+            complete["m6_result"]["probabilities"],
+        )
+        traces = {
+            trace["rule_id"]: trace
+            for trace in shallow["m5_analysis"]["traces"]
+        }
+        depth = traces["M4-RULE-DEPTH-SWEEP-001"]
+        self.assertEqual(depth["status"], "evaluated")
+        self.assertLess(depth["outputs"]["fill_ratio"], 1.0)
+        self.assertIsNone(depth["outputs"]["complete_vwap"])
+        self.assertEqual(
+            depth["outputs"]["availability_status"],
+            "insufficient_visible_depth",
+        )
+        readiness = traces["M4-RULE-EVALUATION-READINESS-001"]
+        self.assertEqual(
+            readiness["outputs"]["statuses"]["entry_execution"],
+            "blocked",
+        )
+        self.assertEqual(
+            shallow["m5_rule_effects"]["M4-RULE-DEPTH-SWEEP-001"][
+                "probability_effect"
+            ],
+            "separate_economic_layer",
         )
 
     def test_environment_kill_switch_is_explicit(self):

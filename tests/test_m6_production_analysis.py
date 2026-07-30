@@ -49,13 +49,65 @@ def evaluated_run() -> dict:
         },
         "m5_analysis": {
             "analysis_trace_sha256": "m5-sha",
-            "traces": [],
+            "traces": [
+                {
+                    "rule_id": "M4-RULE-QUOTED-SPREAD-001",
+                    "status": "evaluated",
+                    "outputs": {
+                        "mid": 100.0,
+                        "spread_fraction_mid": 0.0002,
+                    },
+                },
+                {
+                    "rule_id": "M4-RULE-DEPTH-SWEEP-001",
+                    "status": "evaluated",
+                    "outputs": {
+                        "fill_ratio": 1.0,
+                        "availability_status": "available",
+                        "complete_vwap": 100.02,
+                    },
+                },
+            ],
         },
         "m5_pre_probability_analysis": {
             "analysis_trace_sha256": "m5-pre-sha",
             "traces": [],
         },
         "m5_rule_effects": {},
+        "observational_rule_traces": {
+            "traces": [
+                {
+                    "rule_id": (
+                        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"
+                    ),
+                    "status": "evaluated_shadow",
+                },
+                {
+                    "rule_id": "LIB-CAND-FIBONACCI-DISTANCE-001",
+                    "status": "evaluated_shadow",
+                },
+                {
+                    "rule_id": "LIB-CAND-FUNDING-PERCENTILE-001",
+                    "status": "evaluated_shadow",
+                },
+                {
+                    "rule_id": "LIB-CAND-CROWDING-PERCENTILE-001",
+                    "status": "evaluated_shadow",
+                },
+                {
+                    "rule_id": "LIB-CAND-BREADTH-001",
+                    "status": "evaluated_shadow",
+                },
+                {
+                    "rule_id": "LIB-CAND-SENTIMENT-PERCENTILE-001",
+                    "status": "evaluated_shadow",
+                },
+                {
+                    "rule_id": "LIB-CAND-LIQUIDATION-ZONE-001",
+                    "status": "evaluated_shadow",
+                },
+            ]
+        },
         "m6_result": {
             "probabilities": {
                 "tp_first_within_horizon": 0.55,
@@ -93,6 +145,37 @@ class M6ProductionAnalysisTests(unittest.TestCase):
         self.assertTrue(result["snapshot"]["new_engine_only"])
         self.assertFalse(result["legacy_engine_executed"])
         self.assertEqual(result["production_effect"], "served")
+        self.assertTrue(result["snapshot"]["availability"]["fibonacci"])
+        self.assertTrue(
+            result["snapshot"]["availability"]["structural_levels"]
+        )
+        self.assertTrue(
+            result["snapshot"]["availability"]["funding_relative"]
+        )
+        self.assertTrue(
+            result["snapshot"]["availability"]["long_short_ratio"]
+        )
+        self.assertTrue(
+            result["snapshot"]["availability"]["market_breadth"]
+        )
+        self.assertTrue(result["snapshot"]["availability"]["fear_greed"])
+        self.assertTrue(
+            result["snapshot"]["availability"]["liquidation_heatmap"]
+        )
+        self.assertTrue(result["snapshot"]["availability"]["entry_depth"])
+        economics = result["snapshot"]["execution_economics"]
+        self.assertEqual(
+            economics["probability_effect"],
+            "none_separate_economic_layer",
+        )
+        self.assertEqual(
+            economics["quoted_spread"]["spread_fraction_mid"],
+            0.0002,
+        )
+        self.assertEqual(
+            economics["entry_depth_sweep"]["fill_ratio"],
+            1.0,
+        )
         self.assertAlmostEqual(result["tp_probability"], 0.55)
         self.assertAlmostEqual(result["sl_probability"], 0.35)
         self.assertAlmostEqual(result["range_probability"], 0.10)

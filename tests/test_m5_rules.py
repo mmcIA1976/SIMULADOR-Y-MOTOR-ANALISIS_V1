@@ -428,6 +428,8 @@ class M53RuleImplementationTests(unittest.TestCase):
             depth.outputs["implementation_shortfall_filled_quote"],
             3,
         )
+        self.assertEqual(depth.outputs["fill_ratio"], 1.0)
+        self.assertEqual(depth.outputs["availability_status"], "available")
         fee = run_rule(
             "M4-RULE-FEE-SCENARIOS-001",
             {
@@ -438,6 +440,48 @@ class M53RuleImplementationTests(unittest.TestCase):
         )
         self.assertEqual(fee.outputs["fee_lower"], 0.2)
         self.assertEqual(fee.outputs["fee_upper"], 0.5)
+
+    def test_partial_visible_depth_is_traced_without_inventing_full_cost(
+        self,
+    ) -> None:
+        spread = run_rule(
+            "M4-RULE-QUOTED-SPREAD-001",
+            {"best_bid": 99, "best_ask": 101, "receive_time": BASE_MS},
+        )
+        depth = run_rule(
+            "M4-RULE-DEPTH-SWEEP-001",
+            {
+                "side": "buy",
+                "base_quantity": 2,
+                "asks": [{"price": 101, "quantity": 0.8}],
+            },
+            {"M4-RULE-QUOTED-SPREAD-001": spread},
+        )
+
+        self.assertEqual(depth.status, "evaluated")
+        self.assertAlmostEqual(depth.outputs["fill_ratio"], 0.4)
+        self.assertAlmostEqual(depth.outputs["unfilled_quantity"], 1.2)
+        self.assertIsNone(depth.outputs["complete_vwap"])
+        self.assertEqual(
+            depth.outputs["availability_status"],
+            "insufficient_visible_depth",
+        )
+
+    def test_stale_book_snapshot_blocks_economic_measurement(self) -> None:
+        spread = run_rule(
+            "M4-RULE-QUOTED-SPREAD-001",
+            {
+                "best_bid": 99,
+                "best_ask": 101,
+                "receive_time": BASE_MS,
+                "capture_time": BASE_MS + 30_001,
+                "max_age_ms": 30_000,
+            },
+        )
+
+        self.assertEqual(spread.status, "blocked")
+        self.assertEqual(spread.reason_codes, ("stale_quoted_book",))
+        self.assertEqual(spread.outputs, {})
 
     def test_funding_cashflow_and_exposure_preserve_signs(self) -> None:
         funding = run_rule(

@@ -64,6 +64,11 @@ SOURCES = {
         "kind": "manual_definition",
         "year": 1978,
     },
+    "BOLLINGER_2001": {
+        "title": "Bollinger on Bollinger Bands",
+        "kind": "manual_definition",
+        "year": 2001,
+    },
     "MOSKOWITZ_OOI_PEDERSEN_2012": {
         "title": "Time Series Momentum",
         "kind": "external_predictive_evidence",
@@ -127,6 +132,11 @@ SOURCES = {
         "kind": "official_data_definition",
         "url": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint",
     },
+    "HYPERPERPS_PUBLIC_HEATMAP": {
+        "title": "HyperPerps public Hyperliquid liquidation heatmap",
+        "kind": "third_party_public_data_definition",
+        "url": "https://trade.hyperperps.app/whales",
+    },
 }
 
 
@@ -136,6 +146,11 @@ BASELINE_RULE_IDS = (
     "M4-RULE-LOG-RETURNS-001",
     "M4-RULE-REALIZED-VOLATILITY-001",
     "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002",
+)
+
+ACTIVE_ECONOMIC_RULE_IDS = (
+    "M4-RULE-QUOTED-SPREAD-001",
+    "M4-RULE-DEPTH-SWEEP-001",
 )
 
 
@@ -648,6 +663,178 @@ def candidate(
     }
 
 
+def blocking_data_quality_gate(
+    *,
+    rule_id: str,
+    name: str,
+    formulas: list[str],
+    inputs: list[str],
+    required_outputs: list[str],
+    parameters: list[dict],
+) -> dict:
+    rule = candidate(
+        rule_id=rule_id,
+        name=name,
+        family_id="FAMILY-DATA-QUALITY",
+        role="blocking",
+        formulas=formulas,
+        inputs=inputs,
+        source_ids=["PROJECT_PHASE1_CONTRACT", "BINANCE_USDM_API"],
+        hypothesis=(
+            "Deterministic input-validity gate; it has no directional or "
+            "first-barrier hypothesis."
+        ),
+        status="active_blocking",
+        missing_data_behavior="block_analysis_and_record_exact_reason",
+        provider="binance_usdm_closed_klines",
+    )
+    rule.update(
+        {
+            "origin": "project_phase1_data_contract",
+            "probability_integration_formula": (
+                "none; invalid input blocks analysis before probability"
+            ),
+            "normalization": (
+                "No statistical normalization. Compare timestamps and candle "
+                "grid against the selected interval and analysis_at."
+            ),
+            "activation_conditions": [
+                "run exactly once during pre-trade input assembly"
+            ],
+            "non_application_conditions": [],
+            "expected_probability_effect": {
+                "mode": "blocking_gate_not_predictive",
+                "tp": "none",
+                "sl": "none",
+                "expiry": "none",
+            },
+            "interactions": {
+                "parent_rule_ids": [],
+                "shared_evidence_rule_ids": [],
+                "double_counting_control": (
+                    "single validation report reused by every dependent rule"
+                ),
+            },
+            "parameters": parameters,
+            "trace_contract": {
+                "required_outputs": required_outputs,
+                "requires_source_hash": True,
+                "requires_probability_ablation": False,
+                "requires_family_ablation": False,
+            },
+            "learning_contract": {
+                "outcomes": [],
+                "segment_by": ["pair", "horizon", "provider"],
+                "may_self_modify_production": False,
+            },
+            "refutation_or_retirement": (
+                "Replace only with a stricter approved data contract; never "
+                "convert data quality into directional evidence."
+            ),
+        }
+    )
+    return rule
+
+
+def active_economic_rule(
+    spec: dict,
+    *,
+    provider: str,
+    superseded_candidate_rule_id: str,
+) -> dict:
+    rule_id = spec["rule_id"]
+    return {
+        "rule_id": rule_id,
+        "version": str(spec["rule_version"]),
+        "name": spec["name"],
+        "family_id": "FAMILY-EXECUTION",
+        "role": "economic",
+        "lifecycle_status": "active_economic",
+        "origin": "current_execution_economic_runtime",
+        "objective": (
+            "Measure current executability and entry cost without changing "
+            "physical TP, SL or expiry probabilities."
+        ),
+        "applicable_pairs": SUPPORTED_PAIRS,
+        "applicable_horizons": HORIZONS,
+        "inputs": [
+            {
+                "contract": spec["input_contract"],
+                "provider": provider,
+                "unit_policy": spec["market_time_unit_freshness"],
+            }
+        ],
+        "formula_ids": [
+            item["id"] for item in spec.get("formulas", [])
+        ],
+        "deterministic_formulas": [
+            item["expression"] for item in spec.get("formulas", [])
+        ],
+        "probability_integration_formula": (
+            "none; result belongs to the separate execution-economic layer"
+        ),
+        "normalization": (
+            "Quote prices and costs stay in quote asset; base quantity stays "
+            "in base asset; fractions are dimensionless."
+        ),
+        "activation_conditions": spec["activation_conditions"],
+        "non_application_conditions": spec[
+            "non_application_conditions"
+        ],
+        "missing_data_behavior": spec["missing_data_behavior"],
+        "evidence": source_claims(
+            ["PROJECT_PHASE1_CONTRACT", "BINANCE_USDM_API"],
+            (
+                "Current spread and visible-depth sweep measure execution "
+                "conditions, not future market direction."
+            ),
+        ),
+        "expected_probability_effect": {
+            "mode": "execution_economic_only",
+            "tp": "none",
+            "sl": "none",
+            "expiry": "none",
+        },
+        "interactions": {
+            "parent_rule_ids": list(spec.get("dependencies", [])),
+            "shared_evidence_rule_ids": [],
+            "double_counting_control": (
+                "implementation shortfall from midpoint already contains "
+                "half-spread; spread must not be added again"
+            ),
+        },
+        "parameters": [
+            {
+                "name": "realtime_snapshot_max_age_ms",
+                "value": 30_000,
+                "origin": "project_phase1_data_contract",
+                "status": "active_deterministic_policy",
+            }
+        ],
+        "trace_contract": {
+            "required_outputs": spec["required_trace_outputs"],
+            "requires_source_hash": True,
+            "requires_probability_ablation": False,
+            "requires_family_ablation": False,
+        },
+        "learning_contract": {
+            "outcomes": [],
+            "segment_by": ["pair", "side", "planned_notional"],
+            "may_self_modify_production": False,
+        },
+        "superseded_candidate_rule_ids": [
+            superseded_candidate_rule_id
+        ],
+        "historical_evidence": {
+            "status": "not_a_predictive_rule"
+        },
+        "refutation_or_retirement": (
+            "Replace only with a more complete execution model that preserves "
+            "snapshot timestamps, partial coverage and no double counting."
+        ),
+    }
+
+
 def candidate_rules() -> list[dict]:
     return [
         candidate(
@@ -777,15 +964,45 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-MARKET-CONTEXT",
             role="contextual",
             formulas=[
-                "breadth_h=count(return_i_h>0)/count(valid_return_i_h)",
-                "median_return_h=median(valid_return_i_h)",
+                (
+                    "U_t=first_100_assets_ordered_by_"
+                    "current_market_cap_desc"
+                ),
+                (
+                    "breadth_w=count(return_i_w>0)/"
+                    "count(valid_return_i_w), w in {1h,24h,7d}"
+                ),
+                "median_return_w=median(valid_return_i_w)",
             ],
-            inputs=["cross_asset_returns"],
+            inputs=[
+                "coingecko_top_100_constituent_ids",
+                "constituent_returns_1h_24h_7d",
+                "constituent_update_timestamps",
+                "plan_side",
+            ],
             source_ids=["COINGECKO_MARKETS_API"],
             hypothesis=(
                 "Cross-crypto breadth may condition a pair's first-barrier "
                 "probability after pair-specific controls."
             ),
+            status="implemented_shadow",
+            provider="coingecko_coins_markets_top_100",
+            historical_evidence={
+                "status": "legacy_values_preserved_not_comparable",
+                "artifact": (
+                    "auditorias_motor/"
+                    "market_context_historical_cases_v0_1.json"
+                ),
+                "artifact_sha256": (
+                    "d1a49379ae1e5072881a3caa1e1ee67"
+                    "b141b3343affb3110bec5abee3d12f672"
+                ),
+                "legacy_observations_available": 718,
+                "reuse_policy": (
+                    "preserve_identity_and_raw_values_only; "
+                    "legacy_snapshot_lacks_full_constituent_universe"
+                ),
+            },
         ),
         candidate(
             rule_id="LIB-CAND-FIBONACCI-DISTANCE-001",
@@ -793,15 +1010,40 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-STRUCTURAL-LEVELS",
             role="contextual",
             formulas=[
-                "fib_level_r=swing_low+r*(swing_high-swing_low)",
-                "distance_sigma=(fib_level_r-entry)/sigma_price_h",
+                "swing=last_two_opposing_confirmed_pivots_in_alternating_series",
+                "retracement_r=start+direction*(1-r)*abs(end-start)",
+                "extension_r=start+direction*r*abs(end-start)",
+                "distance_sigma=abs(log(fib_level/plan_price))/sigma_h",
+                "confluence_sigma=abs(log(pivot_price/fib_level))/sigma_h",
             ],
             inputs=["objective_swing_points", "plan", "volatility"],
-            source_ids=["TSINASLANIDIS_ET_AL_2022"],
+            source_ids=["BINANCE_USDM_API", "TSINASLANIDIS_ET_AL_2022"],
             hypothesis=(
                 "Distance and confluence with reproducible Fibonacci levels "
                 "may condition barrier behavior; no intrinsic bonus is assumed."
             ),
+            parents=["LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"],
+            status="implemented_shadow",
+            provider="binance_usdm_closed_klines",
+            historical_evidence={
+                "status": "available_legacy_formula_not_comparable",
+                "legacy_recommendations": 669,
+                "legacy_observations_available": 666,
+                "legacy_linked_operations": 163,
+                "legacy_closed_operations": 154,
+                "artifact": (
+                    "auditorias_motor/"
+                    "fibonacci_historical_cases_v0_1.json"
+                ),
+                "artifact_sha256": (
+                    "05f5e7b73785520c0a31a4a083a4f3d6"
+                    "b09b19e11083bfb6ec23a7386730a2cb"
+                ),
+                "reuse_policy": (
+                    "recompute_new_rule_from_pretrade_klines; "
+                    "do_not_reuse_legacy_scores_or_probability_adjustments"
+                ),
+            },
         ),
         candidate(
             rule_id="LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
@@ -809,15 +1051,19 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-STRUCTURAL-LEVELS",
             role="contextual",
             formulas=[
-                "level_distance_sigma=(nearest_level-entry)/sigma_price_h",
-                "level_prominence=declared_detector_prominence",
+                "pivot_high_i=unique_max(high[i-3:i+4])",
+                "pivot_low_i=unique_min(low[i-3:i+4])",
+                "prominence_atr=min(left_excursion,right_excursion)/ATR14",
+                "level_distance_sigma=log(level_price/entry)/sigma_h",
             ],
             inputs=["closed_ohlc", "plan", "volatility"],
-            source_ids=["OSLER_2000"],
+            source_ids=["BINANCE_USDM_API", "OSLER_2000"],
             hypothesis=(
                 "The distance and prominence of prior levels between entry "
                 "and a barrier may condition first passage."
             ),
+            status="implemented_shadow",
+            provider="binance_usdm_closed_klines",
         ),
         candidate(
             rule_id="LIB-CAND-FUNDING-PERCENTILE-001",
@@ -825,10 +1071,21 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-PERPETUAL-DISLOCATION",
             role="contextual",
             formulas=[
-                "funding_percentile=empirical_cdf(last_rate, past_rates)",
-                "funding_robust_z=(last_rate-median)/(1.4826*MAD)",
+                (
+                    "funding_midrank_60=("
+                    "count(r_i<current)+0.5*count(r_i=current))/60"
+                ),
+                (
+                    "funding_robust_z_60="
+                    "(current-median(r_i))/(1.4826*MAD(r_i))"
+                ),
+                "plan_side_funding_cost_rate=side_sign*current_rate",
             ],
-            inputs=["historical_funding_rates"],
+            inputs=[
+                "current_premium_index_funding_rate",
+                "last_60_strictly_prior_settled_funding_rates",
+                "plan_side",
+            ],
             source_ids=[
                 "BINANCE_USDM_API",
                 "NIST_MAD",
@@ -839,6 +1096,10 @@ def candidate_rules() -> list[dict]:
                 "informative than an absolute funding threshold."
             ),
             parents=["M4-RULE-FUNDING-STATE-001"],
+            status="implemented_shadow",
+            provider=(
+                "binance_usdm_premium_index_and_funding_history"
+            ),
         ),
         candidate(
             rule_id="LIB-CAND-CROWDING-PERCENTILE-001",
@@ -846,13 +1107,30 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-POSITIONING",
             role="contextual",
             formulas=[
-                "crowding_percentile=empirical_cdf(long_short_ratio, history)",
+                "log_ratio_t=log(long_account_count/short_account_count)",
+                (
+                    "crowding_midrank_60=("
+                    "count(log_ratio_i<current)+"
+                    "0.5*count(log_ratio_i=current))/60"
+                ),
+                (
+                    "plan_side_crowding_midrank="
+                    "p_long if side=long else 1-p_long"
+                ),
             ],
-            inputs=["timestamped_long_short_ratios"],
+            inputs=[
+                "current_global_long_short_account_ratio",
+                "60_strictly_prior_contiguous_ratio_periods",
+                "plan_side",
+            ],
             source_ids=["BINANCE_USDM_API", "NIST_MAD"],
             hypothesis=(
                 "Extreme positioning relative to pair history may condition "
                 "barrier behavior without identifying future direction alone."
+            ),
+            status="implemented_shadow",
+            provider=(
+                "binance_usdm_global_long_short_account_ratio_history"
             ),
         ),
         candidate(
@@ -861,14 +1139,48 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-MARKET-CONTEXT",
             role="contextual",
             formulas=[
-                "sentiment_percentile=empirical_cdf(index_value, available_history)",
+                (
+                    "sentiment_midrank_60=("
+                    "count(v_i<current)+0.5*count(v_i=current))/60"
+                ),
+                (
+                    "sentiment_robust_z_60="
+                    "(current-median(v_i))/(1.4826*MAD(v_i))"
+                ),
+                (
+                    "plan_side_alignment="
+                    "side_sign*(current_value-50)/50"
+                ),
             ],
-            inputs=["fear_greed_history"],
+            inputs=[
+                "current_fear_greed_value",
+                "60_strictly_prior_daily_values",
+                "provider_timestamps",
+                "plan_side",
+            ],
             source_ids=["ALTERNATIVE_ME_FNG", "NIST_MAD"],
             hypothesis=(
                 "External sentiment extremes may have context-dependent "
                 "incremental value."
             ),
+            status="implemented_shadow",
+            provider="alternative_me_fear_greed_history",
+            historical_evidence={
+                "status": "legacy_values_preserved_reconstruction_required",
+                "artifact": (
+                    "auditorias_motor/"
+                    "market_context_historical_cases_v0_1.json"
+                ),
+                "artifact_sha256": (
+                    "d1a49379ae1e5072881a3caa1e1ee67"
+                    "b141b3343affb3110bec5abee3d12f672"
+                ),
+                "legacy_observations_available": 874,
+                "reuse_policy": (
+                    "preserve_identity_and_raw_value; reconstruct_60_day_"
+                    "reference_before_retrospective_comparison"
+                ),
+            },
         ),
         candidate(
             rule_id="LIB-CAND-COMPRESSION-001",
@@ -876,12 +1188,25 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-VOLATILITY-X-VOLUME",
             role="interaction",
             formulas=[
-                "atr_rank=empirical_cdf(ATR14/price, history)",
-                "bb_width=(upper_band-lower_band)/middle_band",
-                "compression_vector=(atr_rank,bb_width_rank,relative_volume)",
+                (
+                    "atr_rank_60=midrank("
+                    "ATR14_t/close_t,previous_60_horizon_endpoints)"
+                ),
+                (
+                    "bb_width_20_2sigma="
+                    "4*population_std(close_20)/SMA20"
+                ),
+                (
+                    "compression_vector=(atr_rank_60,"
+                    "bb_width_midrank_60,relative_volume,volume_midrank_60)"
+                ),
             ],
             inputs=["closed_ohlcv"],
-            source_ids=["WILDER_1978", "CORSI_2009"],
+            source_ids=[
+                "WILDER_1978",
+                "BOLLINGER_2001",
+                "CORSI_2009",
+            ],
             hypothesis=(
                 "Jointly low volatility, band width and relative volume may "
                 "condition expiry and subsequent barrier hazards."
@@ -890,6 +1215,8 @@ def candidate_rules() -> list[dict]:
                 "M4-RULE-VOLATILITY-RANK-001",
                 "LIB-CAND-RELATIVE-VOLUME-001",
             ],
+            status="implemented_shadow",
+            provider="derived_from_traced_closed_klines_and_parent_rules",
         ),
         candidate(
             rule_id="LIB-CAND-SHOCK-001",
@@ -921,8 +1248,12 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-EXECUTED-FLOW-X-PRICE",
             role="interaction",
             formulas=[
-                "wick_ratio=wick_length/(high-low) when high>low",
-                "absorption_vector=(ATI_H,relative_volume,return/ATR,wick_ratio)",
+                "upper_wick=max(H_H-max(O_H,C_H),0)/(H_H-L_H)",
+                "lower_wick=max(min(O_H,C_H)-L_H,0)/(H_H-L_H)",
+                (
+                    "absorption_vector=(ATI_H,relative_volume,"
+                    "log(C_H/O_H)/(ATR14/C_H),flow_opposing_wick_ratio)"
+                ),
             ],
             inputs=["closed_ohlcv", "timestamped_aggregate_trades"],
             source_ids=["SILANTYEV_2019", "WILDER_1978"],
@@ -934,6 +1265,8 @@ def candidate_rules() -> list[dict]:
                 "M4-RULE-AGGRESSOR-IMBALANCE-001",
                 "LIB-CAND-RELATIVE-VOLUME-001",
             ],
+            status="implemented_shadow",
+            provider="derived_from_traced_flow_volume_and_closed_klines",
         ),
         candidate(
             rule_id="LIB-CAND-PULLBACK-CONTEXT-001",
@@ -941,7 +1274,13 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-TREND-X-STRUCTURE-X-FLOW",
             role="interaction",
             formulas=[
-                "pullback_vector=(ema_state,extension,local_extrema,relative_volume,ATI_H)",
+                (
+                    "pullback_vector=(side_adjusted_ema50_vs_ema200,"
+                    "side_adjusted_ema50_slope_atr,"
+                    "side_adjusted_extension_atr,relative_volume,"
+                    "volume_midrank_60,side_adjusted_ATI_H,"
+                    "target_path_level_count,adverse_path_level_count)"
+                ),
             ],
             inputs=["closed_ohlcv", "timestamped_aggregate_trades", "plan"],
             source_ids=[
@@ -958,7 +1297,10 @@ def candidate_rules() -> list[dict]:
                 "LIB-CAND-ATR-EXTENSION-001",
                 "LIB-CAND-RELATIVE-VOLUME-001",
                 "M4-RULE-AGGRESSOR-IMBALANCE-001",
+                "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
             ],
+            status="implemented_shadow",
+            provider="composition_of_traced_parent_rules",
         ),
         candidate(
             rule_id="LIB-CAND-LIQUIDATION-ZONE-001",
@@ -966,16 +1308,42 @@ def candidate_rules() -> list[dict]:
             family_id="FAMILY-LIQUIDATION-OBSERVATION",
             role="contextual",
             formulas=[
-                "cluster_distance=(cluster_price-market_price)/market_price",
-                "side_mass_ratio=short_mass_near/long_mass_near when defined",
+                (
+                    "distance_from_entry_log_sigma="
+                    "log(cluster_price/entry)/sigma_h"
+                ),
+                (
+                    "path_mass_b=sum(notional_j for clusters_j "
+                    "between entry and barrier_b)"
+                ),
+                (
+                    "target_path_mass_fraction="
+                    "target_path_mass/(target_path_mass+adverse_path_mass)"
+                ),
+                (
+                    "distance_to_barrier_abs_log_sigma="
+                    "abs(log(cluster_price/barrier_price))/sigma_h"
+                ),
             ],
-            inputs=["normalized_hyperliquid_clusters", "market_price"],
-            source_ids=["HYPERLIQUID_PUBLIC_STATE"],
+            inputs=[
+                "timestamped_hyperperps_clusters",
+                "provider_sample_size",
+                "provider_cascade_mass",
+                "plan",
+                "horizon_volatility",
+            ],
+            source_ids=[
+                "HYPERPERPS_PUBLIC_HEATMAP",
+                "HYPERLIQUID_PUBLIC_STATE",
+            ],
             hypothesis=(
                 "Distance and observed mass of liquidation estimates may "
                 "condition barrier behavior; no multi-exchange claim is made."
             ),
-            status="historical_evidence_available_data_limited",
+            status="implemented_shadow",
+            provider=(
+                "hyperperps_aggregation_of_hyperliquid_public_positions"
+            ),
             historical_evidence={
                 "status": "preserved_legacy_test",
                 "audit_version": "heatmap-historical-preservation-v0.1",
@@ -986,38 +1354,68 @@ def candidate_rules() -> list[dict]:
                 "observations_available": 104,
                 "linked_closed_resolved_operations": 24,
                 "minimum_originally_planned": 30,
+                "artifact_sha256": (
+                    "243101dbf49d380baa123d085113429d4"
+                    "aaf63451a7b180b80ad61c721f3f7c4"
+                ),
+                "reuse_policy": (
+                    "preserve_case_identity_only; do_not_reuse_legacy_"
+                    "map_read_risk_labels_scores_or_probability_adjustments"
+                ),
             },
         ),
-        candidate(
+        blocking_data_quality_gate(
             rule_id="LIB-CAND-DATA-FRESHNESS-001",
-            name="Pre-trade data freshness gate",
-            family_id="FAMILY-DATA-QUALITY",
-            role="blocking",
+            name="Pre-trade closed-candle freshness gate",
             formulas=[
-                "age_ms=analysis_at-provider_or_receive_timestamp",
-                "fresh=age_ms<=source_and_horizon_specific_limit",
+                "age_ms=analysis_at-latest_closed_candle_timestamp",
+                "freshness_limit_ms=selected_interval_ms+60000",
+                "fresh=0<=age_ms<=freshness_limit_ms",
             ],
-            inputs=["provider_timestamps", "receive_timestamps"],
-            source_ids=["PROJECT_PHASE1_CONTRACT", "BINANCE_USDM_API"],
-            hypothesis=(
-                "This gate protects validity and has no directional hypothesis."
-            ),
+            inputs=[
+                "timestamped_closed_klines",
+                "analysis_at",
+                "selected_interval",
+            ],
+            required_outputs=[
+                "latest_closed_candle_ms",
+                "analysis_at_ms",
+                "age_ms",
+                "freshness_limit_ms",
+                "fresh",
+            ],
+            parameters=[
+                {
+                    "name": "period_release_grace_ms",
+                    "value": 60_000,
+                    "origin": "project_phase1_data_contract",
+                    "status": "active_deterministic_policy",
+                }
+            ],
         ),
-        candidate(
+        blocking_data_quality_gate(
             rule_id="LIB-CAND-CANDLE-INTEGRITY-001",
             name="Closed-candle integrity gate",
-            family_id="FAMILY-DATA-QUALITY",
-            role="blocking",
             formulas=[
                 "missing_count=expected_intervals-observed_unique_intervals",
                 "duplicate_count=observations-unique_intervals",
+                "gap_count=count(delta_close_time!=selected_interval_ms)",
+                (
+                    "valid_ohlc=finite_positive_prices and volume>=0 and "
+                    "high>=max(open,close) and low<=min(open,close)"
+                ),
             ],
             inputs=["timestamped_closed_klines"],
-            source_ids=["PROJECT_PHASE1_CONTRACT", "BINANCE_USDM_API"],
-            hypothesis=(
-                "This gate blocks dependent rules when candle history is not "
-                "complete and has no directional hypothesis."
-            ),
+            required_outputs=[
+                "required_candle_count",
+                "observed_closed_candle_count",
+                "missing_count",
+                "duplicate_count",
+                "gap_count",
+                "invalid_ohlc_count",
+                "integrity_valid",
+            ],
+            parameters=[],
         ),
         candidate(
             rule_id="LIB-CAND-CROSS-VENUE-DIVERGENCE-001",
@@ -1035,37 +1433,6 @@ def candidate_rules() -> list[dict]:
             ),
             status="data_blocked",
         ),
-        candidate(
-            rule_id="LIB-CAND-SPREAD-EXECUTION-001",
-            name="Quoted spread execution state",
-            family_id="FAMILY-EXECUTION",
-            role="economic",
-            formulas=[
-                "mid=(ask+bid)/2",
-                "spread_fraction=(ask-bid)/mid",
-            ],
-            inputs=["best_bid", "best_ask"],
-            source_ids=["BINANCE_USDM_API"],
-            hypothesis=(
-                "Spread affects executability and cost, not physical market "
-                "direction."
-            ),
-        ),
-        candidate(
-            rule_id="LIB-CAND-DEPTH-COVERAGE-001",
-            name="Order-size depth coverage",
-            family_id="FAMILY-EXECUTION",
-            role="economic",
-            formulas=[
-                "depth_coverage=available_notional_within_band/order_notional",
-            ],
-            inputs=["timestamped_depth_snapshot", "planned_order_notional"],
-            source_ids=["BINANCE_USDM_API"],
-            hypothesis=(
-                "Visible depth coverage affects executability and expected "
-                "slippage, not physical market direction."
-            ),
-        ),
     ]
 
 
@@ -1082,6 +1449,24 @@ def build_catalog() -> dict:
         runtime_rule(specs[rule_id], ACTIVE_METADATA[rule_id], artifact)
         for rule_id in ACTIVE_PREDICTIVE_RULE_IDS
     )
+    rules.extend(
+        [
+            active_economic_rule(
+                specs["M4-RULE-QUOTED-SPREAD-001"],
+                provider="binance_usdm_book_ticker",
+                superseded_candidate_rule_id=(
+                    "LIB-CAND-SPREAD-EXECUTION-001"
+                ),
+            ),
+            active_economic_rule(
+                specs["M4-RULE-DEPTH-SWEEP-001"],
+                provider="binance_usdm_visible_depth_snapshot",
+                superseded_candidate_rule_id=(
+                    "LIB-CAND-DEPTH-COVERAGE-001"
+                ),
+            ),
+        ]
+    )
     rules.extend(candidate_rules())
     payload = {
         "library_version": LIBRARY_VERSION,
@@ -1090,13 +1475,20 @@ def build_catalog() -> dict:
             "Auditable rule library for Phase 1 TP/SL/expiry probability."
         ),
         "governance": {
-            "production_changes": "none",
+            "probability_production_changes": "none",
             "new_candidate_weights_authorized": False,
             "learning_may_self_modify_production": False,
             "current_active_predictive_rule_ids": list(
                 ACTIVE_PREDICTIVE_RULE_IDS
             ),
             "baseline_rule_ids": list(BASELINE_RULE_IDS),
+            "active_economic_rule_ids": list(
+                ACTIVE_ECONOMIC_RULE_IDS
+            ),
+            "data_quality_gate_ids": [
+                "LIB-CAND-DATA-FRESHNESS-001",
+                "LIB-CAND-CANDLE-INTEGRITY-001",
+            ],
         },
         "sources": SOURCES,
         "rules": rules,
@@ -1104,9 +1496,16 @@ def build_catalog() -> dict:
             "rules": len(rules),
             "active_baseline": len(BASELINE_RULE_IDS),
             "active_predictive": len(ACTIVE_PREDICTIVE_RULE_IDS),
-            "candidate_or_blocked": len(rules)
-            - len(BASELINE_RULE_IDS)
-            - len(ACTIVE_PREDICTIVE_RULE_IDS),
+            "active_data_quality_gates": 2,
+            "active_economic": len(ACTIVE_ECONOMIC_RULE_IDS),
+            "implemented_observational": sum(
+                rule["lifecycle_status"] == "implemented_shadow"
+                for rule in rules
+            ),
+            "data_blocked": sum(
+                rule["lifecycle_status"] == "data_blocked"
+                for rule in rules
+            ),
         },
     }
     payload["catalog_sha256"] = canonical_sha256(payload)

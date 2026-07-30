@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from data_quality_gate import validate_pretrade_candles
 from m8_evaluation import (
     PROFILE_INTERVALS_SECONDS,
     kline_fingerprint,
@@ -67,14 +68,14 @@ def _closed_material(plan: dict, candles: list[dict]) -> dict:
     )
     return_count = int(plan["horizon_seconds"]) // interval_seconds
     required_returns = 61 * return_count
-    closed = [
-        row
-        for row in candles
-        if int(row["close_time_ms"]) <= analysis_ms
-    ]
-    if len(closed) < required_returns + 1:
-        raise ValueError("insufficient_pretrade_history")
-    selected = closed[-(required_returns + 1) :]
+    data_quality = validate_pretrade_candles(
+        candles,
+        analysis_at=plan["analysis_at"],
+        analysis_at_ms=analysis_ms,
+        interval_seconds=interval_seconds,
+        required_candle_count=required_returns + 1,
+    )
+    selected = data_quality.pop("selected_candles")
     closes = [float(row["close"]) for row in selected]
     returns = _returns(closes)
     current_returns = returns[-return_count:]
@@ -104,6 +105,7 @@ def _closed_material(plan: dict, candles: list[dict]) -> dict:
         },
         "data_cutoff_at_ms": int(selected[-1]["close_time_ms"]),
         "data_sha256": kline_fingerprint(selected),
+        "data_quality": data_quality,
     }
 
 
@@ -329,6 +331,8 @@ def _book_inputs(
         "best_bid": f_bid,
         "best_ask": f_ask,
         "receive_time": f_received,
+        "capture_time": int(live_context.get("captured_at_ms") or f_received),
+        "max_age_ms": 30_000,
     }
     depth = live_context.get("depth") or {}
     entry = float(plan["entry"])
@@ -338,6 +342,17 @@ def _book_inputs(
         "side": "buy" if plan["side"] == "long" else "sell",
         "base_quantity": margin * leverage / entry,
         "arrival_mid": (f_bid + f_ask) / 2 if f_bid and f_ask else 0.0,
+        "receive_time": int(
+            depth.get("receivedAt")
+            or live_context.get("captured_at_ms")
+            or f_received
+        ),
+        "capture_time": int(
+            live_context.get("captured_at_ms")
+            or depth.get("receivedAt")
+            or f_received
+        ),
+        "max_age_ms": 30_000,
         "bids": [
             {"price": float(row[0]), "quantity": float(row[1])}
             for row in depth.get("bids", [])
@@ -383,8 +398,19 @@ def build_rule_inputs(
     live_context: dict | None,
     probabilities: dict[str, float] | None = None,
     readiness_statuses: dict[str, str] | None = None,
+    prevalidated_material: dict | None = None,
 ) -> tuple[dict[str, dict], dict, dict[str, tuple[dict, ...]]]:
-    material = _closed_material(plan, candles)
+    if prevalidated_material is not None:
+        quality = prevalidated_material.get("data_quality", {})
+        if (
+            quality.get("status") != "valid"
+            or quality.get("validation_pass_count") != 1
+            or not quality.get("report_sha256")
+        ):
+            raise ValueError("prevalidated_material_quality_invalid")
+        material = prevalidated_material
+    else:
+        material = _closed_material(plan, candles)
     current = material["current_bars"]
     interval_seconds = material["interval_seconds"]
     closes = [
@@ -427,6 +453,17 @@ def build_rule_inputs(
         "M4-RULE-LOG-RETURNS-001": {
             "interval_seconds": interval_seconds,
             "closes": closes,
+            "prevalidated_data_quality": {
+                "status": material["data_quality"]["status"],
+                "validation_pass_count": material["data_quality"][
+                    "validation_pass_count"
+                ],
+                "report_sha256": material["data_quality"]["report_sha256"],
+                "source_data_sha256": material["data_quality"][
+                    "source_data_sha256"
+                ],
+                "interval_seconds": interval_seconds,
+            },
         },
         "M4-RULE-REALIZED-VOLATILITY-001": {},
         "M4-RULE-NORMALIZED-BARRIER-GEOMETRY-002": {},

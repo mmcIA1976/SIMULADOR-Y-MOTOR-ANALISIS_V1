@@ -218,6 +218,7 @@ def analyze_trade(
             horizon_seconds=horizon_seconds,
             interval_seconds=interval_seconds,
             request_cutoff_at=request_received_at.isoformat(),
+            market_price=float(proposal.entry),
         )
     except Exception as exc:
         raise NewEngineAnalysisError(
@@ -292,6 +293,15 @@ def analyze_trade(
         rule_id: trace["status"]
         for rule_id, trace in m5_traces.items()
     }
+    spread_trace = m5_traces.get("M4-RULE-QUOTED-SPREAD-001", {})
+    depth_trace = m5_traces.get("M4-RULE-DEPTH-SWEEP-001", {})
+    observational_statuses = {
+        str(trace.get("rule_id")): trace.get("status")
+        for trace in (
+            run.get("observational_rule_traces", {}).get("traces", [])
+        )
+        if isinstance(trace, dict) and trace.get("rule_id")
+    }
     snapshot.update(
         {
             **geometry,
@@ -300,35 +310,96 @@ def analyze_trade(
                 "futures_price": bool(live_context.get("futures_book")),
                 "futures_klines": True,
                 "order_book": (
-                    m5_statuses.get("M4-RULE-QUOTED-SPREAD-001")
-                    == "evaluated"
+                    spread_trace.get("status") == "evaluated"
+                ),
+                "entry_depth": (
+                    depth_trace.get("status") == "evaluated"
+                    and depth_trace.get("outputs", {}).get(
+                        "availability_status"
+                    )
+                    == "available"
                 ),
                 "futures_trade_flow": (
                     m5_statuses.get("M4-RULE-AGGRESSOR-IMBALANCE-001")
                     == "evaluated"
                 ),
                 "ticker_24h": False,
-                "fibonacci": False,
+                "fibonacci": (
+                    observational_statuses.get(
+                        "LIB-CAND-FIBONACCI-DISTANCE-001"
+                    )
+                    == "evaluated_shadow"
+                ),
+                "structural_levels": (
+                    observational_statuses.get(
+                        "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"
+                    )
+                    == "evaluated_shadow"
+                ),
                 "funding": (
                     m5_statuses.get("M4-RULE-FUNDING-STATE-001")
                     == "evaluated"
+                ),
+                "funding_relative": (
+                    observational_statuses.get(
+                        "LIB-CAND-FUNDING-PERCENTILE-001"
+                    )
+                    == "evaluated_shadow"
                 ),
                 "open_interest": (
                     m5_statuses.get("M4-RULE-OPEN-INTEREST-CHANGE-001")
                     == "evaluated"
                 ),
-                "long_short_ratio": False,
+                "long_short_ratio": (
+                    observational_statuses.get(
+                        "LIB-CAND-CROWDING-PERCENTILE-001"
+                    )
+                    == "evaluated_shadow"
+                ),
                 "taker_futures_ratio": False,
-                "liquidation_heatmap": False,
-                "fear_greed": False,
+                "liquidation_heatmap": (
+                    observational_statuses.get(
+                        "LIB-CAND-LIQUIDATION-ZONE-001"
+                    )
+                    == "evaluated_shadow"
+                ),
+                "fear_greed": (
+                    observational_statuses.get(
+                        "LIB-CAND-SENTIMENT-PERCENTILE-001"
+                    )
+                    == "evaluated_shadow"
+                ),
                 "global_crypto_market": False,
+                "market_breadth": (
+                    observational_statuses.get(
+                        "LIB-CAND-BREADTH-001"
+                    )
+                    == "evaluated_shadow"
+                ),
             },
             "source": {
                 "probability_market_data": "Binance USD-M closed klines",
                 "probability_model": ENGINE_VERSION,
+                "structural_fibonacci_observation": (
+                    "Binance USD-M closed klines"
+                ),
+                "funding_positioning_observation": (
+                    "Binance USD-M funding and global account ratio"
+                ),
+                "market_context_observation": (
+                    "CoinGecko top markets and Alternative.me Fear & Greed"
+                ),
+                "liquidation_observation": (
+                    "HyperPerps aggregation of Hyperliquid public positions"
+                ),
             },
             "new_engine_only": True,
             "legacy_engine_executed": False,
+            "execution_economics": {
+                "probability_effect": "none_separate_economic_layer",
+                "quoted_spread": spread_trace.get("outputs", {}),
+                "entry_depth_sweep": depth_trace.get("outputs", {}),
+            },
             "feature_snapshot": run["feature_snapshot"],
             "m5_rule_trace": run["m5_analysis"],
             "m5_pre_probability_trace": run[

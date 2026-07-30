@@ -4,8 +4,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+import liquidation_data
 import market_data
 from m8_evaluation import BINANCE_INTERVALS
+
+
+POSITIONING_REFERENCE_COUNT = 60
 
 
 def utc_now_ms() -> int:
@@ -27,6 +31,8 @@ def collect_live_rule_context(
     interval_seconds: int,
     request_cutoff_at: str,
     client: Any = market_data,
+    liquidation_client: Any | None = None,
+    market_price: float | None = None,
     now_ms: Callable[[], int] = utc_now_ms,
 ) -> dict:
     parsed = datetime.fromisoformat(
@@ -43,12 +49,18 @@ def collect_live_rule_context(
         500,
         max(4, int(horizon_seconds) // int(interval_seconds) + 4),
     )
-    funding_limit = min(
-        1000,
-        max(8, int(horizon_seconds) // (4 * 60 * 60) + 4),
+    funding_limit = POSITIONING_REFERENCE_COUNT
+    liquidation_client = (
+        liquidation_data
+        if liquidation_client is None and client is market_data
+        else liquidation_client or client
     )
+    try:
+        normalized_market_price = float(market_price)
+    except (TypeError, ValueError):
+        normalized_market_price = 0.0
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=13) as executor:
         futures = {
             "depth": executor.submit(client.get_depth, symbol, 100),
             "futures_book": executor.submit(
@@ -66,7 +78,7 @@ def collect_live_rule_context(
                 client.get_funding_history,
                 symbol,
                 funding_limit,
-                request_cutoff_ms - horizon_ms,
+                None,
                 request_cutoff_ms,
             ),
             "open_interest_history": executor.submit(
@@ -85,7 +97,29 @@ def collect_live_rule_context(
                 history_start_ms,
                 request_cutoff_ms,
             ),
+            "global_long_short_history": executor.submit(
+                client.get_global_long_short_ratio_history,
+                symbol,
+                interval,
+                POSITIONING_REFERENCE_COUNT + 1,
+                None,
+                request_cutoff_ms,
+            ),
+            "market_breadth_assets": executor.submit(
+                client.get_top_crypto_assets,
+                100,
+            ),
+            "fear_greed_history": executor.submit(
+                client.get_fear_greed_history,
+                POSITIONING_REFERENCE_COUNT + 1,
+            ),
         }
+        if normalized_market_price > 0:
+            futures["liquidation_context"] = executor.submit(
+                liquidation_client.get_liquidation_context,
+                symbol,
+                normalized_market_price,
+            )
 
     captured_at_ms = int(now_ms())
     return {
@@ -108,4 +142,21 @@ def collect_live_rule_context(
             [],
         ),
         "taker_history": _safe_future(futures["taker_history"], []),
+        "global_long_short_history": _safe_future(
+            futures["global_long_short_history"],
+            [],
+        ),
+        "market_breadth_assets": _safe_future(
+            futures["market_breadth_assets"],
+            [],
+        ),
+        "fear_greed_history": _safe_future(
+            futures["fear_greed_history"],
+            [],
+        ),
+        "liquidation_context": (
+            _safe_future(futures["liquidation_context"], {})
+            if "liquidation_context" in futures
+            else {}
+        ),
     }

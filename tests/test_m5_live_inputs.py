@@ -82,6 +82,40 @@ class FakeMarketDataClient:
         )
         return [{"timestamp": start_ms}, {"timestamp": end_ms}]
 
+    def get_global_long_short_ratio_history(
+        self,
+        symbol,
+        interval,
+        limit,
+        start_ms,
+        end_ms,
+    ):
+        self._record(
+            "global_long_short_history",
+            symbol,
+            interval,
+            limit,
+            start_ms,
+            end_ms,
+        )
+        return [{"timestamp": end_ms}]
+
+    def get_top_crypto_assets(self, limit):
+        self._record("market_breadth_assets", limit)
+        return [{"id": "bitcoin"}]
+
+    def get_fear_greed_history(self, limit):
+        self._record("fear_greed_history", limit)
+        return [{"value": "50"}]
+
+    def get_liquidation_context(self, symbol, market_price):
+        self._record("liquidation_context", symbol, market_price)
+        return {
+            "available": True,
+            "symbol": symbol,
+            "market_price": market_price,
+        }
+
 
 class M5LiveInputsTests(unittest.TestCase):
     def test_collects_every_public_context_source_with_one_cutoff(self):
@@ -92,13 +126,14 @@ class M5LiveInputsTests(unittest.TestCase):
             interval_seconds=300,
             request_cutoff_at="2026-07-28T12:00:00+00:00",
             client=client,
+            market_price=100.0,
             now_ms=lambda: 1_000,
         )
 
         self.assertEqual(context["symbol"], "BTCUSDT")
         self.assertEqual(context["interval"], "5m")
         self.assertEqual(context["captured_at_ms"], 1_000)
-        self.assertEqual(len(client.calls), 9)
+        self.assertEqual(len(client.calls), 13)
         self.assertEqual(
             {name for name, _ in client.calls},
             {
@@ -111,6 +146,10 @@ class M5LiveInputsTests(unittest.TestCase):
                 "funding_history",
                 "open_interest_history",
                 "taker_history",
+                "global_long_short_history",
+                "market_breadth_assets",
+                "fear_greed_history",
+                "liquidation_context",
             },
         )
         for name, args in client.calls:
@@ -118,9 +157,29 @@ class M5LiveInputsTests(unittest.TestCase):
                 "funding_history",
                 "open_interest_history",
                 "taker_history",
+                "global_long_short_history",
             }:
-                self.assertLess(args[-2], args[-1])
+                if args[-2] is not None:
+                    self.assertLess(args[-2], args[-1])
                 self.assertEqual(args[-1], context["request_cutoff_ms"])
+        funding_call = next(
+            args for name, args in client.calls
+            if name == "funding_history"
+        )
+        crowding_call = next(
+            args for name, args in client.calls
+            if name == "global_long_short_history"
+        )
+        self.assertEqual(funding_call[1], 60)
+        self.assertEqual(crowding_call[2], 61)
+        self.assertIsNone(funding_call[-2])
+        self.assertIsNone(crowding_call[-2])
+        self.assertEqual(context["market_breadth_assets"][0]["id"], "bitcoin")
+        self.assertEqual(context["fear_greed_history"][0]["value"], "50")
+        self.assertEqual(
+            context["liquidation_context"]["market_price"],
+            100.0,
+        )
 
     def test_failed_source_is_blocking_input_instead_of_invented_value(self):
         client = FakeMarketDataClient()

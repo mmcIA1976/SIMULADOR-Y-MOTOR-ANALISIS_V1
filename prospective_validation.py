@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import market_data
+from composite_rule_runtime import evaluate_composite_rule_family
 from db import row_to_dict
 from m5_engine import ENGINE_VERSION as M5_ENGINE_VERSION
 from m5_engine import run_internal_analysis
@@ -35,7 +36,11 @@ from m8_evaluation import (
     parse_utc,
     selected_interval_seconds,
 )
+from market_context_rule_runtime import evaluate_market_context_rule_family
+from liquidation_rule_runtime import evaluate_liquidation_rule_family
 from microstructure_rule_runtime import evaluate_microstructure_rule_family
+from positioning_rule_runtime import evaluate_positioning_rule_family
+from structural_level_runtime import evaluate_structural_level_family
 from technical_rule_runtime import evaluate_technical_rule_family
 from versioning import APP_VERSION, PROSPECTIVE_RUNTIME_VERSION
 
@@ -237,19 +242,23 @@ def build_prospective_probability_run(
         analysis_ms,
         loader=loader,
     )
-    candles = [normalize_kline(row) for row in raw]
     try:
+        candles = [normalize_kline(row) for row in raw]
         rule_inputs, material, source_observations = build_rule_inputs(
             plan=plan,
             candles=candles,
             live_context=live_context,
         )
     except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
+        details = {"exception_type": type(exc).__name__}
+        quality_report = getattr(exc, "report", None)
+        if isinstance(quality_report, dict):
+            details["data_quality"] = quality_report
         return _blocked_payload(
             analysis_id=analysis_id,
             plan=plan,
             code=str(exc) or "m5_input_assembly_blocked",
-            details={"exception_type": type(exc).__name__},
+            details=details,
         )
 
     m5_pre_probability = run_internal_analysis(
@@ -275,16 +284,66 @@ def build_prospective_probability_run(
         analysis_at=plan["analysis_at"],
         source_data_sha256=material["data_sha256"],
     )
-    observational_traces = (
+    structural_level_observations = evaluate_structural_level_family(
+        material["selected"],
+        return_count=material["return_count"],
+        side=plan["side"],
+        entry=plan["entry"],
+        take_profit=plan["take_profit"],
+        stop_loss=plan["stop_loss"],
+        sigma_horizon=math.sqrt(material["current_variance"]),
+        interval_seconds=material["interval_seconds"],
+        analysis_at=plan["analysis_at"],
+        source_data_sha256=material["data_sha256"],
+    )
+    positioning_rule_observations = evaluate_positioning_rule_family(
+        live_context,
+        side=plan["side"],
+        analysis_at=plan["analysis_at"],
+        interval_seconds=material["interval_seconds"],
+    )
+    market_context_observations = evaluate_market_context_rule_family(
+        live_context,
+        side=plan["side"],
+        time_horizon=plan["time_horizon"],
+        analysis_at=plan["analysis_at"],
+    )
+    liquidation_observations = evaluate_liquidation_rule_family(
+        live_context,
+        side=plan["side"],
+        entry=plan["entry"],
+        take_profit=plan["take_profit"],
+        stop_loss=plan["stop_loss"],
+        sigma_horizon=math.sqrt(material["current_variance"]),
+        analysis_at=plan["analysis_at"],
+    )
+    base_observational_traces = (
         technical_rule_observations["traces"]
         + microstructure_rule_observations["traces"]
+        + structural_level_observations["traces"]
+        + positioning_rule_observations["traces"]
+        + market_context_observations["traces"]
+        + liquidation_observations["traces"]
+    )
+    composite_observations = evaluate_composite_rule_family(
+        selected_candles=material["selected"],
+        current_bars=material["current_bars"],
+        return_count=material["return_count"],
+        side=plan["side"],
+        analysis_at=plan["analysis_at"],
+        m5_analysis=m5_pre_probability,
+        observational_traces=base_observational_traces,
+    )
+    observational_traces = (
+        base_observational_traces
+        + composite_observations["traces"]
     )
     evaluated_observational_count = sum(
         trace["status"] == "evaluated_shadow"
         for trace in observational_traces
     )
     observational_rule_observations = {
-        "runtime_version": "observational-rule-runtime-v0.2",
+        "runtime_version": "observational-rule-runtime-v0.7",
         "status": (
             "evaluated_shadow"
             if evaluated_observational_count == len(observational_traces)
@@ -297,6 +356,11 @@ def build_prospective_probability_run(
         "runtimes": [
             technical_rule_observations,
             microstructure_rule_observations,
+            structural_level_observations,
+            positioning_rule_observations,
+            market_context_observations,
+            liquidation_observations,
+            composite_observations,
         ],
         "traces": observational_traces,
     }
@@ -350,6 +414,7 @@ def build_prospective_probability_run(
         "source_m5_trace_sha256": m5_pre_probability[
             "analysis_trace_sha256"
         ],
+        "data_quality": material["data_quality"],
         "observational_rule_traces": observational_rule_observations,
     }
     candidate_payload = load_frozen_candidate()
@@ -506,8 +571,18 @@ def build_prospective_probability_run(
         "market_probabilities": "available" if evaluated else "blocked",
         "entry_execution": (
             "available"
-            if pre_traces.get("M4-RULE-DEPTH-SWEEP-001", {}).get("status")
-            == "evaluated"
+            if (
+                pre_traces.get(
+                    "M4-RULE-DEPTH-SWEEP-001",
+                    {},
+                ).get("status")
+                == "evaluated"
+                and pre_traces.get(
+                    "M4-RULE-DEPTH-SWEEP-001",
+                    {},
+                ).get("outputs", {}).get("availability_status")
+                == "available"
+            )
             else "blocked"
         ),
         "exit_execution": "blocked",
@@ -537,6 +612,7 @@ def build_prospective_probability_run(
         plan=plan,
         candles=candles,
         live_context=live_context,
+        prevalidated_material=material,
         probabilities=(
             m6_result.get("probabilities")
             if evaluated
@@ -649,6 +725,7 @@ def build_prospective_probability_run(
         "m5_analysis": m5_analysis,
         "m5_pre_probability_analysis": m5_pre_probability,
         "m5_rule_effects": rule_effects,
+        "data_quality": material["data_quality"],
         "observational_rule_traces": observational_rule_observations,
         "m6_result": m6_result,
         "data_cutoff_at": data_cutoff_at,

@@ -117,16 +117,31 @@ def log_returns(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
     interval_seconds = int(
         require_positive(inputs.get("interval_seconds"), "interval_seconds")
     )
+    quality = inputs.get("prevalidated_data_quality")
+    prevalidated = (
+        isinstance(quality, dict)
+        and quality.get("status") == "valid"
+        and quality.get("validation_pass_count") == 1
+        and quality.get("report_sha256")
+        and quality.get("source_data_sha256")
+        and quality.get("interval_seconds") == interval_seconds
+    )
     values = []
     times = []
     for index, item in enumerate(closes):
         row = require_mapping(item, f"closes_{index}")
-        if row.get("closed") is not True:
+        if not prevalidated and row.get("closed") is not True:
             raise RuleBlocked("open_kline", "all klines must be closed")
         values.append(require_positive(row.get("close"), f"close_{index}"))
         times.append(require_timestamp_ms(row.get("close_time"), f"close_time_{index}"))
     expected_gap = interval_seconds * 1000
-    if any(right - left != expected_gap for left, right in zip(times, times[1:])):
+    if (
+        not prevalidated
+        and any(
+            right - left != expected_gap
+            for left, right in zip(times, times[1:])
+        )
+    ):
         raise RuleBlocked("gapped_klines", "closed klines must be consecutive")
     returns = [
         math.log(current / previous)
@@ -139,6 +154,9 @@ def log_returns(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
         "last_close_time": times[-1],
         "return_series": returns,
         "return_series_hash": canonical_hash(returns),
+        "data_quality_report_sha256": (
+            quality["report_sha256"] if prevalidated else None
+        ),
     }
 
 
@@ -682,12 +700,33 @@ def quoted_spread(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
         inputs.get("receive_time"),
         "receive_time",
     )
+    capture_time = require_timestamp_ms(
+        inputs.get("capture_time", receive_time),
+        "capture_time",
+    )
+    max_age_ms = int(
+        require_positive(inputs.get("max_age_ms", 30_000), "max_age_ms")
+    )
+    age_ms = capture_time - receive_time
+    if age_ms < 0:
+        raise RuleBlocked(
+            "book_received_after_capture",
+            "receive time must not be later than capture time",
+        )
+    if age_ms > max_age_ms:
+        raise RuleBlocked(
+            "stale_quoted_book",
+            "quoted book exceeds the approved realtime age",
+        )
     mid = (bid + ask) / 2
     spread = ask - bid
     return {
         "best_bid": bid,
         "best_ask": ask,
         "receive_time": receive_time,
+        "capture_time": capture_time,
+        "age_ms": age_ms,
+        "max_age_ms": max_age_ms,
         "mid": mid,
         "spread_quote": spread,
         "spread_fraction_mid": spread / mid,
@@ -698,7 +737,33 @@ def quoted_spread(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
 def depth_sweep(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
     order_side = require_choice(inputs.get("side"), "side", {"buy", "sell"})
     requested = require_positive(inputs.get("base_quantity"), "base_quantity")
-    arrival_mid = require_positive(inputs.get("arrival_mid"), "arrival_mid")
+    spread = parent_output(
+        dependencies,
+        "M4-RULE-QUOTED-SPREAD-001",
+    )
+    arrival_mid = require_positive(spread.get("mid"), "arrival_mid")
+    receive_time = require_timestamp_ms(
+        inputs.get("receive_time", spread.get("receive_time")),
+        "receive_time",
+    )
+    capture_time = require_timestamp_ms(
+        inputs.get("capture_time", receive_time),
+        "capture_time",
+    )
+    max_age_ms = int(
+        require_positive(inputs.get("max_age_ms", 30_000), "max_age_ms")
+    )
+    age_ms = capture_time - receive_time
+    if age_ms < 0:
+        raise RuleBlocked(
+            "depth_received_after_capture",
+            "depth receive time must not be later than capture time",
+        )
+    if age_ms > max_age_ms:
+        raise RuleBlocked(
+            "stale_depth_snapshot",
+            "depth snapshot exceeds the approved realtime age",
+        )
     levels = require_sequence(
         inputs.get("asks" if order_side == "buy" else "bids"),
         "book_levels",
@@ -737,6 +802,7 @@ def depth_sweep(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
         "side": order_side,
         "requested_quantity": requested,
         "filled_quantity": filled,
+        "unfilled_quantity": max(requested - filled, 0.0),
         "fill_ratio": fill_ratio,
         "vwap_filled": vwap,
         "implementation_shortfall_filled_quote": shortfall_quote,
@@ -744,15 +810,16 @@ def depth_sweep(inputs: dict, dependencies: dict[str, RuleTrace]) -> dict:
             shortfall_quote / (arrival_mid * filled)
         ),
         "complete_vwap": vwap if math.isclose(fill_ratio, 1.0) else None,
+        "receive_time": receive_time,
+        "capture_time": capture_time,
+        "age_ms": age_ms,
+        "max_age_ms": max_age_ms,
         "availability_status": (
-            "available" if math.isclose(fill_ratio, 1.0) else "partial_fill"
+            "available"
+            if math.isclose(fill_ratio, 1.0)
+            else "insufficient_visible_depth"
         ),
     }
-    if not math.isclose(fill_ratio, 1.0):
-        raise RuleBlocked(
-            "incomplete_visible_depth",
-            "complete execution cost requires fill ratio one",
-        )
     return output
 
 

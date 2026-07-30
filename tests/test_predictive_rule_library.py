@@ -96,8 +96,12 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
             evidence["linked_closed_resolved_operations"],
             24,
         )
+        self.assertIn(
+            "do_not_reuse_legacy",
+            evidence["reuse_policy"],
+        )
 
-    def test_six_observational_rules_are_implemented_in_shadow(self) -> None:
+    def test_sixteen_observational_rules_are_implemented_in_shadow(self) -> None:
         expected = {
             "LIB-CAND-EMA-TREND-001",
             "LIB-CAND-RSI-WILDER-001",
@@ -105,6 +109,16 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
             "LIB-CAND-RELATIVE-VOLUME-001",
             "LIB-CAND-CVD-SLOPE-001",
             "LIB-CAND-ORDERBOOK-IMBALANCE-001",
+            "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
+            "LIB-CAND-FIBONACCI-DISTANCE-001",
+            "LIB-CAND-FUNDING-PERCENTILE-001",
+            "LIB-CAND-CROWDING-PERCENTILE-001",
+            "LIB-CAND-BREADTH-001",
+            "LIB-CAND-SENTIMENT-PERCENTILE-001",
+            "LIB-CAND-LIQUIDATION-ZONE-001",
+            "LIB-CAND-COMPRESSION-001",
+            "LIB-CAND-ABSORPTION-001",
+            "LIB-CAND-PULLBACK-CONTEXT-001",
         }
         actual = {
             rule_id
@@ -117,6 +131,100 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 self.registry[rule_id]["inputs"][0]["provider"],
                 "must_be_approved_before_implementation",
             )
+
+    def test_two_data_quality_gates_are_active_but_not_predictive(self) -> None:
+        expected = {
+            "LIB-CAND-DATA-FRESHNESS-001",
+            "LIB-CAND-CANDLE-INTEGRITY-001",
+        }
+        actual = {
+            rule_id
+            for rule_id, rule in self.registry.items()
+            if rule["lifecycle_status"] == "active_blocking"
+        }
+        self.assertEqual(actual, expected)
+        self.assertEqual(
+            self.catalog["summary"]["active_data_quality_gates"],
+            2,
+        )
+        for rule_id in expected:
+            rule = self.registry[rule_id]
+            self.assertEqual(
+                rule["expected_probability_effect"]["mode"],
+                "blocking_gate_not_predictive",
+            )
+            self.assertFalse(
+                rule["trace_contract"]["requires_probability_ablation"]
+            )
+
+    def test_execution_candidates_are_merged_into_canonical_rules(self) -> None:
+        expected = {
+            "M4-RULE-QUOTED-SPREAD-001",
+            "M4-RULE-DEPTH-SWEEP-001",
+        }
+        actual = {
+            rule_id
+            for rule_id, rule in self.registry.items()
+            if rule["lifecycle_status"] == "active_economic"
+        }
+        self.assertEqual(actual, expected)
+        self.assertEqual(
+            set(
+                self.catalog["governance"][
+                    "active_economic_rule_ids"
+                ]
+            ),
+            expected,
+        )
+        self.assertEqual(
+            self.catalog["summary"]["active_economic"],
+            2,
+        )
+        for obsolete_id in (
+            "LIB-CAND-SPREAD-EXECUTION-001",
+            "LIB-CAND-DEPTH-COVERAGE-001",
+        ):
+            self.assertNotIn(obsolete_id, self.registry)
+        for rule_id in expected:
+            rule = self.registry[rule_id]
+            self.assertEqual(
+                rule["expected_probability_effect"]["mode"],
+                "execution_economic_only",
+            )
+            self.assertFalse(
+                rule["trace_contract"]["requires_probability_ablation"]
+            )
+
+    def test_legacy_fibonacci_is_preserved_without_reusing_scores(self) -> None:
+        fibonacci = rule_metadata(
+            "LIB-CAND-FIBONACCI-DISTANCE-001"
+        )
+        evidence = fibonacci["historical_evidence"]
+        self.assertEqual(evidence["legacy_closed_operations"], 154)
+        self.assertIn(
+            "do_not_reuse_legacy_scores",
+            evidence["reuse_policy"],
+        )
+
+    def test_legacy_market_context_is_preserved_without_old_thresholds(
+        self,
+    ) -> None:
+        breadth = rule_metadata("LIB-CAND-BREADTH-001")
+        sentiment = rule_metadata(
+            "LIB-CAND-SENTIMENT-PERCENTILE-001"
+        )
+        self.assertEqual(
+            breadth["historical_evidence"][
+                "legacy_observations_available"
+            ],
+            718,
+        )
+        self.assertEqual(
+            sentiment["historical_evidence"][
+                "legacy_observations_available"
+            ],
+            874,
+        )
 
 
 if __name__ == "__main__":

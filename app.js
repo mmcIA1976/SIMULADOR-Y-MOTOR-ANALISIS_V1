@@ -82,8 +82,6 @@ const elements = {
   analysisInterpretation: document.querySelector("#analysisInterpretation"),
   explainedMetrics: document.querySelector("#explainedMetrics"),
   dataSourcesBox: document.querySelector("#dataSourcesBox"),
-  liquidationAuditBox: document.querySelector("#liquidationAuditBox"),
-  fibonacciAuditBox: document.querySelector("#fibonacciAuditBox"),
   analysisReasons: document.querySelector("#analysisReasons"),
   operationSelector: document.querySelector("#operationSelector"),
   operationSelectorMobile: document.querySelector("#operationSelectorMobile"),
@@ -902,8 +900,6 @@ function clearPrivateSessionView() {
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
-  renderFibonacciAudit(null);
-  renderLiquidationAudit(null);
   elements.analysisReasons.innerHTML = "";
   drawChart();
 }
@@ -980,7 +976,6 @@ async function loadSession() {
     renderPortfolio(user.portfolio);
     await loadContest();
     await loadOperations();
-    await loadFibonacciAudit();
   } catch {
     setSession(null);
     clearPrivateSessionView();
@@ -1014,7 +1009,6 @@ async function authenticate(mode) {
     await loadContest();
     await loadOperations();
     await loadPortfolio();
-    await loadFibonacciAudit();
     if (!getSelectedOperation()) {
       elements.analysisDecision.textContent = "Sesion iniciada. Ya puedes analizar operaciones.";
     }
@@ -1029,7 +1023,6 @@ async function logout() {
   setSession(null);
   clearPrivateSessionView();
   renderContest(null);
-  renderFibonacciAudit(null);
   elements.authMessage.textContent = "Sesion cerrada.";
 }
 
@@ -1717,7 +1710,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
     "m6_calibrated_competing_risks",
   ].includes(analysis.engine_family);
   elements.analysisHeadline.textContent = isTpSlProbabilityEngine
-    ? `Motor probabilístico TP/SL · SL ${percent(analysis.sl_probability)}`
+    ? `Motor probabilístico TP/SL · TP ${percent(analysis.tp_probability)}`
     : `Setup ${analysis.setup_grade} · Riesgo ${analysis.risk_level}`;
   elements.tpProbability.textContent = probabilityLabel(analysis, "tp", "tp_probability");
   elements.slProbability.textContent = probabilityLabel(analysis, "sl", "sl_probability");
@@ -2113,81 +2106,6 @@ function renderDataSources(availability, sources) {
   `;
 }
 
-function renderFibonacciAudit(report) {
-  if (!elements.fibonacciAuditBox) {
-    return;
-  }
-  if (!report) {
-    elements.fibonacciAuditBox.innerHTML = `
-      <span class="label">Auditoria Fibonacci v0.7</span>
-      <p>Inicia sesion para ver la muestra acumulada.</p>
-    `;
-    return;
-  }
-  const sample = report.sample || {};
-  const recommendations = report.recommendations || {};
-  const summary = report.summary || {};
-  const resolvedCases = Number(sample.resolved_cases || 0);
-  const minimum = Number(sample.minimum_for_review || 30);
-  const progress = minimum > 0 ? Math.min(100, (resolvedCases / minimum) * 100) : 0;
-  const topBias = Array.isArray(report.by_bias) && report.by_bias.length ? report.by_bias[0] : null;
-  const topZone = Array.isArray(report.by_entry_zone) && report.by_entry_zone.length ? report.by_entry_zone[0] : null;
-  const readinessText = sample.ready_for_weight_review
-    ? "Muestra lista para revisar pesos."
-    : `Faltan ${Math.max(0, minimum - resolvedCases)} cierres evaluables para revisar pesos.`;
-  elements.fibonacciAuditBox.innerHTML = `
-    <span class="label">Auditoria Fibonacci v0.7</span>
-    <div class="learning-grid">
-      <article><span>Analisis v0.7</span><strong>${Number(recommendations.total_v07 || 0)}</strong></article>
-      <article><span>En operaciones</span><strong>${Number(recommendations.linked_operations || 0)}</strong></article>
-      <article><span>Cierres evaluables</span><strong>${resolvedCases}/${minimum}</strong></article>
-      <article><span>Tasa exito</span><strong>${summary.available ? percent(Number(summary.success_rate || 0)) : "--"}</strong></article>
-      <article><span>PnL medio</span><strong class="${Number(summary.avg_pnl || 0) > 0 ? "positive" : Number(summary.avg_pnl || 0) < 0 ? "negative" : "neutral"}">${summary.available ? money(Number(summary.avg_pnl || 0)) : "--"}</strong></article>
-    </div>
-    <div class="audit-progress" aria-label="Progreso auditoria Fibonacci"><span style="width: ${progress.toFixed(1)}%"></span></div>
-    <p>${escapeHtml(readinessText)}</p>
-    ${topBias ? `<p>Sesgo con mas muestra: ${escapeHtml(topBias.name)} · ${topBias.cases} caso${topBias.cases === 1 ? "" : "s"} · exito ${percent(Number(topBias.success_rate || 0))}.</p>` : ""}
-    ${topZone ? `<p>Zona mas frecuente: ${escapeHtml(String(topZone.name).replaceAll("_", " "))} · ${topZone.cases} caso${topZone.cases === 1 ? "" : "s"}.</p>` : ""}
-  `;
-}
-
-function renderLiquidationAudit(report) {
-  if (!elements.liquidationAuditBox) {
-    return;
-  }
-  if (!report) {
-    elements.liquidationAuditBox.innerHTML = `
-      <span class="label">Auditoria liquidaciones</span>
-      <p>Inicia sesion para ver la muestra acumulada.</p>
-    `;
-    return;
-  }
-  const sample = report.sample || {};
-  const recommendations = report.recommendations || {};
-  const summary = report.summary || {};
-  const resolved = Number(sample.resolved_cases || 0);
-  const minimum = Number(sample.minimum_for_weight_review || 30);
-  const progress = minimum > 0 ? Math.min(100, (resolved / minimum) * 100) : 0;
-  const accuracy = summary.forecast_accuracy;
-  const readinessText = sample.ready_for_weight_review
-    ? "Muestra lista para revisar si el mapa debe influir en el motor."
-    : `Faltan ${Math.max(0, minimum - resolved)} cierres evaluables antes de revisar pesos.`;
-  elements.liquidationAuditBox.innerHTML = `
-    <span class="label">Auditoria liquidaciones Hyperliquid</span>
-    <div class="learning-grid">
-      <article><span>Analisis guardados</span><strong>${Number(recommendations.total_analyses || 0)}</strong></article>
-      <article><span>En operaciones</span><strong>${Number(recommendations.linked_operations || 0)}</strong></article>
-      <article><span>Cierres evaluables</span><strong>${resolved}/${minimum}</strong></article>
-      <article><span>Acierto del mapa</span><strong>${accuracy == null ? "--" : percent(Number(accuracy))}</strong></article>
-      <article><span>Objetivo tocado</span><strong>${summary.available ? percent(Number(summary.target_touch_rate || 0)) : "--"}</strong></article>
-      <article><span>Adverso tocado</span><strong>${summary.available ? percent(Number(summary.adverse_touch_rate || 0)) : "--"}</strong></article>
-    </div>
-    <div class="audit-progress" aria-label="Progreso auditoria liquidaciones"><span style="width: ${progress.toFixed(1)}%"></span></div>
-    <p>${escapeHtml(readinessText)}</p>
-    <p>Se mide con el mapa guardado antes de operar y el primer toque posterior registrado en los ticks.</p>
-  `;
-}
-
 async function startSimulation() {
   if (!currentUser) {
     elements.analysisDecision.textContent = "Inicia sesion antes de iniciar simulacion.";
@@ -2251,7 +2169,6 @@ async function startSimulation() {
     await loadOperations();
     await loadPortfolio();
     await loadContest();
-    await loadFibonacciAudit();
   } catch (error) {
     elements.analysisDecision.textContent = error.message;
   } finally {
@@ -2317,7 +2234,6 @@ async function closeOperationById(operationId) {
     await loadOperations();
     await loadPortfolio();
     await loadContest();
-    await loadFibonacciAudit();
   } catch (error) {
     elements.analysisDecision.textContent = error.message;
   } finally {
@@ -2959,20 +2875,6 @@ async function loadOperations() {
       renderOperations([]);
     }
   }
-}
-
-async function loadFibonacciAudit() {
-  if (!currentUser) {
-    renderFibonacciAudit(null);
-    renderLiquidationAudit(null);
-    return;
-  }
-  const [fibonacciResult, liquidationResult] = await Promise.allSettled([
-    requestJson("/api/learning/fibonacci-audit"),
-    requestJson("/api/learning/liquidation-audit"),
-  ]);
-  renderFibonacciAudit(fibonacciResult.status === "fulfilled" ? fibonacciResult.value : null);
-  renderLiquidationAudit(liquidationResult.status === "fulfilled" ? liquidationResult.value : null);
 }
 
 async function loadOperationTicks(operation, { force = false } = {}) {

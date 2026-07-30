@@ -1717,7 +1717,6 @@ button:hover {
   font-size: 1rem;
 }
 
-.learning-box,
 .data-sources-box {
   display: grid;
   grid-column: 1 / -1;
@@ -1728,26 +1727,11 @@ button:hover {
   padding: 12px;
 }
 
-.learning-box p,
 .data-sources-box p {
   margin: 0;
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.45;
-}
-
-.audit-progress {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(101, 112, 102, 0.16);
-}
-
-.audit-progress span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--price), var(--target));
 }
 
 .data-sources-box {
@@ -1814,35 +1798,6 @@ button:hover {
   color: var(--ink);
   font-size: 1.3rem;
   line-height: 1.42;
-}
-
-.learning-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-}
-
-.learning-grid article {
-  border: 1px solid rgba(197, 138, 43, 0.24);
-  border-radius: 8px;
-  background: #fbfcf9;
-  padding: 10px;
-}
-
-.learning-grid span,
-.learning-grid strong {
-  display: block;
-}
-
-.learning-grid span {
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 800;
-}
-
-.learning-grid strong {
-  margin-top: 4px;
-  font-size: 1.08rem;
 }
 
 .prob-grid {
@@ -2657,7 +2612,6 @@ select.field-error {
   .analysis-highlights,
   .advice-list,
   .interpretation-summary-grid,
-  .learning-grid,
   .prob-grid,
   .metric-explain-grid,
   .contest-summary-grid,

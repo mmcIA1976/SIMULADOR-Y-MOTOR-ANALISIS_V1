@@ -334,6 +334,33 @@ CREATE TABLE IF NOT EXISTS m6_prospective_runs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS operation_worker_state (
+    worker_name TEXT PRIMARY KEY,
+    lifecycle_status TEXT NOT NULL
+        CHECK(lifecycle_status IN ('starting', 'running', 'degraded', 'stopped')),
+    app_version TEXT NOT NULL,
+    engine_version TEXT NOT NULL,
+    dry_run BOOLEAN NOT NULL DEFAULT TRUE,
+    persist_exit_window BOOLEAN NOT NULL DEFAULT FALSE,
+    poll_seconds DOUBLE PRECISION NOT NULL,
+    reconcile_seconds DOUBLE PRECISION NOT NULL,
+    heartbeat_seconds DOUBLE PRECISION NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    last_heartbeat_at TIMESTAMPTZ NOT NULL,
+    last_cycle_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_reconcile_at TIMESTAMPTZ,
+    cycle_count BIGINT NOT NULL DEFAULT 0,
+    active_symbols INTEGER NOT NULL DEFAULT 0,
+    market_symbols INTEGER NOT NULL DEFAULT 0,
+    last_cycle_activated INTEGER NOT NULL DEFAULT 0,
+    last_cycle_closed INTEGER NOT NULL DEFAULT 0,
+    last_cycle_finalized INTEGER NOT NULL DEFAULT 0,
+    last_cycle_failures INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -389,6 +416,7 @@ ALTER TABLE public.challenger_model_artifacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.m6_prospective_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.operation_worker_state ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operations FROM anon, authenticated;
@@ -405,6 +433,7 @@ REVOKE ALL PRIVILEGES ON TABLE public.challenger_model_artifacts FROM anon, auth
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_config_events FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_runs FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.m6_prospective_runs FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.operation_worker_state FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
 

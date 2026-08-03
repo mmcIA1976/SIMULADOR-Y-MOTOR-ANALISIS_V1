@@ -34,6 +34,11 @@ from m6_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
+from operation_worker_status import (
+    add_transition_coverage,
+    get_worker_status_row,
+    summarize_worker_status,
+)
 from predictive_rule_library import rule_metadata
 from security import create_token, hash_password, read_token, verify_password
 from shadow_runtime import (
@@ -347,6 +352,14 @@ def version_info() -> dict:
             "railway_service": os.getenv("RAILWAY_SERVICE_NAME"),
         },
     }
+
+
+@app.get("/api/operations/worker-status")
+def operation_worker_status() -> dict:
+    with connect() as db:
+        row = get_worker_status_row(db)
+    status = summarize_worker_status(row)
+    return add_transition_coverage(status, WEB_OPERATION_REFRESH_ENABLED)
 
 
 @app.get("/static/{asset_name}")
@@ -4789,7 +4802,6 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
         ).fetchall()
         operations = [row_to_dict(row) for row in rows]
         for operation in operations:
-            ensure_closed_exit_window_ticks(db, operation)
             operation["exit_evidence"] = parse_exit_evidence(operation.get("exit_evidence_json"))
             operation["activation_evidence"] = parse_exit_evidence(operation.get("activation_evidence_json"))
             operation["recommendation"] = None
@@ -4832,8 +4844,6 @@ def operation_ticks(
         ).fetchone()
         if operation is None:
             raise HTTPException(status_code=404, detail="Operacion no encontrada")
-        operation_dict = row_to_dict(operation)
-        ensure_closed_exit_window_ticks(db, operation_dict)
         rows = db.execute(
             """
             SELECT price, source, captured_at
@@ -4870,80 +4880,6 @@ def parse_exit_evidence(raw: str | None) -> dict | None:
     except json.JSONDecodeError:
         return None
     return parsed if isinstance(parsed, dict) else None
-
-
-def ensure_closed_exit_window_ticks(db, operation: dict) -> None:
-    if operation.get("status") != "CLOSED" or operation.get("close_reason") not in {"stop_loss", "take_profit"}:
-        return
-    ensure_exit_evidence(db, operation)
-    exists = db.execute(
-        """
-        SELECT 1
-        FROM price_ticks
-        WHERE operation_id = ? AND source = 'auto_exit'
-        LIMIT 1
-        """,
-        (operation["id"],),
-    ).fetchone()
-    if exists:
-        return
-    close_price = operation.get("close_price")
-    if close_price is None:
-        return
-    trigger_time = trigger_time_from_closing_note(operation) or str(operation.get("closed_at") or "precio_actual")
-    record_exit_window_ticks(db, operation, float(close_price), trigger_time)
-
-
-def ensure_exit_evidence(db, operation: dict) -> None:
-    existing_evidence = parse_exit_evidence(operation.get("exit_evidence_json"))
-    if existing_evidence and existing_evidence.get("source") != "recorded_close_price":
-        return
-    trigger_time = trigger_time_from_closing_note(operation) or str(operation.get("closed_at") or "precio_actual")
-    trigger_ms = timestamp_ms_from_trigger_time(trigger_time)
-    reason = str(operation.get("close_reason") or "")
-    evidence = None
-    if trigger_ms is not None:
-        try:
-            klines = market_data.get_klines(
-                operation["symbol"],
-                "1m",
-                1,
-                start_time_ms=trigger_ms,
-                end_time_ms=trigger_ms + ONE_MINUTE_MS - 1,
-            )
-        except Exception:
-            klines = []
-        if klines:
-            kline = klines[0]
-            evidence = build_exit_evidence(
-                operation,
-                reason,
-                "binance_usdm_futures_1m_kline",
-                iso_from_ms(int(kline[0])),
-                {
-                    "open": float(kline[1]),
-                    "high": float(kline[2]),
-                    "low": float(kline[3]),
-                    "close": float(kline[4]),
-                    "volume": float(kline[5]),
-                    "open_time": iso_from_ms(int(kline[0])),
-                    "close_time": iso_from_ms(int(kline[6])),
-                },
-            )
-    if evidence is None and operation.get("close_price") is not None:
-        evidence = build_exit_evidence(
-            operation,
-            reason,
-            "recorded_close_price",
-            trigger_time,
-            {"price": float(operation["close_price"])},
-        )
-    if evidence:
-        db.execute(
-            "UPDATE operations SET exit_evidence_json = ? WHERE id = ?",
-            (json.dumps(evidence, ensure_ascii=True), operation["id"]),
-        )
-        operation["exit_evidence_json"] = json.dumps(evidence, ensure_ascii=True)
 
 
 def format_recommendation(recommendation: dict | None, operation: dict | None = None) -> dict | None:

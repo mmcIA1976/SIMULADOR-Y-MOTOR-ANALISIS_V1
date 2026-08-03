@@ -15,6 +15,14 @@ class RowsCursor:
     def fetchall(self):
         return self.rows
 
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+
+class RowcountCursor:
+    def __init__(self, rowcount):
+        self.rowcount = rowcount
+
 
 class ActiveSymbolsDb:
     def __init__(self, rows):
@@ -26,6 +34,32 @@ class ActiveSymbolsDb:
         if "GROUP BY symbol" in query:
             return RowsCursor(self.rows)
         raise AssertionError(f"Unexpected SQL in worker orchestration test: {query}")
+
+
+class StaleCloseDb:
+    def __init__(self, operation):
+        self.operation = operation
+
+    def execute(self, query, params=None):
+        if "SELECT * FROM operations" in query:
+            return RowsCursor([self.operation])
+        if "UPDATE operations" in query:
+            return RowcountCursor(0)
+        raise AssertionError(f"Unexpected SQL in stale close test: {query}")
+
+
+class ListOperationsReadOnlyDb:
+    def __init__(self, operation):
+        self.operation = operation
+
+    def execute(self, query, params=None):
+        if "SELECT * FROM operations WHERE user_id" in query:
+            return RowsCursor([self.operation])
+        if "SELECT DISTINCT ON (operation_id)" in query:
+            return RowsCursor([])
+        if "FROM price_ticks" in query:
+            return RowsCursor([])
+        raise AssertionError(f"Unexpected write or query in operations GET: {query}")
 
 
 def connect_factory_for(db):
@@ -236,6 +270,125 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertEqual(row["status"], "CLOSED")
         self.assertEqual(row["close_reason"], "take_profit")
         db.close()
+
+    def test_stale_close_candidate_does_not_repeat_side_effects(self):
+        operation = {
+            "id": 1,
+            "user_id": 7,
+            "symbol": "BTCUSDT",
+            "side": "long",
+            "status": "OPEN",
+            "mode": "training",
+            "entry": 100.0,
+            "margin": 100.0,
+            "leverage": 1.0,
+            "stop_loss": 90.0,
+            "take_profit": 110.0,
+            "contest_season_id": None,
+        }
+        db = StaleCloseDb(operation)
+
+        with (
+            patch.object(
+                app,
+                "triggered_exit_from_market_path",
+                return_value=(
+                    "take_profit",
+                    110.0,
+                    "2026-08-03T10:15:00+00:00",
+                    {"source": "test_market_path"},
+                ),
+            ),
+            patch.object(app, "approximate_pnl", return_value=10.0),
+            patch.object(app, "record_compact_exit_tick") as compact_tick,
+            patch.object(app, "record_exit_window_ticks") as dense_window,
+            patch.object(app, "sync_user_cash_balance") as sync_balance,
+            patch.object(app, "record_wallet_event") as wallet_event,
+        ):
+            result = app.close_triggered_open_operations(
+                db,
+                "BTCUSDT",
+                110.0,
+                market_klines=[],
+                persist_exit_window=False,
+            )
+
+        self.assertEqual(result, {})
+        compact_tick.assert_not_called()
+        dense_window.assert_not_called()
+        sync_balance.assert_not_called()
+        wallet_event.assert_not_called()
+
+    def test_ticks_get_does_not_synthesize_historical_exit_data(self):
+        db = sqlite3.connect(":memory:")
+        db.row_factory = sqlite3.Row
+        db.executescript(
+            """
+            CREATE TABLE operations (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                status TEXT NOT NULL,
+                close_reason TEXT,
+                close_price REAL,
+                closed_at TEXT,
+                closing_note TEXT,
+                exit_evidence_json TEXT
+            );
+            CREATE TABLE price_ticks (
+                id INTEGER PRIMARY KEY,
+                operation_id INTEGER,
+                symbol TEXT NOT NULL,
+                price REAL NOT NULL,
+                source TEXT NOT NULL,
+                captured_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO operations (
+                id, user_id, symbol, status, close_reason, close_price,
+                exit_evidence_json
+            ) VALUES (
+                1, 7, 'BTCUSDT', 'CLOSED', 'stop_loss', 90,
+                '{"source":"test_market_path"}'
+            );
+            """
+        )
+
+        with (
+            patch.object(app, "current_user", return_value={"id": 7}),
+            patch.object(app, "connect", connect_factory_for(db)),
+        ):
+            result = app.operation_ticks(1, limit=20, session_token="test-token")
+
+        tick_count = db.execute("SELECT COUNT(*) AS count FROM price_ticks").fetchone()["count"]
+        self.assertEqual(result["ticks"], [])
+        self.assertEqual(tick_count, 0)
+        db.close()
+
+    def test_operations_get_does_not_backfill_historical_exit_data(self):
+        operation = {
+            "id": 1,
+            "user_id": 7,
+            "symbol": "BTCUSDT",
+            "status": "CLOSED",
+            "close_reason": "stop_loss",
+            "close_price": 90.0,
+            "closed_at": None,
+            "closing_note": None,
+            "exit_evidence_json": '{"source":"test_market_path"}',
+            "activation_evidence_json": None,
+        }
+        db = ListOperationsReadOnlyDb(operation)
+
+        with (
+            patch.object(app, "current_user", return_value={"id": 7}),
+            patch.object(app, "connect", connect_factory_for(db)),
+            patch.object(app, "finalize_due_observations"),
+            patch.object(app, "refresh_learning_conclusions"),
+        ):
+            result = app.list_operations(session_token="test-token")
+
+        self.assertEqual(len(result["operations"]), 1)
+        self.assertEqual(result["operations"][0]["ticks"], [])
 
     def test_shared_symbol_klines_before_operation_start_are_ignored(self):
         operation = {

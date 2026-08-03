@@ -9,6 +9,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
+from operation_worker_status import ensure_worker_status_table
 from versioning import APP_VERSION
 
 
@@ -545,6 +546,7 @@ def init_db() -> None:
             );
             """
         )
+        ensure_worker_status_table(db)
         ensure_column(db, "operations", "observation_until", "TEXT")
         ensure_column(db, "operations", "observation_status", "TEXT")
         ensure_column(db, "operations", "observation_result", "TEXT")

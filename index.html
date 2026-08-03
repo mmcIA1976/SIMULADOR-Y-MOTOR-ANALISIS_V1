@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador Trading BTC</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260730-analysis-presentation">
+    <link rel="stylesheet" href="/static/styles.css?v=20260803-worker-monitor">
   </head>
   <body>
     <main class="app-shell">
@@ -28,6 +28,13 @@
           <span class="label">Estado</span>
           <strong id="stateText">Cargando</strong>
           <small id="lastUpdate">Esperando primera consulta</small>
+          <div class="worker-monitor worker-unknown" id="workerMonitor" aria-live="polite">
+            <span class="worker-monitor-line">
+              <i class="worker-signal" aria-hidden="true"></i>
+              <b id="workerStatusText">Comprobando vigilancia</b>
+            </span>
+            <small id="workerStatusDetail">Esperando estado del worker</small>
+          </div>
         </div>
       </section>
 
@@ -381,6 +388,6 @@
       </div>
     </div>
 
-    <script src="/static/app.js?v=20260730-analysis-presentation"></script>
+    <script src="/static/app.js?v=20260803-worker-monitor"></script>
   </body>
 </html>

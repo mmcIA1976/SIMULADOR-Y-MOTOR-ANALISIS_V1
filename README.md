@@ -81,6 +81,13 @@ terminal y la evidencia estructurada guardada en la operacion. La ventana densa
 de velas de salida solo se activa explicitamente con
 `OPERATION_WORKER_PERSIST_EXIT_WINDOW=true`.
 
+El estado del proceso se guarda mediante `UPSERT` en una unica fila de
+`operation_worker_state`; cada heartbeat sustituye la fila anterior y no crea
+un historial creciente. La app consulta `/api/operations/worker-status` para
+mostrar si el worker esta arrancando, activo, en observacion, degradado,
+detenido o sin señal. El mismo monitor avisa si los cierres quedan sin
+cobertura o si web y worker podrian procesarlos a la vez.
+
 Al arrancar, el worker reconcilia por defecto los ultimos siete dias de velas
 de los simbolos activos. En ciclos normales solo relee el intervalo reciente
 con dos minutos de superposicion, sin guardar esas velas en Supabase.

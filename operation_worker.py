@@ -21,6 +21,7 @@ from app import (
     refresh_symbol_active_operations,
 )
 from db import close_pool, connect
+from operation_worker_status import ensure_worker_status_table, upsert_worker_status
 from versioning import APP_VERSION, ENGINE_VERSION
 
 
@@ -126,6 +127,43 @@ def log_event(event: str, **fields) -> None:
             sort_keys=True,
         )
     )
+
+
+def publish_runtime_status(
+    settings: WorkerSettings,
+    started_at: str,
+    lifecycle_status: str,
+    result: dict | None = None,
+    last_error: str | None = None,
+    connect_factory: ConnectFactory = connect,
+) -> bool:
+    """Publish one replaceable heartbeat row without interrupting the worker."""
+    heartbeat_at = datetime.now(timezone.utc).isoformat()
+    try:
+        with connect_factory() as db:
+            upsert_worker_status(
+                db,
+                lifecycle_status=lifecycle_status,
+                app_version=APP_VERSION,
+                engine_version=ENGINE_VERSION,
+                dry_run=settings.dry_run,
+                persist_exit_window=settings.persist_exit_window,
+                poll_seconds=settings.poll_seconds,
+                reconcile_seconds=settings.reconcile_seconds,
+                heartbeat_seconds=settings.heartbeat_seconds,
+                started_at=started_at,
+                heartbeat_at=heartbeat_at,
+                result=result,
+                last_error=last_error,
+            )
+        return True
+    except Exception as exc:
+        log_event(
+            "worker_status_publish_failed",
+            lifecycle_status=lifecycle_status,
+            error=str(exc),
+        )
+        return False
 
 
 def load_active_symbol_starts(connect_factory: ConnectFactory = connect) -> dict[str, int]:
@@ -283,6 +321,14 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
     signal.signal(signal.SIGINT, request_stop)
     state = WorkerState()
     last_heartbeat = 0.0
+    started_at = datetime.now(timezone.utc).isoformat()
+    last_result: dict | None = None
+    try:
+        with connect() as db:
+            ensure_worker_status_table(db)
+    except Exception as exc:
+        log_event("worker_status_storage_failed", error=str(exc))
+    publish_runtime_status(settings, started_at, "starting")
     log_event(
         "operation_worker_started",
         poll_seconds=settings.poll_seconds,
@@ -295,6 +341,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
             cycle_started = time.monotonic()
             try:
                 result = run_worker_cycle(state, settings)
+                last_result = result
             except Exception as exc:
                 logger.exception(
                     json.dumps(
@@ -308,6 +355,13 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                     )
                 )
                 result = None
+                publish_runtime_status(
+                    settings,
+                    started_at,
+                    "degraded",
+                    result=last_result,
+                    last_error=str(exc),
+                )
             now_monotonic = time.monotonic()
             if result is not None and (
                 result["activated"]
@@ -316,11 +370,29 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                 or result["failures"]
                 or now_monotonic - last_heartbeat >= settings.heartbeat_seconds
             ):
+                lifecycle_status = "degraded" if result["failures"] else "running"
+                publish_runtime_status(
+                    settings,
+                    started_at,
+                    lifecycle_status,
+                    result=result,
+                    last_error=(
+                        "Uno o mas simbolos fallaron en el ultimo ciclo; consultar logs."
+                        if result["failures"]
+                        else None
+                    ),
+                )
                 log_event("operation_worker_heartbeat", **result)
                 last_heartbeat = now_monotonic
             wait_seconds = max(0.0, settings.poll_seconds - (time.monotonic() - cycle_started))
             stop_event.wait(wait_seconds)
     finally:
+        publish_runtime_status(
+            settings,
+            started_at,
+            "stopped",
+            result=last_result,
+        )
         close_pool()
         log_event("operation_worker_stopped", cycles=state.cycles)
 

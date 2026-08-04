@@ -71,6 +71,7 @@ MAX_PENDING_ENTRY_BACKFILL_MINUTES = 360
 MAX_EXIT_TRADE_PAGES = 8
 EXIT_WINDOW_BEFORE_MINUTES = 90
 EXIT_WINDOW_AFTER_MINUTES = 30
+OPERATION_STATUS_SNAPSHOT_MAX_IDS = 16
 WEB_OPERATION_REFRESH_ENABLED = os.environ.get(
     "WEB_OPERATION_REFRESH_ENABLED",
     "true",
@@ -4827,6 +4828,62 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
                 rec = rec_by_op.get(op["id"])
                 op["recommendation"] = format_recommendation(rec, op) if rec else None
     return {"operations": operations}
+
+
+def parse_operation_status_snapshot_ids(raw_ids: str | None) -> list[int]:
+    operation_ids: list[int] = []
+    for raw_value in (raw_ids or "").split(","):
+        value = raw_value.strip()
+        if not value:
+            continue
+        if not value.isdigit() or int(value) <= 0:
+            raise HTTPException(status_code=400, detail="Identificadores de operacion no validos")
+        operation_id = int(value)
+        if operation_id not in operation_ids:
+            operation_ids.append(operation_id)
+        if len(operation_ids) > OPERATION_STATUS_SNAPSHOT_MAX_IDS:
+            raise HTTPException(status_code=400, detail="Demasiadas operaciones para sincronizar")
+    return operation_ids
+
+
+@app.get("/api/operations/status-snapshot")
+def operation_status_snapshot(
+    ids: str = "",
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    """Return lifecycle fields only; this endpoint never advances operations."""
+    user = current_user(session_token)
+    operation_ids = parse_operation_status_snapshot_ids(ids)
+    requested_clause = ""
+    params: list[int] = [int(user["id"])]
+    if operation_ids:
+        placeholders = ",".join(["?"] * len(operation_ids))
+        requested_clause = f" OR id IN ({placeholders})"
+        params.extend(operation_ids)
+
+    with connect() as db:
+        rows = db.execute(
+            f"""
+            SELECT
+                id,
+                status,
+                entry,
+                triggered_at,
+                trigger_price,
+                closed_at,
+                close_price,
+                close_reason,
+                final_pnl,
+                observation_status,
+                observation_until
+            FROM operations
+            WHERE user_id = ?
+              AND (status IN ('OPEN', 'PENDING_ENTRY'){requested_clause})
+            ORDER BY id DESC
+            """,
+            tuple(params),
+        ).fetchall()
+    return {"operations": [row_to_dict(row) for row in rows]}
 
 
 @app.get("/api/operations/{operation_id}/ticks")

@@ -34,6 +34,11 @@ from m6_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
+from operation_worker_status import (
+    add_transition_coverage,
+    get_worker_status_row,
+    summarize_worker_status,
+)
 from predictive_rule_library import rule_metadata
 from security import create_token, hash_password, read_token, verify_password
 from shadow_runtime import (
@@ -66,6 +71,10 @@ MAX_PENDING_ENTRY_BACKFILL_MINUTES = 360
 MAX_EXIT_TRADE_PAGES = 8
 EXIT_WINDOW_BEFORE_MINUTES = 90
 EXIT_WINDOW_AFTER_MINUTES = 30
+WEB_OPERATION_REFRESH_ENABLED = os.environ.get(
+    "WEB_OPERATION_REFRESH_ENABLED",
+    "true",
+).strip().lower() in {"1", "true", "yes", "on"}
 AVATAR_MIME_TO_EXT = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -345,6 +354,14 @@ def version_info() -> dict:
     }
 
 
+@app.get("/api/operations/worker-status")
+def operation_worker_status() -> dict:
+    with connect() as db:
+        row = get_worker_status_row(db)
+    status = summarize_worker_status(row)
+    return add_transition_coverage(status, WEB_OPERATION_REFRESH_ENABLED)
+
+
 @app.get("/static/{asset_name}")
 def static_asset(asset_name: str) -> FileResponse:
     allowed_assets = {"app.js", "styles.css"}
@@ -576,6 +593,30 @@ def price(
             "captured_at": stale_response.get("captured_at") if stale_response else None,
             "price_error": stale_response.get("price_error") if stale_response else None,
             "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms") if stale_response else 0,
+            "operation_processing": "web" if WEB_OPERATION_REFRESH_ENABLED else "worker",
+        }
+    if not WEB_OPERATION_REFRESH_ENABLED:
+        return {
+            "symbol": symbol,
+            "price": value,
+            "operation_ids": [],
+            "activated_operations": [],
+            "closed_operations": [],
+            "source": stale_response["source"] if stale_response else "binance_usdm_futures_ticker",
+            "stale": bool(stale_response),
+            "captured_at": (
+                stale_response.get("captured_at")
+                if stale_response
+                else datetime.now(timezone.utc).isoformat()
+            ),
+            "price_error": stale_response.get("price_error") if stale_response else None,
+            "operation_refresh_error": None,
+            "binance_backoff_until_ms": (
+                stale_response.get("binance_backoff_until_ms")
+                if stale_response
+                else market_data.futures_backoff_until_ms()
+            ),
+            "operation_processing": "worker",
         }
     if stale_response:
         return {
@@ -647,6 +688,7 @@ def price(
         "price_error": None,
         "operation_refresh_error": operation_refresh_error,
         "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+        "operation_processing": "web",
     }
 
 
@@ -711,6 +753,20 @@ def check_operation_exits(
             "captured_at": stale_response.get("captured_at"),
             "price_error": stale_response.get("price_error"),
             "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms"),
+            "operation_processing": "worker" if not WEB_OPERATION_REFRESH_ENABLED else "web",
+        }
+    if not WEB_OPERATION_REFRESH_ENABLED:
+        return {
+            "symbol": symbol,
+            "price": current_price,
+            "activated_operations": [],
+            "closed_operations": [],
+            "source": "binance_usdm_futures_ticker",
+            "stale": False,
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "price_error": None,
+            "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+            "operation_processing": "worker",
         }
     with connect() as db:
         activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, current_price)
@@ -731,6 +787,7 @@ def check_operation_exits(
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "price_error": None,
         "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+        "operation_processing": "web",
     }
 
 
@@ -739,9 +796,24 @@ def refresh_symbol_active_operations(
     symbol: str,
     current_price: float,
     user_id: int | None = None,
+    market_klines: list[list] | None = None,
+    persist_exit_window: bool = True,
 ) -> tuple[dict[int, dict], dict[int, dict]]:
-    activated = activate_triggered_pending_operations(db, symbol, current_price, user_id)
-    closed = close_triggered_open_operations(db, symbol, current_price, user_id)
+    activated = activate_triggered_pending_operations(
+        db,
+        symbol,
+        current_price,
+        user_id,
+        market_klines=market_klines,
+    )
+    closed = close_triggered_open_operations(
+        db,
+        symbol,
+        current_price,
+        user_id,
+        market_klines=market_klines,
+        persist_exit_window=persist_exit_window,
+    )
     return activated, closed
 
 
@@ -784,6 +856,7 @@ def activate_triggered_pending_operations(
     symbol: str,
     current_price: float,
     user_id: int | None = None,
+    market_klines: list[list] | None = None,
 ) -> dict[int, dict]:
     if user_id is None:
         rows = db.execute(
@@ -800,7 +873,11 @@ def activate_triggered_pending_operations(
         operation = row_to_dict(row)
         operation["_pending_scan_start_ms"] = pending_entry_scan_start_ms(db, operation)
         try:
-            trigger = triggered_entry_from_market_path(operation, current_price)
+            trigger = triggered_entry_from_market_path(
+                operation,
+                current_price,
+                market_klines=market_klines,
+            )
         except Exception:
             trigger = triggered_entry_from_current_price(operation, current_price)
         if not trigger:
@@ -860,6 +937,8 @@ def close_triggered_open_operations(
     symbol: str,
     current_price: float,
     user_id: int | None = None,
+    market_klines: list[list] | None = None,
+    persist_exit_window: bool = True,
 ) -> dict[int, dict]:
     if user_id is None:
         rows = db.execute(
@@ -874,7 +953,11 @@ def close_triggered_open_operations(
     closed: dict[int, dict] = {}
     for row in rows:
         operation = row_to_dict(row)
-        trigger = triggered_exit_from_market_path(operation, current_price)
+        trigger = triggered_exit_from_market_path(
+            operation,
+            current_price,
+            market_klines=market_klines,
+        )
         if not trigger:
             continue
         reason, close_price, trigger_time, exit_evidence = trigger
@@ -901,7 +984,10 @@ def close_triggered_open_operations(
         )
         if update_cursor.rowcount == 0:
             continue
-        record_exit_window_ticks(db, operation, close_price, trigger_time)
+        if persist_exit_window:
+            record_exit_window_ticks(db, operation, close_price, trigger_time)
+        else:
+            record_compact_exit_tick(db, operation, close_price, closed_at, exit_evidence)
         portfolio = sync_user_cash_balance(db, int(operation["user_id"]))
         mode = operation.get("mode") or "training"
         record_wallet_event(
@@ -925,6 +1011,30 @@ def close_triggered_open_operations(
             "exit_evidence": exit_evidence,
         }
     return closed
+
+
+def record_compact_exit_tick(
+    db,
+    operation: dict,
+    close_price: float,
+    captured_at: str,
+    exit_evidence: dict,
+) -> None:
+    """Persist one terminal price instead of a dense 1-minute exit window."""
+    source = str(exit_evidence.get("source") or "operation_worker")
+    db.execute(
+        """
+        INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            operation["id"],
+            operation["symbol"],
+            close_price,
+            f"{source}:compact_exit",
+            captured_at,
+        ),
+    )
 
 
 def record_exit_window_ticks(db, operation: dict, close_price: float, trigger_time: str) -> None:
@@ -4122,12 +4232,28 @@ def first_plan_trigger_after_close(operation: dict, ticks: list[dict]) -> tuple[
     return None
 
 
-def triggered_exit_from_market_path(operation: dict, current_price: float) -> tuple[str, float, str, dict] | None:
-    start_time_ms = operation_start_time_ms(operation)
-    end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-    klines = get_operation_klines_1m(operation["symbol"], start_time_ms, end_time_ms)
-    for kline in klines:
+def triggered_exit_from_market_path(
+    operation: dict,
+    current_price: float,
+    market_klines: list[list] | None = None,
+) -> tuple[str, float, str, dict] | None:
+    if market_klines is None:
+        start_time_ms = operation_start_time_ms(operation)
+        end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        market_klines = get_operation_klines_1m(operation["symbol"], start_time_ms, end_time_ms)
+    return triggered_exit_from_market_klines(operation, current_price, market_klines)
+
+
+def triggered_exit_from_market_klines(
+    operation: dict,
+    current_price: float,
+    market_klines: list[list],
+) -> tuple[str, float, str, dict] | None:
+    operation_started_ms = operation_start_time_ms(operation)
+    for kline in market_klines:
         open_time_ms = int(kline[0])
+        if open_time_ms < operation_started_ms:
+            continue
         close_time_ms = int(kline[6])
         open_time = iso_from_ms(open_time_ms)
         high = float(kline[2])
@@ -4166,26 +4292,41 @@ def triggered_exit_from_market_path(operation: dict, current_price: float) -> tu
     return None
 
 
-def triggered_entry_from_market_path(operation: dict, current_price: float) -> tuple[float, str, dict] | None:
+def triggered_entry_from_market_path(
+    operation: dict,
+    current_price: float,
+    market_klines: list[list] | None = None,
+) -> tuple[float, str, dict] | None:
     current_trigger = triggered_entry_from_current_price(operation, current_price)
     if current_trigger:
         return current_trigger
-    end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-    start_time_ms = int(
-        operation.get("_pending_scan_start_ms")
-        or max(
-            timestamp_ms_from_operation_creation(operation),
-            end_time_ms - MAX_PENDING_ENTRY_BACKFILL_MINUTES * ONE_MINUTE_MS,
+    if market_klines is None:
+        end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        start_time_ms = int(
+            operation.get("_pending_scan_start_ms")
+            or max(
+                timestamp_ms_from_operation_creation(operation),
+                end_time_ms - MAX_PENDING_ENTRY_BACKFILL_MINUTES * ONE_MINUTE_MS,
+            )
         )
-    )
+        market_klines = get_operation_klines_1m(
+            operation["symbol"],
+            start_time_ms,
+            end_time_ms,
+            max_pages=MAX_PENDING_ENTRY_KLINE_PAGES,
+        )
+    return triggered_entry_from_market_klines(operation, market_klines)
+
+
+def triggered_entry_from_market_klines(
+    operation: dict,
+    market_klines: list[list],
+) -> tuple[float, str, dict] | None:
     entry_price = float(operation.get("requested_entry") or operation["entry"])
-    klines = get_operation_klines_1m(
-        operation["symbol"],
-        start_time_ms,
-        end_time_ms,
-        max_pages=MAX_PENDING_ENTRY_KLINE_PAGES,
-    )
-    for kline in klines:
+    operation_created_ms = timestamp_ms_from_operation_creation(operation)
+    for kline in market_klines:
+        if int(kline[0]) < operation_created_ms:
+            continue
         open_time = iso_from_ms(int(kline[0]))
         high = float(kline[2])
         low = float(kline[3])
@@ -4661,7 +4802,6 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
         ).fetchall()
         operations = [row_to_dict(row) for row in rows]
         for operation in operations:
-            ensure_closed_exit_window_ticks(db, operation)
             operation["exit_evidence"] = parse_exit_evidence(operation.get("exit_evidence_json"))
             operation["activation_evidence"] = parse_exit_evidence(operation.get("activation_evidence_json"))
             operation["recommendation"] = None
@@ -4704,8 +4844,6 @@ def operation_ticks(
         ).fetchone()
         if operation is None:
             raise HTTPException(status_code=404, detail="Operacion no encontrada")
-        operation_dict = row_to_dict(operation)
-        ensure_closed_exit_window_ticks(db, operation_dict)
         rows = db.execute(
             """
             SELECT price, source, captured_at
@@ -4742,80 +4880,6 @@ def parse_exit_evidence(raw: str | None) -> dict | None:
     except json.JSONDecodeError:
         return None
     return parsed if isinstance(parsed, dict) else None
-
-
-def ensure_closed_exit_window_ticks(db, operation: dict) -> None:
-    if operation.get("status") != "CLOSED" or operation.get("close_reason") not in {"stop_loss", "take_profit"}:
-        return
-    ensure_exit_evidence(db, operation)
-    exists = db.execute(
-        """
-        SELECT 1
-        FROM price_ticks
-        WHERE operation_id = ? AND source = 'auto_exit'
-        LIMIT 1
-        """,
-        (operation["id"],),
-    ).fetchone()
-    if exists:
-        return
-    close_price = operation.get("close_price")
-    if close_price is None:
-        return
-    trigger_time = trigger_time_from_closing_note(operation) or str(operation.get("closed_at") or "precio_actual")
-    record_exit_window_ticks(db, operation, float(close_price), trigger_time)
-
-
-def ensure_exit_evidence(db, operation: dict) -> None:
-    existing_evidence = parse_exit_evidence(operation.get("exit_evidence_json"))
-    if existing_evidence and existing_evidence.get("source") != "recorded_close_price":
-        return
-    trigger_time = trigger_time_from_closing_note(operation) or str(operation.get("closed_at") or "precio_actual")
-    trigger_ms = timestamp_ms_from_trigger_time(trigger_time)
-    reason = str(operation.get("close_reason") or "")
-    evidence = None
-    if trigger_ms is not None:
-        try:
-            klines = market_data.get_klines(
-                operation["symbol"],
-                "1m",
-                1,
-                start_time_ms=trigger_ms,
-                end_time_ms=trigger_ms + ONE_MINUTE_MS - 1,
-            )
-        except Exception:
-            klines = []
-        if klines:
-            kline = klines[0]
-            evidence = build_exit_evidence(
-                operation,
-                reason,
-                "binance_usdm_futures_1m_kline",
-                iso_from_ms(int(kline[0])),
-                {
-                    "open": float(kline[1]),
-                    "high": float(kline[2]),
-                    "low": float(kline[3]),
-                    "close": float(kline[4]),
-                    "volume": float(kline[5]),
-                    "open_time": iso_from_ms(int(kline[0])),
-                    "close_time": iso_from_ms(int(kline[6])),
-                },
-            )
-    if evidence is None and operation.get("close_price") is not None:
-        evidence = build_exit_evidence(
-            operation,
-            reason,
-            "recorded_close_price",
-            trigger_time,
-            {"price": float(operation["close_price"])},
-        )
-    if evidence:
-        db.execute(
-            "UPDATE operations SET exit_evidence_json = ? WHERE id = ?",
-            (json.dumps(evidence, ensure_ascii=True), operation["id"]),
-        )
-        operation["exit_evidence_json"] = json.dumps(evidence, ensure_ascii=True)
 
 
 def format_recommendation(recommendation: dict | None, operation: dict | None = None) -> dict | None:

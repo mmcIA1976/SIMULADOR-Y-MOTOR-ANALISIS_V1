@@ -64,6 +64,51 @@ Abre `http://127.0.0.1:8766`.
 
 Nota: en este proyecto, el arranque local usado para desarrollo puede conectar con Supabase durante el startup. Si trabajas desde Codex/local, usa el procedimiento local acordado y no subas archivos auxiliares locales.
 
+## Worker autonomo de operaciones
+
+El proceso web y el vigilante de operaciones se ejecutan por separado. El
+worker consulta solo los simbolos que tienen operaciones `OPEN` o
+`PENDING_ENTRY`, detecta activaciones y cruces TP/SL, y finaliza observaciones
+vencidas:
+
+```powershell
+.\.venv\Scripts\python.exe .\operation_worker.py
+```
+
+La observacion ordinaria se mantiene en memoria: un sondeo sin transicion no
+inserta `price_ticks`. Por defecto cada cierre conserva una unica cotizacion
+terminal y la evidencia estructurada guardada en la operacion. La ventana densa
+de velas de salida solo se activa explicitamente con
+`OPERATION_WORKER_PERSIST_EXIT_WINDOW=true`.
+
+El estado del proceso se guarda mediante `UPSERT` en una unica fila de
+`operation_worker_state`; cada heartbeat sustituye la fila anterior y no crea
+un historial creciente. La app consulta `/api/operations/worker-status` para
+mostrar si el worker esta arrancando, activo, en observacion, degradado,
+detenido o sin señal. El mismo monitor avisa si los cierres quedan sin
+cobertura o si web y worker podrian procesarlos a la vez.
+
+Al arrancar, el worker reconcilia por defecto los ultimos siete dias de velas
+de los simbolos activos. En ciclos normales solo relee el intervalo reciente
+con dos minutos de superposicion, sin guardar esas velas en Supabase.
+
+Transicion recomendada:
+
+1. Desplegar el worker con `OPERATION_WORKER_DRY_RUN=true` y
+   `OPERATION_WORKER_PERSIST_EXIT_WINDOW=false`.
+2. Comprobar sus heartbeats, simbolos, precios y reconciliaciones sin escrituras.
+3. Cambiar `OPERATION_WORKER_DRY_RUN=false` para permitir transiciones reales.
+4. Verificar activaciones/cierres idempotentes y configurar
+   `WEB_OPERATION_REFRESH_ENABLED=false` en el servicio web.
+5. Mantener esa variable sin definir o en `true` en local hasta que el worker
+   este funcionando, para conservar el comportamiento anterior como respaldo.
+
+En Railway el worker debe ser un servicio persistente separado apuntando al
+mismo repositorio, sin dominio publico, con el comando de inicio
+`python operation_worker.py` y las mismas variables PostgreSQL/Supabase que el
+servicio web. No debe configurarse como cron: la vigilancia de TP/SL es
+continua.
+
 ## Variables de entorno
 
 Copia `.env.example` como referencia:

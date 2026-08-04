@@ -63,6 +63,9 @@ const elements = {
   stateCard: document.querySelector("#stateCard"),
   stateText: document.querySelector("#stateText"),
   lastUpdate: document.querySelector("#lastUpdate"),
+  workerMonitor: document.querySelector("#workerMonitor"),
+  workerStatusText: document.querySelector("#workerStatusText"),
+  workerStatusDetail: document.querySelector("#workerStatusDetail"),
   historyCount: document.querySelector("#historyCount"),
   chartSubtitle: document.querySelector("#chartSubtitle"),
   binanceChartLink: document.querySelector("#binanceChartLink"),
@@ -106,6 +109,7 @@ const history = [];
 const MAX_HISTORY_POINTS = 240;
 const UPDATE_INTERVAL_MS = 120000;
 const LIVE_PRICE_INTERVAL_MS = 30000;
+const WORKER_STATUS_INTERVAL_MS = 60000;
 const PRICE_FETCH_TIMEOUT_MS = 20000;
 const PRICE_RECORD_TIMEOUT_MS = 25000;
 const PROPOSAL_HISTORY_MINUTES = 60;
@@ -2678,6 +2682,94 @@ function contestAnalysisProbabilities(operation) {
   return `TP ${probability("tp")} · SL ${probability("sl")} · sin toque ${probability("range")}`;
 }
 
+function formatWorkerSignalAge(totalSeconds) {
+  if (!Number.isFinite(totalSeconds)) {
+    return "sin señal registrada";
+  }
+  if (totalSeconds < 60) {
+    return `señal hace ${Math.max(0, Math.round(totalSeconds))} s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  return `señal hace ${minutes} min`;
+}
+
+function renderWorkerStatus(status) {
+  if (!elements.workerMonitor) {
+    return;
+  }
+  elements.workerMonitor.classList.remove(
+    "worker-unknown",
+    "worker-ok",
+    "worker-observing",
+    "worker-warning",
+    "worker-error",
+  );
+  const signalState = status?.signal_state || "unavailable";
+  const transitionOwner = status?.transition_owner || "unknown";
+  const rawHeartbeatAge = status?.heartbeat_age_seconds;
+  const ageLabel = formatWorkerSignalAge(
+    rawHeartbeatAge === null || rawHeartbeatAge === undefined
+      ? Number.NaN
+      : Number(rawHeartbeatAge),
+  );
+  const symbolCount = Number(status?.active_symbols || 0);
+  const symbolLabel = `${symbolCount} ${symbolCount === 1 ? "par" : "pares"}`;
+  let title = "Monitor no disponible";
+  let detail = "No se pudo consultar el estado de vigilancia";
+  let className = "worker-unknown";
+
+  if (status?.transition_coverage === "unprotected") {
+    title = "Vigilancia sin cobertura";
+    detail = "La web ha cedido los cierres, pero el worker no está preparado";
+    className = "worker-error";
+  } else if (transitionOwner === "dual") {
+    title = "Revisar doble procesamiento";
+    detail = `${ageLabel} · worker y web pueden procesar cierres`;
+    className = "worker-warning";
+  } else if (signalState === "running") {
+    title = transitionOwner === "worker" ? "Vigilancia autónoma activa" : "Worker preparado";
+    detail = `${ageLabel} · ${symbolLabel} · cierres: ${transitionOwner === "worker" ? "worker" : "web"}`;
+    className = "worker-ok";
+  } else if (signalState === "dry_run") {
+    title = "Worker en observación";
+    detail = `${ageLabel} · ${symbolLabel} · cierres: web`;
+    className = "worker-observing";
+  } else if (signalState === "starting") {
+    title = "Worker arrancando";
+    detail = `${ageLabel} · cierres: ${transitionOwner === "web" ? "web" : "pendientes"}`;
+    className = "worker-observing";
+  } else if (signalState === "degraded") {
+    title = "Worker con errores";
+    detail = `${ageLabel} · ${status?.last_cycle_failures || 0} fallos en el último ciclo`;
+    className = "worker-warning";
+  } else if (signalState === "stale") {
+    title = "Worker sin señal reciente";
+    detail = `${ageLabel} · cierres: ${transitionOwner === "web" ? "web" : "sin cobertura"}`;
+    className = transitionOwner === "web" ? "worker-warning" : "worker-error";
+  } else if (signalState === "stopped") {
+    title = "Worker detenido";
+    detail = `Última ${ageLabel} · cierres: ${transitionOwner === "web" ? "web" : "sin cobertura"}`;
+    className = transitionOwner === "web" ? "worker-warning" : "worker-error";
+  } else if (signalState === "not_started") {
+    title = "Worker pendiente de despliegue";
+    detail = `Los cierres siguen a cargo de ${transitionOwner === "web" ? "la web" : "ningún proceso"}`;
+    className = transitionOwner === "web" ? "worker-unknown" : "worker-error";
+  }
+
+  elements.workerMonitor.classList.add(className);
+  elements.workerStatusText.textContent = title;
+  elements.workerStatusDetail.textContent = detail;
+}
+
+async function loadWorkerStatus() {
+  try {
+    const status = await requestJson("/api/operations/worker-status");
+    renderWorkerStatus(status);
+  } catch {
+    renderWorkerStatus(null);
+  }
+}
+
 function renderContestOperationModalContent(operation, row) {
   const status = String(operation.status || "").toUpperCase();
   const sideLabel = String(operation.side || "").toUpperCase();
@@ -3943,5 +4035,7 @@ resizeCanvas();
 setOperationMode("training");
 updateMetrics();
 fetchPrice({ resetTimer: true, record: true });
+loadWorkerStatus();
+window.setInterval(loadWorkerStatus, WORKER_STATUS_INTERVAL_MS);
 window.setTimeout(loadSession, 50);
 window.setTimeout(() => loadRecentMarketHistory(), 250);

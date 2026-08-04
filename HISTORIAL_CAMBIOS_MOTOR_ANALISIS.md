@@ -1080,3 +1080,25 @@ Resumen:
 - Mostraba debilidad al interpretar R/R como parte de la calidad general.
 - CVD y order book eran utiles como contexto, pero insuficientes como senales aisladas.
 - La decision final era mas fiable en LONG que en SHORT.
+# 2026-08-04 - LIMIT-1: contrato de ordenes limit en dos etapas
+
+- Se crea `limit_order_contract.py` con el contrato ejecutable
+  `limit-order-contract-v1.0`.
+- LIMIT v1 cubre exclusivamente `limit_pullback`: LONG por debajo del mercado y
+  SHORT por encima. Rupturas stop quedan fuera de este primer alcance.
+- Se separan formalmente la ventana de activacion y la ventana TP/SL posterior a
+  la activacion.
+- Se conservan los estados operativos actuales `PENDING_ENTRY`, `OPEN` y
+  `CLOSED`; la activacion se modela como evento.
+- Una pendiente cancelada se etiqueta como censurada y una pendiente expirada
+  como no activada, evitando contaminar el aprendizaje.
+- Se define la composicion exacta de probabilidades de activacion y resultado
+  condicionado, con masa total obligatoria igual a uno.
+- Se separan precio solicitado, precio observado al disparar y precio simulado de
+  fill.
+- Se definen snapshots compactos de colocacion, activacion y cierre, con limite
+  contractual de 8 KiB nuevos por operacion y sin feeds crudos.
+- El lote es `contract_only`: no modifica M6 market, no ejecuta el motor legacy y
+  no elimina todavia el bloqueo productivo de ordenes pendientes.
+- Se documenta el contrato en `CONTRATO_LIMIT_ORDER_V1.md` y se anade la suite
+  `tests/test_limit_order_contract.py`.

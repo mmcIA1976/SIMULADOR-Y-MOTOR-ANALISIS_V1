@@ -699,7 +699,12 @@ function updateHistoryCount() {
 function requestJson(url, options = {}) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open(options.method || "GET", url, true);
+    const method = String(options.method || "GET").toUpperCase();
+    const separator = url.includes("?") ? "&" : "?";
+    const requestUrl = options.cacheBust && method === "GET"
+      ? `${url}${separator}_sync=${Date.now()}`
+      : url;
+    request.open(method, requestUrl, true);
     request.responseType = "json";
     request.timeout = options.timeout || 30000;
     if (options.body) {
@@ -2253,13 +2258,13 @@ async function closeOperationById(operationId) {
   }
 }
 
-async function loadPortfolio() {
+async function loadPortfolio({ cacheBust = false } = {}) {
   if (!currentUser) {
     renderPortfolio(null);
     return;
   }
   try {
-    const portfolio = await requestJson("/api/portfolio");
+    const portfolio = await requestJson("/api/portfolio", { cacheBust });
     renderPortfolio(portfolio);
   } catch {
     renderPortfolio(null);
@@ -2999,6 +3004,7 @@ async function syncOperationStates() {
   const query = requestedIds.length ? `?ids=${encodeURIComponent(requestedIds.join(","))}` : "";
   try {
     const data = await requestJson(`/api/operations/status-snapshot${query}`, {
+      cacheBust: true,
       timeout: 8000,
       timeoutMessage: "La sincronizacion de operaciones ha tardado demasiado.",
     });
@@ -3006,11 +3012,11 @@ async function syncOperationStates() {
     if (!operationStateSnapshotChanged(remoteOperations, requestedIds)) {
       return;
     }
-    const loaded = await loadOperations({ preserveOnError: true });
+    const loaded = await loadOperations({ preserveOnError: true, cacheBust: true });
     if (!loaded) {
       return;
     }
-    await loadPortfolio();
+    await loadPortfolio({ cacheBust: true });
     if (operationMode === "contest") {
       await loadContest();
     }
@@ -3021,14 +3027,14 @@ async function syncOperationStates() {
   }
 }
 
-async function loadOperations({ preserveOnError = false } = {}) {
+async function loadOperations({ preserveOnError = false, cacheBust = false } = {}) {
   if (!currentUser) {
     renderOperations([]);
     return true;
   }
   const requestSeq = ++operationsLoadSeq;
   try {
-    const data = await requestJson("/api/operations");
+    const data = await requestJson("/api/operations", { cacheBust });
     if (requestSeq !== operationsLoadSeq) {
       return false;
     }

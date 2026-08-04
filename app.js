@@ -110,6 +110,7 @@ const MAX_HISTORY_POINTS = 240;
 const UPDATE_INTERVAL_MS = 120000;
 const LIVE_PRICE_INTERVAL_MS = 30000;
 const WORKER_STATUS_INTERVAL_MS = 60000;
+const OPERATION_STATE_SYNC_INTERVAL_MS = 10000;
 const PRICE_FETCH_TIMEOUT_MS = 20000;
 const PRICE_RECORD_TIMEOUT_MS = 25000;
 const PROPOSAL_HISTORY_MINUTES = 60;
@@ -127,6 +128,7 @@ let isFetching = false;
 let pendingManualFetch = false;
 let pendingLiveFetchSymbol = null;
 let exitCheckInFlight = false;
+let operationStateSyncInFlight = false;
 const pendingExitCheckOperationIds = new Set();
 let currentPrice = null;
 let currentPriceSymbol = "BTCUSDT";
@@ -1519,7 +1521,7 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
     if (!priceIsStale) {
       updateContestFloatingFromLivePrice(symbol, currentPrice);
     }
-    if (!record && !priceIsStale) {
+    if (!record && !priceIsStale && data.operation_processing === "web") {
       checkLiveExits(symbol);
     }
 
@@ -2950,22 +2952,93 @@ function refreshMissingFloatingPrices(mode = operationMode) {
   fetchPrice({ record: false, symbolOverride: missingSymbols[0] });
 }
 
-async function loadOperations() {
+const OPERATION_STATE_FIELDS = [
+  "status",
+  "entry",
+  "triggered_at",
+  "trigger_price",
+  "closed_at",
+  "close_price",
+  "close_reason",
+  "final_pnl",
+  "observation_status",
+  "observation_until",
+];
+
+function operationStateSyncIds() {
+  const ids = activeOperations.map((operation) => Number(operation.id));
+  if (selectedOperationId !== null) {
+    ids.push(Number(selectedOperationId));
+  }
+  return [...new Set(ids.filter(Number.isFinite))].slice(0, 16);
+}
+
+function operationStateSnapshotChanged(remoteOperations, requestedIds) {
+  const localById = new Map(allOperations.map((operation) => [Number(operation.id), operation]));
+  const remoteById = new Map(remoteOperations.map((operation) => [Number(operation.id), operation]));
+  if (requestedIds.some((operationId) => !remoteById.has(Number(operationId)))) {
+    return true;
+  }
+  return remoteOperations.some((remoteOperation) => {
+    const localOperation = localById.get(Number(remoteOperation.id));
+    if (!localOperation) {
+      return true;
+    }
+    return OPERATION_STATE_FIELDS.some(
+      (field) => String(localOperation[field] ?? "") !== String(remoteOperation[field] ?? "")
+    );
+  });
+}
+
+async function syncOperationStates() {
+  if (!currentUser || operationStateSyncInFlight) {
+    return;
+  }
+  operationStateSyncInFlight = true;
+  const requestedIds = operationStateSyncIds();
+  const query = requestedIds.length ? `?ids=${encodeURIComponent(requestedIds.join(","))}` : "";
+  try {
+    const data = await requestJson(`/api/operations/status-snapshot${query}`, {
+      timeout: 8000,
+      timeoutMessage: "La sincronizacion de operaciones ha tardado demasiado.",
+    });
+    const remoteOperations = Array.isArray(data.operations) ? data.operations : [];
+    if (!operationStateSnapshotChanged(remoteOperations, requestedIds)) {
+      return;
+    }
+    const loaded = await loadOperations({ preserveOnError: true });
+    if (!loaded) {
+      return;
+    }
+    await loadPortfolio();
+    if (operationMode === "contest") {
+      await loadContest();
+    }
+  } catch {
+    // A transient sync failure must not erase the operation currently visible.
+  } finally {
+    operationStateSyncInFlight = false;
+  }
+}
+
+async function loadOperations({ preserveOnError = false } = {}) {
   if (!currentUser) {
     renderOperations([]);
-    return;
+    return true;
   }
   const requestSeq = ++operationsLoadSeq;
   try {
     const data = await requestJson("/api/operations");
     if (requestSeq !== operationsLoadSeq) {
-      return;
+      return false;
     }
     renderOperations(data.operations || []);
+    return true;
   } catch {
-    if (requestSeq === operationsLoadSeq) {
+    if (requestSeq === operationsLoadSeq && !preserveOnError) {
       renderOperations([]);
     }
+    return false;
   }
 }
 
@@ -4029,6 +4102,12 @@ window.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("resize", resizeCanvas);
+window.addEventListener("focus", syncOperationStates);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    syncOperationStates();
+  }
+});
 
 loadHistory();
 resizeCanvas();
@@ -4037,5 +4116,6 @@ updateMetrics();
 fetchPrice({ resetTimer: true, record: true });
 loadWorkerStatus();
 window.setInterval(loadWorkerStatus, WORKER_STATUS_INTERVAL_MS);
+window.setInterval(syncOperationStates, OPERATION_STATE_SYNC_INTERVAL_MS);
 window.setTimeout(loadSession, 50);
 window.setTimeout(() => loadRecentMarketHistory(), 250);

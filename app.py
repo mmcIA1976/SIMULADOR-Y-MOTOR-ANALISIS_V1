@@ -336,7 +336,7 @@ def ensure_pending_entry_columns() -> None:
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(APP_DIR / "index.html")
+    return FileResponse(APP_DIR / "index.html", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/version")
@@ -4848,10 +4848,12 @@ def parse_operation_status_snapshot_ids(raw_ids: str | None) -> list[int]:
 
 @app.get("/api/operations/status-snapshot")
 def operation_status_snapshot(
+    response: Response,
     ids: str = "",
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     """Return lifecycle fields only; this endpoint never advances operations."""
+    response.headers["Cache-Control"] = "no-store"
     user = current_user(session_token)
     operation_ids = parse_operation_status_snapshot_ids(ids)
     requested_clause = ""

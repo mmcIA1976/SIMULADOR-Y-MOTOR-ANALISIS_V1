@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 
 import app
 
@@ -76,11 +76,17 @@ class OperationStateSnapshotTests(unittest.TestCase):
         with patch("app.current_user", return_value={"id": 7}), patch(
             "app.connect", side_effect=lambda: use_db(db)
         ):
-            result = app.operation_status_snapshot(ids="2,2", session_token="session")
+            response = Response()
+            result = app.operation_status_snapshot(
+                response=response,
+                ids="2,2",
+                session_token="session",
+            )
 
         self.assertEqual([row["id"] for row in result["operations"]], [2, 1])
         self.assertEqual(result["operations"][0]["status"], "CLOSED")
         self.assertEqual(result["operations"][0]["close_reason"], "stop_loss")
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
         self.assertEqual(db.total_changes, changes_before)
         db.close()
 
@@ -89,7 +95,16 @@ class OperationStateSnapshotTests(unittest.TestCase):
 
         self.assertIn("/api/operations/status-snapshot", app_js)
         self.assertIn("window.setInterval(syncOperationStates, OPERATION_STATE_SYNC_INTERVAL_MS)", app_js)
+        self.assertIn("cacheBust: true", app_js)
+        self.assertIn("_sync=${Date.now()}", app_js)
         self.assertIn('data.operation_processing === "web"', app_js)
+
+    def test_index_disables_cache_and_versions_operation_sync_asset(self):
+        response = app.index()
+
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
+        index_html = (Path(__file__).resolve().parents[1] / "index.html").read_text(encoding="utf-8")
+        self.assertIn("/static/app.js?v=20260804-operation-sync-cache", index_html)
 
 
 if __name__ == "__main__":

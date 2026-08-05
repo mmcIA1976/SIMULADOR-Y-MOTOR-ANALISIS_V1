@@ -1,6 +1,6 @@
 # Contrato LIMIT v1
 
-Version ejecutable: `limit-order-contract-v1.2`.
+Version ejecutable: `limit-order-contract-v1.3`.
 
 Estado: contrato aislado y probado. No activa todavia el analisis de ordenes
 pendientes en produccion y no modifica M6 para entradas `market`.
@@ -109,10 +109,15 @@ LIMIT-3 anade `limit-context-rule-runtime-v0.1` con cuatro descriptores en sombr
 trayectoria, flujo con doble orientacion, estructura de zona y liquidaciones por
 tramo. Sus coeficientes no estan estimados y su efecto probabilistico es cero.
 
+LIMIT-4 anade `limit-learning-snapshot-v0.1`: tres eventos compactos,
+idempotencia por operacion/tipo y un maximo de 50 colocaciones seleccionadas por
+dia. El esquema queda preparado, pero la escritura online sigue desconectada.
+
 ## 8. Limite de almacenamiento
 
-El nuevo payload de aprendizaje tendra un presupuesto maximo de 8 KiB por
-operacion. Queda prohibido persistir como parte de este contrato:
+El techo absoluto continua siendo 8 KiB por operacion. LIMIT-4 asigna solo 5888
+bytes: 3584 para colocacion, 1280 para activacion y 1024 para cierre. Queda
+prohibido persistir como parte de este contrato:
 
 - velas crudas;
 - libros de ordenes completos;
@@ -120,6 +125,8 @@ operacion. Queda prohibido persistir como parte de este contrato:
 - un registro por cada ciclo del worker.
 
 Solo se conservaran variables derivadas compactas y los tres eventos relevantes.
+Los analisis de pares candidatos se descartan en memoria; solo se guarda el caso
+seleccionado. El cupo de colocaciones es de 50 por dia UTC.
 
 ## 9. Invariantes
 
@@ -131,12 +138,11 @@ Solo se conservaran variables derivadas compactas y los tres eventos relevantes.
 - La ausencia de una fuente opcional no puede rellenarse con datos inventados.
 - Ninguna regla cambia probabilidades sin coeficientes validados.
 
-## 10. Puerta a LIMIT-2
+## 10. Puerta a LIMIT-5
 
-LIMIT-2 podra empezar cuando:
+LIMIT-5 podra empezar cuando:
 
-- el contrato ejecutable y sus pruebas esten verdes;
-- las transiciones y etiquetas sean coherentes con la aplicacion actual;
-- la API productiva continue rechazando `pending` hasta que exista un calculo de
-  activacion validado;
-- las pruebas de M6 market sigan pasando sin cambios.
+- el esquema se despliegue y verifique en un entorno controlado;
+- la escritura solo se conecte al caso seleccionado;
+- se prueben idempotencia, cupo diario y los tres eventos con un caso real;
+- la API productiva continue sin alterar M6 `market`.

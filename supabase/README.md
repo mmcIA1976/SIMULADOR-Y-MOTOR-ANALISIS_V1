@@ -22,6 +22,8 @@ SQLite queda solo como origen temporal para migrar datos locales existentes.
   kill switch y rollback mediante eventos append-only.
 - `../verify_shadow_runtime_canary.py`: valida el recorrido sombra dentro de
   una transaccion que siempre se revierte.
+- `../limit_learning_persistence.py`: compacta y deduplica los tres eventos de
+  una operacion LIMIT seleccionada antes de cualquier escritura.
 
 ## Flujo
 
@@ -47,3 +49,7 @@ Las tablas `challenger_model_artifacts`,
 `challenger_shadow_config_events` y `challenger_shadow_runs` siguen el mismo
 modelo privado append-only. La administracion del challenger se realiza desde
 backend o CLI, nunca desde el navegador.
+
+`limit_learning_snapshots` conserva como maximo tres filas compactas por
+operacion LIMIT seleccionada. El esquema limita la colocacion a 50 casos por dia
+UTC y rechaza payloads que excedan el presupuesto del evento.

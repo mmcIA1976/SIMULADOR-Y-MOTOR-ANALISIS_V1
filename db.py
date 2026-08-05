@@ -10,6 +10,10 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from operation_worker_status import ensure_worker_status_table
+from limit_order_contract import (
+    LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY,
+    LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS,
+)
 from versioning import APP_VERSION
 
 
@@ -544,6 +548,64 @@ def init_db() -> None:
                 FOREIGN KEY(recommendation_id)
                     REFERENCES recommendations(id) ON DELETE RESTRICT
             );
+
+            CREATE TABLE IF NOT EXISTS limit_learning_snapshots (
+                id {id_type},
+                operation_id {fk_type} NOT NULL,
+                recommendation_id {fk_type},
+                analysis_id TEXT NOT NULL,
+                snapshot_type TEXT NOT NULL
+                    CHECK(snapshot_type IN ('placement', 'activation', 'closure')),
+                snapshot_schema_version TEXT NOT NULL
+                    CHECK(snapshot_schema_version = 'limit-learning-snapshot-v0.1'),
+                event_at TIMESTAMPTZ NOT NULL,
+                selected_case_day DATE,
+                daily_slot SMALLINT,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL CHECK(side IN ('long', 'short')),
+                time_horizon TEXT NOT NULL,
+                learning_label TEXT,
+                payload_sha256 TEXT NOT NULL
+                    CHECK(payload_sha256 ~ '^[0-9a-f]{{64}}$'),
+                payload_bytes INTEGER NOT NULL,
+                payload_json TEXT NOT NULL
+                    CHECK(jsonb_typeof(payload_json::jsonb) = 'object'),
+                production_effect TEXT NOT NULL
+                    CHECK(production_effect = 'none'),
+                created_at {text_timestamp},
+                UNIQUE(operation_id, snapshot_type),
+                CHECK(
+                    payload_bytes = octet_length(convert_to(payload_json, 'UTF8'))
+                ),
+                CHECK(
+                    payload_bytes > 0 AND payload_bytes <= CASE snapshot_type
+                        WHEN 'placement' THEN {LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS['placement']}
+                        WHEN 'activation' THEN {LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS['activation']}
+                        WHEN 'closure' THEN {LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS['closure']}
+                    END
+                ),
+                CHECK(
+                    (
+                        snapshot_type = 'placement'
+                        AND selected_case_day IS NOT NULL
+                        AND daily_slot IS NOT NULL
+                        AND selected_case_day = (event_at AT TIME ZONE 'UTC')::date
+                        AND daily_slot BETWEEN 1 AND {LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY}
+                    ) OR (
+                        snapshot_type <> 'placement'
+                        AND selected_case_day IS NULL
+                        AND daily_slot IS NULL
+                    )
+                ),
+                CHECK(
+                    (snapshot_type = 'closure' AND learning_label IS NOT NULL)
+                    OR (snapshot_type <> 'closure' AND learning_label IS NULL)
+                ),
+                FOREIGN KEY(operation_id)
+                    REFERENCES operations(id) ON DELETE RESTRICT,
+                FOREIGN KEY(recommendation_id)
+                    REFERENCES recommendations(id) ON DELETE RESTRICT
+            );
             """
         )
         ensure_worker_status_table(db)
@@ -674,6 +736,9 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_m6_prospective_recommendation ON m6_prospective_runs(recommendation_id);
         CREATE INDEX IF NOT EXISTS idx_m6_prospective_status ON m6_prospective_runs(run_status, block_code, created_at);
         CREATE INDEX IF NOT EXISTS idx_m6_prospective_expiry ON m6_prospective_runs(evaluation_expires_at, run_status);
+        CREATE INDEX IF NOT EXISTS idx_limit_learning_study ON limit_learning_snapshots(snapshot_type, symbol, side, time_horizon, event_at);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_limit_learning_daily_slot ON limit_learning_snapshots(selected_case_day, daily_slot) WHERE snapshot_type = 'placement';
+        CREATE INDEX IF NOT EXISTS idx_limit_learning_recommendation ON limit_learning_snapshots(recommendation_id) WHERE recommendation_id IS NOT NULL;
         """
     )
 
@@ -688,6 +753,7 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         ALTER TABLE challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
         ALTER TABLE challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
         ALTER TABLE m6_prospective_runs ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE limit_learning_snapshots ENABLE ROW LEVEL SECURITY;
         REVOKE ALL PRIVILEGES ON TABLE learning_evidence_reconstructions FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_economic_normalizations FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_legacy_reevaluations FROM anon, authenticated;
@@ -695,6 +761,7 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_config_events FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_runs FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE m6_prospective_runs FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE limit_learning_snapshots FROM anon, authenticated;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE learning_legacy_reevaluations FROM service_role;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
@@ -705,11 +772,14 @@ def secure_internal_learning_tables(db: DbSession) -> None:
             ON TABLE challenger_shadow_runs FROM service_role;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE m6_prospective_runs FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE limit_learning_snapshots FROM service_role;
         GRANT SELECT, INSERT ON TABLE learning_legacy_reevaluations TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_model_artifacts TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_shadow_config_events TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_shadow_runs TO service_role;
         GRANT SELECT, INSERT ON TABLE m6_prospective_runs TO service_role;
+        GRANT SELECT, INSERT ON TABLE limit_learning_snapshots TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE learning_legacy_reevaluations_id_seq TO service_role;
         GRANT USAGE, SELECT
@@ -720,6 +790,8 @@ def secure_internal_learning_tables(db: DbSession) -> None:
             ON SEQUENCE challenger_shadow_runs_id_seq TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE m6_prospective_runs_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE limit_learning_snapshots_id_seq TO service_role;
         """
     )
 
@@ -760,6 +832,7 @@ def ensure_challenger_shadow_append_only(db: DbSession) -> None:
         "challenger_shadow_config_events",
         "challenger_shadow_runs",
         "m6_prospective_runs",
+        "limit_learning_snapshots",
     ):
         rules = {
             row_to_dict(row)["rulename"]

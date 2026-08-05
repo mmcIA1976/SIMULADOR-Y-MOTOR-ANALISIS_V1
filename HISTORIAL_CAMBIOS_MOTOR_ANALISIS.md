@@ -1144,3 +1144,21 @@ Resumen:
 - Se actualiza el contrato compatible a `limit-order-contract-v1.2`.
 - Se documenta el lote en `METODOLOGIA_LIMIT_CONTEXT_V1.md` y se anade la suite
   `tests/test_limit_context_rule_runtime.py`.
+
+# 2026-08-05 - LIMIT-4: persistencia compacta y presupuesto Supabase
+
+- Se crea `limit_learning_persistence.py` con snapshots canonicos de colocacion,
+  activacion y cierre.
+- Solo se admite el caso seleccionado; analisis candidatos y ciclos del worker
+  no generan filas.
+- El techo operativo v0.1 es 5888 bytes por operacion, por debajo de los 8 KiB
+  reservados por el contrato.
+- Se impone un maximo de 50 colocaciones diarias mediante slots UTC unicos.
+- Los reintentos con el mismo hash son idempotentes y un contenido distinto no
+  puede sobrescribir una fotografia ya guardada.
+- Se crea `limit_learning_snapshots` en `supabase/schema.sql` y `db.py` con
+  limites de bytes, una fila por evento y columnas compactas para estudio.
+- El esquema no se aplica a la base remota y la escritura online sigue
+  desconectada hasta LIMIT-5.
+- El contrato compatible pasa a `limit-order-contract-v1.3` y la metodologia se
+  documenta en `METODOLOGIA_LIMIT_PERSISTENCE_V1.md`.

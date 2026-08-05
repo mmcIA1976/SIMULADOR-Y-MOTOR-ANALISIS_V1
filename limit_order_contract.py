@@ -10,12 +10,21 @@ from typing import Any, Mapping
 from m8_evaluation import HORIZON_SECONDS
 
 
-LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.2"
+LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.3"
 LIMIT_ORDER_ANALYSIS_FAMILY = "pending_limit_two_stage"
 LIMIT_ORDER_ENTRY_TYPE = "pending"
 LIMIT_ORDER_TYPE = "limit_pullback"
 LIMIT_ORDER_PRODUCTION_EFFECT = "none_contract_only"
 LIMIT_ORDER_MAX_LEARNING_PAYLOAD_BYTES = 8 * 1024
+LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS = {
+    "placement": 3584,
+    "activation": 1280,
+    "closure": 1024,
+}
+LIMIT_ORDER_ALLOCATED_SNAPSHOT_BYTES = sum(
+    LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS.values()
+)
+LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY = 50
 
 ACTIVATION_CLASSES = (
     "activated_by_expiry",
@@ -453,6 +462,18 @@ def build_limit_order_contract(
             "max_new_learning_payload_bytes_per_operation": (
                 LIMIT_ORDER_MAX_LEARNING_PAYLOAD_BYTES
             ),
+            "snapshot_schema_version": "limit-learning-snapshot-v0.1",
+            "allocated_snapshot_bytes_per_operation": (
+                LIMIT_ORDER_ALLOCATED_SNAPSHOT_BYTES
+            ),
+            "snapshot_byte_budgets": dict(
+                LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS
+            ),
+            "max_selected_cases_per_utc_day": (
+                LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY
+            ),
+            "persist_candidate_analyses": False,
+            "idempotency_key": "operation_id_plus_snapshot_type",
             "persist_raw_candles": False,
             "persist_raw_order_book": False,
             "persist_raw_liquidation_heatmap": False,
@@ -479,9 +500,12 @@ __all__ = (
     "CONDITIONAL_OUTCOME_CLASSES",
     "CLOSURE_SNAPSHOT_FIELDS",
     "LIMIT_ORDER_ANALYSIS_FAMILY",
+    "LIMIT_ORDER_ALLOCATED_SNAPSHOT_BYTES",
     "LIMIT_ORDER_CONTRACT_VERSION",
+    "LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY",
     "LIMIT_ORDER_MAX_LEARNING_PAYLOAD_BYTES",
     "LIMIT_ORDER_PRODUCTION_EFFECT",
+    "LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS",
     "LifecycleEvent",
     "LimitOrderContractError",
     "OperationStatus",

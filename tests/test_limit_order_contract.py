@@ -244,6 +244,10 @@ class LimitOrderContractTests(unittest.TestCase):
             contract["probability_spaces"]["activation"]["status"],
             "baseline_model_available_shadow_only",
         )
+        self.assertEqual(
+            contract["context_rule_spaces"]["probability_effect"],
+            "none_until_validated_coefficients",
+        )
 
     def test_snapshot_policy_is_compact_and_excludes_raw_feeds(self):
         persistence = self.valid_contract()["persistence"]

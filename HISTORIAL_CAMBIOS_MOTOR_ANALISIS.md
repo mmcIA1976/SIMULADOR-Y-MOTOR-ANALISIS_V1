@@ -1124,3 +1124,23 @@ Resumen:
   `METODOLOGIA_LIMIT_ACTIVATION_V1.md`.
 - Se anade `tests/test_limit_activation_baseline.py` para masa, monotonicidad,
   simetria, limites, contrato y trazabilidad.
+
+# 2026-08-05 - LIMIT-3: reglas de trayectoria y calidad de zona en sombra
+
+- Se crea `limit_context_rule_runtime.py` con cuatro reglas trazadas y efecto
+  probabilistico cero.
+- La trayectoria H/2H/4H, EMA y RSI se publican orientadas tanto hacia la
+  activacion como hacia la reaccion posterior.
+- ATI, CVD y order book reciben la misma doble lectura sin agregarse a un score;
+  OI, funding y crowding permanecen como contexto bruto.
+- El order book actual se etiqueta expresamente como fotografia del precio actual,
+  no como liquidez futura en la entrada.
+- La estructura de zona selecciona soporte para LONG y resistencia para SHORT,
+  conserva Fibonacci y niveles TP/SL, pero no fabrica un `zone_score`.
+- Las liquidaciones se dividen entre aproximacion, sobrepaso hacia SL y camino
+  posterior hacia TP. Solo se conservan resumenes compactos, no clusters crudos.
+- La ausencia de Fibonacci, liquidaciones u otros padres opcionales degrada por
+  regla sin inventar datos ni bloquear toda la familia.
+- Se actualiza el contrato compatible a `limit-order-contract-v1.2`.
+- Se documenta el lote en `METODOLOGIA_LIMIT_CONTEXT_V1.md` y se anade la suite
+  `tests/test_limit_context_rule_runtime.py`.

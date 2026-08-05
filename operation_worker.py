@@ -16,6 +16,7 @@ from app import (
     ONE_MINUTE_MS,
     finalize_due_observations,
     get_operation_klines_1m,
+    record_periodic_active_operation_ticks,
     refresh_learning_conclusions,
     refresh_learning_evaluations,
     refresh_symbol_active_operations,
@@ -60,6 +61,7 @@ class WorkerSettings:
     poll_seconds: float = 10.0
     reconcile_seconds: float = 60.0
     heartbeat_seconds: float = 60.0
+    price_sample_seconds: float = 120.0
     reconcile_overlap_minutes: int = 2
     startup_lookback_minutes: int = 10_080
     startup_max_kline_pages: int = 12
@@ -73,6 +75,7 @@ class WorkerSettings:
             poll_seconds=env_float("OPERATION_WORKER_POLL_SECONDS", 10.0, 2.0),
             reconcile_seconds=env_float("OPERATION_WORKER_RECONCILE_SECONDS", 60.0, 15.0),
             heartbeat_seconds=env_float("OPERATION_WORKER_HEARTBEAT_SECONDS", 60.0, 15.0),
+            price_sample_seconds=env_float("OPERATION_WORKER_PRICE_SAMPLE_SECONDS", 120.0, 30.0),
             reconcile_overlap_minutes=env_int("OPERATION_WORKER_RECONCILE_OVERLAP_MINUTES", 2, 1),
             startup_lookback_minutes=env_int("OPERATION_WORKER_STARTUP_LOOKBACK_MINUTES", 10_080, 60),
             startup_max_kline_pages=env_int("OPERATION_WORKER_STARTUP_MAX_KLINE_PAGES", 12, 1),
@@ -245,7 +248,7 @@ def run_worker_cycle(
     kline_loader: KlineLoader = get_operation_klines_1m,
     now_ms: int | None = None,
 ) -> dict:
-    """Process one cycle; ordinary price checks perform no database writes."""
+    """Process one cycle and retain one compact chart tick every two minutes."""
     cycle_started_ms = now_ms if now_ms is not None else utc_now_ms()
     symbol_starts = load_active_symbol_starts(connect_factory)
     market_inputs, reconcile_due, failures = collect_market_inputs(
@@ -260,6 +263,11 @@ def run_worker_cycle(
     activated: list[dict] = []
     closed: list[dict] = []
     finalized: list[dict] = []
+    persisted_price_samples = 0
+    price_sample_captured_at = datetime.fromtimestamp(
+        cycle_started_ms / 1000,
+        tz=timezone.utc,
+    ).isoformat()
     if not settings.dry_run:
         for market_input in market_inputs:
             try:
@@ -270,6 +278,13 @@ def run_worker_cycle(
                         market_input.price,
                         market_klines=market_input.klines,
                         persist_exit_window=settings.persist_exit_window,
+                    )
+                    persisted_price_samples += record_periodic_active_operation_ticks(
+                        db,
+                        market_input.symbol,
+                        market_input.price,
+                        price_sample_captured_at,
+                        minimum_interval_seconds=settings.price_sample_seconds,
                     )
             except Exception as exc:
                 failures += 1
@@ -304,7 +319,8 @@ def run_worker_cycle(
         "finalized_observations": len(finalized),
         "failures": failures,
         "reconciled": reconcile_due,
-        "persisted_price_samples": 0,
+        "persisted_price_samples": persisted_price_samples,
+        "price_sample_seconds": settings.price_sample_seconds,
         "persist_exit_window": settings.persist_exit_window,
         "dry_run": settings.dry_run,
     }
@@ -333,6 +349,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
         "operation_worker_started",
         poll_seconds=settings.poll_seconds,
         reconcile_seconds=settings.reconcile_seconds,
+        price_sample_seconds=settings.price_sample_seconds,
         persist_exit_window=settings.persist_exit_window,
         dry_run=settings.dry_run,
     )

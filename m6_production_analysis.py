@@ -201,6 +201,8 @@ def analyze_trade(
     *,
     loader: Callable[..., list[list]] = market_data.get_klines,
     context_loader: Callable[..., dict] = collect_live_rule_context,
+    context_market_price: float | None = None,
+    include_internal_runtime: bool = False,
 ) -> dict:
     if str(getattr(proposal, "entry_type", "market")).lower() != "market":
         raise NewEngineAnalysisError("market_entry_required")
@@ -218,7 +220,11 @@ def analyze_trade(
             horizon_seconds=horizon_seconds,
             interval_seconds=interval_seconds,
             request_cutoff_at=request_received_at.isoformat(),
-            market_price=float(proposal.entry),
+            market_price=(
+                float(context_market_price)
+                if context_market_price is not None
+                else float(proposal.entry)
+            ),
         )
     except Exception as exc:
         raise NewEngineAnalysisError(
@@ -412,7 +418,7 @@ def analyze_trade(
         }
     )
     probability_ranges = _probability_ranges(probabilities)
-    return {
+    result = {
         "analysis_type": "pre_trade",
         "engine_family": ENGINE_FAMILY,
         "engine_version": ENGINE_VERSION,
@@ -490,3 +496,11 @@ def analyze_trade(
             "production_effect": "served",
         },
     }
+    if include_internal_runtime:
+        # Transient integration hook for the two-stage LIMIT orchestrator.
+        # The caller must remove this data before persistence or API output.
+        result["_internal_runtime"] = {
+            "run": run,
+            "live_context": live_context,
+        }
+    return result

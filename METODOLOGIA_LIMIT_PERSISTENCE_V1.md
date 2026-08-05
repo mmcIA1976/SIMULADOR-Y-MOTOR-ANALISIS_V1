@@ -2,8 +2,9 @@
 
 Version: `limit-learning-snapshot-v0.1`.
 
-Estado: implementada y probada en codigo, pero no conectada todavia al flujo
-online ni aplicada manualmente sobre la base remota.
+Estado: colocacion conectada al flujo online en LIMIT-5 solo para la operacion
+seleccionada. Activacion y cierre permanecen preparados pero se conectaran en
+LIMIT-6.
 
 ## 1. Que se persiste
 
@@ -33,6 +34,9 @@ El tamano se calcula sobre JSON canonico UTF-8. La tabla vuelve a comprobar que
 `payload_bytes` coincide con los bytes realmente recibidos.
 Los numeros derivados se normalizan a 12 cifras significativas: suficiente para
 reproducir y estudiar estas variables, sin arrastrar decimales binarios inutiles.
+Los campos fijos que ya existen como columnas y las distancias de zona repetidas
+en mas de un vector se guardan una sola vez para mantener margen real bajo el
+presupuesto incluso cuando estan disponibles todas las fuentes.
 
 Quedan excluidos velas, klines, bids/asks, trades crudos, order books y clusters o
 heatmaps de liquidaciones. Las liquidaciones se reducen a conteos, masa visible,
@@ -80,15 +84,17 @@ esquema de dos formas coherentes con el procedimiento actual:
 - `supabase/schema.sql` para instalaciones o revisiones manuales;
 - `db.py` para la inicializacion idempotente al arrancar una version desplegada.
 
-LIMIT-4 no ejecuta ese SQL contra Supabase. La aplicacion online seguira sin
-guardar estas filas hasta que LIMIT-5 conecte de forma controlada los eventos.
+El arranque idempotente de LIMIT-5 crea o verifica la tabla. La aplicacion solo
+guarda `placement` cuando se crea una orden LIMIT seleccionada; analizar
+candidatos no inserta filas de aprendizaje.
 
-## 6. Puerta a LIMIT-5
+## 6. Puerta a LIMIT-6
 
-Antes de activar escritura online se debera:
+Antes de completar el ciclo online se debera:
 
-- desplegar y verificar el esquema en el entorno elegido;
-- conectar solo el caso seleccionado, nunca todos los candidatos;
-- probar reintentos, slot 50/51 y los tres eventos con una operacion real;
+- verificar el esquema y `placement` en el entorno desplegado;
+- conectar el recalculo y la fotografia de activacion;
+- conectar la fotografia terminal de cierre o censura;
+- probar reintentos y los tres eventos con una operacion real;
 - medir `pg_total_relation_size('limit_learning_snapshots')` para conocer el
   coste real de filas e indices, no solo el payload teorico.

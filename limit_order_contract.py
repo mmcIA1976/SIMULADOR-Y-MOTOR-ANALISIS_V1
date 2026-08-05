@@ -10,11 +10,11 @@ from typing import Any, Mapping
 from m8_evaluation import HORIZON_SECONDS
 
 
-LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.3"
+LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.4"
 LIMIT_ORDER_ANALYSIS_FAMILY = "pending_limit_two_stage"
 LIMIT_ORDER_ENTRY_TYPE = "pending"
 LIMIT_ORDER_TYPE = "limit_pullback"
-LIMIT_ORDER_PRODUCTION_EFFECT = "none_contract_only"
+LIMIT_ORDER_PRODUCTION_EFFECT = "served_two_stage_analysis"
 LIMIT_ORDER_MAX_LEARNING_PAYLOAD_BYTES = 8 * 1024
 LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS = {
     "placement": 3584,
@@ -424,15 +424,15 @@ def build_limit_order_contract(
         "probability_spaces": {
             "activation": {
                 "classes": list(ACTIVATION_CLASSES),
-                "status": "baseline_model_available_shadow_only",
+                "status": "served_uncalibrated_reference",
             },
             "conditional_after_activation": {
                 "classes": list(CONDITIONAL_OUTCOME_CLASSES),
-                "status": "rerun_m6_at_actual_activation",
+                "status": "placement_preview_served_rerun_at_activation",
             },
             "overall": {
                 "classes": list(OVERALL_OUTCOME_CLASSES),
-                "status": "derived_only_after_both_stages_are_available",
+                "status": "served_reference_not_empirically_calibrated",
             },
         },
         "context_rule_spaces": {

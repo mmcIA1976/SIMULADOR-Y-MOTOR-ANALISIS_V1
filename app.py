@@ -30,6 +30,15 @@ from learning_evidence import (
     build_historical_evidence,
     reconstruction_window,
 )
+from limit_learning_persistence import (
+    LimitLearningPersistenceError,
+    build_placement_snapshot_record,
+    persist_limit_learning_snapshot,
+)
+from limit_production_analysis import (
+    LimitProductionAnalysisError,
+    analyze_limit_trade,
+)
 from m6_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
@@ -237,6 +246,35 @@ def validate_recommendation_matches_operation(
         raise HTTPException(status_code=400, detail="El analisis previo no corresponde al tipo de orden pendiente")
     if not close_enough(entry_context.get("requested_entry"), payload.entry):
         raise HTTPException(status_code=400, detail="El analisis previo no corresponde al precio de activacion")
+
+
+def persist_selected_limit_placement(
+    db,
+    recommendation: dict,
+    *,
+    operation_id: int,
+) -> dict:
+    analysis_payload = parse_exit_evidence(recommendation.get("analysis_json"))
+    limit_analysis = (
+        analysis_payload.get("limit_analysis")
+        if isinstance(analysis_payload, dict)
+        else None
+    )
+    if not isinstance(limit_analysis, dict):
+        raise LimitLearningPersistenceError("limit_analysis_payload_missing")
+    contract = limit_analysis.get("contract")
+    activation_baseline = limit_analysis.get("activation_baseline")
+    context_runtime = limit_analysis.get("context_runtime")
+    snapshot = analysis_payload.get("snapshot") or {}
+    record = build_placement_snapshot_record(
+        contract,
+        activation_baseline,
+        context_runtime,
+        operation_id=operation_id,
+        recommendation_id=int(recommendation["id"]),
+        data_cutoff_at=snapshot.get("data_cutoff_at"),
+    )
+    return persist_limit_learning_snapshot(db, record)
 
 
 def current_user(session_token: str | None) -> dict:
@@ -4633,16 +4671,17 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     trigger_condition = payload.trigger_condition if entry_type == "pending" else None
     side = payload.side.lower()
     validate_entry_order(entry_type, trigger_condition)
-    if entry_type != "market":
+    if side not in {"long", "short"}:
+        raise HTTPException(status_code=400, detail="Direccion no valida")
+    pending_order_type = entry_order_type(side, trigger_condition)
+    if entry_type == "pending" and pending_order_type != "limit_pullback":
         raise HTTPException(
             status_code=400,
             detail=(
-                "El nuevo motor activo analiza exclusivamente entradas "
-                "a precio de mercado."
+                "El motor LIMIT actual admite ordenes de retroceso: LONG "
+                "por debajo del mercado o SHORT por encima del mercado."
             ),
         )
-    if side not in {"long", "short"}:
-        raise HTTPException(status_code=400, detail="Direccion no valida")
     proposal = TradeProposal(
         symbol=payload.symbol.upper(),
         side=side,
@@ -4654,13 +4693,33 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
         take_profit=payload.take_profit,
         entry_type=entry_type,
         trigger_condition=trigger_condition,
-        entry_order_type=entry_order_type(side, trigger_condition),
+        entry_order_type=pending_order_type,
     )
     if proposal.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
     validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
     try:
-        result = analyze_trade(proposal)
+        result = (
+            analyze_limit_trade(proposal)
+            if entry_type == "pending"
+            else analyze_trade(proposal)
+        )
+    except LimitProductionAnalysisError as exc:
+        logger.exception(
+            "LIMIT analysis engine blocked the request: %s",
+            exc.code,
+        )
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "code": exc.code,
+                "message": (
+                    "El motor LIMIT no pudo completar el analisis de dos "
+                    "etapas con datos fiables."
+                ),
+                "details": exc.details,
+            },
+        ) from exc
     except NewEngineAnalysisError as exc:
         logger.exception(
             "New analysis engine blocked the request: %s",
@@ -4693,6 +4752,14 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     result["entry_order_context"] = entry_context
     result.setdefault("snapshot", {})["entry_order_context"] = entry_context
     version_contract = current_version_contract()
+    version_contract["served_engine_family"] = result.get(
+        "engine_family",
+        "tp_sl_competing_risks",
+    )
+    version_contract["served_engine_version"] = result.get(
+        "engine_version",
+        ENGINE_VERSION,
+    )
     result["version_contract"] = version_contract
     result["snapshot"]["version_contract"] = version_contract
     result["data_contract"] = build_data_contract(pre_trade_features=result["snapshot"])
@@ -4728,7 +4795,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 json.dumps(result["alerts"]),
                 json.dumps(result["snapshot"]),
                 json.dumps(result),
-                ENGINE_VERSION,
+                result.get("engine_version", ENGINE_VERSION),
                 APP_VERSION,
                 SCORING_VERSION,
                 LEARNING_SCHEMA_VERSION,
@@ -4766,6 +4833,7 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
             payload.take_profit,
         )
     with connect() as db:
+        recommendation = None
         season_id = None
         if mode == "contest":
             season = ensure_current_contest_season(db)
@@ -4848,6 +4916,37 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 "UPDATE recommendations SET operation_id = ? WHERE id = ? AND user_id = ?",
                 (operation_id, payload.recommendation_id, user["id"]),
             )
+        if entry_type == "pending":
+            if recommendation is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "La orden LIMIT necesita su analisis previo de dos "
+                        "etapas."
+                    ),
+                )
+            try:
+                persist_selected_limit_placement(
+                    db,
+                    recommendation,
+                    operation_id=operation_id,
+                )
+            except LimitLearningPersistenceError as exc:
+                status_code = (
+                    409
+                    if str(exc) == "daily_selected_case_cap_reached"
+                    else 500
+                )
+                raise HTTPException(
+                    status_code=status_code,
+                    detail={
+                        "code": str(exc),
+                        "message": (
+                            "No se pudo registrar de forma compacta el caso "
+                            "LIMIT seleccionado. La operacion no se ha creado."
+                        ),
+                    },
+                ) from exc
         # Compute balance-after locally without re-syncing the whole portfolio:
         # we already validated cash_balance above and now reserve `payload.margin`.
         balance_after = round(cash_balance - float(payload.margin), 4)

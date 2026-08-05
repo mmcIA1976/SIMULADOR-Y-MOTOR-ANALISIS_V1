@@ -1,9 +1,9 @@
 # Contrato LIMIT v1
 
-Version ejecutable: `limit-order-contract-v1.3`.
+Version ejecutable: `limit-order-contract-v1.4`.
 
-Estado: contrato aislado y probado. No activa todavia el analisis de ordenes
-pendientes en produccion y no modifica M6 para entradas `market`.
+Estado: contrato probado y servido por LIMIT-5 para ordenes pendientes de
+retroceso. No modifica el comportamiento de M6 para entradas `market`.
 
 ## 1. Alcance
 
@@ -138,11 +138,14 @@ seleccionado. El cupo de colocaciones es de 50 por dia UTC.
 - La ausencia de una fuente opcional no puede rellenarse con datos inventados.
 - Ninguna regla cambia probabilidades sin coeficientes validados.
 
-## 10. Puerta a LIMIT-5
+## 10. Estado LIMIT-5 y puerta a LIMIT-6
 
-LIMIT-5 podra empezar cuando:
+LIMIT-5 conecta el analisis online en dos etapas y la fotografia compacta de
+colocacion solo para la operacion seleccionada. M6 `market` permanece separado.
 
-- el esquema se despliegue y verifique en un entorno controlado;
-- la escritura solo se conecte al caso seleccionado;
-- se prueben idempotencia, cupo diario y los tres eventos con un caso real;
-- la API productiva continue sin alterar M6 `market`.
+LIMIT-6 podra empezar cuando:
+
+- el despliegue verifique el esquema y el analisis LIMIT online;
+- se conecte el recalculo M6 al instante real de activacion;
+- se conecten las fotografias de activacion y cierre;
+- se prueben los tres eventos con un caso real de extremo a extremo.

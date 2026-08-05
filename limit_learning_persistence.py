@@ -190,11 +190,14 @@ def _compact_liquidation_summary(value: object) -> dict | None:
 
 
 def _rule_envelope(trace: Mapping[str, Any], vector: object) -> dict:
-    return {
+    envelope = {
         "status": trace.get("status"),
-        "reasons": list(trace.get("reason_codes") or []),
         "vector": vector,
     }
+    reasons = list(trace.get("reason_codes") or [])
+    if reasons:
+        envelope["reasons"] = reasons
+    return envelope
 
 
 def compact_limit_context(context_runtime: Mapping[str, Any]) -> dict:
@@ -234,21 +237,36 @@ def compact_limit_context(context_runtime: Mapping[str, Any]) -> dict:
     flow_outputs = flow.get("outputs") or {}
     directional = flow_outputs.get("directional_components") or {}
     flow_vector = {
-        "dual_order": ["raw", "activation", "reaction"],
         "directional": {
             str(key): _dual_vector(value)
             for key, value in directional.items()
         },
         "context": flow_outputs.get("non_directional_context") or {},
-        "book_semantics": flow_outputs.get("order_book_semantics"),
     }
 
     zone = traces[RULE_IDS[2]]
     zone_outputs = zone.get("outputs") or {}
+    desired_level = zone_outputs.get("desired_level")
+    fibonacci_at_entry = zone_outputs.get("fibonacci_at_entry")
     zone_vector = {
         "desired_type": zone_outputs.get("desired_level_type"),
-        "desired_level": zone_outputs.get("desired_level"),
-        "fibonacci_at_entry": zone_outputs.get("fibonacci_at_entry"),
+        "desired_level": (
+            {
+                "type": desired_level.get("type"),
+                "price": desired_level.get("price"),
+            }
+            if isinstance(desired_level, Mapping)
+            else None
+        ),
+        "fibonacci_at_entry": (
+            {
+                "set": fibonacci_at_entry.get("set"),
+                "ratio": fibonacci_at_entry.get("ratio"),
+                "price": fibonacci_at_entry.get("price"),
+            }
+            if isinstance(fibonacci_at_entry, Mapping)
+            else None
+        ),
         "retracement_fraction": zone_outputs.get(
             "entry_retracement_fraction"
         ),
@@ -278,7 +296,6 @@ def compact_limit_context(context_runtime: Mapping[str, Any]) -> dict:
 
     return {
         "runtime_version": RUNTIME_VERSION,
-        "runtime_status": context_runtime.get("status"),
         "runtime_trace_sha256": context_runtime.get("runtime_trace_sha256"),
         "rules": {
             RULE_IDS[0]: _rule_envelope(trajectory, trajectory_vector),
@@ -398,8 +415,6 @@ def build_placement_snapshot_record(
         contract.get("windows", {}).get("activation", {}).get("expires_at")
     )
     payload = {
-        "snapshot_schema_version": LIMIT_LEARNING_SNAPSHOT_VERSION,
-        "snapshot_type": "placement",
         "contract_version": contract.get("contract_version"),
         "analysis_id": contract.get("analysis_id"),
         "analysis_at": analysis_at,
@@ -428,7 +443,6 @@ def build_placement_snapshot_record(
         },
         "activation_baseline": {
             "model_version": activation_baseline.get("model_version"),
-            "status": activation_baseline.get("status"),
             "probabilities": activation_probabilities,
             "activation_log_distance": activation_inputs.get(
                 "activation_log_distance"
@@ -437,7 +451,6 @@ def build_placement_snapshot_record(
             "distance_in_horizon_sigma": activation_inputs.get(
                 "distance_in_horizon_sigma"
             ),
-            "probability_mass": activation_baseline.get("probability_mass"),
             "source_sha256": canonical_sha256(activation_baseline),
         },
         "context": compact_limit_context(context_runtime),
@@ -509,8 +522,6 @@ def _build_lifecycle_record(
     ):
         raise LimitLearningPersistenceError("snapshot_operation_id_mismatch")
     payload = {
-        "snapshot_schema_version": LIMIT_LEARNING_SNAPSHOT_VERSION,
-        "snapshot_type": snapshot_type,
         "analysis_id": contract.get("analysis_id"),
         **{field: values[field] for field in required},
     }

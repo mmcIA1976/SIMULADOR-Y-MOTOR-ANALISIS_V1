@@ -133,15 +133,21 @@ class LimitActivationBaselineTests(unittest.TestCase):
             places=15,
         )
 
-    def test_baseline_output_is_explicitly_shadow_and_uncalibrated(self):
+    def test_baseline_output_is_served_but_explicitly_uncalibrated(self):
         result = build_limit_activation_baseline(
             self.contract(),
             sigma_horizon=0.04,
         )
 
         self.assertEqual(result["model_version"], LIMIT_ACTIVATION_MODEL_VERSION)
-        self.assertEqual(result["production_effect"], "shadow_only")
-        self.assertEqual(result["status"], "evaluated_shadow_baseline")
+        self.assertEqual(
+            result["production_effect"],
+            "served_reference_no_scoring_effect",
+        )
+        self.assertEqual(
+            result["status"],
+            "evaluated_uncalibrated_reference",
+        )
         self.assertEqual(result["inputs"]["time_horizon"], "intraday_short")
         self.assertEqual(
             result["inputs"]["activation_horizon_seconds"],

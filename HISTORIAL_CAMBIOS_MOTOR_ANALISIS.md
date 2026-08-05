@@ -1162,3 +1162,26 @@ Resumen:
   desconectada hasta LIMIT-5.
 - El contrato compatible pasa a `limit-order-contract-v1.3` y la metodologia se
   documenta en `METODOLOGIA_LIMIT_PERSISTENCE_V1.md`.
+
+# 2026-08-05 - LIMIT-5: analisis online en dos etapas
+
+- Se crea `limit_production_analysis.py` con el motor visible
+  `LIMIT-TWO-STAGE-ENGINE-v0.1`.
+- `/api/analyze` admite LIMIT pullback validas y sigue rechazando rupturas stop.
+- El precio fresco de Binance se usa para la distancia de activacion y la entrada
+  solicitada para la geometria TP/SL.
+- La activacion first-passage se sirve como referencia no calibrada; TP, SL y
+  ninguna barrera se muestran condicionados a que la orden active.
+- Se compone un arbol de cuatro clases con masa uno y se muestran por separado
+  activacion, resultado condicional y referencia total.
+- Se reutilizan las trazas M5/M6 y el contexto vivo mediante un hook transitorio
+  que se elimina antes de responder o persistir.
+- La interfaz cambia las etiquetas a `TP si activa`, `SL si activa` y
+  `Sin barrera si activa` sin alterar la presentacion de entradas a mercado.
+- `limit_learning_snapshots.placement` se escribe solo al crear la operacion
+  seleccionada, de forma atomica, idempotente y dentro del presupuesto de 3584
+  bytes. Un mero analisis no crea una fila de aprendizaje.
+- El contrato pasa a `limit-order-contract-v1.4` y la aplicacion a
+  `app-v0.26.0-limit-two-stage`.
+- LIMIT-6 queda reservado para recalculo en activacion y snapshots compactos de
+  activacion y cierre.

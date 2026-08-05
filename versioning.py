@@ -3,19 +3,19 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.25.3-market-price-ticks"
-APP_SEMVER = "0.25.3"
+APP_VERSION = "app-v0.26.0-limit-two-stage"
+APP_SEMVER = "0.26.0"
 ENGINE_VERSION = "TP-SL-PROBABILITY-ENGINE-v0.4"
 SCORING_VERSION = "calibrated-plus-active-rules-v0.4"
 LEARNING_EVALUATOR_VERSION = "learning-v0.13-execution-economics"
-LEARNING_SCHEMA_VERSION = "learning-schema-v0.16-execution-economics"
-DATA_SOURCE_VERSION = "data-sources-v0.22-execution-economics"
-DATA_CONTRACT_VERSION = "data-contract-v0.18-execution-economics"
+LEARNING_SCHEMA_VERSION = "learning-schema-v0.17-limit-snapshots"
+DATA_SOURCE_VERSION = "data-sources-v0.23-limit-context"
+DATA_CONTRACT_VERSION = "data-contract-v0.19-limit-two-stage"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.1-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 CHALLENGER_RUNTIME_VERSION = "inactive-history-only"
-PROSPECTIVE_RUNTIME_VERSION = "tp-sl-rule-library-runtime-v0.14"
+PROSPECTIVE_RUNTIME_VERSION = "tp-sl-rule-library-runtime-v0.15"
 
 
 def current_version_contract() -> dict:

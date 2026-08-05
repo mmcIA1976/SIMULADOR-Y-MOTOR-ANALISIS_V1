@@ -2,8 +2,9 @@
 
 Version: `limit-activation-first-passage-v0.1`.
 
-Estado: evaluacion en sombra. No habilita `/api/analyze` para ordenes pending y
-no modifica las probabilidades del motor M6 de entradas market.
+Estado: servida por LIMIT-5 como referencia visible no calibrada para ordenes
+pending. No modifica las probabilidades del motor M6 de entradas market ni toma
+por si sola una decision de operacion.
 
 ## 1. Pregunta que responde
 

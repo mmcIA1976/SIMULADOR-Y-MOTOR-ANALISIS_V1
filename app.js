@@ -72,8 +72,11 @@ const elements = {
   autoStatus: document.querySelector("#autoStatus"),
   nextUpdate: document.querySelector("#nextUpdate"),
   analysisHeadline: document.querySelector("#analysisHeadline"),
+  tpProbabilityLabel: document.querySelector("#tpProbabilityLabel"),
   tpProbability: document.querySelector("#tpProbability"),
+  slProbabilityLabel: document.querySelector("#slProbabilityLabel"),
   slProbability: document.querySelector("#slProbability"),
+  rangeProbabilityLabel: document.querySelector("#rangeProbabilityLabel"),
   rangeProbability: document.querySelector("#rangeProbability"),
   analysisDecision: document.querySelector("#analysisDecision"),
   analysisSummary: document.querySelector("#analysisSummary"),
@@ -214,9 +217,22 @@ function setEntryMode(nextMode) {
   }
   if (entryMode === "market") {
     syncMarketEntry();
+  } else {
+    syncLimitTriggerForSide();
   }
   updateEntryOrderHelp();
   updateActionLabels();
+}
+
+function syncLimitTriggerForSide() {
+  if (!elements.triggerCondition || entryMode !== "pending") {
+    return;
+  }
+  const expected = side === "long" ? "price_lte" : "price_gte";
+  elements.triggerCondition.value = expected;
+  for (const option of elements.triggerCondition.options) {
+    option.disabled = option.value !== expected;
+  }
 }
 
 function updateActionLabels() {
@@ -341,6 +357,18 @@ function validateTradeForm() {
   }
   if (config.entry_type === "pending" && !["price_lte", "price_gte"].includes(config.trigger_condition)) {
     return { message: "Selecciona una condicion valida para activar la orden pendiente.", field: elements.triggerCondition };
+  }
+  const expectedLimitTrigger = config.side === "long" ? "price_lte" : "price_gte";
+  if (config.entry_type === "pending" && config.trigger_condition !== expectedLimitTrigger) {
+    return { message: "LIMIT v1 solo admite LONG por debajo del mercado o SHORT por encima del mercado.", field: elements.triggerCondition };
+  }
+  if (config.entry_type === "pending" && hasFreshCurrentPriceForSymbol(config.symbol)) {
+    if (config.side === "long" && config.entry >= currentPrice) {
+      return { message: "En una LIMIT LONG, la entrada debe quedar por debajo del precio vivo.", field: elements.entry };
+    }
+    if (config.side === "short" && config.entry <= currentPrice) {
+      return { message: "En una LIMIT SHORT, la entrada debe quedar por encima del precio vivo.", field: elements.entry };
+    }
   }
   if (!config.time_horizon) {
     return { message: "Selecciona un marco temporal antes de analizar.", field: elements.timeHorizon };
@@ -1724,6 +1752,11 @@ function biasLabel(bias) {
 }
 
 function renderAnalysisPayload(analysis, fallbackSummary = "") {
+  const setProbabilityCardLabels = (tp, sl, range) => {
+    if (elements.tpProbabilityLabel) elements.tpProbabilityLabel.textContent = tp;
+    if (elements.slProbabilityLabel) elements.slProbabilityLabel.textContent = sl;
+    if (elements.rangeProbabilityLabel) elements.rangeProbabilityLabel.textContent = range;
+  };
   if (!analysis) {
     fullAnalysisOpen = false;
     updateAnalysisFullVisibility(false);
@@ -1731,6 +1764,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
     elements.tpProbability.textContent = "--";
     elements.slProbability.textContent = "--";
     elements.rangeProbability.textContent = "--";
+    setProbabilityCardLabels("Probabilidad TP", "Probabilidad SL", "Rango / sin resolver");
     elements.analysisDecision.textContent = fallbackSummary || "Esta operacion no tiene un analisis previo enlazado.";
     elements.analysisSummary.textContent = "";
     elements.analysisHighlights.innerHTML = "";
@@ -1748,7 +1782,16 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
     "tp_sl_competing_risks",
     "m6_calibrated_competing_risks",
   ].includes(analysis.engine_family);
-  elements.analysisHeadline.textContent = isTpSlProbabilityEngine
+  const isLimitTwoStage = analysis.engine_family === "pending_limit_two_stage";
+  const activationProbability = Number(analysis.limit_analysis?.probability_tree?.activation?.activated_by_expiry);
+  setProbabilityCardLabels(
+    isLimitTwoStage ? "TP si activa" : "Probabilidad TP",
+    isLimitTwoStage ? "SL si activa" : "Probabilidad SL",
+    isLimitTwoStage ? "Sin barrera si activa" : "Rango / sin resolver",
+  );
+  elements.analysisHeadline.textContent = isLimitTwoStage
+    ? `Analisis LIMIT · activacion base ${percent(activationProbability)}`
+    : isTpSlProbabilityEngine
     ? `Motor probabilístico TP/SL · TP ${percent(analysis.tp_probability)}`
     : `Setup ${analysis.setup_grade} · Riesgo ${analysis.risk_level}`;
   elements.tpProbability.textContent = probabilityLabel(analysis, "tp", "tp_probability");
@@ -1756,7 +1799,9 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   elements.rangeProbability.textContent = probabilityLabel(analysis, "range", "range_probability");
   const evLabel = analysis.expected_value ? ` · EV ${analysis.expected_value.label}` : "";
   const regimeLabel = analysis.market_regime ? ` · ${String(analysis.market_regime.name).replaceAll("_", " ")}` : "";
-  elements.analysisDecision.textContent = isTpSlProbabilityEngine
+  elements.analysisDecision.textContent = isLimitTwoStage
+    ? `Dos etapas · activacion no calibrada + TP/SL condicional · ${timeHorizonLabel(analysis.time_horizon)} · decision del usuario`
+    : isTpSlProbabilityEngine
     ? `Probabilidades calibradas · ${timeHorizonLabel(analysis.time_horizon)} · decision del usuario`
     : `${analysis.training_decision} · confianza ${analysis.confidence}${evLabel}${regimeLabel}`;
   elements.analysisSummary.textContent = analysis.plain_summary || fallbackSummary || "";
@@ -1932,7 +1977,28 @@ function renderAnalysisHighlights(analysis) {
   const rrRatio = snapshot.risk_reward_ratio;
   const marginRisk = snapshot.margin_risk_pct;
   const marginReward = snapshot.margin_reward_pct;
+  const limitTree = analysis.limit_analysis?.probability_tree;
+  const limitActivation = Number(limitTree?.activation?.activated_by_expiry);
+  const limitNoActivation = Number(limitTree?.activation?.not_activated_by_expiry);
+  const limitOverallTp = Number(limitTree?.overall?.activation_then_tp_first);
   const items = [
+    ...(limitTree ? [
+      {
+        label: "Activacion LIMIT base",
+        value: percent(limitActivation),
+        tone: limitActivation >= 0.55 ? "positive" : limitActivation <= 0.35 ? "negative" : "neutral",
+      },
+      {
+        label: "TP total de referencia",
+        value: percent(limitOverallTp),
+        tone: "neutral",
+      },
+      {
+        label: "No activa",
+        value: percent(limitNoActivation),
+        tone: limitNoActivation >= 0.65 ? "negative" : "neutral",
+      },
+    ] : []),
     {
       label: "Orden",
       value: entryContext?.entry_type === "pending"
@@ -3356,6 +3422,7 @@ function renderSelectedOperationDetail(operation) {
   const firstTick = ticks[0];
   const lastTick = ticks[ticks.length - 1];
   const recommendation = operation.recommendation;
+  const recommendationIsLimit = recommendation?.engine_family === "pending_limit_two_stage";
   const visualStatus = getOperationVisualStatus(operation);
   const operationIdentity = `Operacion ${symbolLabel(operation.symbol)} en ${String(operation.side).toUpperCase()}`;
   const modeLabel = (operation.mode || "training") === "contest" ? "Concurso mensual" : "Entrenamiento";
@@ -3411,8 +3478,8 @@ function renderSelectedOperationDetail(operation) {
       <article class="outcome-loss"><span>Perdida en SL</span><strong>${money(outcome.slPnl)}</strong></article>
       <article><span>Variacion precio</span><strong class="${displayVariation > 0 ? "positive" : displayVariation < 0 ? "negative" : "neutral"}">${signedPct(displayVariation)}</strong></article>
       <article><span>Exposicion</span><strong>${money(displayExposure)}</strong></article>
-      <article><span>Prob. TP</span><strong>${probabilityLabel(recommendation, "tp", "tp_probability")}</strong></article>
-      <article><span>Prob. SL</span><strong>${probabilityLabel(recommendation, "sl", "sl_probability")}</strong></article>
+      <article><span>${recommendationIsLimit ? "TP si activa" : "Prob. TP"}</span><strong>${probabilityLabel(recommendation, "tp", "tp_probability")}</strong></article>
+      <article><span>${recommendationIsLimit ? "SL si activa" : "Prob. SL"}</span><strong>${probabilityLabel(recommendation, "sl", "sl_probability")}</strong></article>
       <article><span>Registros grafica</span><strong>${chartPoints.length}</strong></article>
     </div>
     <details class="tick-table-wrap">
@@ -3981,6 +4048,7 @@ function setSide(nextSide, options = {}) {
   side = nextSide;
   elements.longButton.classList.toggle("active", side === "long");
   elements.shortButton.classList.toggle("active", side === "short");
+  syncLimitTriggerForSide();
   updateEntryOrderHelp();
   if (selectedOperationId === null && !newOperationViewActive) {
     proposalDraft = readFormDraft();

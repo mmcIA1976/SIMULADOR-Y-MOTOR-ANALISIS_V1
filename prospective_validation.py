@@ -730,6 +730,7 @@ def build_prospective_probability_run(
         "m6_result": m6_result,
         "data_cutoff_at": data_cutoff_at,
         "source_data_sha256": material["data_sha256"],
+        "horizon_volatility": math.sqrt(material["current_variance"]),
         "details": {
             "candidate": artifact["id"],
             "candidate_version": candidate_payload["version"],

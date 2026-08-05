@@ -237,15 +237,18 @@ class LimitOrderContractTests(unittest.TestCase):
                 dict.fromkeys(CONDITIONAL_OUTCOME_CLASSES, 0.5),
             )
 
-    def test_contract_is_shadow_only_and_does_not_modify_market_engine(self):
+    def test_contract_is_served_without_modifying_market_engine(self):
         contract = self.valid_contract()
 
-        self.assertEqual(contract["production_effect"], "none_contract_only")
+        self.assertEqual(
+            contract["production_effect"],
+            "served_two_stage_analysis",
+        )
         self.assertFalse(contract["market_engine_modified"])
         self.assertFalse(contract["legacy_engine_executed"])
         self.assertEqual(
             contract["probability_spaces"]["activation"]["status"],
-            "baseline_model_available_shadow_only",
+            "served_uncalibrated_reference",
         )
         self.assertEqual(
             contract["context_rule_spaces"]["probability_effect"],

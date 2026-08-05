@@ -15,7 +15,7 @@ from limit_activation_first_passage import (
 
 
 LIMIT_ACTIVATION_MODEL_VERSION = "limit-activation-first-passage-v0.1"
-LIMIT_ACTIVATION_PRODUCTION_EFFECT = "shadow_only"
+LIMIT_ACTIVATION_PRODUCTION_EFFECT = "served_reference_no_scoring_effect"
 DEFAULT_TIME_CHECKPOINTS = (0.0, 0.25, 0.5, 0.75, 1.0)
 
 
@@ -150,7 +150,7 @@ def build_limit_activation_baseline(
         "contract_version": contract.get("contract_version"),
         "analysis_family": contract.get("analysis_family"),
         "production_effect": LIMIT_ACTIVATION_PRODUCTION_EFFECT,
-        "status": "evaluated_shadow_baseline",
+        "status": "evaluated_uncalibrated_reference",
         "probability_semantics": (
             "model_implied_unadjusted_first_passage_probability"
         ),

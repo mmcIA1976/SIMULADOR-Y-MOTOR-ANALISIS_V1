@@ -196,17 +196,17 @@ def init_db() -> None:
                 user_id {fk_type} NOT NULL,
                 symbol TEXT NOT NULL,
                 side TEXT NOT NULL CHECK(side IN ('long', 'short')),
-                entry REAL NOT NULL,
+                entry DOUBLE PRECISION NOT NULL,
                 margin REAL NOT NULL,
                 leverage REAL NOT NULL,
                 time_horizon TEXT NOT NULL DEFAULT 'intraday_short',
-                stop_loss REAL NOT NULL,
-                take_profit REAL NOT NULL,
+                stop_loss DOUBLE PRECISION NOT NULL,
+                take_profit DOUBLE PRECISION NOT NULL,
                 status TEXT NOT NULL DEFAULT 'PENDING_ANALYSIS',
                 created_at {text_timestamp},
                 started_at TEXT,
                 closed_at TEXT,
-                close_price REAL,
+                close_price DOUBLE PRECISION,
                 close_reason TEXT,
                 final_pnl REAL,
                 observation_until TEXT,
@@ -259,7 +259,7 @@ def init_db() -> None:
                 id {id_type},
                 operation_id {fk_type},
                 symbol TEXT NOT NULL,
-                price REAL NOT NULL,
+                price DOUBLE PRECISION NOT NULL,
                 source TEXT NOT NULL,
                 captured_at {text_timestamp},
                 FOREIGN KEY(operation_id) REFERENCES operations(id) ON DELETE CASCADE
@@ -622,6 +622,7 @@ def init_db() -> None:
         db.execute("UPDATE operations SET time_horizon = 'intraday_short' WHERE time_horizon IS NULL OR time_horizon = ''")
         db.execute("UPDATE recommendations SET time_horizon = 'intraday_short' WHERE time_horizon IS NULL OR time_horizon = ''")
         create_indexes(db)
+        ensure_market_price_precision(db)
         ensure_economic_metric_precision(db)
         secure_internal_learning_tables(db)
         ensure_legacy_reevaluations_append_only(db)
@@ -833,6 +834,40 @@ def ensure_economic_metric_precision(db: DbSession) -> None:
             USING {column}::DOUBLE PRECISION
             """
         )
+
+
+def ensure_market_price_precision(db: DbSession) -> None:
+    price_columns = {
+        "operations": (
+            "entry",
+            "stop_loss",
+            "take_profit",
+            "close_price",
+            "requested_entry",
+            "trigger_price",
+        ),
+        "price_ticks": ("price",),
+    }
+    for table, columns in price_columns.items():
+        for column in columns:
+            current = db.execute(
+                """
+                SELECT data_type
+                FROM information_schema.columns
+                WHERE table_name = ? AND column_name = ?
+                LIMIT 1
+                """,
+                (table, column),
+            ).fetchone()
+            if not current or current["data_type"] == "double precision":
+                continue
+            db.execute(
+                f"""
+                ALTER TABLE {table}
+                ALTER COLUMN {column} TYPE DOUBLE PRECISION
+                USING {column}::DOUBLE PRECISION
+                """
+            )
 
 
 def backfill_recommendation_links(db: DbSession) -> None:

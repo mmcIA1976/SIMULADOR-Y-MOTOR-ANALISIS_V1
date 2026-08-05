@@ -166,6 +166,35 @@ def validate_entry_order(entry_type: str, trigger_condition: str | None) -> None
         raise HTTPException(status_code=400, detail="Condicion de activacion no valida")
 
 
+def resolve_market_execution_price(
+    symbol: str,
+    side: str,
+    stop_loss: float,
+    take_profit: float,
+) -> tuple[float, str]:
+    """Obtain the real Binance fill used to open a simulated market order."""
+    try:
+        execution_price = float(market_data.get_price(symbol.upper(), force_refresh=True))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo obtener el precio real de mercado para {symbol.upper()}: {exc}",
+        ) from exc
+    if not math.isfinite(execution_price) or execution_price <= 0:
+        raise HTTPException(status_code=502, detail="Binance devolvio un precio de mercado no valido")
+    try:
+        validate_trade_plan(side, execution_price, stop_loss, take_profit)
+    except HTTPException as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "El mercado se movio fuera de los niveles analizados antes de abrir la operacion. "
+                "Actualiza el precio y vuelve a analizarla."
+            ),
+        ) from exc
+    return execution_price, datetime.now(timezone.utc).isoformat()
+
+
 def entry_order_type(side: str, trigger_condition: str | None) -> str | None:
     if trigger_condition is None:
         return None
@@ -310,11 +339,11 @@ def shutdown() -> None:
 def ensure_pending_entry_columns() -> None:
     columns = {
         "entry_type": "TEXT NOT NULL DEFAULT 'market'",
-        "requested_entry": "REAL",
+        "requested_entry": "DOUBLE PRECISION",
         "trigger_condition": "TEXT",
         "entry_order_type": "TEXT",
         "triggered_at": "TEXT",
-        "trigger_price": "REAL",
+        "trigger_price": "DOUBLE PRECISION",
         "activation_evidence_json": "TEXT",
     }
     with connect() as db:
@@ -1036,6 +1065,60 @@ def record_compact_exit_tick(
             captured_at,
         ),
     )
+
+
+def record_periodic_active_operation_ticks(
+    db,
+    symbol: str,
+    price: float,
+    captured_at: str,
+    minimum_interval_seconds: float = 120.0,
+) -> int:
+    """Persist at most one chart sample per active operation and interval."""
+    captured_at_ms = timestamp_ms_from_trigger_time(captured_at)
+    if captured_at_ms is None:
+        raise ValueError("captured_at no es una fecha valida")
+    rows = db.execute(
+        """
+        SELECT operation.id, MAX(price_ticks.captured_at) AS last_captured_at
+        FROM operations AS operation
+        LEFT JOIN price_ticks ON price_ticks.operation_id = operation.id
+        WHERE operation.symbol = ?
+          AND operation.status IN ('OPEN', 'PENDING_ENTRY')
+        GROUP BY operation.id
+        ORDER BY operation.id
+        """,
+        (symbol.upper(),),
+    ).fetchall()
+    minimum_interval_ms = max(float(minimum_interval_seconds), 1.0) * 1000
+    persisted = 0
+    for row in rows:
+        last_captured_at = row["last_captured_at"]
+        last_captured_at_ms = (
+            timestamp_ms_from_trigger_time(str(last_captured_at))
+            if last_captured_at is not None
+            else None
+        )
+        if (
+            last_captured_at_ms is not None
+            and captured_at_ms - last_captured_at_ms < minimum_interval_ms
+        ):
+            continue
+        db.execute(
+            """
+            INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                int(row["id"]),
+                symbol.upper(),
+                float(price),
+                "operation_worker_120s",
+                captured_at,
+            ),
+        )
+        persisted += 1
+    return persisted
 
 
 def record_exit_window_ticks(db, operation: dict, close_price: float, trigger_time: str) -> None:
@@ -4705,6 +4788,16 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
     validate_trade_plan(side, payload.entry, payload.stop_loss, payload.take_profit)
     if mode not in VALID_OPERATION_MODES:
         raise HTTPException(status_code=400, detail="Modo de operacion no valido")
+    requested_entry = float(payload.entry)
+    execution_entry = requested_entry
+    started_at = None
+    if entry_type == "market":
+        execution_entry, started_at = resolve_market_execution_price(
+            payload.symbol,
+            side,
+            payload.stop_loss,
+            payload.take_profit,
+        )
     with connect() as db:
         season_id = None
         if mode == "contest":
@@ -4753,22 +4846,36 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 payload.symbol.upper(),
                 side,
                 payload.time_horizon,
-                payload.entry,
+                execution_entry,
                 payload.margin,
                 payload.leverage,
                 payload.stop_loss,
                 payload.take_profit,
                 "PENDING_ENTRY" if entry_type == "pending" else "OPEN",
-                None if entry_type == "pending" else datetime.now(timezone.utc).isoformat(),
+                started_at,
                 mode,
                 season_id,
                 entry_type,
-                payload.entry,
+                requested_entry,
                 trigger_condition,
                 entry_order_type(side, trigger_condition),
             ),
         )
         operation_id = int(cursor.lastrowid)
+        if entry_type == "market":
+            db.execute(
+                """
+                INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    operation_id,
+                    payload.symbol.upper(),
+                    execution_entry,
+                    "market_entry_binance_usdm_futures",
+                    started_at,
+                ),
+            )
         if payload.recommendation_id is not None:
             db.execute(
                 "UPDATE recommendations SET operation_id = ? WHERE id = ? AND user_id = ?",
@@ -4788,7 +4895,13 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
             contest_season_id=season_id,
             note="Margen bloqueado al crear orden pendiente." if entry_type == "pending" else "Margen bloqueado al iniciar operacion simulada.",
         )
-    return {"id": operation_id, "status": "PENDING_ENTRY" if entry_type == "pending" else "OPEN"}
+    return {
+        "id": operation_id,
+        "status": "PENDING_ENTRY" if entry_type == "pending" else "OPEN",
+        "entry": execution_entry,
+        "requested_entry": requested_entry,
+        "started_at": started_at,
+    }
 
 
 @app.get("/api/operations")

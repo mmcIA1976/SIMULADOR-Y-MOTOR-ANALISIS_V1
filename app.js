@@ -157,6 +157,27 @@ function numberValue(input) {
   return Number.parseFloat(input.value);
 }
 
+function priceInputValue(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "";
+  }
+  return numeric.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: 12,
+  });
+}
+
+function pricesDiffer(left, right) {
+  const leftValue = Number(left);
+  const rightValue = Number(right);
+  if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue)) {
+    return true;
+  }
+  const scale = Math.max(Math.abs(leftValue), Math.abs(rightValue), 1);
+  return Math.abs(leftValue - rightValue) >= Math.max(1e-10, scale * 1e-10);
+}
+
 function getConfig() {
   syncMarketEntry();
   return {
@@ -177,7 +198,7 @@ function syncMarketEntry() {
   if (entryMode !== "market" || selectedOperationId !== null || !hasFreshCurrentPriceForSymbol(elements.symbol.value)) {
     return;
   }
-  elements.entry.value = currentPrice.toFixed(2);
+  elements.entry.value = priceInputValue(currentPrice);
 }
 
 function setEntryMode(nextMode) {
@@ -274,11 +295,11 @@ function applyOperationToForm(operation) {
   if (elements.triggerCondition) {
     elements.triggerCondition.value = operation.trigger_condition || "price_lte";
   }
-  elements.entry.value = Number(operation.entry).toFixed(2);
+  elements.entry.value = priceInputValue(operation.entry);
   elements.margin.value = String(Number(operation.margin));
   elements.leverage.value = String(Number(operation.leverage));
-  elements.stopLoss.value = Number(operation.stop_loss).toFixed(2);
-  elements.takeProfit.value = Number(operation.take_profit).toFixed(2);
+  elements.stopLoss.value = priceInputValue(operation.stop_loss);
+  elements.takeProfit.value = priceInputValue(operation.take_profit);
   setTradeFormLocked(true);
   updateEntryOrderHelp();
 }
@@ -604,7 +625,7 @@ function normalizeOperationChartHistory(operation, points) {
   }
 
   const entryPrice = Number(operation.entry);
-  const entryTime = operation.triggered_at || operation.created_at;
+  const entryTime = operation.triggered_at || operation.started_at || operation.created_at;
   const entryDate = new Date(entryTime);
   if (!Number.isFinite(entryPrice) || Number.isNaN(entryDate.getTime())) {
     return points;
@@ -943,7 +964,7 @@ function prepareNewOperationForm() {
 function resetProposalChartToCurrentPrice() {
   const symbol = normalizeSymbol(elements.symbol.value);
   activeHistorySymbol = symbol;
-  if (Number.isFinite(currentPrice) && currentPriceSymbol === symbol && (!history.length || Math.abs(history[history.length - 1].price - currentPrice) >= 0.01)) {
+  if (Number.isFinite(currentPrice) && currentPriceSymbol === symbol && (!history.length || pricesDiffer(history[history.length - 1].price, currentPrice))) {
     history.push({ price: currentPrice, time: new Date() });
     if (history.length > MAX_HISTORY_POINTS) {
       history.shift();
@@ -970,7 +991,7 @@ async function loadRecentMarketHistory(symbol = elements.symbol.value) {
     }
     history.length = 0;
     history.push(...parsed.slice(-MAX_HISTORY_POINTS));
-    if (Number.isFinite(currentPrice) && currentPriceSymbol === requestedSymbol && Math.abs(history[history.length - 1].price - currentPrice) >= 0.01) {
+    if (Number.isFinite(currentPrice) && currentPriceSymbol === requestedSymbol && pricesDiffer(history[history.length - 1].price, currentPrice)) {
       history.push({ price: currentPrice, time: new Date() });
     }
     saveHistory(requestedSymbol);
@@ -1521,7 +1542,14 @@ async function fetchPrice({ resetTimer = false, record = true, symbolOverride = 
         }
         saveHistory(symbol);
       }
-      appendOperationTicks(data.operation_ids || [], currentPrice, capturedAt);
+      const operationIds = Array.isArray(data.operation_ids) && data.operation_ids.length
+        ? data.operation_ids
+        : data.operation_processing === "worker"
+          ? activeOperations
+            .filter((operation) => normalizeSymbol(operation.symbol) === symbol)
+            .map((operation) => operation.id)
+          : [];
+      appendOperationTicks(operationIds, currentPrice, capturedAt);
     }
     if (!priceIsStale) {
       updateContestFloatingFromLivePrice(symbol, currentPrice);
@@ -2166,11 +2194,12 @@ async function startSimulation() {
     elements.analysisDecision.textContent = operation.status === "PENDING_ENTRY"
       ? `Orden pendiente registrada #${operation.id}.`
       : `Simulacion registrada #${operation.id}.`;
-    const outcome = plannedOutcome(getConfig());
+    const executionEntry = Number.isFinite(Number(operation.entry)) ? Number(operation.entry) : Number(preview.entry);
+    const outcome = plannedOutcome({ ...getConfig(), entry: executionEntry });
     const sideLabel = String(preview.side || side).toUpperCase();
     const entryLabel = preview.entry_type === "pending"
       ? `Pendiente (${preview.trigger_condition === "price_gte" ? "si sube a" : "si baja a"} ${priceText(preview.entry)})`
-      : `Entrada ${priceText(preview.entry)}`;
+      : `Entrada real ${priceText(executionEntry)}`;
     const detailText =
       `${preview.symbol} ${sideLabel} · ${timeHorizonLabel(preview.time_horizon)} · ` +
       `${entryLabel} · Margen ${money(preview.margin)} · x${Number(preview.leverage).toFixed(0)} · ` +
@@ -3060,7 +3089,9 @@ async function loadOperationTicks(operation, { force = false } = {}) {
   }
   operation._ticksLoading = true;
   try {
-    const data = await requestJson(`/api/operations/${operation.id}/ticks?limit=${MAX_HISTORY_POINTS}`);
+    const data = await requestJson(`/api/operations/${operation.id}/ticks?limit=${MAX_HISTORY_POINTS}`, {
+      cacheBust: force,
+    });
     operation.ticks = Array.isArray(data.ticks) ? data.ticks : [];
     operation._ticksLoaded = true;
     if (getSelectedOperation()?.id === operation.id) {
@@ -3586,7 +3617,7 @@ function drawChart() {
     const livePriceWillBeDrawn =
       Number.isFinite(livePrice) &&
       isInScale(livePrice, yMin, yMax) &&
-      (!Number.isFinite(lastPrice) || Math.abs(lastPrice - livePrice) >= 0.01);
+      (!Number.isFinite(lastPrice) || pricesDiffer(lastPrice, livePrice));
     ctx.fillStyle = "#1f7a8c";
     ctx.beginPath();
     ctx.arc(lastX, lastY, 6, 0, Math.PI * 2);
@@ -3719,7 +3750,7 @@ function drawLivePriceMarker(chartHistory, operation, yFor, pad, chartWidth, cha
     return;
   }
   const lastPoint = chartHistory[chartHistory.length - 1];
-  if (lastPoint && Math.abs(Number(lastPoint.price) - currentPrice) < 0.01) {
+  if (lastPoint && !pricesDiffer(lastPoint.price, currentPrice)) {
     return;
   }
   const y = yFor(currentPrice);

@@ -334,6 +334,56 @@ CREATE TABLE IF NOT EXISTS m6_prospective_runs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS limit_learning_snapshots (
+    id BIGSERIAL PRIMARY KEY,
+    operation_id BIGINT NOT NULL REFERENCES operations(id) ON DELETE RESTRICT,
+    recommendation_id BIGINT REFERENCES recommendations(id) ON DELETE RESTRICT,
+    analysis_id TEXT NOT NULL,
+    snapshot_type TEXT NOT NULL
+        CHECK(snapshot_type IN ('placement', 'activation', 'closure')),
+    snapshot_schema_version TEXT NOT NULL
+        CHECK(snapshot_schema_version = 'limit-learning-snapshot-v0.1'),
+    event_at TIMESTAMPTZ NOT NULL,
+    selected_case_day DATE,
+    daily_slot SMALLINT,
+    symbol TEXT NOT NULL,
+    side TEXT NOT NULL CHECK(side IN ('long', 'short')),
+    time_horizon TEXT NOT NULL,
+    learning_label TEXT,
+    payload_sha256 TEXT NOT NULL CHECK(payload_sha256 ~ '^[0-9a-f]{64}$'),
+    payload_bytes INTEGER NOT NULL,
+    payload_json TEXT NOT NULL
+        CHECK(jsonb_typeof(payload_json::jsonb) = 'object'),
+    production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(operation_id, snapshot_type),
+    CHECK(payload_bytes = octet_length(convert_to(payload_json, 'UTF8'))),
+    CHECK(
+        payload_bytes > 0 AND payload_bytes <= CASE snapshot_type
+            WHEN 'placement' THEN 3584
+            WHEN 'activation' THEN 1280
+            WHEN 'closure' THEN 1024
+        END
+    ),
+    CHECK(
+        (
+            snapshot_type = 'placement'
+            AND selected_case_day IS NOT NULL
+            AND daily_slot IS NOT NULL
+            AND selected_case_day = (event_at AT TIME ZONE 'UTC')::date
+            AND daily_slot BETWEEN 1 AND 50
+        ) OR (
+            snapshot_type <> 'placement'
+            AND selected_case_day IS NULL
+            AND daily_slot IS NULL
+        )
+    ),
+    CHECK(
+        (snapshot_type = 'closure' AND learning_label IS NOT NULL)
+        OR (snapshot_type <> 'closure' AND learning_label IS NULL)
+    )
+);
+
 CREATE TABLE IF NOT EXISTS operation_worker_state (
     worker_name TEXT PRIMARY KEY,
     lifecycle_status TEXT NOT NULL
@@ -400,6 +450,9 @@ CREATE INDEX IF NOT EXISTS idx_challenger_shadow_status ON challenger_shadow_run
 CREATE INDEX IF NOT EXISTS idx_m6_prospective_recommendation ON m6_prospective_runs(recommendation_id);
 CREATE INDEX IF NOT EXISTS idx_m6_prospective_status ON m6_prospective_runs(run_status, block_code, created_at);
 CREATE INDEX IF NOT EXISTS idx_m6_prospective_expiry ON m6_prospective_runs(evaluation_expires_at, run_status);
+CREATE INDEX IF NOT EXISTS idx_limit_learning_study ON limit_learning_snapshots(snapshot_type, symbol, side, time_horizon, event_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_limit_learning_daily_slot ON limit_learning_snapshots(selected_case_day, daily_slot) WHERE snapshot_type = 'placement';
+CREATE INDEX IF NOT EXISTS idx_limit_learning_recommendation ON limit_learning_snapshots(recommendation_id) WHERE recommendation_id IS NOT NULL;
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operations ENABLE ROW LEVEL SECURITY;
@@ -416,6 +469,7 @@ ALTER TABLE public.challenger_model_artifacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.m6_prospective_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.limit_learning_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operation_worker_state ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
@@ -433,6 +487,7 @@ REVOKE ALL PRIVILEGES ON TABLE public.challenger_model_artifacts FROM anon, auth
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_config_events FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_runs FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.m6_prospective_runs FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.limit_learning_snapshots FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operation_worker_state FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
@@ -454,6 +509,8 @@ REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.challenger_shadow_runs FROM service_role;
 REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.m6_prospective_runs FROM service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.limit_learning_snapshots FROM service_role;
 GRANT SELECT, INSERT
     ON TABLE public.challenger_model_artifacts TO service_role;
 GRANT SELECT, INSERT
@@ -462,6 +519,8 @@ GRANT SELECT, INSERT
     ON TABLE public.challenger_shadow_runs TO service_role;
 GRANT SELECT, INSERT
     ON TABLE public.m6_prospective_runs TO service_role;
+GRANT SELECT, INSERT
+    ON TABLE public.limit_learning_snapshots TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.challenger_model_artifacts_id_seq TO service_role;
 GRANT USAGE, SELECT
@@ -470,6 +529,8 @@ GRANT USAGE, SELECT
     ON SEQUENCE public.challenger_shadow_runs_id_seq TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.m6_prospective_runs_id_seq TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.limit_learning_snapshots_id_seq TO service_role;
 
 DO $$
 BEGIN
@@ -581,6 +642,30 @@ BEGIN
     ) THEN
         CREATE RULE m6_prospective_runs_no_delete AS
         ON DELETE TO public.m6_prospective_runs
+        DO INSTEAD NOTHING;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'limit_learning_snapshots'
+          AND rulename = 'limit_learning_snapshots_no_update'
+    ) THEN
+        CREATE RULE limit_learning_snapshots_no_update AS
+        ON UPDATE TO public.limit_learning_snapshots
+        DO INSTEAD NOTHING;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_rules
+        WHERE schemaname = 'public'
+          AND tablename = 'limit_learning_snapshots'
+          AND rulename = 'limit_learning_snapshots_no_delete'
+    ) THEN
+        CREATE RULE limit_learning_snapshots_no_delete AS
+        ON DELETE TO public.limit_learning_snapshots
         DO INSTEAD NOTHING;
     END IF;
 END $$;

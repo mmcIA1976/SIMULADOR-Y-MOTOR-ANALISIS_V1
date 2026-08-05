@@ -6,8 +6,11 @@ from datetime import datetime, timezone
 
 from limit_order_contract import (
     CONDITIONAL_OUTCOME_CLASSES,
+    LIMIT_ORDER_ALLOCATED_SNAPSHOT_BYTES,
     LIMIT_ORDER_CONTRACT_VERSION,
+    LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY,
     LIMIT_ORDER_MAX_LEARNING_PAYLOAD_BYTES,
+    LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS,
     LifecycleEvent,
     LimitOrderContractError,
     OperationStatus,
@@ -261,6 +264,23 @@ class LimitOrderContractTests(unittest.TestCase):
         self.assertFalse(persistence["persist_raw_liquidation_heatmap"])
         self.assertFalse(persistence["persist_every_worker_poll"])
         self.assertTrue(persistence["persist_compact_derived_features_only"])
+        self.assertFalse(persistence["persist_candidate_analyses"])
+        self.assertEqual(
+            persistence["snapshot_byte_budgets"],
+            LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS,
+        )
+        self.assertEqual(
+            persistence["allocated_snapshot_bytes_per_operation"],
+            LIMIT_ORDER_ALLOCATED_SNAPSHOT_BYTES,
+        )
+        self.assertLess(
+            LIMIT_ORDER_ALLOCATED_SNAPSHOT_BYTES,
+            LIMIT_ORDER_MAX_LEARNING_PAYLOAD_BYTES,
+        )
+        self.assertEqual(
+            persistence["max_selected_cases_per_utc_day"],
+            LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY,
+        )
 
     def test_contract_hash_is_deterministic_and_plan_specific(self):
         first = self.valid_contract()

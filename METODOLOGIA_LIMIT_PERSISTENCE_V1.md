@@ -2,9 +2,8 @@
 
 Version: `limit-learning-snapshot-v0.1`.
 
-Estado: colocacion conectada al flujo online en LIMIT-5 solo para la operacion
-seleccionada. Activacion y cierre permanecen preparados pero se conectaran en
-LIMIT-6.
+Estado: ciclo completo conectado. LIMIT-5 activo colocacion y LIMIT-6 conecta
+activacion y cierre para la operacion seleccionada.
 
 ## 1. Que se persiste
 

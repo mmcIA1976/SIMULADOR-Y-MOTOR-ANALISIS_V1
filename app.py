@@ -32,9 +32,21 @@ from learning_evidence import (
 )
 from limit_learning_persistence import (
     LimitLearningPersistenceError,
+    build_activation_snapshot_record,
+    build_closure_snapshot_record,
     build_placement_snapshot_record,
     persist_limit_learning_snapshot,
 )
+from limit_lifecycle_runtime import (
+    activation_expires_at,
+    closure_snapshot_values,
+    extract_limit_context,
+    finite_price,
+    outcome_expires_at,
+    parse_utc as parse_limit_utc,
+    recalculate_at_activation,
+)
+from limit_order_contract import LifecycleEvent
 from limit_production_analysis import (
     LimitProductionAnalysisError,
     analyze_limit_trade,
@@ -273,6 +285,89 @@ def persist_selected_limit_placement(
         operation_id=operation_id,
         recommendation_id=int(recommendation["id"]),
         data_cutoff_at=snapshot.get("data_cutoff_at"),
+    )
+    return persist_limit_learning_snapshot(db, record)
+
+
+def load_limit_operation_context(db, operation: dict) -> dict | None:
+    """Load the immutable LIMIT contract linked to a selected operation."""
+    if operation.get("entry_order_type") != "limit_pullback":
+        return None
+    recommendation = row_to_dict(
+        db.execute(
+            """
+            SELECT id, analysis_json
+            FROM recommendations
+            WHERE operation_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (operation["id"],),
+        ).fetchone()
+    )
+    if recommendation is None:
+        return None
+    analysis_payload = parse_exit_evidence(recommendation.get("analysis_json"))
+    context = extract_limit_context(analysis_payload)
+    if context is None:
+        return None
+    context["recommendation_id"] = int(recommendation["id"])
+    return context
+
+
+def persist_limit_activation_event(
+    db,
+    operation: dict,
+    context: dict,
+    *,
+    trigger_time: str,
+    activation_evidence: dict,
+) -> dict:
+    values = recalculate_at_activation(
+        operation,
+        context,
+        activated_at=trigger_time,
+        activation_evidence=activation_evidence,
+    )
+    record = build_activation_snapshot_record(
+        context["contract"],
+        values,
+        operation_id=int(operation["id"]),
+        recommendation_id=context.get("recommendation_id"),
+    )
+    result = persist_limit_learning_snapshot(db, record)
+    return {"values": values, "persistence": result}
+
+
+def persist_limit_closure_event(
+    db,
+    operation: dict,
+    context: dict | None,
+    *,
+    closed_at: str,
+    terminal_event: str,
+    evidence_source: str,
+    close_price: float | None,
+    pnl: float,
+    market_klines: list[list] | None = None,
+) -> dict | None:
+    if context is None:
+        return None
+    values = closure_snapshot_values(
+        operation,
+        context,
+        closed_at=closed_at,
+        terminal_event=terminal_event,
+        evidence_source=evidence_source,
+        close_price=close_price,
+        pnl=pnl,
+        market_klines=market_klines,
+    )
+    record = build_closure_snapshot_record(
+        context["contract"],
+        values,
+        operation_id=int(operation["id"]),
+        recommendation_id=context.get("recommendation_id"),
     )
     return persist_limit_learning_snapshot(db, record)
 
@@ -895,6 +990,11 @@ def refresh_symbol_active_operations(
         user_id,
         market_klines=market_klines,
     )
+    expired_pending = expire_due_pending_limit_operations(
+        db,
+        symbol,
+        user_id=user_id,
+    )
     closed = close_triggered_open_operations(
         db,
         symbol,
@@ -903,6 +1003,7 @@ def refresh_symbol_active_operations(
         market_klines=market_klines,
         persist_exit_window=persist_exit_window,
     )
+    closed.update(expired_pending)
     return activated, closed
 
 
@@ -961,17 +1062,61 @@ def activate_triggered_pending_operations(
     for row in rows:
         operation = row_to_dict(row)
         operation["_pending_scan_start_ms"] = pending_entry_scan_start_ms(db, operation)
+        limit_context = load_limit_operation_context(db, operation)
         try:
-            trigger = triggered_entry_from_market_path(
-                operation,
-                current_price,
-                market_klines=market_klines,
-            )
+            if limit_context is None:
+                trigger = triggered_entry_from_market_path(
+                    operation,
+                    current_price,
+                    market_klines=market_klines,
+                )
+            else:
+                expiry = activation_expires_at(limit_context["contract"])
+                expiry_ms = int(expiry.timestamp() * 1000)
+                bounded_klines = [
+                    kline
+                    for kline in (market_klines or [])
+                    if int(kline[6]) <= expiry_ms
+                ]
+                # During a reconciliation the historical path has priority so
+                # the real first touch is not replaced by today's ticker.
+                trigger = triggered_entry_from_market_klines(
+                    operation,
+                    bounded_klines,
+                )
+                if trigger is None and datetime.now(timezone.utc) > expiry:
+                    partial_start_ms = max(
+                        timestamp_ms_from_operation_creation(operation),
+                        (
+                            int(bounded_klines[-1][6]) + 1
+                            if bounded_klines
+                            else timestamp_ms_from_operation_creation(operation)
+                        ),
+                    )
+                    if partial_start_ms <= expiry_ms:
+                        trigger = triggered_entry_from_trades(
+                            operation,
+                            partial_start_ms,
+                            expiry_ms,
+                        )
+                if trigger is None and datetime.now(timezone.utc) <= expiry:
+                    trigger = triggered_entry_from_current_price(
+                        operation,
+                        current_price,
+                    )
         except Exception:
-            trigger = triggered_entry_from_current_price(operation, current_price)
+            trigger = (
+                triggered_entry_from_current_price(operation, current_price)
+                if limit_context is None
+                else None
+            )
         if not trigger:
             continue
         entry_price, trigger_time, activation_evidence = trigger
+        if limit_context is not None and parse_limit_utc(trigger_time) > activation_expires_at(
+            limit_context["contract"]
+        ):
+            continue
         update_cursor = db.execute(
             """
             UPDATE operations
@@ -994,6 +1139,15 @@ def activate_triggered_pending_operations(
         )
         if update_cursor.rowcount == 0:
             continue
+        activation_snapshot = None
+        if limit_context is not None:
+            activation_snapshot = persist_limit_activation_event(
+                db,
+                operation,
+                limit_context,
+                trigger_time=trigger_time,
+                activation_evidence=activation_evidence,
+            )
         db.execute(
             "INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at) VALUES (?, ?, ?, ?, ?)",
             (operation["id"], operation["symbol"], entry_price, "auto_entry", trigger_time),
@@ -1017,8 +1171,80 @@ def activate_triggered_pending_operations(
             "entry_price": entry_price,
             "trigger_time": trigger_time,
             "activation_evidence": activation_evidence,
+            "limit_activation_snapshot": activation_snapshot,
         }
     return activated
+
+
+def expire_due_pending_limit_operations(
+    db,
+    symbol: str,
+    user_id: int | None = None,
+    *,
+    now: datetime | None = None,
+) -> dict[int, dict]:
+    params: tuple = (symbol,) if user_id is None else (symbol, user_id)
+    user_clause = "" if user_id is None else " AND user_id = ?"
+    rows = db.execute(
+        f"SELECT * FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY'{user_clause}",
+        params,
+    ).fetchall()
+    current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    expired: dict[int, dict] = {}
+    for row in rows:
+        operation = row_to_dict(row)
+        context = load_limit_operation_context(db, operation)
+        if context is None:
+            continue
+        expires_at = activation_expires_at(context["contract"])
+        if current_time <= expires_at:
+            continue
+        closed_at = expires_at.isoformat()
+        update_cursor = db.execute(
+            """
+            UPDATE operations
+            SET status = 'CLOSED', closed_at = ?, close_price = NULL,
+                close_reason = 'pending_entry_expired', final_pnl = 0,
+                observation_status = 'PLAN_EXECUTED', observation_until = NULL,
+                closing_note = 'La orden LIMIT no activo dentro de su ventana.'
+            WHERE id = ? AND status = 'PENDING_ENTRY'
+            """,
+            (closed_at, operation["id"]),
+        )
+        if update_cursor.rowcount == 0:
+            continue
+        persist_limit_closure_event(
+            db,
+            operation,
+            context,
+            closed_at=closed_at,
+            terminal_event=LifecycleEvent.PENDING_EXPIRED.value,
+            evidence_source="limit_activation_clock",
+            close_price=None,
+            pnl=0.0,
+        )
+        portfolio = sync_user_cash_balance(db, int(operation["user_id"]))
+        mode = operation.get("mode") or "training"
+        record_wallet_event(
+            db,
+            user_id=int(operation["user_id"]),
+            mode=mode,
+            event_type="pending_entry_expired",
+            amount=float(operation.get("margin") or 0),
+            balance_after=float(portfolio[mode]["cash_balance"]),
+            operation_id=int(operation["id"]),
+            contest_season_id=operation.get("contest_season_id"),
+            note="Margen liberado al vencer la orden LIMIT sin activacion.",
+        )
+        expired[int(operation["id"])] = {
+            "id": int(operation["id"]),
+            "user_id": int(operation["user_id"]),
+            "reason": "pending_entry_expired",
+            "close_price": None,
+            "final_pnl": 0.0,
+            "trigger_time": closed_at,
+        }
+    return expired
 
 
 def close_triggered_open_operations(
@@ -1042,14 +1268,92 @@ def close_triggered_open_operations(
     closed: dict[int, dict] = {}
     for row in rows:
         operation = row_to_dict(row)
+        limit_context = load_limit_operation_context(db, operation)
+        outcome_expiry = (
+            outcome_expires_at(
+                limit_context["contract"],
+                operation.get("triggered_at") or operation.get("started_at"),
+            )
+            if limit_context is not None
+            else None
+        )
+        now = datetime.now(timezone.utc)
+        operation_market_klines = market_klines
+        if outcome_expiry is not None and now > outcome_expiry and not operation_market_klines:
+            operation_market_klines = get_operation_klines_1m(
+                operation["symbol"],
+                operation_start_time_ms(operation),
+                int(outcome_expiry.timestamp() * 1000),
+            )
         trigger = triggered_exit_from_market_path(
             operation,
             current_price,
-            market_klines=market_klines,
+            market_klines=operation_market_klines,
+            end_time_ms=(
+                int(outcome_expiry.timestamp() * 1000)
+                if outcome_expiry is not None and now > outcome_expiry
+                else None
+            ),
+            allow_current_price=(
+                outcome_expiry is None or now <= outcome_expiry
+            ),
         )
-        if not trigger:
+        terminal_event = None
+        if trigger:
+            reason, close_price, trigger_time, exit_evidence = trigger
+            terminal_event = (
+                LifecycleEvent.TAKE_PROFIT.value
+                if reason == "take_profit"
+                else LifecycleEvent.STOP_LOSS.value
+            )
+        elif outcome_expiry is not None and now > outcome_expiry:
+            eligible_klines = [
+                kline
+                for kline in (operation_market_klines or [])
+                if int(kline[6]) <= int(outcome_expiry.timestamp() * 1000)
+            ]
+            fallback_price = (
+                float(eligible_klines[-1][4])
+                if eligible_klines
+                else finite_price(current_price, float(operation["entry"]))
+            )
+            partial_start_ms = max(
+                operation_start_time_ms(operation),
+                (
+                    int(eligible_klines[-1][6]) + 1
+                    if eligible_klines
+                    else operation_start_time_ms(operation)
+                ),
+            )
+            last_price = last_trade_price_in_window(
+                operation["symbol"],
+                partial_start_ms,
+                int(outcome_expiry.timestamp() * 1000),
+                fallback=fallback_price,
+            )
+            reason = "outcome_expired"
+            close_price = last_price
+            trigger_time = outcome_expiry.isoformat()
+            terminal_event = LifecycleEvent.OUTCOME_EXPIRED.value
+            exit_evidence = {
+                "source": (
+                    "binance_usdm_futures_market_path_at_outcome_expiry"
+                ),
+                "symbol": operation["symbol"],
+                "side": operation["side"],
+                "reason": reason,
+                "trigger_time": trigger_time,
+                "level": close_price,
+                "entry": float(operation["entry"]),
+                "stop_loss": float(operation["stop_loss"]),
+                "take_profit": float(operation["take_profit"]),
+                "market_data": {
+                    "price": close_price,
+                    "outcome_expires_at": trigger_time,
+                },
+            }
+        else:
             continue
-        reason, close_price, trigger_time, exit_evidence = trigger
         pnl = approximate_pnl(operation, close_price)
         closed_at = trigger_time if trigger_time != "precio_actual" else datetime.now(timezone.utc).isoformat()
         update_cursor = db.execute(
@@ -1073,6 +1377,17 @@ def close_triggered_open_operations(
         )
         if update_cursor.rowcount == 0:
             continue
+        persist_limit_closure_event(
+            db,
+            operation,
+            limit_context,
+            closed_at=closed_at,
+            terminal_event=terminal_event,
+            evidence_source=str(exit_evidence.get("source") or "worker_market_path"),
+            close_price=close_price,
+            pnl=pnl,
+            market_klines=operation_market_klines,
+        )
         if persist_exit_window:
             record_exit_window_ticks(db, operation, close_price, trigger_time)
         else:
@@ -4325,34 +4640,53 @@ def triggered_exit_from_market_path(
     operation: dict,
     current_price: float,
     market_klines: list[list] | None = None,
+    *,
+    end_time_ms: int | None = None,
+    allow_current_price: bool = True,
 ) -> tuple[str, float, str, dict] | None:
     if market_klines is None:
         start_time_ms = operation_start_time_ms(operation)
-        end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-        market_klines = get_operation_klines_1m(operation["symbol"], start_time_ms, end_time_ms)
-    return triggered_exit_from_market_klines(operation, current_price, market_klines)
+        scan_end_ms = end_time_ms or int(datetime.now(timezone.utc).timestamp() * 1000)
+        market_klines = get_operation_klines_1m(operation["symbol"], start_time_ms, scan_end_ms)
+    return triggered_exit_from_market_klines(
+        operation,
+        current_price,
+        market_klines,
+        end_time_ms=end_time_ms,
+        allow_current_price=allow_current_price,
+    )
 
 
 def triggered_exit_from_market_klines(
     operation: dict,
     current_price: float,
     market_klines: list[list],
+    *,
+    end_time_ms: int | None = None,
+    allow_current_price: bool = True,
 ) -> tuple[str, float, str, dict] | None:
     operation_started_ms = operation_start_time_ms(operation)
+    latest_complete_ms = operation_started_ms - 1
     for kline in market_klines:
         open_time_ms = int(kline[0])
         if open_time_ms < operation_started_ms:
             continue
         close_time_ms = int(kline[6])
+        if end_time_ms is not None and close_time_ms > end_time_ms:
+            continue
+        latest_complete_ms = max(latest_complete_ms, close_time_ms)
         open_time = iso_from_ms(open_time_ms)
         high = float(kline[2])
         low = float(kline[3])
         reason = triggered_exit_reason_from_range(operation, low, high)
         if reason:
-            if range_hits_both_exits(operation, low, high):
-                trade_trigger = triggered_exit_from_trades(operation, open_time_ms, close_time_ms)
-                if trade_trigger:
-                    return trade_trigger
+            trade_trigger = triggered_exit_from_trades(
+                operation,
+                open_time_ms,
+                close_time_ms,
+            )
+            if trade_trigger:
+                return trade_trigger
             return reason, triggered_exit_price(operation, reason), open_time, build_exit_evidence(
                 operation,
                 reason,
@@ -4369,7 +4703,22 @@ def triggered_exit_from_market_klines(
                 },
             )
 
-    immediate_reason = triggered_exit_reason(operation, current_price)
+    if end_time_ms is not None:
+        partial_start_ms = max(operation_started_ms, latest_complete_ms + 1)
+        if partial_start_ms <= end_time_ms:
+            partial_trigger = triggered_exit_from_trades(
+                operation,
+                partial_start_ms,
+                end_time_ms,
+            )
+            if partial_trigger:
+                return partial_trigger
+
+    immediate_reason = (
+        triggered_exit_reason(operation, current_price)
+        if allow_current_price
+        else None
+    )
     if immediate_reason:
         return immediate_reason, triggered_exit_price(operation, immediate_reason), "precio_actual", build_exit_evidence(
             operation,
@@ -4420,6 +4769,13 @@ def triggered_entry_from_market_klines(
         high = float(kline[2])
         low = float(kline[3])
         if triggered_entry_condition_from_range(operation, low, high):
+            trade_trigger = triggered_entry_from_trades(
+                operation,
+                int(kline[0]),
+                int(kline[6]),
+            )
+            if trade_trigger:
+                return trade_trigger
             return entry_price, open_time, build_activation_evidence(
                 operation,
                 "binance_usdm_futures_1m_kline",
@@ -4434,6 +4790,44 @@ def triggered_entry_from_market_klines(
                     "close_time": iso_from_ms(int(kline[6])),
                 },
             )
+    return None
+
+
+def triggered_entry_from_trades(
+    operation: dict,
+    start_time_ms: int,
+    end_time_ms: int,
+) -> tuple[float, str, dict] | None:
+    next_start = start_time_ms
+    entry_price = float(operation.get("requested_entry") or operation["entry"])
+    for _ in range(MAX_EXIT_TRADE_PAGES):
+        trades = market_data.get_agg_trades(
+            operation["symbol"],
+            1000,
+            start_time_ms=next_start,
+            end_time_ms=end_time_ms,
+        )
+        if not trades:
+            break
+        for trade in trades:
+            observed_price = float(trade.get("p", 0))
+            if not triggered_entry_condition(operation, observed_price):
+                continue
+            trigger_time = iso_from_ms(int(trade.get("T", start_time_ms)))
+            return entry_price, trigger_time, build_activation_evidence(
+                operation,
+                "binance_usdm_futures_agg_trade",
+                trigger_time,
+                {
+                    "price": observed_price,
+                    "trade_time": trigger_time,
+                    "quantity": float(trade.get("q", 0)),
+                },
+            )
+        last_trade_time = int(trades[-1].get("T", next_start))
+        next_start = last_trade_time + 1
+        if next_start > end_time_ms or len(trades) < 1000:
+            break
     return None
 
 
@@ -4529,6 +4923,32 @@ def triggered_exit_from_trades(operation: dict, start_time_ms: int, end_time_ms:
         if next_start > end_time_ms or len(trades) < 1000:
             break
     return None
+
+
+def last_trade_price_in_window(
+    symbol: str,
+    start_time_ms: int,
+    end_time_ms: int,
+    *,
+    fallback: float,
+) -> float:
+    next_start = start_time_ms
+    last_price = float(fallback)
+    for _ in range(MAX_EXIT_TRADE_PAGES):
+        trades = market_data.get_agg_trades(
+            symbol,
+            1000,
+            start_time_ms=next_start,
+            end_time_ms=end_time_ms,
+        )
+        if not trades:
+            break
+        last_price = finite_price(trades[-1].get("p"), last_price)
+        last_trade_time = int(trades[-1].get("T", next_start))
+        next_start = last_trade_time + 1
+        if next_start > end_time_ms or len(trades) < 1000:
+            break
+    return last_price
 
 
 def build_exit_evidence(operation: dict, reason: str, source: str, trigger_time: str, market_data_payload: dict) -> dict:
@@ -4985,6 +5405,7 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
             operation["exit_evidence"] = parse_exit_evidence(operation.get("exit_evidence_json"))
             operation["activation_evidence"] = parse_exit_evidence(operation.get("activation_evidence_json"))
             operation["recommendation"] = None
+            operation["limit_lifecycle"] = {}
             operation["ticks"] = []
 
         if operations:
@@ -5006,6 +5427,37 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
             for op in operations:
                 rec = rec_by_op.get(op["id"])
                 op["recommendation"] = format_recommendation(rec, op) if rec else None
+
+            limit_ids = [
+                int(op["id"])
+                for op in operations
+                if op.get("entry_order_type") == "limit_pullback"
+            ]
+            if limit_ids:
+                limit_placeholders = ",".join(["?"] * len(limit_ids))
+                lifecycle_rows = db.execute(
+                    f"""
+                    SELECT operation_id, snapshot_type, event_at,
+                           learning_label, payload_json
+                    FROM limit_learning_snapshots
+                    WHERE operation_id IN ({limit_placeholders})
+                      AND snapshot_type IN ('activation', 'closure')
+                    ORDER BY operation_id, event_at
+                    """,
+                    tuple(limit_ids),
+                ).fetchall()
+                op_by_id = {int(op["id"]): op for op in operations}
+                for lifecycle_row in lifecycle_rows:
+                    item = row_to_dict(lifecycle_row)
+                    payload = parse_exit_evidence(item.get("payload_json")) or {}
+                    payload["event_at"] = item.get("event_at")
+                    payload["learning_label"] = item.get("learning_label")
+                    operation = op_by_id.get(int(item["operation_id"]))
+                    if operation is None:
+                        continue
+                    operation["limit_lifecycle"][item["snapshot_type"]] = payload
+                    if item["snapshot_type"] == "activation" and operation.get("recommendation"):
+                        operation["recommendation"]["activation_reanalysis"] = payload
     return {"operations": operations}
 
 
@@ -5237,17 +5689,20 @@ def close_operation(
             raise HTTPException(status_code=404, detail="Operacion no encontrada")
         if operation["status"] != "OPEN":
             raise HTTPException(status_code=409, detail="La operacion ya esta cerrada")
+        limit_context = load_limit_operation_context(db, operation)
+        closed_at = datetime.now(timezone.utc).isoformat()
         pnl = approximate_pnl(operation, payload.close_price)
         update_cursor = db.execute(
             """
             UPDATE operations
-            SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP, close_price = ?, close_reason = ?,
+            SET status = 'CLOSED', closed_at = ?, close_price = ?, close_reason = ?,
                 final_pnl = ?, observation_until = ?, observation_status = 'OBSERVING',
                 post_emotion = ?, plan_followed = ?, closing_note = ?,
                 learning_outcome = NULL, learning_summary = NULL
             WHERE id = ? AND user_id = ? AND status = 'OPEN'
             """,
             (
+                closed_at,
                 payload.close_price,
                 payload.close_reason,
                 pnl,
@@ -5261,6 +5716,16 @@ def close_operation(
         )
         if update_cursor.rowcount == 0:
             raise HTTPException(status_code=409, detail="La operacion ya esta cerrada")
+        persist_limit_closure_event(
+            db,
+            operation,
+            limit_context,
+            closed_at=closed_at,
+            terminal_event=LifecycleEvent.MANUAL_CLOSE.value,
+            evidence_source="user_manual_close",
+            close_price=payload.close_price,
+            pnl=pnl,
+        )
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         mode = operation.get("mode") or "training"
         record_wallet_event(
@@ -5289,19 +5754,32 @@ def cancel_pending_operation(operation_id: int, session_token: str | None = Cook
             raise HTTPException(status_code=404, detail="Operacion no encontrada")
         if operation.get("status") != "PENDING_ENTRY":
             raise HTTPException(status_code=400, detail="Solo se pueden cancelar ordenes pendientes")
+        limit_context = load_limit_operation_context(db, operation)
+        closed_at = datetime.now(timezone.utc).isoformat()
+        terminal_status = "CLOSED" if limit_context is not None else "CANCELLED"
         update_cursor = db.execute(
             """
             UPDATE operations
-            SET status = 'CANCELLED',
-                closed_at = CURRENT_TIMESTAMP,
+            SET status = ?,
+                closed_at = ?,
                 close_reason = 'pending_cancelled',
                 final_pnl = 0
             WHERE id = ? AND user_id = ? AND status = 'PENDING_ENTRY'
             """,
-            (operation_id, user["id"]),
+            (terminal_status, closed_at, operation_id, user["id"]),
         )
         if update_cursor.rowcount == 0:
             raise HTTPException(status_code=400, detail="Solo se pueden cancelar ordenes pendientes")
+        persist_limit_closure_event(
+            db,
+            operation,
+            limit_context,
+            closed_at=closed_at,
+            terminal_event=LifecycleEvent.PENDING_CANCELLED.value,
+            evidence_source="user_pending_cancel",
+            close_price=None,
+            pnl=0.0,
+        )
         portfolio = sync_user_cash_balance(db, int(user["id"]))
         mode = operation.get("mode") or "training"
         record_wallet_event(
@@ -5315,7 +5793,7 @@ def cancel_pending_operation(operation_id: int, session_token: str | None = Cook
             contest_season_id=operation.get("contest_season_id"),
             note="Margen liberado al cancelar orden pendiente.",
         )
-    return {"id": operation_id, "status": "CANCELLED", "final_pnl": 0}
+    return {"id": operation_id, "status": terminal_status, "final_pnl": 0}
 
 
 def approximate_pnl(operation: dict, close_price: float) -> float:

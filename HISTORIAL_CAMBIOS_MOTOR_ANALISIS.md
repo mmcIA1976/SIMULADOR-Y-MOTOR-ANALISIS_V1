@@ -1185,3 +1185,26 @@ Resumen:
   `app-v0.26.0-limit-two-stage`.
 - LIMIT-6 queda reservado para recalculo en activacion y snapshots compactos de
   activacion y cierre.
+
+# 2026-08-05 - LIMIT-6: ciclo de activacion y cierre
+
+- Se crea `limit_lifecycle_runtime.py` con el ciclo ejecutable
+  `limit-lifecycle-runtime-v0.1`.
+- M6 se recalcula con la hora real de activacion y la entrada LIMIT solicitada;
+  la previsualizacion de colocacion no se sobrescribe.
+- Una activacion historica reconstruye solo velas cerradas hasta el toque y no
+  incorpora fuentes vivas actuales que introducirian look-ahead.
+- Un bloqueo de M6 queda registrado sin impedir que una evidencia real de toque
+  abra la operacion.
+- Se conectan snapshots compactos e idempotentes de activacion y cierre.
+- Se aplican por separado el vencimiento de la orden pendiente y el vencimiento
+  TP/SL posterior a la activacion.
+- TP, SL, ninguna barrera, no activacion, cancelacion y cierre manual conservan
+  etiquetas de aprendizaje distintas.
+- La interfaz muestra las probabilidades recalculadas al activar y mantiene la
+  recomendacion original para auditoria.
+- El worker no guarda ticks periodicos adicionales y puede vencer una LIMIT
+  pendiente aunque falle temporalmente la consulta de precio.
+- `LONG stop_breakout` y `SHORT stop_breakdown` quedan anotados como motor futuro
+  de ruptura en `BACKLOG_MOTORES_ORDENES_PENDIENTES.md`.
+- La aplicacion pasa a `app-v0.27.0-limit-lifecycle`.

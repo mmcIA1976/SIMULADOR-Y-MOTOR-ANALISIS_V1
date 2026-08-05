@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -198,6 +199,26 @@ class M6ProductionAnalysisTests(unittest.TestCase):
                 proposal(entry_type="pending"),
                 context_loader=lambda **kwargs: {},
             )
+
+    @patch(
+        "m6_production_analysis.build_prospective_probability_run",
+        return_value=evaluated_run(),
+    )
+    def test_historical_reanalysis_uses_explicit_activation_cutoff(self, build_run):
+        activation_at = datetime(2026, 8, 5, 10, 30, tzinfo=timezone.utc)
+
+        result = analyze_trade(
+            proposal(),
+            context_loader=lambda **kwargs: {},
+            effective_analysis_at=activation_at,
+        )
+
+        snapshot = build_run.call_args.args[1]
+        self.assertEqual(snapshot["analysis_at"], activation_at.isoformat())
+        self.assertEqual(
+            result["snapshot"]["analysis_at"],
+            activation_at.isoformat(),
+        )
 
     @patch(
         "m6_production_analysis.build_prospective_probability_run",

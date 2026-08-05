@@ -91,11 +91,8 @@ probabilidades y comportamiento. El hook interno que comparte contexto con
 LIMIT solo se devuelve de forma transitoria y se elimina antes de responder o
 persistir.
 
-## 7. Siguiente lote
+## 7. Continuacion en LIMIT-6
 
-LIMIT-6 conectara el resto del ciclo de aprendizaje:
-
-- recalculo M6 al producirse la activacion real;
-- fotografia compacta `activation`;
-- fotografia compacta `closure` para TP, SL, expiracion o censura;
-- prueba de extremo a extremo con una operacion LIMIT real desplegada.
+LIMIT-6 conecta el recalculo M6 en la activacion real, los dos vencimientos y
+las fotografias compactas `activation` y `closure`. La metodologia detallada se
+encuentra en `METODOLOGIA_LIMIT_LIFECYCLE_V1.md`.

@@ -138,14 +138,11 @@ seleccionado. El cupo de colocaciones es de 50 por dia UTC.
 - La ausencia de una fuente opcional no puede rellenarse con datos inventados.
 - Ninguna regla cambia probabilidades sin coeficientes validados.
 
-## 10. Estado LIMIT-5 y puerta a LIMIT-6
+## 10. Estado LIMIT-6
 
-LIMIT-5 conecta el analisis online en dos etapas y la fotografia compacta de
-colocacion solo para la operacion seleccionada. M6 `market` permanece separado.
+LIMIT-6 conecta el recalculo M6 al instante real de activacion y las fotografias
+compactas de activacion y cierre. Aplica los dos vencimientos independientes y
+distingue TP, SL, ninguna barrera, no activacion y censuras.
 
-LIMIT-6 podra empezar cuando:
-
-- el despliegue verifique el esquema y el analisis LIMIT online;
-- se conecte el recalculo M6 al instante real de activacion;
-- se conecten las fotografias de activacion y cierre;
-- se prueben los tres eventos con un caso real de extremo a extremo.
+El motor M6 `market` permanece separado. Las rupturas stop siguen aplazadas y se
+detallan en `BACKLOG_MOTORES_ORDENES_PENDIENTES.md`.

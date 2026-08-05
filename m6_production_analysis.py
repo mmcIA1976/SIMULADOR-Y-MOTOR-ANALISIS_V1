@@ -30,12 +30,16 @@ def _analysis_stamp(
     time_horizon: str,
     *,
     request_received_at: datetime,
+    effective_analysis_at: datetime | None = None,
 ) -> dict:
     try:
         horizon_seconds = int(HORIZON_SECONDS[time_horizon])
     except KeyError as exc:
         raise NewEngineAnalysisError("unsupported_time_horizon") from exc
-    analysis_at = datetime.now(timezone.utc)
+    analysis_at = effective_analysis_at or datetime.now(timezone.utc)
+    if analysis_at.tzinfo is None or analysis_at.utcoffset() is None:
+        raise NewEngineAnalysisError("analysis_timestamp_must_be_timezone_aware")
+    analysis_at = analysis_at.astimezone(timezone.utc)
     expires_at = datetime.fromtimestamp(
         analysis_at.timestamp() + horizon_seconds,
         tz=timezone.utc,
@@ -203,11 +207,16 @@ def analyze_trade(
     context_loader: Callable[..., dict] = collect_live_rule_context,
     context_market_price: float | None = None,
     include_internal_runtime: bool = False,
+    effective_analysis_at: datetime | None = None,
 ) -> dict:
     if str(getattr(proposal, "entry_type", "market")).lower() != "market":
         raise NewEngineAnalysisError("market_entry_required")
 
     request_received_at = datetime.now(timezone.utc)
+    analysis_cutoff = effective_analysis_at or request_received_at
+    if analysis_cutoff.tzinfo is None or analysis_cutoff.utcoffset() is None:
+        raise NewEngineAnalysisError("analysis_timestamp_must_be_timezone_aware")
+    analysis_cutoff = analysis_cutoff.astimezone(timezone.utc)
     time_horizon = str(proposal.time_horizon)
     try:
         horizon_seconds = int(HORIZON_SECONDS[time_horizon])
@@ -219,7 +228,7 @@ def analyze_trade(
             symbol=str(proposal.symbol).upper(),
             horizon_seconds=horizon_seconds,
             interval_seconds=interval_seconds,
-            request_cutoff_at=request_received_at.isoformat(),
+            request_cutoff_at=analysis_cutoff.isoformat(),
             market_price=(
                 float(context_market_price)
                 if context_market_price is not None
@@ -242,6 +251,7 @@ def analyze_trade(
         **_analysis_stamp(
             time_horizon,
             request_received_at=request_received_at,
+            effective_analysis_at=analysis_cutoff,
         ),
     }
     analysis_id = (

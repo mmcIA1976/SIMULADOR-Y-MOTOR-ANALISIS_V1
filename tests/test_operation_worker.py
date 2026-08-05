@@ -33,6 +33,8 @@ class ActiveSymbolsDb:
         self.queries.append((query, params))
         if "GROUP BY symbol" in query:
             return RowsCursor(self.rows)
+        if "status = 'PENDING_ENTRY'" in query:
+            return RowsCursor([])
         raise AssertionError(f"Unexpected SQL in worker orchestration test: {query}")
 
 

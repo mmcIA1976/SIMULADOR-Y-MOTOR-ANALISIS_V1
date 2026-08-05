@@ -14,6 +14,7 @@ from typing import Callable
 import market_data
 from app import (
     ONE_MINUTE_MS,
+    expire_due_pending_limit_operations,
     finalize_due_observations,
     get_operation_klines_1m,
     refresh_learning_conclusions,
@@ -261,6 +262,22 @@ def run_worker_cycle(
     closed: list[dict] = []
     finalized: list[dict] = []
     if not settings.dry_run:
+        market_symbols = {item.symbol for item in market_inputs}
+        for missing_symbol in set(symbol_starts).difference(market_symbols):
+            try:
+                with connect_factory() as db:
+                    expired_by_id = expire_due_pending_limit_operations(
+                        db,
+                        missing_symbol,
+                    )
+                closed.extend(expired_by_id.values())
+            except Exception as exc:
+                failures += 1
+                log_event(
+                    "worker_limit_clock_processing_failed",
+                    symbol=missing_symbol,
+                    error=str(exc),
+                )
         for market_input in market_inputs:
             try:
                 with connect_factory() as db:

@@ -815,6 +815,13 @@ function probabilityLabel(recommendation, key, fallbackKey) {
   if (!recommendation) {
     return "--";
   }
+  const activationVector = recommendation?.activation_reanalysis?.post_activation_feature_vector;
+  if (activationVector?.status === "evaluated") {
+    const activationValue = activationVector[key];
+    if (activationValue !== null && activationValue !== undefined) {
+      return percent(Number(activationValue));
+    }
+  }
   const rangeValue = recommendation?.probability_ranges?.[key]?.low;
   const value = rangeValue === null || rangeValue === undefined
     ? recommendation[fallbackKey]
@@ -3423,6 +3430,14 @@ function renderSelectedOperationDetail(operation) {
   const lastTick = ticks[ticks.length - 1];
   const recommendation = operation.recommendation;
   const recommendationIsLimit = recommendation?.engine_family === "pending_limit_two_stage";
+  const activationReanalysis = recommendation?.activation_reanalysis?.post_activation_feature_vector;
+  const activationAnalysisInfo = recommendationIsLimit
+    ? activationReanalysis?.status === "evaluated"
+      ? `M6 recalculado al activar · ${activationReanalysis.active_rules ?? 0} reglas activas`
+      : activationReanalysis?.status === "blocked"
+        ? `Recalculo M6 bloqueado · ${activationReanalysis.code || "datos insuficientes"}`
+        : "Vista M6 previa a la activacion"
+    : null;
   const visualStatus = getOperationVisualStatus(operation);
   const operationIdentity = `Operacion ${symbolLabel(operation.symbol)} en ${String(operation.side).toUpperCase()}`;
   const modeLabel = (operation.mode || "training") === "contest" ? "Concurso mensual" : "Entrenamiento";
@@ -3480,6 +3495,7 @@ function renderSelectedOperationDetail(operation) {
       <article><span>Exposicion</span><strong>${money(displayExposure)}</strong></article>
       <article><span>${recommendationIsLimit ? "TP si activa" : "Prob. TP"}</span><strong>${probabilityLabel(recommendation, "tp", "tp_probability")}</strong></article>
       <article><span>${recommendationIsLimit ? "SL si activa" : "Prob. SL"}</span><strong>${probabilityLabel(recommendation, "sl", "sl_probability")}</strong></article>
+      ${recommendationIsLimit ? `<article><span>Lectura probabilistica</span><strong>${escapeHtml(activationAnalysisInfo)}</strong></article>` : ""}
       <article><span>Registros grafica</span><strong>${chartPoints.length}</strong></article>
     </div>
     <details class="tick-table-wrap">

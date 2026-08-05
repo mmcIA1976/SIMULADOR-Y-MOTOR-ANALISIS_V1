@@ -5,6 +5,8 @@ import math
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
+from psycopg.errors import UniqueViolation
+
 from limit_activation_baseline import LIMIT_ACTIVATION_MODEL_VERSION
 from limit_context_rule_runtime import RULE_IDS, RUNTIME_VERSION
 from limit_order_contract import (
@@ -728,8 +730,7 @@ def persist_limit_learning_snapshot(db, record: Mapping[str, Any]) -> dict:
                 raise LimitLearningPersistenceError(
                     "daily_selected_case_cap_reached"
                 )
-        cursor = db.execute(
-            """
+        insert_query = """
             INSERT INTO limit_learning_snapshots (
                 operation_id, recommendation_id, analysis_id, snapshot_type,
                 snapshot_schema_version, event_at, selected_case_day,
@@ -738,29 +739,43 @@ def persist_limit_learning_snapshot(db, record: Mapping[str, Any]) -> dict:
                 production_effect
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT DO NOTHING
             RETURNING id, daily_slot
-            """,
-            (
-                record["operation_id"],
-                record.get("recommendation_id"),
-                record["analysis_id"],
-                snapshot_type,
-                record["snapshot_schema_version"],
-                record["event_at"],
-                record.get("selected_case_day"),
-                daily_slot,
-                record["symbol"],
-                record["side"],
-                record["time_horizon"],
-                record.get("learning_label"),
-                record["payload_sha256"],
-                record["payload_bytes"],
-                record["payload_json"],
-                PERSISTENCE_PRODUCTION_EFFECT,
-            ),
+            """
+        insert_params = (
+            record["operation_id"],
+            record.get("recommendation_id"),
+            record["analysis_id"],
+            snapshot_type,
+            record["snapshot_schema_version"],
+            record["event_at"],
+            record.get("selected_case_day"),
+            daily_slot,
+            record["symbol"],
+            record["side"],
+            record["time_horizon"],
+            record.get("learning_label"),
+            record["payload_sha256"],
+            record["payload_bytes"],
+            record["payload_json"],
+            PERSISTENCE_PRODUCTION_EFFECT,
         )
-        inserted = _row_dict(cursor.fetchone())
+        connection = getattr(db, "connection", None)
+        try:
+            if connection is None:
+                inserted = _row_dict(
+                    db.execute(insert_query, insert_params).fetchone()
+                )
+            else:
+                # PostgreSQL forbids INSERT ... ON CONFLICT on a table that
+                # has UPDATE rules.  This table is append-only by design, so
+                # use a nested transaction (SAVEPOINT) to make the ordinary
+                # INSERT race-safe without aborting the operation transaction.
+                with connection.transaction():
+                    inserted = _row_dict(
+                        db.execute(insert_query, insert_params).fetchone()
+                    )
+        except UniqueViolation:
+            inserted = None
         if inserted:
             return {
                 "status": "recorded",

@@ -312,6 +312,10 @@ class FakeDb:
             )
             return FakeCursor({"used_slots": used})
         if normalized.startswith("insert into limit_learning_snapshots"):
+            if "on conflict" in normalized:
+                raise AssertionError(
+                    "append-only PostgreSQL tables reject INSERT ON CONFLICT"
+                )
             (
                 operation_id,
                 recommendation_id,

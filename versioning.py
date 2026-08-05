@@ -3,8 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.27.0-limit-lifecycle"
-APP_SEMVER = "0.27.0"
+APP_VERSION = "app-v0.27.1-limit-placement-fix"
+APP_SEMVER = "0.27.1"
 ENGINE_VERSION = "TP-SL-PROBABILITY-ENGINE-v0.4"
 SCORING_VERSION = "calibrated-plus-active-rules-v0.4"
 LEARNING_EVALUATOR_VERSION = "learning-v0.13-execution-economics"

@@ -2,6 +2,21 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-08-05 - app-v0.27.1-limit-placement-fix
+
+Estado: corregida la creacion de ordenes LIMIT en PostgreSQL/Supabase.
+
+Cambios realizados:
+- Sustituido `INSERT ... ON CONFLICT` en `limit_learning_snapshots`, incompatible
+  con las reglas append-only de la tabla.
+- La insercion normal usa un `SAVEPOINT` para contener colisiones de unicidad sin
+  abortar la transaccion que crea la operacion.
+- Se mantienen la idempotencia, el limite diario y la ausencia de sobrescrituras.
+
+Efecto esperado:
+- `POST /api/operations` devuelve el identificador de la nueva orden LIMIT.
+- La operacion queda registrada como `PENDING_ENTRY` y pasa a vigilancia del worker.
+
 ## 2026-07-15 - liquidations-audit-v0.1
 
 Estado: aplicada fase de validacion historica, sin influencia en scoring.

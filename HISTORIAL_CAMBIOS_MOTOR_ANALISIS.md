@@ -1102,3 +1102,25 @@ Resumen:
   no elimina todavia el bloqueo productivo de ordenes pendientes.
 - Se documenta el contrato en `CONTRATO_LIMIT_ORDER_V1.md` y se anade la suite
   `tests/test_limit_order_contract.py`.
+# 2026-08-05 - LIMIT-2: probabilidad base de activacion por primer paso
+
+- Se crea `limit_activation_first_passage.py` con el solver independiente
+  `LIMIT-single-barrier-first-passage-v0.1`.
+- El solver reutiliza las validaciones y convenciones matematicas de M6 sin
+  modificar `m6_first_passage.py` ni invalidar sus artefactos auditados.
+- La formula usa el principio de reflexion con `erfc` sobre distancia logaritmica,
+  volatilidad total del horizonte y fraccion de tiempo.
+- Se crea `limit_activation_baseline.py` con el modelo
+  `limit-activation-first-passage-v0.1`.
+- La salida separa `activated_by_expiry` y `not_activated_by_expiry`, conserva
+  masa uno y publica una CDF en cinco puntos de la ventana.
+- La base se etiqueta expresamente como implicita del modelo, no calibrada para
+  ordenes limit y sin efecto productivo.
+- Tendencia, niveles, microestructura, derivados y liquidaciones permanecen
+  excluidos para poder medir su valor incremental en LIMIT-3.
+- El contrato se actualiza de forma compatible a `limit-order-contract-v1.1` y
+  declara disponible la base solo en sombra.
+- Se documenta la formula y sus supuestos en
+  `METODOLOGIA_LIMIT_ACTIVATION_V1.md`.
+- Se anade `tests/test_limit_activation_baseline.py` para masa, monotonicidad,
+  simetria, limites, contrato y trazabilidad.

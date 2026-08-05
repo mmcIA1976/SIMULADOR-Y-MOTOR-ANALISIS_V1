@@ -10,7 +10,7 @@ from typing import Any, Mapping
 from m8_evaluation import HORIZON_SECONDS
 
 
-LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.0"
+LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.1"
 LIMIT_ORDER_ANALYSIS_FAMILY = "pending_limit_two_stage"
 LIMIT_ORDER_ENTRY_TYPE = "pending"
 LIMIT_ORDER_TYPE = "limit_pullback"
@@ -384,6 +384,7 @@ def build_limit_order_contract(
         "legacy_engine_executed": False,
         "order": {
             "symbol": normalized_symbol,
+            "time_horizon": time_horizon,
             **plan,
         },
         "windows": {
@@ -414,7 +415,7 @@ def build_limit_order_contract(
         "probability_spaces": {
             "activation": {
                 "classes": list(ACTIVATION_CLASSES),
-                "status": "unestimated_until_limit_2",
+                "status": "baseline_model_available_shadow_only",
             },
             "conditional_after_activation": {
                 "classes": list(CONDITIONAL_OUTCOME_CLASSES),

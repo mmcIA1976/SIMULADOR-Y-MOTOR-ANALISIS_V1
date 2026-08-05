@@ -10,7 +10,7 @@ from typing import Any, Mapping
 from m8_evaluation import HORIZON_SECONDS
 
 
-LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.1"
+LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.2"
 LIMIT_ORDER_ANALYSIS_FAMILY = "pending_limit_two_stage"
 LIMIT_ORDER_ENTRY_TYPE = "pending"
 LIMIT_ORDER_TYPE = "limit_pullback"
@@ -425,6 +425,13 @@ def build_limit_order_contract(
                 "classes": list(OVERALL_OUTCOME_CLASSES),
                 "status": "derived_only_after_both_stages_are_available",
             },
+        },
+        "context_rule_spaces": {
+            "activation_trajectory": "shadow_descriptor_available",
+            "flow_dual_role": "shadow_descriptor_available",
+            "zone_structure": "shadow_descriptor_available",
+            "liquidation_path": "shadow_descriptor_optional_source",
+            "probability_effect": "none_until_validated_coefficients",
         },
         "lifecycle": {
             "stable_statuses": [status.value for status in OperationStatus],

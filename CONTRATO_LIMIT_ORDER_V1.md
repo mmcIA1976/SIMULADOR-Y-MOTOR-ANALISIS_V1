@@ -1,6 +1,6 @@
 # Contrato LIMIT v1
 
-Version ejecutable: `limit-order-contract-v1.1`.
+Version ejecutable: `limit-order-contract-v1.2`.
 
 Estado: contrato aislado y probado. No activa todavia el analisis de ordenes
 pendientes en produccion y no modifica M6 para entradas `market`.
@@ -104,6 +104,10 @@ LIMIT-1 solo define los campos. La persistencia se implementara en LIMIT-4.
 LIMIT-2 anade la referencia matematica
 `limit-activation-first-passage-v0.1`. Esta referencia permanece en sombra y no
 convierte todavia el contrato en un analisis pending servido al usuario.
+
+LIMIT-3 anade `limit-context-rule-runtime-v0.1` con cuatro descriptores en sombra:
+trayectoria, flujo con doble orientacion, estructura de zona y liquidaciones por
+tramo. Sus coeficientes no estan estimados y su efecto probabilistico es cero.
 
 ## 8. Limite de almacenamiento
 

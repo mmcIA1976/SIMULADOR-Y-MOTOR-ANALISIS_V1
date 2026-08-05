@@ -702,10 +702,6 @@ def price(
                 operation_id = int(operation["id"])
                 if record:
                     operation_ids.append(operation_id)
-                    db.execute(
-                        "INSERT INTO price_ticks (operation_id, symbol, price, source) VALUES (?, ?, ?, ?)",
-                        (operation_id, symbol, value, "binance_usdm_futures"),
-                    )
     return {
         "symbol": symbol,
         "price": value,
@@ -722,28 +718,53 @@ def price(
     }
 
 
+def sampled_market_history_points(
+    klines: list[list],
+    sample_seconds: int = 60,
+    now_ms: int | None = None,
+) -> list[dict]:
+    safe_sample_seconds = min(max(int(sample_seconds or 60), 60), 900)
+    sample_ms = safe_sample_seconds * 1000
+    completed_before_ms = (
+        now_ms if now_ms is not None else int(datetime.now(timezone.utc).timestamp() * 1000)
+    )
+    points_by_bucket: dict[int, dict] = {}
+    for kline in klines:
+        close_time_ms = int(kline[6])
+        if close_time_ms > completed_before_ms:
+            continue
+        bucket = close_time_ms // sample_ms
+        points_by_bucket[bucket] = {
+            "price": float(kline[4]),
+            "time": iso_from_ms(close_time_ms),
+            "source": f"binance_usdm_futures_{safe_sample_seconds}s_reconstructed",
+        }
+    return [points_by_bucket[bucket] for bucket in sorted(points_by_bucket)]
+
+
 @app.get("/api/market-history")
-def market_history(symbol: str = "BTCUSDT", minutes: int = 60) -> dict:
+def market_history(
+    symbol: str = "BTCUSDT",
+    minutes: int = 60,
+    sample_seconds: int = 60,
+    end_time_ms: int | None = None,
+) -> dict:
     symbol = symbol.upper()
-    limit = min(max(minutes, 10), 240)
+    limit = min(max(minutes, 10), 480)
     try:
-        klines = market_data.get_klines(symbol, "1m", limit)
+        klines = market_data.get_klines(symbol, "1m", limit, end_time_ms=end_time_ms)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"No se pudo cargar el historial de Binance: {exc}") from exc
-    points = []
-    for kline in klines:
-        points.append(
-            {
-                "price": float(kline[4]),
-                "time": iso_from_ms(int(kline[6])),
-            }
-        )
+    safe_sample_seconds = min(max(int(sample_seconds or 60), 60), 900)
+    points = sampled_market_history_points(klines, safe_sample_seconds, now_ms=end_time_ms)
     return {
         "symbol": symbol,
         "interval": "1m",
         "minutes": limit,
         "source": "binance_usdm_futures_klines_1m",
-        "points": points,
+        "sample_seconds": safe_sample_seconds,
+        "end_time_ms": end_time_ms,
+        "points": points[-240:],
     }
 
 
@@ -1065,60 +1086,6 @@ def record_compact_exit_tick(
             captured_at,
         ),
     )
-
-
-def record_periodic_active_operation_ticks(
-    db,
-    symbol: str,
-    price: float,
-    captured_at: str,
-    minimum_interval_seconds: float = 120.0,
-) -> int:
-    """Persist at most one chart sample per active operation and interval."""
-    captured_at_ms = timestamp_ms_from_trigger_time(captured_at)
-    if captured_at_ms is None:
-        raise ValueError("captured_at no es una fecha valida")
-    rows = db.execute(
-        """
-        SELECT operation.id, MAX(price_ticks.captured_at) AS last_captured_at
-        FROM operations AS operation
-        LEFT JOIN price_ticks ON price_ticks.operation_id = operation.id
-        WHERE operation.symbol = ?
-          AND operation.status IN ('OPEN', 'PENDING_ENTRY')
-        GROUP BY operation.id
-        ORDER BY operation.id
-        """,
-        (symbol.upper(),),
-    ).fetchall()
-    minimum_interval_ms = max(float(minimum_interval_seconds), 1.0) * 1000
-    persisted = 0
-    for row in rows:
-        last_captured_at = row["last_captured_at"]
-        last_captured_at_ms = (
-            timestamp_ms_from_trigger_time(str(last_captured_at))
-            if last_captured_at is not None
-            else None
-        )
-        if (
-            last_captured_at_ms is not None
-            and captured_at_ms - last_captured_at_ms < minimum_interval_ms
-        ):
-            continue
-        db.execute(
-            """
-            INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                int(row["id"]),
-                symbol.upper(),
-                float(price),
-                "operation_worker_120s",
-                captured_at,
-            ),
-        )
-        persisted += 1
-    return persisted
 
 
 def record_exit_window_ticks(db, operation: dict, close_price: float, trigger_time: str) -> None:

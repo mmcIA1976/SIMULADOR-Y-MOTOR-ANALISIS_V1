@@ -102,7 +102,7 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertTrue(result["dry_run"])
         self.assertEqual(result["persisted_price_samples"], 0)
 
-    def test_worker_cycle_reads_prices_and_persists_periodic_samples(self):
+    def test_worker_cycle_reads_prices_but_persists_no_periodic_samples(self):
         db = ActiveSymbolsDb(
             [
                 {"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"},
@@ -122,7 +122,6 @@ class OperationWorkerTests(unittest.TestCase):
         with (
             patch.object(operation_worker, "refresh_symbol_active_operations", return_value=({}, {})) as refresh,
             patch.object(operation_worker, "finalize_due_observations", return_value=[]),
-            patch.object(operation_worker, "record_periodic_active_operation_ticks", return_value=1) as record_samples,
         ):
             result = operation_worker.run_worker_cycle(
                 state,
@@ -139,11 +138,8 @@ class OperationWorkerTests(unittest.TestCase):
         for call in refresh.call_args_list:
             self.assertEqual(call.kwargs["market_klines"], [])
             self.assertFalse(call.kwargs["persist_exit_window"])
-        self.assertEqual(result["persisted_price_samples"], 2)
+        self.assertEqual(result["persisted_price_samples"], 0)
         self.assertEqual(result["failures"], 0)
-        self.assertEqual(record_samples.call_count, 2)
-        for call in record_samples.call_args_list:
-            self.assertEqual(call.kwargs["minimum_interval_seconds"], 120.0)
         self.assertEqual(result["active_symbols"], 2)
         self.assertTrue(result["reconciled"])
 
@@ -156,10 +152,7 @@ class OperationWorkerTests(unittest.TestCase):
         state = operation_worker.WorkerState(last_reconcile_ms=now_ms - 10_000)
         kline_loader = Mock(side_effect=AssertionError("klines should not be fetched"))
 
-        with (
-            patch.object(operation_worker, "refresh_symbol_active_operations", return_value=({}, {})) as refresh,
-            patch.object(operation_worker, "record_periodic_active_operation_ticks", return_value=0) as record_samples,
-        ):
+        with patch.object(operation_worker, "refresh_symbol_active_operations", return_value=({}, {})) as refresh:
             result = operation_worker.run_worker_cycle(
                 state,
                 settings,
@@ -174,7 +167,6 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertFalse(result["reconciled"])
         self.assertEqual(result["persisted_price_samples"], 0)
         self.assertEqual(result["failures"], 0)
-        record_samples.assert_called_once()
 
     def test_failed_reconciliation_does_not_advance_market_cursor(self):
         db = ActiveSymbolsDb(

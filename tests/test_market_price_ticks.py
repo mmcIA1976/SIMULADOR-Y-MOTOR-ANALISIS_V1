@@ -1,6 +1,7 @@
-import sqlite3
 import unittest
+import inspect
 from contextlib import contextmanager
+from pathlib import Path
 from unittest.mock import patch
 
 import app
@@ -130,72 +131,66 @@ class MarketPriceTickTests(unittest.TestCase):
 
         loader.assert_called_once()
 
-    def test_periodic_ticks_keep_xrp_and_inj_decimals_and_deduplicate_interval(self):
-        db = sqlite3.connect(":memory:")
-        db.row_factory = sqlite3.Row
-        db.executescript(
-            """
-            CREATE TABLE operations (
-                id INTEGER PRIMARY KEY,
-                symbol TEXT NOT NULL,
-                status TEXT NOT NULL
-            );
-            CREATE TABLE price_ticks (
-                id INTEGER PRIMARY KEY,
-                operation_id INTEGER,
-                symbol TEXT NOT NULL,
-                price REAL NOT NULL,
-                source TEXT NOT NULL,
-                captured_at TEXT NOT NULL
-            );
-            INSERT INTO operations (id, symbol, status) VALUES
-                (1, 'XRPUSDT', 'OPEN'),
-                (2, 'INJUSDT', 'OPEN'),
-                (3, 'XRPUSDT', 'CLOSED');
-            INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at) VALUES
-                (1, 'XRPUSDT', 1.0653, 'market_entry', '2026-08-05T10:00:00+00:00'),
-                (2, 'INJUSDT', 12.345, 'market_entry', '2026-08-05T10:00:00+00:00');
-            """
+    def test_binance_history_is_reconstructed_every_120_seconds_without_storage(self):
+        def kline(open_time_ms, close_price):
+            return [
+                open_time_ms,
+                str(close_price),
+                str(close_price),
+                str(close_price),
+                str(close_price),
+                "10",
+                open_time_ms + 59_999,
+            ]
+
+        klines = [
+            kline(0, 1.0653),
+            kline(60_000, 1.0654),
+            kline(120_000, 1.0655),
+            kline(180_000, 1.0656),
+            kline(240_000, 1.0657),
+        ]
+
+        points = app.sampled_market_history_points(
+            klines,
+            sample_seconds=120,
+            now_ms=239_999,
         )
 
-        before_interval = app.record_periodic_active_operation_ticks(
-            db,
-            "XRPUSDT",
-            1.0654,
-            "2026-08-05T10:01:59+00:00",
-        )
-        xrp_inserted = app.record_periodic_active_operation_ticks(
-            db,
-            "XRPUSDT",
-            1.0654,
-            "2026-08-05T10:02:00+00:00",
-        )
-        inj_inserted = app.record_periodic_active_operation_ticks(
-            db,
-            "INJUSDT",
-            12.347,
-            "2026-08-05T10:02:00+00:00",
-        )
-        repeated = app.record_periodic_active_operation_ticks(
-            db,
-            "XRPUSDT",
-            1.0655,
-            "2026-08-05T10:02:00+00:00",
+        self.assertEqual([point["price"] for point in points], [1.0654, 1.0656])
+        self.assertTrue(
+            all(point["source"] == "binance_usdm_futures_120s_reconstructed" for point in points)
         )
 
-        self.assertEqual(before_interval, 0)
-        self.assertEqual(xrp_inserted, 1)
-        self.assertEqual(inj_inserted, 1)
-        self.assertEqual(repeated, 0)
-        rows = db.execute(
-            "SELECT operation_id, price, source FROM price_ticks ORDER BY id"
-        ).fetchall()
-        self.assertEqual(float(rows[-2]["price"]), 1.0654)
-        self.assertEqual(float(rows[-1]["price"]), 12.347)
-        self.assertEqual(rows[-2]["source"], "operation_worker_120s")
-        self.assertEqual(rows[-1]["source"], "operation_worker_120s")
-        self.assertFalse(any(row["operation_id"] == 3 for row in rows))
-        db.close()
+    def test_price_poll_never_persists_periodic_chart_ticks(self):
+        self.assertNotIn("INSERT INTO price_ticks", inspect.getsource(app.price))
+
+    def test_closed_operation_history_uses_its_close_time(self):
+        with patch.object(app.market_data, "get_klines", return_value=[]) as get_klines:
+            result = app.market_history(
+                symbol="XRPUSDT",
+                minutes=480,
+                sample_seconds=120,
+                end_time_ms=1_775_383_200_000,
+            )
+
+        get_klines.assert_called_once_with(
+            "XRPUSDT",
+            "1m",
+            480,
+            end_time_ms=1_775_383_200_000,
+        )
+        self.assertEqual(result["end_time_ms"], 1_775_383_200_000)
+
+    def test_frontend_labels_chart_points_as_displayed_not_stored(self):
+        project_dir = Path(__file__).resolve().parents[1]
+        index_html = (project_dir / "index.html").read_text(encoding="utf-8")
+        app_js = (project_dir / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("Puntos mostrados", index_html)
+        self.assertNotIn("Registros guardados", index_html)
+        self.assertIn("sample_seconds=120", app_js)
+        self.assertIn("historial reconstruido desde Binance", app_js)
 
 
 if __name__ == "__main__":

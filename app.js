@@ -1400,7 +1400,7 @@ function updateMetrics() {
   elements.chartSubtitle.textContent = !currentUser
     ? "Inicia sesion para ver operaciones, analisis y niveles de riesgo."
     : operation
-      ? `Viendo operacion #${operation.id} en ${symbolLabel(operation.symbol)}. Historial registrado cada 120 segundos.`
+      ? `Viendo operacion #${operation.id} en ${symbolLabel(operation.symbol)}. Precio actualizado cada 120 segundos; historial reconstruido desde Binance.`
       : `Viendo nueva operacion. Grafica ${symbolLabel(config.symbol)} con velas de Binance Futures 1m de los ultimos 60 minutos.`;
   updateHistoryCount();
 
@@ -1618,7 +1618,7 @@ function appendOperationTicks(operationIds, price, capturedAt) {
     }
     operation.ticks.push({
       price,
-      source: "binance_usdm_futures",
+      source: "binance_usdm_futures_live_120s",
       captured_at: capturedAt.toISOString(),
     });
     if (operation.ticks.length > MAX_HISTORY_POINTS) {
@@ -3090,9 +3090,36 @@ async function loadOperationTicks(operation, { force = false } = {}) {
   operation._ticksLoading = true;
   try {
     const data = await requestJson(`/api/operations/${operation.id}/ticks?limit=${MAX_HISTORY_POINTS}`, {
-      cacheBust: force,
+      cacheBust: true,
     });
-    operation.ticks = Array.isArray(data.ticks) ? data.ticks : [];
+    const persistedTicks = Array.isArray(data.ticks) ? data.ticks : [];
+    let reconstructedTicks = [];
+    try {
+      const chartStartMs = new Date(operation.created_at || operation.started_at || 0).getTime();
+      const chartEndMs = new Date(operation.closed_at || 0).getTime();
+      const historyEndQuery = Number.isFinite(chartEndMs) && chartEndMs > 0
+        ? `&end_time_ms=${Math.trunc(chartEndMs)}`
+        : "";
+      const marketHistory = await requestJson(
+        `/api/market-history?symbol=${encodeURIComponent(normalizeSymbol(operation.symbol))}&minutes=480&sample_seconds=120${historyEndQuery}`,
+        { cacheBust: true }
+      );
+      reconstructedTicks = (Array.isArray(marketHistory.points) ? marketHistory.points : [])
+        .map((point) => ({
+          price: Number(point.price),
+          source: point.source || "binance_usdm_futures_120s_reconstructed",
+          captured_at: point.time,
+        }))
+        .filter((point) => {
+          const pointTimeMs = new Date(point.captured_at).getTime();
+          const isAfterStart = !Number.isFinite(chartStartMs) || pointTimeMs >= chartStartMs;
+          const isBeforeClose = !Number.isFinite(chartEndMs) || chartEndMs <= 0 || pointTimeMs <= chartEndMs;
+          return isAfterStart && isBeforeClose;
+        });
+    } catch {
+      reconstructedTicks = [];
+    }
+    operation.ticks = mergeOperationChartTicks(reconstructedTicks, persistedTicks, operation.ticks || []);
     operation._ticksLoaded = true;
     if (getSelectedOperation()?.id === operation.id) {
       renderSelectedOperationDetail(operation);
@@ -3106,6 +3133,26 @@ async function loadOperationTicks(operation, { force = false } = {}) {
   }
 }
 
+function mergeOperationChartTicks(...tickGroups) {
+  const byPoint = new Map();
+  tickGroups.flat().forEach((tick) => {
+    const price = Number(tick?.price);
+    const capturedAt = new Date(tick?.captured_at);
+    if (!Number.isFinite(price) || Number.isNaN(capturedAt.getTime())) {
+      return;
+    }
+    const normalized = {
+      price,
+      source: tick.source || "",
+      captured_at: capturedAt.toISOString(),
+    };
+    byPoint.set(`${capturedAt.getTime()}:${price.toPrecision(12)}`, normalized);
+  });
+  return [...byPoint.values()]
+    .sort((left, right) => new Date(left.captured_at).getTime() - new Date(right.captured_at).getTime())
+    .slice(-MAX_HISTORY_POINTS);
+}
+
 function loadSelectedOperationTicks() {
   const operation = getSelectedOperation();
   if (operation) {
@@ -3114,6 +3161,19 @@ function loadSelectedOperationTicks() {
 }
 
 function renderOperations(operations) {
+  const previousOperations = new Map(allOperations.map((operation) => [Number(operation.id), operation]));
+  operations.forEach((operation) => {
+    const previous = previousOperations.get(Number(operation.id));
+    if (!previous) {
+      return;
+    }
+    if (Array.isArray(previous.ticks)) {
+      operation.ticks = previous.ticks;
+    }
+    if (previous._ticksLoaded) {
+      operation._ticksLoaded = true;
+    }
+  });
   allOperations = operations;
   openOperations = operations.filter((operation) => operation.status === "OPEN");
   activeOperations = operations.filter((operation) => ["OPEN", "PENDING_ENTRY"].includes(String(operation.status || "").toUpperCase()));

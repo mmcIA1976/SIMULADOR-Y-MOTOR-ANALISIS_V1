@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador Trading BTC</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260804-operation-sync-cache">
+    <link rel="stylesheet" href="/static/styles.css?v=20260805-market-price-ticks">
   </head>
   <body>
     <main class="app-shell">
@@ -196,7 +196,7 @@
           <div class="chart-header">
             <div>
               <h2>Mapa de la operacion</h2>
-              <p id="chartSubtitle">Historial de precio registrado cada 120 segundos.</p>
+              <p id="chartSubtitle">Precio actualizado cada 120 segundos; historial reconstruido desde Binance.</p>
               <a id="binanceChartLink" class="external-chart-link" href="https://www.binance.com/en/futures/BTCUSDT" target="_blank" rel="noopener noreferrer">
                 Ver grafica completa en Binance Futures
               </a>
@@ -273,7 +273,7 @@
 
           <label>
             Entrada a mercado
-            <input id="entry" type="number" step="0.01" value="76766" readonly>
+            <input id="entry" type="number" step="any" value="76766" readonly>
             <small class="field-help" id="entryHelp">Se actualiza con el ultimo precio. Cambia a orden pendiente para definir un nivel de activacion.</small>
           </label>
           <label>
@@ -287,11 +287,11 @@
           </label>
           <label>
             Stop loss
-            <input id="stopLoss" type="number" step="0.01" placeholder="Define un stop loss">
+            <input id="stopLoss" type="number" step="any" placeholder="Define un stop loss">
           </label>
           <label>
             Take profit
-            <input id="takeProfit" type="number" step="0.01" placeholder="Define un take profit">
+            <input id="takeProfit" type="number" step="any" placeholder="Define un take profit">
           </label>
 
           <div class="plan-preview" aria-label="Resultado previsto">
@@ -327,7 +327,7 @@
           </label>
 
           <div class="history-info">
-            <span>Registros guardados</span>
+            <span>Puntos mostrados</span>
             <strong id="historyCount">0</strong>
           </div>
         </aside>
@@ -388,6 +388,6 @@
       </div>
     </div>
 
-    <script src="/static/app.js?v=20260804-operation-sync-cache"></script>
+    <script src="/static/app.js?v=20260805-market-price-ticks"></script>
   </body>
 </html>

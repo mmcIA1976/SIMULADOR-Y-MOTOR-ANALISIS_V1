@@ -249,8 +249,8 @@ def diagnose_futures_hosts(symbol: str) -> list[dict]:
     return results
 
 
-def get_price(symbol: str) -> float:
-    cached = get_cached_price(symbol, PRICE_CACHE_TTL_SECONDS)
+def get_price(symbol: str, *, force_refresh: bool = False) -> float:
+    cached = None if force_refresh else get_cached_price(symbol, PRICE_CACHE_TTL_SECONDS)
     if cached:
         return float(cached["price"])
     safe_symbol = urllib.parse.quote(symbol.upper())

@@ -166,6 +166,35 @@ def validate_entry_order(entry_type: str, trigger_condition: str | None) -> None
         raise HTTPException(status_code=400, detail="Condicion de activacion no valida")
 
 
+def resolve_market_execution_price(
+    symbol: str,
+    side: str,
+    stop_loss: float,
+    take_profit: float,
+) -> tuple[float, str]:
+    """Obtain the real Binance fill used to open a simulated market order."""
+    try:
+        execution_price = float(market_data.get_price(symbol.upper(), force_refresh=True))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo obtener el precio real de mercado para {symbol.upper()}: {exc}",
+        ) from exc
+    if not math.isfinite(execution_price) or execution_price <= 0:
+        raise HTTPException(status_code=502, detail="Binance devolvio un precio de mercado no valido")
+    try:
+        validate_trade_plan(side, execution_price, stop_loss, take_profit)
+    except HTTPException as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "El mercado se movio fuera de los niveles analizados antes de abrir la operacion. "
+                "Actualiza el precio y vuelve a analizarla."
+            ),
+        ) from exc
+    return execution_price, datetime.now(timezone.utc).isoformat()
+
+
 def entry_order_type(side: str, trigger_condition: str | None) -> str | None:
     if trigger_condition is None:
         return None
@@ -310,11 +339,11 @@ def shutdown() -> None:
 def ensure_pending_entry_columns() -> None:
     columns = {
         "entry_type": "TEXT NOT NULL DEFAULT 'market'",
-        "requested_entry": "REAL",
+        "requested_entry": "DOUBLE PRECISION",
         "trigger_condition": "TEXT",
         "entry_order_type": "TEXT",
         "triggered_at": "TEXT",
-        "trigger_price": "REAL",
+        "trigger_price": "DOUBLE PRECISION",
         "activation_evidence_json": "TEXT",
     }
     with connect() as db:
@@ -673,10 +702,6 @@ def price(
                 operation_id = int(operation["id"])
                 if record:
                     operation_ids.append(operation_id)
-                    db.execute(
-                        "INSERT INTO price_ticks (operation_id, symbol, price, source) VALUES (?, ?, ?, ?)",
-                        (operation_id, symbol, value, "binance_usdm_futures"),
-                    )
     return {
         "symbol": symbol,
         "price": value,
@@ -693,28 +718,53 @@ def price(
     }
 
 
+def sampled_market_history_points(
+    klines: list[list],
+    sample_seconds: int = 60,
+    now_ms: int | None = None,
+) -> list[dict]:
+    safe_sample_seconds = min(max(int(sample_seconds or 60), 60), 900)
+    sample_ms = safe_sample_seconds * 1000
+    completed_before_ms = (
+        now_ms if now_ms is not None else int(datetime.now(timezone.utc).timestamp() * 1000)
+    )
+    points_by_bucket: dict[int, dict] = {}
+    for kline in klines:
+        close_time_ms = int(kline[6])
+        if close_time_ms > completed_before_ms:
+            continue
+        bucket = close_time_ms // sample_ms
+        points_by_bucket[bucket] = {
+            "price": float(kline[4]),
+            "time": iso_from_ms(close_time_ms),
+            "source": f"binance_usdm_futures_{safe_sample_seconds}s_reconstructed",
+        }
+    return [points_by_bucket[bucket] for bucket in sorted(points_by_bucket)]
+
+
 @app.get("/api/market-history")
-def market_history(symbol: str = "BTCUSDT", minutes: int = 60) -> dict:
+def market_history(
+    symbol: str = "BTCUSDT",
+    minutes: int = 60,
+    sample_seconds: int = 60,
+    end_time_ms: int | None = None,
+) -> dict:
     symbol = symbol.upper()
-    limit = min(max(minutes, 10), 240)
+    limit = min(max(minutes, 10), 480)
     try:
-        klines = market_data.get_klines(symbol, "1m", limit)
+        klines = market_data.get_klines(symbol, "1m", limit, end_time_ms=end_time_ms)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"No se pudo cargar el historial de Binance: {exc}") from exc
-    points = []
-    for kline in klines:
-        points.append(
-            {
-                "price": float(kline[4]),
-                "time": iso_from_ms(int(kline[6])),
-            }
-        )
+    safe_sample_seconds = min(max(int(sample_seconds or 60), 60), 900)
+    points = sampled_market_history_points(klines, safe_sample_seconds, now_ms=end_time_ms)
     return {
         "symbol": symbol,
         "interval": "1m",
         "minutes": limit,
         "source": "binance_usdm_futures_klines_1m",
-        "points": points,
+        "sample_seconds": safe_sample_seconds,
+        "end_time_ms": end_time_ms,
+        "points": points[-240:],
     }
 
 
@@ -4705,6 +4755,16 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
     validate_trade_plan(side, payload.entry, payload.stop_loss, payload.take_profit)
     if mode not in VALID_OPERATION_MODES:
         raise HTTPException(status_code=400, detail="Modo de operacion no valido")
+    requested_entry = float(payload.entry)
+    execution_entry = requested_entry
+    started_at = None
+    if entry_type == "market":
+        execution_entry, started_at = resolve_market_execution_price(
+            payload.symbol,
+            side,
+            payload.stop_loss,
+            payload.take_profit,
+        )
     with connect() as db:
         season_id = None
         if mode == "contest":
@@ -4753,22 +4813,36 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 payload.symbol.upper(),
                 side,
                 payload.time_horizon,
-                payload.entry,
+                execution_entry,
                 payload.margin,
                 payload.leverage,
                 payload.stop_loss,
                 payload.take_profit,
                 "PENDING_ENTRY" if entry_type == "pending" else "OPEN",
-                None if entry_type == "pending" else datetime.now(timezone.utc).isoformat(),
+                started_at,
                 mode,
                 season_id,
                 entry_type,
-                payload.entry,
+                requested_entry,
                 trigger_condition,
                 entry_order_type(side, trigger_condition),
             ),
         )
         operation_id = int(cursor.lastrowid)
+        if entry_type == "market":
+            db.execute(
+                """
+                INSERT INTO price_ticks (operation_id, symbol, price, source, captured_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    operation_id,
+                    payload.symbol.upper(),
+                    execution_entry,
+                    "market_entry_binance_usdm_futures",
+                    started_at,
+                ),
+            )
         if payload.recommendation_id is not None:
             db.execute(
                 "UPDATE recommendations SET operation_id = ? WHERE id = ? AND user_id = ?",
@@ -4788,7 +4862,13 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
             contest_season_id=season_id,
             note="Margen bloqueado al crear orden pendiente." if entry_type == "pending" else "Margen bloqueado al iniciar operacion simulada.",
         )
-    return {"id": operation_id, "status": "PENDING_ENTRY" if entry_type == "pending" else "OPEN"}
+    return {
+        "id": operation_id,
+        "status": "PENDING_ENTRY" if entry_type == "pending" else "OPEN",
+        "entry": execution_entry,
+        "requested_entry": requested_entry,
+        "started_at": started_at,
+    }
 
 
 @app.get("/api/operations")

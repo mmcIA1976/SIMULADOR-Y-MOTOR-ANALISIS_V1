@@ -139,6 +139,7 @@ class OperationWorkerTests(unittest.TestCase):
             self.assertEqual(call.kwargs["market_klines"], [])
             self.assertFalse(call.kwargs["persist_exit_window"])
         self.assertEqual(result["persisted_price_samples"], 0)
+        self.assertEqual(result["failures"], 0)
         self.assertEqual(result["active_symbols"], 2)
         self.assertTrue(result["reconciled"])
 
@@ -164,6 +165,8 @@ class OperationWorkerTests(unittest.TestCase):
         kline_loader.assert_not_called()
         self.assertEqual(refresh.call_args.kwargs["market_klines"], [])
         self.assertFalse(result["reconciled"])
+        self.assertEqual(result["persisted_price_samples"], 0)
+        self.assertEqual(result["failures"], 0)
 
     def test_failed_reconciliation_does_not_advance_market_cursor(self):
         db = ActiveSymbolsDb(

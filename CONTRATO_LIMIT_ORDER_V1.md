@@ -1,6 +1,6 @@
 # Contrato LIMIT v1
 
-Version ejecutable: `limit-order-contract-v1.0`.
+Version ejecutable: `limit-order-contract-v1.1`.
 
 Estado: contrato aislado y probado. No activa todavia el analisis de ordenes
 pendientes en produccion y no modifica M6 para entradas `market`.
@@ -100,6 +100,10 @@ Se definen tres snapshots distintos, que nunca se sobrescriben:
 3. Cierre: resultado, evidencia, MFE/MAE y resultado economico.
 
 LIMIT-1 solo define los campos. La persistencia se implementara en LIMIT-4.
+
+LIMIT-2 anade la referencia matematica
+`limit-activation-first-passage-v0.1`. Esta referencia permanece en sombra y no
+convierte todavia el contrato en un analisis pending servido al usuario.
 
 ## 8. Limite de almacenamiento
 

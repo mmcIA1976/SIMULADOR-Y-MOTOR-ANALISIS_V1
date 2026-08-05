@@ -242,7 +242,7 @@ class LimitOrderContractTests(unittest.TestCase):
         self.assertFalse(contract["legacy_engine_executed"])
         self.assertEqual(
             contract["probability_spaces"]["activation"]["status"],
-            "unestimated_until_limit_2",
+            "baseline_model_available_shadow_only",
         )
 
     def test_snapshot_policy_is_compact_and_excludes_raw_feeds(self):

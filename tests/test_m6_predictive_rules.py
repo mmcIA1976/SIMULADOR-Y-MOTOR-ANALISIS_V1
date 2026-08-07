@@ -4,6 +4,7 @@ import unittest
 
 from m6_predictive_rules import (
     ACTIVE_PREDICTIVE_RULE_IDS,
+    HORIZON_RULE_MULTIPLIERS,
     PROVISIONAL_RULE_WEIGHTS,
     apply_provisional_rule_overlay,
     build_provisional_rule_signals,
@@ -72,6 +73,7 @@ class M6PredictiveRulesTests(unittest.TestCase):
         snapshot = build_provisional_rule_signals(
             self.m5_analysis,
             side="long",
+            time_horizon="intraday_short",
         )
 
         self.assertEqual(
@@ -91,6 +93,7 @@ class M6PredictiveRulesTests(unittest.TestCase):
         snapshot = build_provisional_rule_signals(
             self.m5_analysis,
             side="long",
+            time_horizon="intraday_short",
         )
         result = apply_provisional_rule_overlay(
             {
@@ -138,6 +141,7 @@ class M6PredictiveRulesTests(unittest.TestCase):
         snapshot = build_provisional_rule_signals(
             self.m5_analysis,
             side="long",
+            time_horizon="intraday_short",
         )
 
         self.assertNotIn(
@@ -149,6 +153,94 @@ class M6PredictiveRulesTests(unittest.TestCase):
                 "status"
             ],
             "missing",
+        )
+
+    def test_horizon_changes_microstructure_and_funding_relevance(self):
+        short = build_provisional_rule_signals(
+            self.m5_analysis,
+            side="long",
+            time_horizon="intraday_short",
+        )
+        swing = build_provisional_rule_signals(
+            self.m5_analysis,
+            side="long",
+            time_horizon="short_swing",
+        )
+
+        aggressor = "M4-RULE-AGGRESSOR-IMBALANCE-001"
+        funding = "M4-RULE-FUNDING-STATE-001"
+        self.assertGreater(
+            short["active"][aggressor]["weight"],
+            swing["active"][aggressor]["weight"],
+        )
+        self.assertLess(
+            short["active"][funding]["weight"],
+            swing["active"][funding]["weight"],
+        )
+        self.assertEqual(
+            set(HORIZON_RULE_MULTIPLIERS),
+            {"intraday_short", "intraday_wide", "short_swing"},
+        )
+
+    def test_directional_rules_preserve_resolution_probability(self):
+        snapshot = build_provisional_rule_signals(
+            self.m5_analysis,
+            side="long",
+            time_horizon="intraday_short",
+        )
+        snapshot["active"] = {
+            rule_id: rule
+            for rule_id, rule in snapshot["active"].items()
+            if rule["effect_mode"] == "directional"
+        }
+        before = {
+            "tp_first_within_horizon": 0.4,
+            "sl_first_within_horizon": 0.35,
+            "neither_barrier_before_expiry": 0.25,
+        }
+        result = apply_provisional_rule_overlay(before, snapshot)
+        after = result["probabilities_after"]
+
+        self.assertAlmostEqual(
+            before["tp_first_within_horizon"]
+            + before["sl_first_within_horizon"],
+            after["tp_first_within_horizon"]
+            + after["sl_first_within_horizon"],
+            places=14,
+        )
+        self.assertAlmostEqual(
+            before["neither_barrier_before_expiry"],
+            after["neither_barrier_before_expiry"],
+            places=14,
+        )
+
+    def test_movement_rule_preserves_tp_share_given_resolution(self):
+        snapshot = build_provisional_rule_signals(
+            self.m5_analysis,
+            side="long",
+            time_horizon="intraday_wide",
+        )
+        snapshot["active"] = {
+            rule_id: rule
+            for rule_id, rule in snapshot["active"].items()
+            if rule["effect_mode"] == "movement"
+        }
+        before = {
+            "tp_first_within_horizon": 0.4,
+            "sl_first_within_horizon": 0.35,
+            "neither_barrier_before_expiry": 0.25,
+        }
+        result = apply_provisional_rule_overlay(before, snapshot)
+        after = result["probabilities_after"]
+
+        self.assertAlmostEqual(
+            before["tp_first_within_horizon"] / 0.75,
+            after["tp_first_within_horizon"]
+            / (
+                after["tp_first_within_horizon"]
+                + after["sl_first_within_horizon"]
+            ),
+            places=14,
         )
 
 

@@ -7,10 +7,10 @@ from typing import Any, Callable
 import market_data
 from m5_input_assembly import trace_map
 from m5_live_inputs import collect_live_rule_context
+from m6_horizon_calibration import horizon_coefficient_artifact
 from m8_evaluation import HORIZON_SECONDS, selected_interval_seconds
 from prospective_validation import (
     build_prospective_probability_run,
-    load_frozen_candidate,
 )
 from versioning import ENGINE_VERSION, SCORING_VERSION
 
@@ -112,11 +112,11 @@ def _feature_contributions(
     return result
 
 
-def _explained_metrics(run: dict) -> list[dict]:
+def _explained_metrics(run: dict, artifact: dict) -> list[dict]:
     values = run["feature_snapshot"]["values"]
     contributions = _feature_contributions(
         run["feature_snapshot"],
-        load_frozen_candidate()["coefficient_artifact"],
+        artifact,
     )
     labels = {
         "directional_path_efficiency_2h": "Eficiencia direccional en 2 horizontes",
@@ -278,9 +278,8 @@ def analyze_trade(
             run.get("details") or {},
         )
 
-    candidate = load_frozen_candidate()
-    artifact = candidate["coefficient_artifact"]
     m6_result = run["m6_result"]
+    artifact = horizon_coefficient_artifact(str(proposal.time_horizon))
     classes = m6_result["probabilities"]
     probabilities = {
         "tp": float(classes["tp_first_within_horizon"]),
@@ -293,8 +292,21 @@ def analyze_trade(
             "new_engine_probability_mass_invalid",
             {"mass_error": mass_error},
         )
+    decision_probabilities = m6_result.get("decision_probabilities") or {}
+    resolution_probability = float(
+        decision_probabilities.get(
+            "resolution_within_horizon",
+            probabilities["tp"] + probabilities["sl"],
+        )
+    )
+    tp_given_resolution = float(
+        decision_probabilities.get(
+            "tp_given_resolution",
+            probabilities["tp"] / resolution_probability,
+        )
+    )
+    horizon_calibration = m6_result["calibration"]
 
-    artifact = candidate["coefficient_artifact"]
     geometry = _geometry(proposal)
     active_predictive_rule_ids = run["feature_snapshot"].get(
         "active_predictive_rule_ids",
@@ -424,6 +436,14 @@ def analyze_trade(
             "m5_rule_statuses": m5_statuses,
             "m5_rule_effects": run["m5_rule_effects"],
             "m6_probability_trace": m6_result,
+            "horizon_calibration": horizon_calibration,
+            "decision_probabilities": {
+                "tp_before_sl_within_horizon": probabilities["tp"],
+                "sl_before_tp_within_horizon": probabilities["sl"],
+                "neither_before_expiry": probabilities["range"],
+                "resolution_within_horizon": resolution_probability,
+                "tp_given_resolution": tp_given_resolution,
+            },
             "feature_contributions": feature_contributions,
         }
     )
@@ -439,16 +459,19 @@ def analyze_trade(
         "tp_probability": probabilities["tp"],
         "sl_probability": probabilities["sl"],
         "range_probability": probabilities["range"],
+        "tp_before_sl_within_horizon_probability": probabilities["tp"],
         "probability_ranges": probability_ranges,
         "risk_level": f"{probabilities['sl'] * 100:.1f}% SL",
         "setup_grade": "no aplicable",
-        "confidence": "calibracion historica",
+        "confidence": horizon_calibration["confidence"],
+        "horizon_calibration": horizon_calibration,
         "training_decision": "decision del usuario",
         "time_horizon": str(proposal.time_horizon),
         "parameter_advice": {},
         "reasons": [
             (
-                "TP primero dentro del horizonte: "
+                "Probabilidad de alcanzar TP antes que SL dentro del "
+                "horizonte: "
                 f"{_probability_label(probabilities['tp'])}."
             ),
             (
@@ -456,12 +479,18 @@ def analyze_trade(
                 f"{_probability_label(probabilities['sl'])}."
             ),
             (
-                "Ninguna barrera antes del vencimiento: "
+                "No alcanza TP ni SL antes del vencimiento: "
                 f"{_probability_label(probabilities['range'])}."
             ),
             (
-                f"El calculo ha aplicado {len(active_predictive_rule_ids)} "
-                "reglas predictivas con datos disponibles."
+                f"Calibración {horizon_calibration['confidence']} para "
+                f"{horizon_calibration['horizon_label']}, con "
+                f"{horizon_calibration['calibration_records']} casos de "
+                "calibración y ajuste parcial hacia el modelo común."
+            ),
+            (
+                f"El cálculo ha aplicado {len(active_predictive_rule_ids)} "
+                "reglas predictivas ponderadas para este horizonte."
             ),
         ],
         "alerts": [
@@ -471,19 +500,26 @@ def analyze_trade(
             )
         ],
         "plain_summary": (
-            f"Nuevo motor: TP {_probability_label(probabilities['tp'])}, "
-            f"SL {_probability_label(probabilities['sl'])} y "
-            f"sin toque {_probability_label(probabilities['range'])} "
-            f"dentro de {proposal.time_horizon}, con "
-            f"{len(active_predictive_rule_ids)} reglas activas."
+            "Probabilidad de alcanzar TP antes que SL dentro de "
+            f"{horizon_calibration['horizon_label']}: "
+            f"{_probability_label(probabilities['tp'])}. "
+            f"Modelo con {len(active_predictive_rule_ids)} reglas "
+            "ponderadas para el marco elegido."
         ),
-        "explained_metrics": _explained_metrics(run),
+        "explained_metrics": _explained_metrics(run, artifact),
         "snapshot": snapshot,
         "model_trace": {
-            "candidate_version": candidate["version"],
+            "candidate_version": m6_result.get("candidate_version"),
             "coefficient_artifact_id": artifact["id"],
             "coefficient_artifact_sha256": artifact["artifact_sha256"],
-            "calibration": artifact["calibration"],
+            "calibration": horizon_calibration,
+            "decision_probabilities": {
+                "tp_before_sl_within_horizon": probabilities["tp"],
+                "sl_before_tp_within_horizon": probabilities["sl"],
+                "neither_before_expiry": probabilities["range"],
+                "resolution_within_horizon": resolution_probability,
+                "tp_given_resolution": tp_given_resolution,
+            },
             "raw_probabilities": m6_result["raw_probabilities"],
             "calibrated_probabilities": m6_result["probabilities"],
             "probabilities_before_rule_overlay": m6_result.get(

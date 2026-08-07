@@ -2,6 +2,37 @@
 
 Este archivo registra cada cambio relevante del motor de analisis para poder auditar si mejora o empeora con operaciones reales posteriores.
 
+## 2026-08-07 - app-v0.28.0-horizon-calibration
+
+Estado: aplicada calibracion parcialmente agrupada y reglas activas sensibles al
+marco temporal.
+
+Cambios realizados:
+- Los coeficientes y la temperatura ya no se presentan como universales para
+  los tres horizontes. Cada perfil se estima con su particion temporal y se
+  agrupa parcialmente hacia el modelo comun segun los casos disponibles.
+- Un perfil temporal solo sustituye a los coeficientes comunes si mejora tanto
+  log-loss como Brier en su particion de calibracion; si no, conserva los
+  coeficientes comunes y calibra unicamente la temperatura.
+- Intradia corto conserva confianza baja de forma explicita porque su particion
+  de calibracion solo contiene dos casos; no se presenta como precision alta.
+- Los pesos de microestructura, derivados y funding cambian segun intradia
+  corto, intradia amplio o swing corto.
+- Las reglas direccionales modifican TP frente a SL sin fabricar movimiento ni
+  alterar la masa de no toque. Las reglas de movimiento modifican la resolucion
+  preservando la preferencia TP/SL.
+- La salida principal se define como probabilidad de alcanzar TP antes que SL
+  dentro del horizonte elegido.
+- La interfaz sustituye `Rango / sin resolver` por `No toca TP/SL` y muestra la
+  confianza del perfil temporal aplicado.
+
+Efecto esperado:
+- Los horizontes dejan de compartir una calibracion presentada como universal.
+- Las senales de muy corto plazo pierden peso en swing y el funding gana peso
+  cuando aumenta la duracion de la exposicion.
+- La probabilidad TP conserva conjuntamente distancia, volatilidad, tiempo y
+  direccion, pero se explica como una unica medida util para decidir.
+
 ## 2026-08-05 - app-v0.27.1-limit-placement-fix
 
 Estado: corregida la creacion de ordenes LIMIT en PostgreSQL/Supabase.

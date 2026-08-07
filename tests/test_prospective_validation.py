@@ -263,7 +263,15 @@ class ProspectiveValidationTests(unittest.TestCase):
         )
         self.assertEqual(
             result["m6_result"]["coefficient_artifact_id"],
-            "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+            "M6-HORIZON-INTRADAY-WIDE-PARTIAL-POOL-v0.1",
+        )
+        self.assertEqual(
+            result["m6_result"]["calibration"]["time_horizon"],
+            "intraday_wide",
+        )
+        self.assertIn(
+            "tp_before_sl_within_horizon",
+            result["m6_result"]["decision_probabilities"],
         )
         self.assertAlmostEqual(
             sum(result["m6_result"]["probabilities"].values()),

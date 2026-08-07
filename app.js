@@ -1771,7 +1771,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
     elements.tpProbability.textContent = "--";
     elements.slProbability.textContent = "--";
     elements.rangeProbability.textContent = "--";
-    setProbabilityCardLabels("Probabilidad TP", "Probabilidad SL", "Rango / sin resolver");
+    setProbabilityCardLabels("Probabilidad de alcanzar TP", "Probabilidad de tocar SL", "No toca TP/SL");
     elements.analysisDecision.textContent = fallbackSummary || "Esta operacion no tiene un analisis previo enlazado.";
     elements.analysisSummary.textContent = "";
     elements.analysisHighlights.innerHTML = "";
@@ -1792,14 +1792,14 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   const isLimitTwoStage = analysis.engine_family === "pending_limit_two_stage";
   const activationProbability = Number(analysis.limit_analysis?.probability_tree?.activation?.activated_by_expiry);
   setProbabilityCardLabels(
-    isLimitTwoStage ? "TP si activa" : "Probabilidad TP",
-    isLimitTwoStage ? "SL si activa" : "Probabilidad SL",
-    isLimitTwoStage ? "Sin barrera si activa" : "Rango / sin resolver",
+    isLimitTwoStage ? "TP si activa" : "Probabilidad de alcanzar TP",
+    isLimitTwoStage ? "SL si activa" : "Probabilidad de tocar SL",
+    isLimitTwoStage ? "Sin barrera si activa" : "No toca TP/SL",
   );
   elements.analysisHeadline.textContent = isLimitTwoStage
     ? `Analisis LIMIT · activacion base ${percent(activationProbability)}`
     : isTpSlProbabilityEngine
-    ? `Motor probabilístico TP/SL · TP ${percent(analysis.tp_probability)}`
+    ? `Probabilidad de alcanzar TP · ${percent(analysis.tp_probability)}`
     : `Setup ${analysis.setup_grade} · Riesgo ${analysis.risk_level}`;
   elements.tpProbability.textContent = probabilityLabel(analysis, "tp", "tp_probability");
   elements.slProbability.textContent = probabilityLabel(analysis, "sl", "sl_probability");
@@ -1809,7 +1809,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   elements.analysisDecision.textContent = isLimitTwoStage
     ? `Dos etapas · activacion no calibrada + TP/SL condicional · ${timeHorizonLabel(analysis.time_horizon)} · decision del usuario`
     : isTpSlProbabilityEngine
-    ? `Probabilidades calibradas · ${timeHorizonLabel(analysis.time_horizon)} · decision del usuario`
+    ? `${analysis.horizon_calibration?.horizon_label || timeHorizonLabel(analysis.time_horizon)} · confianza ${analysis.confidence || "pendiente"} · decision del usuario`
     : `${analysis.training_decision} · confianza ${analysis.confidence}${evLabel}${regimeLabel}`;
   elements.analysisSummary.textContent = analysis.plain_summary || fallbackSummary || "";
   renderAnalysisHighlights(analysis);
@@ -3493,8 +3493,8 @@ function renderSelectedOperationDetail(operation) {
       <article class="outcome-loss"><span>Perdida en SL</span><strong>${money(outcome.slPnl)}</strong></article>
       <article><span>Variacion precio</span><strong class="${displayVariation > 0 ? "positive" : displayVariation < 0 ? "negative" : "neutral"}">${signedPct(displayVariation)}</strong></article>
       <article><span>Exposicion</span><strong>${money(displayExposure)}</strong></article>
-      <article><span>${recommendationIsLimit ? "TP si activa" : "Prob. TP"}</span><strong>${probabilityLabel(recommendation, "tp", "tp_probability")}</strong></article>
-      <article><span>${recommendationIsLimit ? "SL si activa" : "Prob. SL"}</span><strong>${probabilityLabel(recommendation, "sl", "sl_probability")}</strong></article>
+      <article><span>${recommendationIsLimit ? "TP si activa" : "Alcanza TP"}</span><strong>${probabilityLabel(recommendation, "tp", "tp_probability")}</strong></article>
+      <article><span>${recommendationIsLimit ? "SL si activa" : "Toca SL"}</span><strong>${probabilityLabel(recommendation, "sl", "sl_probability")}</strong></article>
       ${recommendationIsLimit ? `<article><span>Lectura probabilistica</span><strong>${escapeHtml(activationAnalysisInfo)}</strong></article>` : ""}
       <article><span>Registros grafica</span><strong>${chartPoints.length}</strong></article>
     </div>

@@ -22,6 +22,10 @@ from m5_input_assembly import (
 )
 from m6_active_engine import ACTIVE_ENGINE_VERSION
 from m6_active_engine import run_internal_probability_analysis
+from m6_horizon_calibration import (
+    horizon_calibration_profile,
+    horizon_coefficient_artifact,
+)
 from m6_predictive_rules import (
     ACTIVE_EVIDENCE_FAMILIES,
     ACTIVE_PREDICTIVE_RULE_IDS,
@@ -418,7 +422,10 @@ def build_prospective_probability_run(
         "observational_rule_traces": observational_rule_observations,
     }
     candidate_payload = load_frozen_candidate()
-    artifact = candidate_payload["coefficient_artifact"]
+    horizon_calibration = horizon_calibration_profile(
+        plan["time_horizon"]
+    )
+    artifact = horizon_coefficient_artifact(plan["time_horizon"])
     standardized_values = standardized_candidate_features(
         feature_values,
         artifact,
@@ -439,7 +446,7 @@ def build_prospective_probability_run(
             if active_output
             else PRODUCTION_EFFECT_NONE
         )
-        temperature = float(artifact["calibration"]["temperature"])
+        temperature = float(horizon_calibration["temperature"])
         calibrated_before_overlay = temperature_calibration(
             core_m6_result["probabilities"],
             temperature,
@@ -447,12 +454,25 @@ def build_prospective_probability_run(
         provisional_signals = build_provisional_rule_signals(
             m5_pre_probability,
             side=plan["side"],
+            time_horizon=plan["time_horizon"],
         )
         rule_overlay = apply_provisional_rule_overlay(
             calibrated_before_overlay,
             provisional_signals,
         )
         calibrated = rule_overlay["probabilities_after"]
+        resolution_probability = (
+            calibrated["tp_first_within_horizon"]
+            + calibrated["sl_first_within_horizon"]
+        )
+        tp_given_resolution = (
+            calibrated["tp_first_within_horizon"]
+            / resolution_probability
+        )
+        sl_given_resolution = (
+            calibrated["sl_first_within_horizon"]
+            / resolution_probability
+        )
 
         def probabilities_without_rule_ids(
             removed_rule_ids: set[str],
@@ -543,7 +563,8 @@ def build_prospective_probability_run(
             }
         m6_result = {
             "engine_version": core_m6_result["engine_version"],
-            "candidate_version": candidate_payload["version"],
+            "candidate_version": horizon_calibration["version"],
+            "source_candidate_version": candidate_payload["version"],
             "coefficient_artifact_id": artifact["id"],
             "coefficient_artifact_sha256": artifact["artifact_sha256"],
             "status": (
@@ -555,10 +576,24 @@ def build_prospective_probability_run(
             "probabilities": calibrated,
             "raw_probabilities": core_m6_result["probabilities"],
             "probabilities_before_rule_overlay": calibrated_before_overlay,
+            "decision_probabilities": {
+                "tp_before_sl_within_horizon": calibrated[
+                    "tp_first_within_horizon"
+                ],
+                "sl_before_tp_within_horizon": calibrated[
+                    "sl_first_within_horizon"
+                ],
+                "neither_before_expiry": calibrated[
+                    "neither_barrier_before_expiry"
+                ],
+                "resolution_within_horizon": resolution_probability,
+                "tp_given_resolution": tp_given_resolution,
+                "sl_given_resolution": sl_given_resolution,
+            },
             "active_rule_overlay": rule_overlay,
             "fitted_rule_ablation": fitted_rule_ablation,
             "evidence_family_ablation": evidence_family_ablation,
-            "calibration": artifact["calibration"],
+            "calibration": horizon_calibration,
             "core_result": core_m6_result,
             "production_effect": production_effect,
         }

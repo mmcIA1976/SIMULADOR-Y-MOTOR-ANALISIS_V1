@@ -120,6 +120,18 @@ def evaluated_run() -> dict:
                 "sl_first_within_horizon": 0.38,
                 "neither_barrier_before_expiry": 0.10,
             },
+            "decision_probabilities": {
+                "resolution_within_horizon": 0.90,
+                "tp_given_resolution": 0.55 / 0.90,
+            },
+            "calibration": {
+                "version": "M6-horizon-calibration-v0.1",
+                "time_horizon": "intraday_short",
+                "horizon_label": "Intradía corto · hasta 4 h",
+                "confidence": "baja",
+                "calibration_records": 2,
+                "temperature": 1.3574273632828957,
+            },
             "result_sha256": "m6-sha",
         },
         "source_data_sha256": "source-sha",
@@ -180,9 +192,18 @@ class M6ProductionAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(result["tp_probability"], 0.55)
         self.assertAlmostEqual(result["sl_probability"], 0.35)
         self.assertAlmostEqual(result["range_probability"], 0.10)
+        self.assertAlmostEqual(
+            result["tp_before_sl_within_horizon_probability"],
+            0.55,
+        )
+        self.assertEqual(result["confidence"], "baja")
+        self.assertEqual(
+            result["horizon_calibration"]["time_horizon"],
+            "intraday_short",
+        )
         self.assertEqual(
             result["model_trace"]["coefficient_artifact_id"],
-            "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+            "M6-HORIZON-INTRADAY-SHORT-PARTIAL-POOL-v0.1",
         )
         self.assertIn(
             "volatility_percentile_60",

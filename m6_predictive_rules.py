@@ -5,7 +5,7 @@ import math
 from m5_input_assembly import trace_map
 
 
-RULE_MODEL_VERSION = "M6-active-predictive-rules-v0.1"
+RULE_MODEL_VERSION = "M6-active-predictive-rules-v0.2-horizon-aware"
 
 # Rules 9-11 already enter through the fitted M6 candidate. The remaining
 # rules below receive explicit provisional log-hazard effects so every
@@ -38,6 +38,44 @@ PROVISIONAL_RULE_WEIGHTS = {
     "M4-RULE-SPOT-FUTURES-BASIS-001": 0.06,
     "M4-RULE-MARK-INDEX-PREMIUM-001": 0.06,
     "M4-RULE-FUNDING-STATE-001": 0.08,
+}
+
+# These multipliers reuse the horizon relevance already defined by the
+# application profiles: microstructure loses relevance as the horizon grows,
+# derivatives gain relevance, and funding matters most for swing exposure.
+# Price-path and volatility-regime signals are already calculated over the
+# selected horizon and therefore remain at unit scale.
+HORIZON_RULE_MULTIPLIERS = {
+    "intraday_short": {
+        "M4-RULE-PATH-STRUCTURE-001": 1.0,
+        "M4-RULE-CONTINUOUS-REGIME-001": 1.0,
+        "M4-RULE-AGGRESSOR-IMBALANCE-001": 1.0,
+        "M4-RULE-OPEN-INTEREST-CHANGE-001": 0.85,
+        "M4-RULE-PRICE-OI-STATE-001": 0.85,
+        "M4-RULE-SPOT-FUTURES-BASIS-001": 0.85,
+        "M4-RULE-MARK-INDEX-PREMIUM-001": 0.85,
+        "M4-RULE-FUNDING-STATE-001": 0.35,
+    },
+    "intraday_wide": {
+        "M4-RULE-PATH-STRUCTURE-001": 1.0,
+        "M4-RULE-CONTINUOUS-REGIME-001": 1.0,
+        "M4-RULE-AGGRESSOR-IMBALANCE-001": 0.55,
+        "M4-RULE-OPEN-INTEREST-CHANGE-001": 1.0,
+        "M4-RULE-PRICE-OI-STATE-001": 1.0,
+        "M4-RULE-SPOT-FUTURES-BASIS-001": 1.0,
+        "M4-RULE-MARK-INDEX-PREMIUM-001": 1.0,
+        "M4-RULE-FUNDING-STATE-001": 0.75,
+    },
+    "short_swing": {
+        "M4-RULE-PATH-STRUCTURE-001": 1.0,
+        "M4-RULE-CONTINUOUS-REGIME-001": 1.0,
+        "M4-RULE-AGGRESSOR-IMBALANCE-001": 0.20,
+        "M4-RULE-OPEN-INTEREST-CHANGE-001": 1.10,
+        "M4-RULE-PRICE-OI-STATE-001": 1.10,
+        "M4-RULE-SPOT-FUTURES-BASIS-001": 1.10,
+        "M4-RULE-MARK-INDEX-PREMIUM-001": 1.10,
+        "M4-RULE-FUNDING-STATE-001": 1.25,
+    },
 }
 
 ACTIVE_PREDICTIVE_RULE_IDS = (
@@ -184,12 +222,17 @@ def build_provisional_rule_signals(
     m5_analysis: dict,
     *,
     side: str,
+    time_horizon: str,
 ) -> dict:
+    try:
+        horizon_multipliers = HORIZON_RULE_MULTIPLIERS[time_horizon]
+    except KeyError as exc:
+        raise ValueError("unsupported_time_horizon") from exc
     traces = trace_map(m5_analysis)
     direction = _direction(side)
     active = {}
     unavailable = {}
-    for rule_id, weight in PROVISIONAL_RULE_WEIGHTS.items():
+    for rule_id, base_weight in PROVISIONAL_RULE_WEIGHTS.items():
         trace = traces.get(rule_id)
         if not trace or trace.get("status") != "evaluated":
             unavailable[rule_id] = {
@@ -201,6 +244,8 @@ def build_provisional_rule_signals(
             trace.get("outputs") or {},
             direction,
         )
+        horizon_multiplier = float(horizon_multipliers[rule_id])
+        weight = float(base_weight) * horizon_multiplier
         effect_mode = RULE_EFFECT_MODES.get(rule_id, "directional")
         if effect_mode == "movement":
             tp_effect = float(weight) * signal
@@ -212,6 +257,8 @@ def build_provisional_rule_signals(
             expiry_effect = 0.0
         active[rule_id] = {
             "signal": signal,
+            "base_weight": float(base_weight),
+            "horizon_multiplier": horizon_multiplier,
             "weight": float(weight),
             "effect_mode": effect_mode,
             "tp_log_effect": tp_effect,
@@ -222,6 +269,7 @@ def build_provisional_rule_signals(
         }
     return {
         "version": RULE_MODEL_VERSION,
+        "time_horizon": time_horizon,
         "active": active,
         "unavailable": unavailable,
     }
@@ -237,28 +285,64 @@ def _normalize_log_weights(log_weights: dict[str, float]) -> dict[str, float]:
     return {name: value / total for name, value in weights.items()}
 
 
+def _apply_single_rule_effect(
+    probabilities: dict[str, float],
+    rule: dict,
+) -> dict[str, float]:
+    tp_name = "tp_first_within_horizon"
+    sl_name = "sl_first_within_horizon"
+    expiry_name = "neither_barrier_before_expiry"
+    tp = probabilities[tp_name]
+    sl = probabilities[sl_name]
+    expiry = probabilities[expiry_name]
+    resolved = tp + sl
+    if resolved <= 0.0 or expiry <= 0.0:
+        raise ValueError("probability_components_must_be_positive")
+
+    if rule.get("effect_mode") == "movement":
+        # Movement evidence changes the odds of resolving inside the horizon,
+        # while preserving which barrier is favoured if resolution occurs.
+        movement_effect = (
+            float(rule["tp_log_effect"])
+            + float(rule["sl_log_effect"])
+        ) / 2.0
+        resolved_vs_expiry = _normalize_log_weights(
+            {
+                "resolved": math.log(resolved) + movement_effect,
+                "expiry": math.log(expiry)
+                + float(rule["expiry_log_effect"]),
+            }
+        )
+        resolved_after = resolved_vs_expiry["resolved"]
+        tp_share = tp / resolved
+        return {
+            tp_name: resolved_after * tp_share,
+            sl_name: resolved_after * (1.0 - tp_share),
+            expiry_name: resolved_vs_expiry["expiry"],
+        }
+
+    # Directional evidence only decides TP versus SL. It must not manufacture
+    # extra price movement or alter the probability of no barrier being hit.
+    conditional = _normalize_log_weights(
+        {
+            "tp": math.log(tp) + float(rule["tp_log_effect"]),
+            "sl": math.log(sl) + float(rule["sl_log_effect"]),
+        }
+    )
+    return {
+        tp_name: resolved * conditional["tp"],
+        sl_name: resolved * conditional["sl"],
+        expiry_name: expiry,
+    }
+
+
 def _apply_rule_effects(
     probabilities: dict[str, float],
     rules: dict[str, dict],
 ) -> dict[str, float]:
     current = dict(probabilities)
     for rule in rules.values():
-        current = _normalize_log_weights(
-            {
-                "tp_first_within_horizon": (
-                    math.log(current["tp_first_within_horizon"])
-                    + rule["tp_log_effect"]
-                ),
-                "sl_first_within_horizon": (
-                    math.log(current["sl_first_within_horizon"])
-                    + rule["sl_log_effect"]
-                ),
-                "neither_barrier_before_expiry": (
-                    math.log(current["neither_barrier_before_expiry"])
-                    + rule["expiry_log_effect"]
-                ),
-            }
-        )
+        current = _apply_single_rule_effect(current, rule)
     return current
 
 
@@ -278,24 +362,27 @@ def apply_provisional_rule_overlay(
     contributions = {}
     for rule_id, rule in signal_snapshot["active"].items():
         prior = dict(current)
-        adjusted = {
-            "tp_first_within_horizon": (
-                math.log(prior["tp_first_within_horizon"])
-                + rule["tp_log_effect"]
-            ),
-            "sl_first_within_horizon": (
-                math.log(prior["sl_first_within_horizon"])
-                + rule["sl_log_effect"]
-            ),
-            "neither_barrier_before_expiry": math.log(
-                prior["neither_barrier_before_expiry"]
-            ) + rule["expiry_log_effect"],
-        }
-        current = _normalize_log_weights(adjusted)
+        current = _apply_single_rule_effect(prior, rule)
+        resolved_before = (
+            prior["tp_first_within_horizon"]
+            + prior["sl_first_within_horizon"]
+        )
+        resolved_after = (
+            current["tp_first_within_horizon"]
+            + current["sl_first_within_horizon"]
+        )
         contributions[rule_id] = {
             **rule,
             "probabilities_before": prior,
             "probabilities_after": dict(current),
+            "resolution_probability_before": resolved_before,
+            "resolution_probability_after": resolved_after,
+            "tp_given_resolution_before": (
+                prior["tp_first_within_horizon"] / resolved_before
+            ),
+            "tp_given_resolution_after": (
+                current["tp_first_within_horizon"] / resolved_after
+            ),
             "tp_probability_delta": (
                 current["tp_first_within_horizon"]
                 - prior["tp_first_within_horizon"]

@@ -1,0 +1,297 @@
+{
+  "version": "M6-horizon-calibration-v0.1",
+  "method": "hierarchical_coefficients_and_log_temperature_partial_pooling",
+  "source_candidate": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+  "source_dataset": "dataset_desarrollo_calibracion_m8_3_v0_1.json",
+  "selection_partition": "calibration",
+  "selection_metric": "log_loss_3c_then_brier_3c",
+  "global_temperature": 1.5,
+  "coefficient_prior_strength_records": 30,
+  "temperature_prior_strength_records": 20,
+  "local_temperature_candidates": [
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5,
+    2.0,
+    2.5,
+    3.0,
+    4.0,
+    5.0,
+    6.0
+  ],
+  "profiles": {
+    "intraday_short": {
+      "development_records": 23,
+      "calibration_records": 2,
+      "coefficient_selection": "selected_partial_pooling",
+      "coefficient_local_weight": 0.4339622641509434,
+      "pooled_candidate_best_temperature": 0.5,
+      "pooled_candidate_best_log_loss": 0.22711350122809704,
+      "pooled_candidate_best_brier_3c": 0.10482655475211984,
+      "local_best_temperature": 0.5,
+      "local_best_log_loss": 0.22711350122809704,
+      "local_best_brier_3c": 0.10482655475211984,
+      "served_temperature": 1.3574273632828957,
+      "global_log_loss": 0.5318267115254075,
+      "served_log_loss": 0.5218279830098433,
+      "global_brier_3c": 0.2807839751926756,
+      "served_brier_3c": 0.27602882028661346,
+      "support_status": "low_sample_partial_pooling",
+      "coefficient_artifact": {
+        "id": "M6-HORIZON-INTRADAY-SHORT-PARTIAL-POOL-v0.1",
+        "version": "0.1",
+        "status": "estimated_internal_candidate",
+        "provenance": "estimated_temporal_training",
+        "training_cutoff": "2026-07-03T09:57:53.529255+00:00",
+        "feature_schema_sha256": "bbc2c7cddddd5a317c23881e7a066da1f8c4517f779c992ef7a63a5e96788869",
+        "coefficients": {
+          "tp": {
+            "intercept": -0.020484357600788435,
+            "directional_path_efficiency_h": 0.0,
+            "directional_path_efficiency_2h": 0.0007697274600659623,
+            "directional_path_efficiency_4h": 0.1133138812784257,
+            "volatility_percentile_60": -0.41817021276684835,
+            "target_extreme_between_entry_and_tp": 0.013599107183192724
+          },
+          "sl": {
+            "intercept": -0.14985365214662502,
+            "directional_path_efficiency_h": 0.0,
+            "directional_path_efficiency_2h": -0.08940907363245244,
+            "directional_path_efficiency_4h": -0.08849102852561687,
+            "volatility_percentile_60": -0.17869188997507024,
+            "target_extreme_between_entry_and_tp": 0.13337299811712805
+          }
+        },
+        "feature_standardization": {
+          "directional_path_efficiency_h": {
+            "mean": 0.10375010598944176,
+            "scale": 0.2998625607854509
+          },
+          "directional_path_efficiency_2h": {
+            "mean": 0.07271969831434635,
+            "scale": 0.22611665083808646
+          },
+          "directional_path_efficiency_4h": {
+            "mean": 0.06282196943927999,
+            "scale": 0.16565698802414194
+          },
+          "volatility_percentile_60": {
+            "mean": 0.6545977011494253,
+            "scale": 0.26054380764763446
+          },
+          "target_extreme_between_entry_and_tp": {
+            "mean": 0.5241379310344828,
+            "scale": 0.4994170204201841
+          }
+        },
+        "ridge_lambda": 10.0,
+        "optimizer": {
+          "method": "deterministic_adam_numeric_eta_gradient",
+          "iterations": 300,
+          "learning_rate": 0.04
+        },
+        "production_authorized": false,
+        "artifact_sha256": "83896b74e59f0b87987d0b3c9a9c3c81db0a9328b9905018055784ba1706c1a7",
+        "removed_predictive_features": [
+          "directional_path_efficiency_h"
+        ],
+        "calibration": {
+          "method": "multiclass_temperature",
+          "temperature": 1.5,
+          "selection_partition": "calibration",
+          "selection_metric": "log_loss_3c_then_brier_3c"
+        },
+        "partial_pooling": {
+          "selection_status": "selected_partial_pooling",
+          "local_weight": 0.4339622641509434,
+          "global_weight": 0.5660377358490566,
+          "prior_strength_records": 30,
+          "source_global_artifact_id": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2"
+        }
+      }
+    },
+    "intraday_wide": {
+      "development_records": 79,
+      "calibration_records": 13,
+      "coefficient_selection": "fallback_global_no_holdout_improvement",
+      "coefficient_local_weight": 0.0,
+      "pooled_candidate_best_temperature": 1.25,
+      "pooled_candidate_best_log_loss": 0.741074204035485,
+      "pooled_candidate_best_brier_3c": 0.45435345696954516,
+      "local_best_temperature": 1.0,
+      "local_best_log_loss": 0.6994522734694596,
+      "local_best_brier_3c": 0.44312398529438846,
+      "served_temperature": 1.2785625373207528,
+      "global_log_loss": 0.721660684144332,
+      "served_log_loss": 0.7094260367441294,
+      "global_brier_3c": 0.4528405004921114,
+      "served_brier_3c": 0.4470652131428058,
+      "support_status": "limited_partial_pooling",
+      "coefficient_artifact": {
+        "id": "M6-HORIZON-INTRADAY-WIDE-PARTIAL-POOL-v0.1",
+        "version": "0.1",
+        "status": "estimated_internal_candidate",
+        "provenance": "estimated_temporal_training",
+        "training_cutoff": "2026-07-04T10:00:51.518919+00:00",
+        "feature_schema_sha256": "bbc2c7cddddd5a317c23881e7a066da1f8c4517f779c992ef7a63a5e96788869",
+        "coefficients": {
+          "tp": {
+            "intercept": -0.144149452369794,
+            "directional_path_efficiency_h": 0.0,
+            "directional_path_efficiency_2h": 0.04656228699988703,
+            "directional_path_efficiency_4h": 0.1730886790956213,
+            "volatility_percentile_60": -0.5446818209064133,
+            "target_extreme_between_entry_and_tp": 0.06992799118212334
+          },
+          "sl": {
+            "intercept": -0.23970216832912355,
+            "directional_path_efficiency_h": 0.0,
+            "directional_path_efficiency_2h": -0.21100274047083908,
+            "directional_path_efficiency_4h": -0.15500924011502018,
+            "volatility_percentile_60": -0.27055081722504065,
+            "target_extreme_between_entry_and_tp": 0.1670447895598004
+          }
+        },
+        "feature_standardization": {
+          "directional_path_efficiency_h": {
+            "mean": 0.10375010598944176,
+            "scale": 0.2998625607854509
+          },
+          "directional_path_efficiency_2h": {
+            "mean": 0.07271969831434635,
+            "scale": 0.22611665083808646
+          },
+          "directional_path_efficiency_4h": {
+            "mean": 0.06282196943927999,
+            "scale": 0.16565698802414194
+          },
+          "volatility_percentile_60": {
+            "mean": 0.6545977011494253,
+            "scale": 0.26054380764763446
+          },
+          "target_extreme_between_entry_and_tp": {
+            "mean": 0.5241379310344828,
+            "scale": 0.4994170204201841
+          }
+        },
+        "ridge_lambda": 10.0,
+        "optimizer": {
+          "method": "deterministic_adam_numeric_eta_gradient",
+          "iterations": 300,
+          "learning_rate": 0.04
+        },
+        "production_authorized": false,
+        "artifact_sha256": "4b366bb3b1681c5506f0fdf0a60b1555b3d0e96b30553042f3d24bc787cb6a65",
+        "removed_predictive_features": [
+          "directional_path_efficiency_h"
+        ],
+        "calibration": {
+          "method": "multiclass_temperature",
+          "temperature": 1.5,
+          "selection_partition": "calibration",
+          "selection_metric": "log_loss_3c_then_brier_3c"
+        },
+        "partial_pooling": {
+          "selection_status": "fallback_global_no_holdout_improvement",
+          "local_weight": 0.0,
+          "global_weight": 1.0,
+          "prior_strength_records": 30,
+          "source_global_artifact_id": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2"
+        }
+      }
+    },
+    "short_swing": {
+      "development_records": 43,
+      "calibration_records": 20,
+      "coefficient_selection": "selected_partial_pooling",
+      "coefficient_local_weight": 0.589041095890411,
+      "pooled_candidate_best_temperature": 4.0,
+      "pooled_candidate_best_log_loss": 0.8943711722366038,
+      "pooled_candidate_best_brier_3c": 0.5817547297481326,
+      "local_best_temperature": 4.0,
+      "local_best_log_loss": 0.8943711722366038,
+      "local_best_brier_3c": 0.5817547297481326,
+      "served_temperature": 2.449489742783178,
+      "global_log_loss": 0.974623534244493,
+      "served_log_loss": 0.9155956413329566,
+      "global_brier_3c": 0.6190530331674905,
+      "served_brier_3c": 0.5966823026076861,
+      "support_status": "provisional_partial_pooling",
+      "coefficient_artifact": {
+        "id": "M6-HORIZON-SHORT-SWING-PARTIAL-POOL-v0.1",
+        "version": "0.1",
+        "status": "estimated_internal_candidate",
+        "provenance": "estimated_temporal_training",
+        "training_cutoff": "2026-07-03T13:35:48.825174+00:00",
+        "feature_schema_sha256": "bbc2c7cddddd5a317c23881e7a066da1f8c4517f779c992ef7a63a5e96788869",
+        "coefficients": {
+          "tp": {
+            "intercept": -0.024077846516950156,
+            "directional_path_efficiency_h": 0.0,
+            "directional_path_efficiency_2h": 0.050572001537862926,
+            "directional_path_efficiency_4h": 0.026009448332223066,
+            "volatility_percentile_60": -0.4203979260507936,
+            "target_extreme_between_entry_and_tp": -0.003514243246594776
+          },
+          "sl": {
+            "intercept": -0.04470358300068476,
+            "directional_path_efficiency_h": 0.0,
+            "directional_path_efficiency_2h": -0.17965493788095296,
+            "directional_path_efficiency_4h": 0.05076877750988766,
+            "volatility_percentile_60": -0.08494743802221437,
+            "target_extreme_between_entry_and_tp": 0.06233944187549567
+          }
+        },
+        "feature_standardization": {
+          "directional_path_efficiency_h": {
+            "mean": 0.10375010598944176,
+            "scale": 0.2998625607854509
+          },
+          "directional_path_efficiency_2h": {
+            "mean": 0.07271969831434635,
+            "scale": 0.22611665083808646
+          },
+          "directional_path_efficiency_4h": {
+            "mean": 0.06282196943927999,
+            "scale": 0.16565698802414194
+          },
+          "volatility_percentile_60": {
+            "mean": 0.6545977011494253,
+            "scale": 0.26054380764763446
+          },
+          "target_extreme_between_entry_and_tp": {
+            "mean": 0.5241379310344828,
+            "scale": 0.4994170204201841
+          }
+        },
+        "ridge_lambda": 10.0,
+        "optimizer": {
+          "method": "deterministic_adam_numeric_eta_gradient",
+          "iterations": 300,
+          "learning_rate": 0.04
+        },
+        "production_authorized": false,
+        "artifact_sha256": "7e6013f9bff06e93fd434a4ab1aa6fc3472f7e5d11d88635501edf22fa94cbd8",
+        "removed_predictive_features": [
+          "directional_path_efficiency_h"
+        ],
+        "calibration": {
+          "method": "multiclass_temperature",
+          "temperature": 1.5,
+          "selection_partition": "calibration",
+          "selection_metric": "log_loss_3c_then_brier_3c"
+        },
+        "partial_pooling": {
+          "selection_status": "selected_partial_pooling",
+          "local_weight": 0.589041095890411,
+          "global_weight": 0.410958904109589,
+          "prior_strength_records": 30,
+          "source_global_artifact_id": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2"
+        }
+      }
+    }
+  },
+  "canonical_payload_sha256": "f99e60a6758b38b14cd68d356edaf441b3c1b41ca3879aa0b8c31285b3dc3d30"
+}

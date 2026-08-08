@@ -7,10 +7,10 @@ from typing import Any, Callable
 import market_data
 from m5_input_assembly import trace_map
 from m5_live_inputs import collect_live_rule_context
-from m6_horizon_calibration import horizon_coefficient_artifact
 from m8_evaluation import HORIZON_SECONDS, selected_interval_seconds
 from prospective_validation import (
     build_prospective_probability_run,
+    stable_champion_artifact,
 )
 from versioning import ENGINE_VERSION, SCORING_VERSION
 
@@ -143,46 +143,6 @@ def _explained_metrics(run: dict, artifact: dict) -> list[dict]:
                 "trace": contribution,
             }
         )
-    overlay_labels = {
-        "M4-RULE-PATH-STRUCTURE-001": "Estructura direccional del horizonte",
-        "M4-RULE-CONTINUOUS-REGIME-001": "Regimen continuo",
-        "M4-RULE-AGGRESSOR-IMBALANCE-001": "Desequilibrio taker",
-        "M4-RULE-OPEN-INTEREST-CHANGE-001": "Variacion de open interest",
-        "M4-RULE-PRICE-OI-STATE-001": "Relacion precio y open interest",
-        "M4-RULE-SPOT-FUTURES-BASIS-001": "Basis Spot/Futures",
-        "M4-RULE-MARK-INDEX-PREMIUM-001": "Prima mark/index",
-        "M4-RULE-FUNDING-STATE-001": "Funding",
-    }
-    overlay = run["m6_result"].get("active_rule_overlay") or {}
-    for rule_id, contribution in overlay.get(
-        "rule_contributions",
-        {},
-    ).items():
-        signal = float(contribution["signal"])
-        if contribution["effect_mode"] == "movement":
-            bias = "movimiento"
-        elif signal > 0:
-            bias = "favorable"
-        elif signal < 0:
-            bias = "desfavorable"
-        else:
-            bias = "neutral"
-        metrics.append(
-            {
-                "id": rule_id,
-                "label": overlay_labels[rule_id],
-                "value": f"{signal:+.4f}",
-                "score": round(50 + signal * 50),
-                "bias": bias,
-                "explanation": (
-                    "Efecto sobre TP "
-                    f"{contribution['tp_probability_delta'] * 100:+.2f} pp; "
-                    "efecto sobre SL "
-                    f"{contribution['sl_probability_delta'] * 100:+.2f} pp."
-                ),
-                "trace": contribution,
-            }
-        )
     return metrics
 
 
@@ -279,7 +239,7 @@ def analyze_trade(
         )
 
     m6_result = run["m6_result"]
-    artifact = horizon_coefficient_artifact(str(proposal.time_horizon))
+    artifact = stable_champion_artifact()
     classes = m6_result["probabilities"]
     probabilities = {
         "tp": float(classes["tp_first_within_horizon"]),
@@ -483,14 +443,14 @@ def analyze_trade(
                 f"{_probability_label(probabilities['range'])}."
             ),
             (
-                f"Calibración {horizon_calibration['confidence']} para "
-                f"{horizon_calibration['horizon_label']}, con "
-                f"{horizon_calibration['calibration_records']} casos de "
-                "calibración y ajuste parcial hacia el modelo común."
+                "Se usa el mismo campeón M6 congelado en los tres marcos; "
+                f"{horizon_calibration['horizon_label']} conserva su ventana, "
+                "muestreo, volatilidad y geometría específicos."
             ),
             (
                 f"El cálculo ha aplicado {len(active_predictive_rule_ids)} "
-                "reglas predictivas ponderadas para este horizonte."
+                "familias predictivas ajustadas. Las reglas nuevas se miden "
+                "en sombra y no cambian esta decisión."
             ),
         ],
         "alerts": [
@@ -503,8 +463,8 @@ def analyze_trade(
             "Probabilidad de alcanzar TP antes que SL dentro de "
             f"{horizon_calibration['horizon_label']}: "
             f"{_probability_label(probabilities['tp'])}. "
-            f"Modelo con {len(active_predictive_rule_ids)} reglas "
-            "ponderadas para el marco elegido."
+            "Campeón M6 congelado; los candidatos nuevos no modifican "
+            "esta probabilidad."
         ),
         "explained_metrics": _explained_metrics(run, artifact),
         "snapshot": snapshot,
@@ -527,6 +487,8 @@ def analyze_trade(
             ),
             "active_predictive_rule_ids": active_predictive_rule_ids,
             "active_rule_overlay": m6_result.get("active_rule_overlay"),
+            "shadow_challenger": m6_result.get("shadow_challenger"),
+            "stability_policy": m6_result.get("stability_policy"),
             "feature_contributions": feature_contributions,
             "m5_rule_effects": run["m5_rule_effects"],
             "m5_analysis_trace_sha256": run["m5_analysis"].get(

@@ -125,12 +125,20 @@ def evaluated_run() -> dict:
                 "tp_given_resolution": 0.55 / 0.90,
             },
             "calibration": {
-                "version": "M6-horizon-calibration-v0.1",
+                "version": "M6-global-frozen-champion-v0.1",
                 "time_horizon": "intraday_short",
                 "horizon_label": "Intradía corto · hasta 4 h",
-                "confidence": "baja",
-                "calibration_records": 2,
-                "temperature": 1.3574273632828957,
+                "confidence": "referencia congelada",
+                "calibration_records": 35,
+                "temperature": 1.5,
+                "common_model_all_horizons": True,
+            },
+            "shadow_challenger": {
+                "version": "M6-horizon-overlay-shadow-v0.1",
+                "production_effect": "none",
+            },
+            "stability_policy": {
+                "version": "engine-stability-policy-v0.1",
             },
             "result_sha256": "m6-sha",
         },
@@ -196,14 +204,20 @@ class M6ProductionAnalysisTests(unittest.TestCase):
             result["tp_before_sl_within_horizon_probability"],
             0.55,
         )
-        self.assertEqual(result["confidence"], "baja")
+        self.assertEqual(result["confidence"], "referencia congelada")
         self.assertEqual(
             result["horizon_calibration"]["time_horizon"],
             "intraday_short",
         )
         self.assertEqual(
             result["model_trace"]["coefficient_artifact_id"],
-            "M6-HORIZON-INTRADAY-SHORT-PARTIAL-POOL-v0.1",
+            "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+        )
+        self.assertEqual(
+            result["model_trace"]["shadow_challenger"][
+                "production_effect"
+            ],
+            "none",
         )
         self.assertIn(
             "volatility_percentile_60",

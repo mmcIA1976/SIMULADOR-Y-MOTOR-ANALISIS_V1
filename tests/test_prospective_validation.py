@@ -14,10 +14,13 @@ from prospective_validation import (
     build_prospective_probability_run,
     load_frozen_candidate,
     prospective_validation_enabled,
+    stable_champion_artifact,
+    stable_champion_profile,
 )
 from m6_predictive_rules import (
     ACTIVE_EVIDENCE_FAMILIES,
     ACTIVE_PREDICTIVE_RULE_IDS,
+    FITTED_RULE_IDS,
 )
 
 
@@ -247,6 +250,29 @@ def live_rule_context() -> dict:
 
 
 class ProspectiveValidationTests(unittest.TestCase):
+    def test_same_frozen_champion_is_used_for_all_three_horizons(self):
+        artifact = stable_champion_artifact()
+        profiles = [
+            stable_champion_profile(horizon)
+            for horizon in (
+                "intraday_short",
+                "intraday_wide",
+                "short_swing",
+            )
+        ]
+
+        self.assertEqual(
+            {profile["coefficient_artifact_id"] for profile in profiles},
+            {artifact["id"]},
+        )
+        self.assertEqual(
+            {profile["temperature"] for profile in profiles},
+            {1.5},
+        )
+        self.assertTrue(
+            all(profile["horizon_specific_inputs"] for profile in profiles)
+        )
+
     def test_complete_closed_history_runs_m5_and_remediated_m6(self):
         result = build_prospective_probability_run(
             proposal(),
@@ -263,11 +289,28 @@ class ProspectiveValidationTests(unittest.TestCase):
         )
         self.assertEqual(
             result["m6_result"]["coefficient_artifact_id"],
-            "M6-HORIZON-INTRADAY-WIDE-PARTIAL-POOL-v0.1",
+            "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
         )
         self.assertEqual(
             result["m6_result"]["calibration"]["time_horizon"],
             "intraday_wide",
+        )
+        self.assertTrue(
+            result["m6_result"]["calibration"][
+                "common_model_all_horizons"
+            ]
+        )
+        self.assertEqual(
+            result["m6_result"]["shadow_challenger"][
+                "coefficient_artifact_id"
+            ],
+            "M6-HORIZON-INTRADAY-WIDE-PARTIAL-POOL-v0.1",
+        )
+        self.assertEqual(
+            result["m6_result"]["shadow_challenger"][
+                "production_effect"
+            ],
+            "none",
         )
         self.assertIn(
             "tp_before_sl_within_horizon",
@@ -431,7 +474,7 @@ class ProspectiveValidationTests(unittest.TestCase):
             result["m5_rule_effects"][
                 "M4-RULE-AGGRESSOR-IMBALANCE-001"
             ]["probability_effect_reason"],
-            "owner_authorized_active_rule_with_live_data",
+            "unvalidated_no_production_effect",
         )
         self.assertEqual(
             len(
@@ -439,7 +482,7 @@ class ProspectiveValidationTests(unittest.TestCase):
                     "active_predictive_rule_ids"
                 ]
             ),
-            11,
+            3,
         )
         self.assertEqual(
             result["m5_rule_effects"][
@@ -447,7 +490,7 @@ class ProspectiveValidationTests(unittest.TestCase):
             ]["probability_effect"],
             "separate_economic_layer",
         )
-        for rule_id in ACTIVE_PREDICTIVE_RULE_IDS:
+        for rule_id in FITTED_RULE_IDS:
             effect = result["m5_rule_effects"][rule_id]
             self.assertIn("ablation_probability_delta", effect)
             self.assertIn(
@@ -463,6 +506,24 @@ class ProspectiveValidationTests(unittest.TestCase):
                 1.0,
             )
             self.assertIn("family_ablation", effect)
+        for rule_id in (
+            set(ACTIVE_PREDICTIVE_RULE_IDS) - set(FITTED_RULE_IDS)
+        ):
+            effect = result["m5_rule_effects"][rule_id]
+            self.assertEqual(
+                effect["probability_effect"],
+                "shadow_challenger_only",
+            )
+            self.assertNotIn("ablation_probability_delta", effect)
+        self.assertIsNone(result["m6_result"]["active_rule_overlay"])
+        self.assertEqual(
+            len(
+                result["m6_result"]["shadow_challenger"][
+                    "active_rule_ids"
+                ]
+            ),
+            8,
+        )
         self.assertEqual(
             set(
                 result["m6_result"][
@@ -557,6 +618,44 @@ class ProspectiveValidationTests(unittest.TestCase):
                 "probability_effect"
             ],
             "separate_economic_layer",
+        )
+
+    def test_shadow_failure_cannot_block_or_change_champion(self):
+        baseline = build_prospective_probability_run(
+            proposal(),
+            snapshot(),
+            loader=paged_loader(raw_candles()),
+            analysis_id="shadow-baseline-test",
+            active_output=True,
+            live_context=live_rule_context(),
+        )
+        with patch(
+            "prospective_validation.apply_provisional_rule_overlay",
+            side_effect=RuntimeError("shadow-only failure"),
+        ):
+            isolated = build_prospective_probability_run(
+                proposal(),
+                snapshot(),
+                loader=paged_loader(raw_candles()),
+                analysis_id="shadow-isolation-test",
+                active_output=True,
+                live_context=live_rule_context(),
+            )
+
+        self.assertEqual(isolated["status"], "evaluated")
+        self.assertEqual(
+            isolated["m6_result"]["probabilities"],
+            baseline["m6_result"]["probabilities"],
+        )
+        self.assertEqual(
+            isolated["m6_result"]["shadow_challenger"]["status"],
+            "blocked_shadow",
+        )
+        self.assertEqual(
+            isolated["m6_result"]["shadow_challenger"][
+                "production_effect"
+            ],
+            "none",
         )
 
     def test_environment_kill_switch_is_explicit(self):

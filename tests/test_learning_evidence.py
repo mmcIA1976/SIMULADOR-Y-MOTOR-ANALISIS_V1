@@ -3,6 +3,7 @@ import unittest
 from learning_evidence import (
     apply_evidence_to_structured,
     build_historical_evidence,
+    reconstruction_window,
 )
 
 
@@ -146,6 +147,59 @@ class LearningEvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["recorded_result_consistency"], "consistent")
         self.assertEqual(evidence["reconstructed_plan_result"], "plan_would_succeed")
         self.assertEqual(evidence["post_close_excursion"]["max_favorable_pct"], 12.0)
+
+    def test_market_manual_close_uses_original_analysis_expiry(self):
+        window = reconstruction_window(
+            operation(
+                closed_at="1970-01-01T00:01:00+00:00",
+                close_reason="manual",
+                observation_until="1970-01-01T00:03:00+00:00",
+                recommendation_snapshot_json=(
+                    '{"evaluation_expires_at":'
+                    '"1970-01-01T00:07:00+00:00"}'
+                ),
+            )
+        )
+
+        self.assertEqual(
+            window["plan_end_ms"],
+            7 * MINUTE,
+        )
+
+    def test_limit_manual_close_uses_activation_outcome_deadline(self):
+        window = reconstruction_window(
+            operation(
+                closed_at="1970-01-01T00:01:00+00:00",
+                close_reason="manual",
+                entry_order_type="limit_pullback",
+                observation_until="1970-01-01T00:04:00+00:00",
+                recommendation_snapshot_json=(
+                    '{"evaluation_expires_at":'
+                    '"1970-01-01T00:07:00+00:00"}'
+                ),
+            )
+        )
+
+        self.assertEqual(
+            window["plan_end_ms"],
+            4 * MINUTE,
+        )
+
+    def test_close_after_analysis_expiry_caps_effective_close(self):
+        window = reconstruction_window(
+            operation(
+                closed_at="1970-01-01T00:10:00+00:00",
+                close_reason="manual",
+                recommendation_snapshot_json=(
+                    '{"evaluation_expires_at":'
+                    '"1970-01-01T00:07:00+00:00"}'
+                ),
+            )
+        )
+
+        self.assertEqual(window["close_ms"], 7 * MINUTE)
+        self.assertEqual(window["plan_end_ms"], 7 * MINUTE)
+        self.assertEqual(window["recorded_close_ms"], 10 * MINUTE)
 
     def test_kline_exit_evidence_uses_candle_close_as_effective_boundary(self):
         evidence = build_historical_evidence(

@@ -64,11 +64,35 @@ def reconstruction_window(operation: dict) -> dict:
         if evidence_close_ms is not None:
             close_ms = evidence_close_ms
     plan_end_ms = close_ms
-    if (
-        operation.get("close_reason") not in {"take_profit", "stop_loss"}
-        and operation.get("observation_until")
-    ):
-        plan_end_ms = timestamp_ms(operation.get("observation_until")) or close_ms
+    if operation.get("close_reason") not in {"take_profit", "stop_loss"}:
+        raw_snapshot = operation.get("recommendation_snapshot_json")
+        if isinstance(raw_snapshot, str):
+            try:
+                recommendation_snapshot = json.loads(raw_snapshot)
+            except json.JSONDecodeError:
+                recommendation_snapshot = {}
+        elif isinstance(raw_snapshot, dict):
+            recommendation_snapshot = raw_snapshot
+        else:
+            recommendation_snapshot = {}
+        if isinstance(recommendation_snapshot.get("snapshot"), dict):
+            recommendation_snapshot = recommendation_snapshot["snapshot"]
+        snapshot_end_ms = timestamp_ms(
+            recommendation_snapshot.get("evaluation_expires_at")
+        )
+        observation_end_ms = timestamp_ms(
+            operation.get("observation_until")
+        )
+        if operation.get("entry_order_type") == "limit_pullback":
+            plan_end_ms = (
+                observation_end_ms or snapshot_end_ms or close_ms
+            )
+        else:
+            plan_end_ms = (
+                snapshot_end_ms or observation_end_ms or close_ms
+            )
+        if plan_end_ms is not None and close_ms is not None:
+            close_ms = min(close_ms, plan_end_ms)
     return {
         "start_ms": start_ms,
         "close_ms": close_ms,

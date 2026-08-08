@@ -49,9 +49,17 @@ def load_candidates(operation_ids: list[int], limit: int | None) -> list[dict]:
             le.analysis_verdict AS evaluation_analysis_verdict,
             le.failure_type AS evaluation_failure_type,
             le.structured_json AS evaluation_structured_json,
-            le.evidence_version AS evaluation_evidence_version
+            le.evidence_version AS evaluation_evidence_version,
+            r.snapshot_json AS recommendation_snapshot_json
         FROM operations o
         JOIN learning_evaluations le ON le.operation_id = o.id
+        LEFT JOIN LATERAL (
+            SELECT candidate.snapshot_json
+            FROM recommendations candidate
+            WHERE candidate.operation_id = o.id
+            ORDER BY candidate.created_at DESC, candidate.id DESC
+            LIMIT 1
+        ) r ON TRUE
         WHERE {" AND ".join(filters)}
         ORDER BY o.id
         {limit_sql}

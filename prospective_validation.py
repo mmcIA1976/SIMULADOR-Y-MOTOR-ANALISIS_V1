@@ -12,6 +12,11 @@ from typing import Any, Callable
 import market_data
 from composite_rule_runtime import evaluate_composite_rule_family
 from db import row_to_dict
+from engine_stability_policy import (
+    SHADOW_CHALLENGER_VERSION,
+    STABLE_CHAMPION_VERSION,
+    stability_policy_snapshot,
+)
 from m5_engine import ENGINE_VERSION as M5_ENGINE_VERSION
 from m5_engine import run_internal_analysis
 from m5_input_assembly import (
@@ -23,6 +28,7 @@ from m5_input_assembly import (
 from m6_active_engine import ACTIVE_ENGINE_VERSION
 from m6_active_engine import run_internal_probability_analysis
 from m6_horizon_calibration import (
+    HORIZON_LABELS,
     horizon_calibration_profile,
     horizon_coefficient_artifact,
 )
@@ -115,6 +121,36 @@ def load_frozen_candidate() -> dict:
     if expected_artifact != actual_artifact:
         raise ValueError("frozen_candidate_artifact_hash_mismatch")
     return payload
+
+
+def stable_champion_artifact() -> dict:
+    return dict(load_frozen_candidate()["coefficient_artifact"])
+
+
+def stable_champion_profile(time_horizon: str) -> dict:
+    if time_horizon not in HORIZON_LABELS:
+        raise ValueError("unsupported_time_horizon")
+    candidate = load_frozen_candidate()
+    artifact = candidate["coefficient_artifact"]
+    calibration = artifact["calibration"]
+    return {
+        "version": STABLE_CHAMPION_VERSION,
+        "role": "production_champion",
+        "mutation": "frozen",
+        "time_horizon": time_horizon,
+        "horizon_label": HORIZON_LABELS[time_horizon],
+        "confidence": "referencia congelada",
+        "calibration_records": int(
+            candidate["selection"]["calibration_records"]
+        ),
+        "method": "single_global_competing_risk_model",
+        "temperature": float(calibration["temperature"]),
+        "coefficient_artifact_id": artifact["id"],
+        "coefficient_artifact_sha256": artifact["artifact_sha256"],
+        "common_model_all_horizons": True,
+        "horizon_specific_inputs": True,
+        "production_effect": PRODUCTION_EFFECT_SERVED,
+    }
 
 
 def standardized_candidate_features(
@@ -422,10 +458,15 @@ def build_prospective_probability_run(
         "observational_rule_traces": observational_rule_observations,
     }
     candidate_payload = load_frozen_candidate()
-    horizon_calibration = horizon_calibration_profile(
-        plan["time_horizon"]
-    )
-    artifact = horizon_coefficient_artifact(plan["time_horizon"])
+    artifact = stable_champion_artifact()
+    champion_calibration = {
+        **stable_champion_profile(plan["time_horizon"]),
+        "production_effect": (
+            PRODUCTION_EFFECT_SERVED
+            if active_output
+            else PRODUCTION_EFFECT_NONE
+        ),
+    }
     standardized_values = standardized_candidate_features(
         feature_values,
         artifact,
@@ -446,21 +487,84 @@ def build_prospective_probability_run(
             if active_output
             else PRODUCTION_EFFECT_NONE
         )
-        temperature = float(horizon_calibration["temperature"])
-        calibrated_before_overlay = temperature_calibration(
+        temperature = float(champion_calibration["temperature"])
+        calibrated = temperature_calibration(
             core_m6_result["probabilities"],
             temperature,
         )
-        provisional_signals = build_provisional_rule_signals(
-            m5_pre_probability,
-            side=plan["side"],
-            time_horizon=plan["time_horizon"],
-        )
-        rule_overlay = apply_provisional_rule_overlay(
-            calibrated_before_overlay,
-            provisional_signals,
-        )
-        calibrated = rule_overlay["probabilities_after"]
+
+        # The horizon-specific model remains observable, but it cannot alter
+        # any probability served to the user until it passes the frozen
+        # forward-promotion contract.
+        shadow_rule_overlay = {
+            "active_rule_ids": [],
+            "rule_contributions": {},
+        }
+        try:
+            horizon_calibration = horizon_calibration_profile(
+                plan["time_horizon"]
+            )
+            shadow_artifact = horizon_coefficient_artifact(
+                plan["time_horizon"]
+            )
+            shadow_standardized_values = standardized_candidate_features(
+                feature_values,
+                shadow_artifact,
+            )
+            shadow_core = run_internal_probability_analysis(
+                analysis_id=f"{analysis_id}:m6:shadow",
+                m5_analysis=m5_pre_probability,
+                feature_snapshot=shadow_standardized_values,
+                coefficient_artifact=shadow_artifact,
+                executed_at=plan["analysis_at"],
+            )
+            if shadow_core.get("status") != "evaluated_internal_only":
+                raise RuntimeError("shadow_challenger_evaluation_failed")
+            shadow_before_overlay = temperature_calibration(
+                shadow_core["probabilities"],
+                float(horizon_calibration["temperature"]),
+            )
+            provisional_signals = build_provisional_rule_signals(
+                m5_pre_probability,
+                side=plan["side"],
+                time_horizon=plan["time_horizon"],
+            )
+            shadow_rule_overlay = apply_provisional_rule_overlay(
+                shadow_before_overlay,
+                provisional_signals,
+            )
+            shadow_probabilities = shadow_rule_overlay[
+                "probabilities_after"
+            ]
+            shadow_challenger = {
+                "version": SHADOW_CHALLENGER_VERSION,
+                "role": "shadow_challenger",
+                "status": "evaluated_shadow",
+                "production_effect": PRODUCTION_EFFECT_NONE,
+                "coefficient_artifact_id": shadow_artifact["id"],
+                "coefficient_artifact_sha256": shadow_artifact[
+                    "artifact_sha256"
+                ],
+                "calibration_version": horizon_calibration["version"],
+                "temperature": float(horizon_calibration["temperature"]),
+                "probabilities": shadow_probabilities,
+                "probability_delta_vs_champion": {
+                    name: shadow_probabilities[name] - calibrated[name]
+                    for name in calibrated
+                },
+                "active_rule_ids": shadow_rule_overlay[
+                    "active_rule_ids"
+                ],
+            }
+        except Exception as exc:
+            shadow_challenger = {
+                "version": SHADOW_CHALLENGER_VERSION,
+                "role": "shadow_challenger",
+                "status": "blocked_shadow",
+                "block_code": type(exc).__name__,
+                "production_effect": PRODUCTION_EFFECT_NONE,
+                "active_rule_ids": [],
+            }
         resolution_probability = (
             calibrated["tp_first_within_horizon"]
             + calibrated["sl_first_within_horizon"]
@@ -508,21 +612,8 @@ def build_prospective_probability_run(
                     temperature,
                 )
             else:
-                ablated_before_overlay = calibrated_before_overlay
-            ablated_signals = {
-                **provisional_signals,
-                "active": {
-                    rule_id: value
-                    for rule_id, value in provisional_signals[
-                        "active"
-                    ].items()
-                    if rule_id not in removed_rule_ids
-                },
-            }
-            return apply_provisional_rule_overlay(
-                ablated_before_overlay,
-                ablated_signals,
-            )["probabilities_after"]
+                ablated_before_overlay = calibrated
+            return ablated_before_overlay
 
         fitted_rule_ablation = {}
         for rule_id, feature_names in FITTED_RULE_FEATURES.items():
@@ -563,7 +654,7 @@ def build_prospective_probability_run(
             }
         m6_result = {
             "engine_version": core_m6_result["engine_version"],
-            "candidate_version": horizon_calibration["version"],
+            "candidate_version": STABLE_CHAMPION_VERSION,
             "source_candidate_version": candidate_payload["version"],
             "coefficient_artifact_id": artifact["id"],
             "coefficient_artifact_sha256": artifact["artifact_sha256"],
@@ -575,7 +666,7 @@ def build_prospective_probability_run(
             "block_code": None,
             "probabilities": calibrated,
             "raw_probabilities": core_m6_result["probabilities"],
-            "probabilities_before_rule_overlay": calibrated_before_overlay,
+            "probabilities_before_rule_overlay": calibrated,
             "decision_probabilities": {
                 "tp_before_sl_within_horizon": calibrated[
                     "tp_first_within_horizon"
@@ -590,10 +681,12 @@ def build_prospective_probability_run(
                 "tp_given_resolution": tp_given_resolution,
                 "sl_given_resolution": sl_given_resolution,
             },
-            "active_rule_overlay": rule_overlay,
+            "active_rule_overlay": None,
+            "shadow_challenger": shadow_challenger,
             "fitted_rule_ablation": fitted_rule_ablation,
             "evidence_family_ablation": evidence_family_ablation,
-            "calibration": horizon_calibration,
+            "calibration": champion_calibration,
+            "stability_policy": stability_policy_snapshot(),
             "core_result": core_m6_result,
             "production_effect": production_effect,
         }
@@ -694,36 +787,17 @@ def build_prospective_probability_run(
                     ],
                 }
             )
-        for rule_id, contribution in rule_overlay[
+        for rule_id, contribution in shadow_rule_overlay[
             "rule_contributions"
         ].items():
             rule_effects[rule_id].update(
                 {
-                    "probability_effect": "provisional_rule_contribution",
+                    "probability_effect": "shadow_challenger_only",
                     "probability_effect_reason": (
-                        "owner_authorized_active_rule_with_live_data"
+                        "unvalidated_no_production_effect"
                     ),
-                    "provisional_weight": contribution["weight"],
-                    "signal": contribution["signal"],
-                    "effect_mode": contribution["effect_mode"],
-                    "signal_formula": contribution["signal_formula"],
-                    "tp_log_effect": contribution["tp_log_effect"],
-                    "sl_log_effect": contribution["sl_log_effect"],
-                    "expiry_log_effect": contribution[
-                        "expiry_log_effect"
-                    ],
-                    "tp_probability_delta": contribution[
-                        "tp_probability_delta"
-                    ],
-                    "sl_probability_delta": contribution[
-                        "sl_probability_delta"
-                    ],
-                    "ablation_probabilities_without_rule": contribution[
-                        "ablation_probabilities_without_rule"
-                    ],
-                    "ablation_probability_delta": contribution[
-                        "ablation_probability_delta"
-                    ],
+                    "shadow_signal": contribution["signal"],
+                    "shadow_weight": contribution["weight"],
                 }
             )
         rule_effects["M4-RULE-DERIVATIVES-CONTEXT-001"].update(
@@ -739,16 +813,13 @@ def build_prospective_probability_run(
     feature_snapshot["m5_rule_effects"] = rule_effects
     feature_snapshot["active_predictive_rule_ids"] = [
         rule_id
-        for rule_id in ACTIVE_PREDICTIVE_RULE_IDS
-        if (
-            rule_id in FITTED_RULE_IDS
-            and rule_effects[rule_id]["probability_effect"]
-            == "fitted_competing_risk_covariate"
-        )
-        or rule_id in rule_overlay["active_rule_ids"]
+        for rule_id in FITTED_RULE_IDS
+        if rule_effects[rule_id]["probability_effect"]
+        == "fitted_competing_risk_covariate"
     ] if evaluated else []
-    feature_snapshot["active_rule_overlay"] = (
-        rule_overlay if evaluated else None
+    feature_snapshot["active_rule_overlay"] = None
+    feature_snapshot["shadow_predictive_rule_ids"] = (
+        shadow_rule_overlay["active_rule_ids"] if evaluated else []
     )
     return {
         "runtime_version": PROSPECTIVE_RUNTIME_VERSION,
@@ -777,6 +848,12 @@ def build_prospective_probability_run(
             ],
             "visible_to_user": active_output,
             "owner_authorized": active_output,
+            "stability_policy_version": stability_policy_snapshot()[
+                "version"
+            ],
+            "shadow_challenger_version": (
+                SHADOW_CHALLENGER_VERSION if evaluated else None
+            ),
         },
         "production_effect": (
             PRODUCTION_EFFECT_SERVED

@@ -1,0 +1,4167 @@
+{
+  "audit_version": "post-baseline-exact-horizon-comparison-v0.1",
+  "generated_at": "2026-08-07T17:38:26.165217+00:00",
+  "baseline": {
+    "path": "auditorias_motor\\auditoria_integral_biblioteca_operaciones_cerradas_v0_1.json",
+    "audit_version": "full-rule-library-closed-operations-v0.1",
+    "generated_at": "2026-07-30T13:56:37.716623+00:00",
+    "audit_sha256": "8312fe8dd97711c42f70de1876632ffc605a1578e8a9cafa6b645282736d9881",
+    "closed_operations": 244,
+    "maximum_operation_id": 257
+  },
+  "scope": {
+    "selection": "closed_operations_not_present_in_baseline_case_ids",
+    "outcome_contract": [
+      "tp_first_within_horizon",
+      "sl_first_within_horizon",
+      "neither_barrier_before_expiry"
+    ],
+    "outcome_source": "binance_usdm_closed_1m_first_passage_reconstruction",
+    "pretrade_input_source": "stored_recommendation_snapshot_m5_rule_trace",
+    "no_missing_to_neutral": true,
+    "production_changes": false,
+    "supabase_writes": false
+  },
+  "model_roles": {
+    "stored_v04_served": "prospective_original_served_output",
+    "m6_global_core_frozen": "predeclared_before_incremental_cohort_exact_input_replay",
+    "v05_horizon_core_replay": "post_cohort_retrospective_exact_input_replay",
+    "v05_horizon_full_replay": "post_cohort_retrospective_exact_input_replay"
+  },
+  "inventory": {
+    "baseline_closed_operations": 244,
+    "incremental_closed_operations": 42,
+    "exact_horizon_operations": 42,
+    "metric_eligible_operations": 38,
+    "outcome_excluded_operations": 4,
+    "outcome_status_counts": {
+      "resolved": 38,
+      "ambiguous_boundary_minute": 2,
+      "right_censored_not_expired": 2
+    },
+    "horizon_counts": {
+      "intraday_short": 13,
+      "intraday_wide": 16,
+      "short_swing": 13
+    },
+    "engine_version_counts": {
+      "M6-ACTIVE-PREDICTIVE-RULES-v0.4": 4,
+      "TP-SL-PROBABILITY-ENGINE-v0.4": 38
+    },
+    "prospective_v05_closed_operations": 0,
+    "stored_learning_evidence_consistency": {
+      "consistent": 31,
+      "inconsistent": 1,
+      "not_comparable": 10
+    }
+  },
+  "metrics": {
+    "overall": {
+      "stored_v04_served": {
+        "n": 38,
+        "class_counts": {
+          "neither_barrier_before_expiry": 10,
+          "tp_first_within_horizon": 12,
+          "sl_first_within_horizon": 16
+        },
+        "brier_3c": 0.38281727621341927,
+        "log_loss_3c": 0.5723919389095358,
+        "macro_ovr_auc": 0.8576617826617827,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.8301282051282052,
+          "sl_first_within_horizon": 0.75,
+          "neither_barrier_before_expiry": 0.9928571428571429
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.05835664503627097,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.403324441238617,
+                "observed_frequency": 0.3157894736842105,
+                "absolute_error": 0.08753496755440648
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.3496717716636106,
+                "observed_frequency": 0.42105263157894735,
+                "absolute_error": 0.07138085991533677
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 38,
+                "mean_forecast": 0.24700378709777243,
+                "observed_frequency": 0.2631578947368421,
+                "absolute_error": 0.01615410763906966
+              }
+            ]
+          }
+        },
+        "top_class_accuracy": {
+          "correct": 29,
+          "total": 38,
+          "accuracy": 0.7631578947368421
+        }
+      },
+      "m6_global_core_frozen": {
+        "n": 38,
+        "class_counts": {
+          "neither_barrier_before_expiry": 10,
+          "tp_first_within_horizon": 12,
+          "sl_first_within_horizon": 16
+        },
+        "brier_3c": 0.37296750738686385,
+        "log_loss_3c": 0.5619417796075353,
+        "macro_ovr_auc": 0.8511301198801199,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.8076923076923077,
+          "sl_first_within_horizon": 0.7528409090909091,
+          "neither_barrier_before_expiry": 0.9928571428571429
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.05268066417305881,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.39481046994379876,
+                "observed_frequency": 0.3157894736842105,
+                "absolute_error": 0.07902099625958825
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.35536234938310507,
+                "observed_frequency": 0.42105263157894735,
+                "absolute_error": 0.06569028219584228
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 38,
+                "mean_forecast": 0.24982718067309617,
+                "observed_frequency": 0.2631578947368421,
+                "absolute_error": 0.013330714063745919
+              }
+            ]
+          }
+        },
+        "top_class_accuracy": {
+          "correct": 29,
+          "total": 38,
+          "accuracy": 0.7631578947368421
+        }
+      },
+      "v05_horizon_core_replay": {
+        "n": 38,
+        "class_counts": {
+          "neither_barrier_before_expiry": 10,
+          "tp_first_within_horizon": 12,
+          "sl_first_within_horizon": 16
+        },
+        "brier_3c": 0.3839144371735021,
+        "log_loss_3c": 0.5807989601481565,
+        "macro_ovr_auc": 0.8757998945498945,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.8589743589743589,
+          "sl_first_within_horizon": 0.7755681818181818,
+          "neither_barrier_before_expiry": 0.9928571428571429
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.06256975549255564,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.40964410692304404,
+                "observed_frequency": 0.3157894736842105,
+                "absolute_error": 0.09385463323883353
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.33681404343937577,
+                "observed_frequency": 0.42105263157894735,
+                "absolute_error": 0.08423858813957158
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 38,
+                "mean_forecast": 0.25354184963758025,
+                "observed_frequency": 0.2631578947368421,
+                "absolute_error": 0.009616045099261838
+              }
+            ]
+          }
+        },
+        "top_class_accuracy": {
+          "correct": 30,
+          "total": 38,
+          "accuracy": 0.7894736842105263
+        }
+      },
+      "v05_horizon_full_replay": {
+        "n": 38,
+        "class_counts": {
+          "neither_barrier_before_expiry": 10,
+          "tp_first_within_horizon": 12,
+          "sl_first_within_horizon": 16
+        },
+        "brier_3c": 0.3944063648901578,
+        "log_loss_3c": 0.5913341818971647,
+        "macro_ovr_auc": 0.8620566933066933,
+        "ovr_auc_by_class": {
+          "tp_first_within_horizon": 0.8461538461538461,
+          "sl_first_within_horizon": 0.7471590909090909,
+          "neither_barrier_before_expiry": 0.9928571428571429
+        },
+        "calibration": {
+          "bin_count": 1,
+          "weighted_absolute_calibration_error": 0.06890001847167687,
+          "classes": {
+            "tp_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.41913950139172584,
+                "observed_frequency": 0.3157894736842105,
+                "absolute_error": 0.10335002770751534
+              }
+            ],
+            "sl_first_within_horizon": [
+              {
+                "n": 38,
+                "mean_forecast": 0.3308398049798359,
+                "observed_frequency": 0.42105263157894735,
+                "absolute_error": 0.09021282659911145
+              }
+            ],
+            "neither_barrier_before_expiry": [
+              {
+                "n": 38,
+                "mean_forecast": 0.25002069362843826,
+                "observed_frequency": 0.2631578947368421,
+                "absolute_error": 0.013137201108403829
+              }
+            ]
+          }
+        },
+        "top_class_accuracy": {
+          "correct": 29,
+          "total": 38,
+          "accuracy": 0.7631578947368421
+        }
+      }
+    },
+    "by_horizon": {
+      "intraday_short": {
+        "stored_v04_served": {
+          "n": 12,
+          "class_counts": {
+            "neither_barrier_before_expiry": 6,
+            "sl_first_within_horizon": 4,
+            "tp_first_within_horizon": 2
+          },
+          "brier_3c": 0.2632134228288648,
+          "log_loss_3c": 0.39187101611922914,
+          "macro_ovr_auc": 0.9249999999999999,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.9,
+            "sl_first_within_horizon": 0.875,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.05380754658560416,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.2061253914892053,
+                  "observed_frequency": 0.16666666666666666,
+                  "absolute_error": 0.03945872482253865
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.25262201345492713,
+                  "observed_frequency": 0.3333333333333333,
+                  "absolute_error": 0.08071131987840618
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.5412525950558676,
+                  "observed_frequency": 0.5,
+                  "absolute_error": 0.04125259505586765
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 9,
+            "total": 12,
+            "accuracy": 0.75
+          }
+        },
+        "m6_global_core_frozen": {
+          "n": 12,
+          "class_counts": {
+            "neither_barrier_before_expiry": 6,
+            "sl_first_within_horizon": 4,
+            "tp_first_within_horizon": 2
+          },
+          "brier_3c": 0.26381596449757233,
+          "log_loss_3c": 0.39509839678252745,
+          "macro_ovr_auc": 0.9249999999999999,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.9,
+            "sl_first_within_horizon": 0.875,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.05502042735679552,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.20693067060152523,
+                  "observed_frequency": 0.16666666666666666,
+                  "absolute_error": 0.04026400393485857
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.25080269229814006,
+                  "observed_frequency": 0.3333333333333333,
+                  "absolute_error": 0.08253064103519325
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.5422666371003347,
+                  "observed_frequency": 0.5,
+                  "absolute_error": 0.042266637100334736
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 9,
+            "total": 12,
+            "accuracy": 0.75
+          }
+        },
+        "v05_horizon_core_replay": {
+          "n": 12,
+          "class_counts": {
+            "neither_barrier_before_expiry": 6,
+            "sl_first_within_horizon": 4,
+            "tp_first_within_horizon": 2
+          },
+          "brier_3c": 0.2684200381304759,
+          "log_loss_3c": 0.4085013713933348,
+          "macro_ovr_auc": 0.9249999999999999,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.9,
+            "sl_first_within_horizon": 0.875,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.06339787843230883,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.21482893408776774,
+                  "observed_frequency": 0.16666666666666666,
+                  "absolute_error": 0.04816226742110108
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.23823651568487006,
+                  "observed_frequency": 0.3333333333333333,
+                  "absolute_error": 0.09509681764846326
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.5469345502273621,
+                  "observed_frequency": 0.5,
+                  "absolute_error": 0.04693455022736215
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 10,
+            "total": 12,
+            "accuracy": 0.8333333333333334
+          }
+        },
+        "v05_horizon_full_replay": {
+          "n": 12,
+          "class_counts": {
+            "neither_barrier_before_expiry": 6,
+            "sl_first_within_horizon": 4,
+            "tp_first_within_horizon": 2
+          },
+          "brier_3c": 0.26751880062704564,
+          "log_loss_3c": 0.4044476946530546,
+          "macro_ovr_auc": 0.9249999999999999,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.9,
+            "sl_first_within_horizon": 0.875,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.06223827650246527,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.21406262265758866,
+                  "observed_frequency": 0.16666666666666666,
+                  "absolute_error": 0.047395955990922
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.2399759185796354,
+                  "observed_frequency": 0.3333333333333333,
+                  "absolute_error": 0.09335741475369791
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 12,
+                  "mean_forecast": 0.5459614587627759,
+                  "observed_frequency": 0.5,
+                  "absolute_error": 0.04596145876277591
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 10,
+            "total": 12,
+            "accuracy": 0.8333333333333334
+          }
+        }
+      },
+      "intraday_wide": {
+        "stored_v04_served": {
+          "n": 15,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "tp_first_within_horizon": 9,
+            "sl_first_within_horizon": 4
+          },
+          "brier_3c": 0.3852989831093635,
+          "log_loss_3c": 0.5947530710561466,
+          "macro_ovr_auc": 0.8156565656565657,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.8333333333333334,
+            "sl_first_within_horizon": 0.6136363636363636,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.058818234479551014,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.5377163781249618,
+                  "observed_frequency": 0.6,
+                  "absolute_error": 0.06228362187503822
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.3548940183859932,
+                  "observed_frequency": 0.26666666666666666,
+                  "absolute_error": 0.08822735171932655
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.10738960348904505,
+                  "observed_frequency": 0.13333333333333333,
+                  "absolute_error": 0.025943729844288277
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 12,
+            "total": 15,
+            "accuracy": 0.8
+          }
+        },
+        "m6_global_core_frozen": {
+          "n": 15,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "tp_first_within_horizon": 9,
+            "sl_first_within_horizon": 4
+          },
+          "brier_3c": 0.38825750540927023,
+          "log_loss_3c": 0.5999676394978181,
+          "macro_ovr_auc": 0.777216610549944,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.7407407407407407,
+            "sl_first_within_horizon": 0.5909090909090909,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.06335931151713295,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.5291249816456052,
+                  "observed_frequency": 0.6,
+                  "absolute_error": 0.0708750183543948
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.3617056339423661,
+                  "observed_frequency": 0.26666666666666666,
+                  "absolute_error": 0.09503896727569944
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.10916938441202872,
+                  "observed_frequency": 0.13333333333333333,
+                  "absolute_error": 0.024163948921304607
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 12,
+            "total": 15,
+            "accuracy": 0.8
+          }
+        },
+        "v05_horizon_core_replay": {
+          "n": 15,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "tp_first_within_horizon": 9,
+            "sl_first_within_horizon": 4
+          },
+          "brier_3c": 0.3758550712636089,
+          "log_loss_3c": 0.5808929805852491,
+          "macro_ovr_auc": 0.777216610549944,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.7407407407407407,
+            "sl_first_within_horizon": 0.5909090909090909,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.05408732116253577,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.5448729629669156,
+                  "observed_frequency": 0.6,
+                  "absolute_error": 0.055127037033084414
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.3477976484104703,
+                  "observed_frequency": 0.26666666666666666,
+                  "absolute_error": 0.08113098174380362
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.10732938862261406,
+                  "observed_frequency": 0.13333333333333333,
+                  "absolute_error": 0.026003944710719276
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 12,
+            "total": 15,
+            "accuracy": 0.8
+          }
+        },
+        "v05_horizon_full_replay": {
+          "n": 15,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "tp_first_within_horizon": 9,
+            "sl_first_within_horizon": 4
+          },
+          "brier_3c": 0.3734728410346006,
+          "log_loss_3c": 0.5759923843857687,
+          "macro_ovr_auc": 0.8047138047138048,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.7777777777777778,
+            "sl_first_within_horizon": 0.6363636363636364,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.04983942160924143,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.5537309036381175,
+                  "observed_frequency": 0.6,
+                  "absolute_error": 0.04626909636188248
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.34142579908052884,
+                  "observed_frequency": 0.26666666666666666,
+                  "absolute_error": 0.07475913241386217
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 15,
+                  "mean_forecast": 0.10484329728135369,
+                  "observed_frequency": 0.13333333333333333,
+                  "absolute_error": 0.02849003605197964
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 12,
+            "total": 15,
+            "accuracy": 0.8
+          }
+        }
+      },
+      "short_swing": {
+        "stored_v04_served": {
+          "n": 11,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "sl_first_within_horizon": 8,
+            "tp_first_within_horizon": 1
+          },
+          "brier_3c": 0.5099100614111912,
+          "log_loss_3c": 0.7388314017535828,
+          "macro_ovr_auc": 0.7888888888888889,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.7,
+            "sl_first_within_horizon": 0.6666666666666666,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.22951990286803373,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.4351889452111415,
+                  "observed_frequency": 0.09090909090909091,
+                  "absolute_error": 0.34427985430205055
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.44842298963347066,
+                  "observed_frequency": 0.7272727272727273,
+                  "absolute_error": 0.27884973763925663
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.11638806515538785,
+                  "observed_frequency": 0.18181818181818182,
+                  "absolute_error": 0.06543011666279397
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 8,
+            "total": 11,
+            "accuracy": 0.7272727272727273
+          }
+        },
+        "m6_global_core_frozen": {
+          "n": 11,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "sl_first_within_horizon": 8,
+            "tp_first_within_horizon": 1
+          },
+          "brier_3c": 0.4711919205082642,
+          "log_loss_3c": 0.6920992973844313,
+          "macro_ovr_auc": 0.8027777777777777,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.7,
+            "sl_first_within_horizon": 0.7083333333333334,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.21713667187648317,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.41661409872381566,
+                  "observed_frequency": 0.09090909090909091,
+                  "absolute_error": 0.3257050078147248
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.46077749634952914,
+                  "observed_frequency": 0.7272727272727273,
+                  "absolute_error": 0.26649523092319816
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.12260840492665523,
+                  "observed_frequency": 0.18181818181818182,
+                  "absolute_error": 0.059209776891526594
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 8,
+            "total": 11,
+            "accuracy": 0.7272727272727273
+          }
+        },
+        "v05_horizon_core_replay": {
+          "n": 11,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "sl_first_within_horizon": 8,
+            "tp_first_within_horizon": 1
+          },
+          "brier_3c": 0.5208983714612031,
+          "log_loss_3c": 0.7686317563755626,
+          "macro_ovr_auc": 0.8305555555555556,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.7,
+            "sl_first_within_horizon": 0.7916666666666666,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.23123844906174087,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.4377667645017022,
+                  "observed_frequency": 0.09090909090909091,
+                  "absolute_error": 0.3468576735926113
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.42937552148370756,
+                  "observed_frequency": 0.7272727272727273,
+                  "absolute_error": 0.29789720578901974
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.13285771401459023,
+                  "observed_frequency": 0.18181818181818182,
+                  "absolute_error": 0.04896046780359159
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 8,
+            "total": 11,
+            "accuracy": 0.7272727272727273
+          }
+        },
+        "v05_horizon_full_replay": {
+          "n": 11,
+          "class_counts": {
+            "neither_barrier_before_expiry": 2,
+            "sl_first_within_horizon": 8,
+            "tp_first_within_horizon": 1
+          },
+          "brier_3c": 0.5613748766165854,
+          "log_loss_3c": 0.8161309827699159,
+          "macro_ovr_auc": 0.8222222222222223,
+          "ovr_auc_by_class": {
+            "tp_first_within_horizon": 0.8,
+            "sl_first_within_horizon": 0.6666666666666666,
+            "neither_barrier_before_expiry": 1.0
+          },
+          "calibration": {
+            "bin_count": 1,
+            "weighted_absolute_calibration_error": 0.24561127432865182,
+            "classes": {
+              "tp_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.45932600240206867,
+                  "observed_frequency": 0.09090909090909091,
+                  "absolute_error": 0.36841691149297773
+                }
+              ],
+              "sl_first_within_horizon": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.4155285981882006,
+                  "observed_frequency": 0.7272727272727273,
+                  "absolute_error": 0.3117441290845267
+                }
+              ],
+              "neither_barrier_before_expiry": [
+                {
+                  "n": 11,
+                  "mean_forecast": 0.1251453994097308,
+                  "observed_frequency": 0.18181818181818182,
+                  "absolute_error": 0.05667278240845103
+                }
+              ]
+            }
+          },
+          "top_class_accuracy": {
+            "correct": 7,
+            "total": 11,
+            "accuracy": 0.6363636363636364
+          }
+        }
+      }
+    }
+  },
+  "comparisons": {
+    "m6_global_vs_stored_v04": {
+      "candidate": "m6_global_core_frozen",
+      "reference": "stored_v04_served",
+      "result": {
+        "candidate_minus_reference": {
+          "brier_3c": -0.009849768826555416,
+          "log_loss_3c": -0.010450159302000439,
+          "top_class_accuracy": 0.0
+        },
+        "calendar_block_bootstrap": {
+          "status": "evaluated",
+          "calendar_blocks": 11,
+          "resamples": 2000,
+          "left_minus_right": {
+            "brier_3c": {
+              "mean": -0.01135143363608767,
+              "lower_95": -0.03234780358713274,
+              "upper_95": 0.0021094551502929826
+            },
+            "log_loss_3c": {
+              "mean": -0.01223880463643044,
+              "lower_95": -0.03811736828327561,
+              "upper_95": 0.00370701559073916
+            }
+          }
+        }
+      }
+    },
+    "v05_core_vs_m6_global": {
+      "candidate": "v05_horizon_core_replay",
+      "reference": "m6_global_core_frozen",
+      "result": {
+        "candidate_minus_reference": {
+          "brier_3c": 0.010946929786638249,
+          "log_loss_3c": 0.018857180540621132,
+          "top_class_accuracy": 0.02631578947368418
+        },
+        "calendar_block_bootstrap": {
+          "status": "evaluated",
+          "calendar_blocks": 11,
+          "resamples": 2000,
+          "left_minus_right": {
+            "brier_3c": {
+              "mean": 0.009778790732176659,
+              "lower_95": -0.01913423560248617,
+              "upper_95": 0.03502954754534823
+            },
+            "log_loss_3c": {
+              "mean": 0.017791055277989607,
+              "lower_95": -0.01292971110002672,
+              "upper_95": 0.04544931209443992
+            }
+          }
+        }
+      }
+    },
+    "v05_full_vs_m6_global": {
+      "candidate": "v05_horizon_full_replay",
+      "reference": "m6_global_core_frozen",
+      "result": {
+        "candidate_minus_reference": {
+          "brier_3c": 0.02143885750329394,
+          "log_loss_3c": 0.02939240228962936,
+          "top_class_accuracy": 0.0
+        },
+        "calendar_block_bootstrap": {
+          "status": "evaluated",
+          "calendar_blocks": 11,
+          "resamples": 2000,
+          "left_minus_right": {
+            "brier_3c": {
+              "mean": 0.021786399758555283,
+              "lower_95": -0.000759912399284246,
+              "upper_95": 0.048111727873356325
+            },
+            "log_loss_3c": {
+              "mean": 0.030208030339891938,
+              "lower_95": 0.004389120171992444,
+              "upper_95": 0.06303721401706985
+            }
+          }
+        }
+      }
+    },
+    "v05_full_vs_v05_core": {
+      "candidate": "v05_horizon_full_replay",
+      "reference": "v05_horizon_core_replay",
+      "result": {
+        "candidate_minus_reference": {
+          "brier_3c": 0.010491927716655691,
+          "log_loss_3c": 0.010535221749008228,
+          "top_class_accuracy": -0.02631578947368418
+        },
+        "calendar_block_bootstrap": {
+          "status": "evaluated",
+          "calendar_blocks": 11,
+          "resamples": 2000,
+          "left_minus_right": {
+            "brier_3c": {
+              "mean": 0.012007609026378626,
+              "lower_95": -0.0016193084442407413,
+              "upper_95": 0.03394991168925443
+            },
+            "log_loss_3c": {
+              "mean": 0.01241697506190233,
+              "lower_95": -0.004216871908704012,
+              "upper_95": 0.03890340463396835
+            }
+          }
+        }
+      }
+    }
+  },
+  "decision": {
+    "lowest_observed_log_loss_model": "m6_global_core_frozen",
+    "v05_promotion_authorized": false,
+    "reason": "no_closed_operation_originally_analyzed_by_v05",
+    "automatic_weight_changes_authorized": false,
+    "recommended_engine_action": "do_not_treat_v05_as_champion; preserve_m6_global_frozen_as_reference_and_collect_a_frozen_forward_cohort",
+    "production_effect": "none"
+  },
+  "operation_coverage": [
+    {
+      "operation_id": 250,
+      "recommendation_id": 905,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 251,
+      "recommendation_id": 907,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 253,
+      "recommendation_id": 910,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 255,
+      "recommendation_id": 913,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 258,
+      "recommendation_id": 934,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 259,
+      "recommendation_id": 937,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 260,
+      "recommendation_id": 938,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 261,
+      "recommendation_id": 952,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 262,
+      "recommendation_id": 954,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 263,
+      "recommendation_id": 955,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 264,
+      "recommendation_id": 959,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 265,
+      "recommendation_id": 962,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 266,
+      "recommendation_id": 965,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 267,
+      "recommendation_id": 966,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 268,
+      "recommendation_id": 971,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 269,
+      "recommendation_id": 972,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 270,
+      "recommendation_id": 974,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 271,
+      "recommendation_id": 975,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 272,
+      "recommendation_id": 976,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 273,
+      "recommendation_id": 978,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 275,
+      "recommendation_id": 985,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 276,
+      "recommendation_id": 989,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 277,
+      "recommendation_id": 996,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 278,
+      "recommendation_id": 997,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 279,
+      "recommendation_id": 999,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 280,
+      "recommendation_id": 1000,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 281,
+      "recommendation_id": 1002,
+      "normalization_status": "included",
+      "normalization_reasons": [],
+      "metric_exclusion": "ambiguous_boundary_minute"
+    },
+    {
+      "operation_id": 282,
+      "recommendation_id": 1003,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 283,
+      "recommendation_id": 1004,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 284,
+      "recommendation_id": 1006,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 285,
+      "recommendation_id": 1009,
+      "normalization_status": "included",
+      "normalization_reasons": [],
+      "metric_exclusion": "right_censored_not_expired"
+    },
+    {
+      "operation_id": 286,
+      "recommendation_id": 1012,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 287,
+      "recommendation_id": 1016,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 288,
+      "recommendation_id": 1026,
+      "normalization_status": "included",
+      "normalization_reasons": [],
+      "metric_exclusion": "ambiguous_boundary_minute"
+    },
+    {
+      "operation_id": 289,
+      "recommendation_id": 1031,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 290,
+      "recommendation_id": 1032,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 294,
+      "recommendation_id": 1041,
+      "normalization_status": "included",
+      "normalization_reasons": [],
+      "metric_exclusion": "right_censored_not_expired"
+    },
+    {
+      "operation_id": 295,
+      "recommendation_id": 1046,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 296,
+      "recommendation_id": 1048,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 297,
+      "recommendation_id": 1052,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 300,
+      "recommendation_id": 1066,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    },
+    {
+      "operation_id": 302,
+      "recommendation_id": 1077,
+      "normalization_status": "included",
+      "normalization_reasons": []
+    }
+  ],
+  "cases": [
+    {
+      "operation_id": 250,
+      "recommendation_id": 905,
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-07-28T21:48:13.795612+00:00",
+      "engine_version": "M6-ACTIVE-PREDICTIVE-RULES-v0.4",
+      "app_version": "app-v0.22.0-active-predictive-rules",
+      "scoring_version": "M6-calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "fa6ce8d56e78eee6853ee6a4e18fdc24a142f0a923202c89c826586ffa25cec4"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.34233835227581894,
+        "directional_path_efficiency_2h": -0.22296718090870804,
+        "directional_path_efficiency_4h": -0.08925111728365938,
+        "volatility_percentile_60": 0.6666666666666666,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.0,
+          "sl_first_within_horizon": 0.0,
+          "neither_barrier_before_expiry": 1.0
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 9.999999997999997e-11,
+          "sl_first_within_horizon": 9.999999997999997e-11,
+          "neither_barrier_before_expiry": 0.9999999998
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 8.906046657909833e-12,
+          "sl_first_within_horizon": 8.906046657909833e-12,
+          "neither_barrier_before_expiry": 0.9999999999821878
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 8.374921122392015e-12,
+          "sl_first_within_horizon": 9.987997614911832e-12,
+          "neither_barrier_before_expiry": 0.9999999999816371
+        }
+      }
+    },
+    {
+      "operation_id": 251,
+      "recommendation_id": 907,
+      "symbol": "SOLUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-07-28T21:49:26.798178+00:00",
+      "engine_version": "M6-ACTIVE-PREDICTIVE-RULES-v0.4",
+      "app_version": "app-v0.22.0-active-predictive-rules",
+      "scoring_version": "M6-calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "7dd6f7316c59b9a5ed6ac31c04f078711e22f7278b03d90f9e06b0ec37d685d1"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.2474124544774451,
+        "directional_path_efficiency_2h": -0.19535615830204436,
+        "directional_path_efficiency_4h": -0.0642709418612804,
+        "volatility_percentile_60": 0.4666666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.0,
+          "sl_first_within_horizon": 0.0,
+          "neither_barrier_before_expiry": 1.0
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 9.999999997999997e-11,
+          "sl_first_within_horizon": 9.999999997999997e-11,
+          "neither_barrier_before_expiry": 0.9999999998
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 8.906046657909833e-12,
+          "sl_first_within_horizon": 8.906046657909833e-12,
+          "neither_barrier_before_expiry": 0.9999999999821878
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 8.513796324524373e-12,
+          "sl_first_within_horizon": 9.462705054091112e-12,
+          "neither_barrier_before_expiry": 0.9999999999820235
+        }
+      }
+    },
+    {
+      "operation_id": 253,
+      "recommendation_id": 910,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-29T15:14:16.422723+00:00",
+      "engine_version": "M6-ACTIVE-PREDICTIVE-RULES-v0.4",
+      "app_version": "app-v0.22.0-active-predictive-rules",
+      "scoring_version": "M6-calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "343175f108e82e6cc92abac7591c3eca7840deaf5ab3335d52d565311befd265"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.13833022241377538,
+        "directional_path_efficiency_2h": 0.06230075858134766,
+        "directional_path_efficiency_4h": 0.007187810796741781,
+        "volatility_percentile_60": 0.5166666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.011722000000000002,
+          "sl_first_within_horizon": 0.24771200000000002,
+          "neither_barrier_before_expiry": 0.7405660000000001
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.010155548512059997,
+          "sl_first_within_horizon": 0.24000025350930662,
+          "neither_barrier_before_expiry": 0.7498441979786333
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.005065676717336656,
+          "sl_first_within_horizon": 0.20702707521349245,
+          "neither_barrier_before_expiry": 0.7879072480691709
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.0061228758925449935,
+          "sl_first_within_horizon": 0.22315674495614748,
+          "neither_barrier_before_expiry": 0.7707203791513075
+        }
+      }
+    },
+    {
+      "operation_id": 255,
+      "recommendation_id": 913,
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-07-29T15:15:19.774579+00:00",
+      "engine_version": "M6-ACTIVE-PREDICTIVE-RULES-v0.4",
+      "app_version": "app-v0.22.0-active-predictive-rules",
+      "scoring_version": "M6-calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 10081,
+        "expected_candle_count": 10081,
+        "market_sha256": "7dac687ffd3b23490325b04bce16761ce8d90e889c3e5089c58e4607f3252137"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.3050805206025802,
+        "directional_path_efficiency_2h": -0.12609287694078278,
+        "directional_path_efficiency_4h": -0.012742612565481882,
+        "volatility_percentile_60": 0.31666666666666665,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.232516,
+          "sl_first_within_horizon": 0.303462,
+          "neither_barrier_before_expiry": 0.464022
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.23728086688488353,
+          "sl_first_within_horizon": 0.2669847797165217,
+          "neither_barrier_before_expiry": 0.4957343533985948
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.284700754961751,
+          "sl_first_within_horizon": 0.28711824822116017,
+          "neither_barrier_before_expiry": 0.4281809968170888
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.2806390720571479,
+          "sl_first_within_horizon": 0.3231494335688405,
+          "neither_barrier_before_expiry": 0.3962114943740116
+        }
+      }
+    },
+    {
+      "operation_id": 258,
+      "recommendation_id": 934,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-30T15:27:04.355672+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-07-30T16:13:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "8a30d0c4245ced5c41a1a2bb894012c02c19933f7c3b8e2a5572ffba7bc03d88"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.11640538056042757,
+        "directional_path_efficiency_2h": 0.06620774371756909,
+        "directional_path_efficiency_4h": 0.023639227816068854,
+        "volatility_percentile_60": 0.6333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.647338523675399,
+          "sl_first_within_horizon": 0.352661475740581,
+          "neither_barrier_before_expiry": 5.84019954899517e-10
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6158689657495383,
+          "sl_first_within_horizon": 0.38413103361998674,
+          "neither_barrier_before_expiry": 6.304750443360583e-10
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6350181855171311,
+          "sl_first_within_horizon": 0.36498181446483896,
+          "neither_barrier_before_expiry": 1.8030016610435037e-11
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6663952749076919,
+          "sl_first_within_horizon": 0.3336047250753064,
+          "neither_barrier_before_expiry": 1.7001805090159266e-11
+        }
+      }
+    },
+    {
+      "operation_id": 259,
+      "recommendation_id": 937,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-07-30T19:01:54.365104+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-07-31T07:07:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 10081,
+        "expected_candle_count": 10081,
+        "market_sha256": "1d5d619f01c2326f72312b8154cf325114abbf1677aa1f89cb30f39e12bf6ebd"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.02385156175224334,
+        "directional_path_efficiency_2h": 0.04443980530100133,
+        "directional_path_efficiency_4h": 0.08055416296125321,
+        "volatility_percentile_60": 0.06666666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.47626175017118005,
+          "sl_first_within_horizon": 0.5234547988993851,
+          "neither_barrier_before_expiry": 0.00028345092943494506
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.42726120788032196,
+          "sl_first_within_horizon": 0.5724234547774342,
+          "neither_barrier_before_expiry": 0.00031533734224388564
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.47005823918319645,
+          "sl_first_within_horizon": 0.5161729672442389,
+          "neither_barrier_before_expiry": 0.01376879357256458
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.5242971593515601,
+          "sl_first_within_horizon": 0.46356577041689984,
+          "neither_barrier_before_expiry": 0.012137070231540086
+        }
+      }
+    },
+    {
+      "operation_id": 260,
+      "recommendation_id": 938,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-07-30T19:03:54.903420+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-07-30T23:33:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 10081,
+        "expected_candle_count": 10081,
+        "market_sha256": "8c5385a783178d476ba704cb6dd67a4f90da6ecb75ffe865052e96e23104ca6b"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.02385156175224334,
+        "directional_path_efficiency_2h": -0.04443980530100133,
+        "directional_path_efficiency_4h": -0.08055416296125321,
+        "volatility_percentile_60": 0.06666666666666667,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.20205529570833794,
+          "sl_first_within_horizon": 0.7979358349396568,
+          "neither_barrier_before_expiry": 8.869352005258159e-06
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.23521355492254845,
+          "sl_first_within_horizon": 0.764775922416336,
+          "neither_barrier_before_expiry": 1.0522661115627594e-05
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.3702361956642431,
+          "sl_first_within_horizon": 0.6286410121366488,
+          "neither_barrier_before_expiry": 0.0011227921991081291
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.3222169874780297,
+          "sl_first_within_horizon": 0.676794782789728,
+          "neither_barrier_before_expiry": 0.0009882297322424398
+        }
+      }
+    },
+    {
+      "operation_id": 261,
+      "recommendation_id": 952,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-31T07:47:08.936552+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-07-31T08:40:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "acf4312d0b457515e94f5e1c8073dc8bb934ffa5eba64fe7f268e62b2cebf7b0"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.08102284985096253,
+        "directional_path_efficiency_2h": -0.023428076338629564,
+        "directional_path_efficiency_4h": -0.06791343253947274,
+        "volatility_percentile_60": 0.13333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.4442625312301301,
+          "sl_first_within_horizon": 0.5557373981161852,
+          "neither_barrier_before_expiry": 7.065368472442461e-08
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.42650501220328957,
+          "sl_first_within_horizon": 0.5734949147283296,
+          "neither_barrier_before_expiry": 7.30683807518752e-08
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.4140102456197533,
+          "sl_first_within_horizon": 0.58598974960537,
+          "neither_barrier_before_expiry": 4.774876647271269e-09
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.43222510697055216,
+          "sl_first_within_horizon": 0.5677748884338747,
+          "neither_barrier_before_expiry": 4.595573218107603e-09
+        }
+      }
+    },
+    {
+      "operation_id": 262,
+      "recommendation_id": 954,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-31T09:42:00.440858+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-07-31T14:05:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "0b7b45a53a9c6c2e5634893a7d040617d5a73e3944e99412d050b4f857e06ad1"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.24520149072962816,
+        "directional_path_efficiency_2h": -0.07969097259597832,
+        "directional_path_efficiency_4h": -0.09813045416751935,
+        "volatility_percentile_60": 0.11666666666666667,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.632825193639878,
+          "sl_first_within_horizon": 0.330790803196152,
+          "neither_barrier_before_expiry": 0.03638400316397
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6568576803515378,
+          "sl_first_within_horizon": 0.30504025356886066,
+          "neither_barrier_before_expiry": 0.03810206607960143
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6934572895695857,
+          "sl_first_within_horizon": 0.28197636953131705,
+          "neither_barrier_before_expiry": 0.024566340899097133
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6701452377188061,
+          "sl_first_within_horizon": 0.3068668127045016,
+          "neither_barrier_before_expiry": 0.022987949576692295
+        }
+      }
+    },
+    {
+      "operation_id": 263,
+      "recommendation_id": 955,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-07-31T10:16:57.289622+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-04T23:18:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 10081,
+        "expected_candle_count": 10081,
+        "market_sha256": "662a069d57cd26a4d129493ce352b529b46df7ba8798fd0c65668833215a698a"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": false
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.12195369180821282,
+        "directional_path_efficiency_2h": -0.09011996203273093,
+        "directional_path_efficiency_4h": -0.06678397216391127,
+        "volatility_percentile_60": 0.08333333333333333,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.35580953996924225,
+          "sl_first_within_horizon": 0.6382546916382185,
+          "neither_barrier_before_expiry": 0.0059357683925391844
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.32061801448339733,
+          "sl_first_within_horizon": 0.6730578728406645,
+          "neither_barrier_before_expiry": 0.006324112675938195
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.42039710275245273,
+          "sl_first_within_horizon": 0.5163078162207674,
+          "neither_barrier_before_expiry": 0.06329508102677993
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.4635556213802608,
+          "sl_first_within_horizon": 0.478705378781485,
+          "neither_barrier_before_expiry": 0.05773899983825423
+        }
+      }
+    },
+    {
+      "operation_id": 264,
+      "recommendation_id": 959,
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-07-31T10:20:00.910272+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-07-31T19:40:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 10081,
+        "expected_candle_count": 10081,
+        "market_sha256": "27bf3cda323ad7de4a39c8d89e089adae6b43b257e6ab92df56c0aafbf52622e"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.2048044274929569,
+        "directional_path_efficiency_2h": 0.027505066858784497,
+        "directional_path_efficiency_4h": 0.030945675889877816,
+        "volatility_percentile_60": 0.3333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.3822719164719087,
+          "sl_first_within_horizon": 0.6174582660769056,
+          "neither_barrier_before_expiry": 0.00026981745118569584
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.43033916676816436,
+          "sl_first_within_horizon": 0.5693508838718825,
+          "neither_barrier_before_expiry": 0.00030994935995304487
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.4567521538866065,
+          "sl_first_within_horizon": 0.5388538109253183,
+          "neither_barrier_before_expiry": 0.004394035188075241
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.40765420018041654,
+          "sl_first_within_horizon": 0.5884930325726766,
+          "neither_barrier_before_expiry": 0.003852767246906743
+        }
+      }
+    },
+    {
+      "operation_id": 265,
+      "recommendation_id": 962,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-31T14:12:33.708747+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-07-31T17:37:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "8ac0c7a68a6e57f50154c4aa86bc42cfc610803dc65c5339a667f0c1575cbcc2"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.5332226044200703,
+        "directional_path_efficiency_2h": -0.13728448355404088,
+        "directional_path_efficiency_4h": -0.12317220987460958,
+        "volatility_percentile_60": 0.13333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.7139038277251719,
+          "sl_first_within_horizon": 0.029592969104416195,
+          "neither_barrier_before_expiry": 0.2565032031704119
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.7201337183555888,
+          "sl_first_within_horizon": 0.02675888656070659,
+          "neither_barrier_before_expiry": 0.2531073950837046
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.7608830543648669,
+          "sl_first_within_horizon": 0.015985160952373036,
+          "neither_barrier_before_expiry": 0.2231317846827601
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.7645907401804765,
+          "sl_first_within_horizon": 0.01788825551245343,
+          "neither_barrier_before_expiry": 0.21752100430707003
+        }
+      }
+    },
+    {
+      "operation_id": 266,
+      "recommendation_id": 965,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-31T14:58:22.271755+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-07-31T17:56:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "1df728e8c7dfc37ba2cc2270c39dd333be8daab9225251cb0a242b9a62748d2f"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.5406325795343292,
+        "directional_path_efficiency_2h": 0.1649677741271831,
+        "directional_path_efficiency_4h": 0.10919862148505508,
+        "volatility_percentile_60": 0.23333333333333334,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6159418875086788,
+          "sl_first_within_horizon": 0.32729380087561794,
+          "neither_barrier_before_expiry": 0.056764311615703285
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6173321739324388,
+          "sl_first_within_horizon": 0.32287037219119286,
+          "neither_barrier_before_expiry": 0.05979745387636839
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6526884008477762,
+          "sl_first_within_horizon": 0.3051146716560152,
+          "neither_barrier_before_expiry": 0.042196927496208604
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6503505054748945,
+          "sl_first_within_horizon": 0.30972517266725846,
+          "neither_barrier_before_expiry": 0.03992432185784697
+        }
+      }
+    },
+    {
+      "operation_id": 267,
+      "recommendation_id": 966,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-07-31T15:38:36.534656+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 10081,
+        "expected_candle_count": 10081,
+        "market_sha256": "2cec303d6d216f4f1b4ca7d0ecce3340430813c1ba8006c20e3dd8eb35c33998"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.00152122142881327,
+        "directional_path_efficiency_2h": 0.07386593924665402,
+        "directional_path_efficiency_4h": 0.09188216742143716,
+        "volatility_percentile_60": 0.05,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.030991495669872807,
+          "sl_first_within_horizon": 0.3717730257372391,
+          "neither_barrier_before_expiry": 0.5972354785928881
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.03163160155372016,
+          "sl_first_within_horizon": 0.34422276886549846,
+          "neither_barrier_before_expiry": 0.6241456295807813
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.08218028350585375,
+          "sl_first_within_horizon": 0.3453992210356302,
+          "neither_barrier_before_expiry": 0.5724204954585161
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.07886279190380206,
+          "sl_first_within_horizon": 0.36829742667702,
+          "neither_barrier_before_expiry": 0.552839781419178
+        }
+      }
+    },
+    {
+      "operation_id": 268,
+      "recommendation_id": 971,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-07-31T18:43:21.179270+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-01T18:21:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "c1a90f75a40ef5cf2305b6489818e0849b826001f14fed13f16b91e868bf5ce1"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.42255791403885384,
+        "directional_path_efficiency_2h": 0.12542907931569108,
+        "directional_path_efficiency_4h": 0.10011573677852442,
+        "volatility_percentile_60": 0.38333333333333336,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6883774049455343,
+          "sl_first_within_horizon": 0.2835708176216151,
+          "neither_barrier_before_expiry": 0.028051777432850512
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6236565198803713,
+          "sl_first_within_horizon": 0.34333334856607095,
+          "neither_barrier_before_expiry": 0.03301013155355764
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6543367923746051,
+          "sl_first_within_horizon": 0.3248443051666874,
+          "neither_barrier_before_expiry": 0.020818902458707638
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.7146229621875935,
+          "sl_first_within_horizon": 0.26680527431300627,
+          "neither_barrier_before_expiry": 0.01857176349940039
+        }
+      }
+    },
+    {
+      "operation_id": 269,
+      "recommendation_id": 972,
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-07-31T23:41:32.531146+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "56b8705058b29984d8f4898fcfa990adfc0f3b30ad472bf49933cdd79d6ddf74"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.07140101368589051,
+        "directional_path_efficiency_2h": 0.0077444194775901564,
+        "directional_path_efficiency_4h": 0.08690364697700692,
+        "volatility_percentile_60": 0.11666666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 1.0144058287573197e-10,
+          "sl_first_within_horizon": 1.0221587713352494e-10,
+          "neither_barrier_before_expiry": 0.9999999997963436
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 9.999999997999997e-11,
+          "sl_first_within_horizon": 9.999999997999997e-11,
+          "neither_barrier_before_expiry": 0.9999999998
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 8.906046657909833e-12,
+          "sl_first_within_horizon": 8.906046657909833e-12,
+          "neither_barrier_before_expiry": 0.9999999999821878
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 8.976017359609494e-12,
+          "sl_first_within_horizon": 9.112386771715996e-12,
+          "neither_barrier_before_expiry": 0.9999999999819116
+        }
+      }
+    },
+    {
+      "operation_id": 270,
+      "recommendation_id": 974,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-07-31T23:45:38.931950+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "77d95f00658136aac7c05f21e52bd80d50cbf21ffdd1468d874a788efc05e807"
+      },
+      "stored_learning_evidence": {
+        "label": "neither_barrier_before_expiry",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "no_plan_touch",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.05651663273321688,
+        "directional_path_efficiency_2h": -0.06722347358479872,
+        "directional_path_efficiency_4h": 0.13187135580089054,
+        "volatility_percentile_60": 0.15,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 1.0046187208975504e-10,
+          "sl_first_within_horizon": 2.5743097850881912e-05,
+          "neither_barrier_before_expiry": 0.9999742568016873
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 9.999751043293792e-11,
+          "sl_first_within_horizon": 2.4978799011472698e-05,
+          "neither_barrier_before_expiry": 0.9999750211009909
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 8.90598275220631e-12,
+          "sl_first_within_horizon": 7.253324422095083e-06,
+          "neither_barrier_before_expiry": 0.999992746666672
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 8.790518045879288e-12,
+          "sl_first_within_horizon": 7.361315288607016e-06,
+          "neither_barrier_before_expiry": 0.999992638675921
+        }
+      }
+    },
+    {
+      "operation_id": 271,
+      "recommendation_id": 975,
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-07-31T23:48:02.611312+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "26d1e3cb894805b77417cb3c543193e4d405bfea1348a55b13b6b2850144b162"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": null,
+        "quality": null,
+        "path_resolution": null,
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.018861893636659174,
+        "directional_path_efficiency_2h": 0.031155360937947716,
+        "directional_path_efficiency_4h": -0.08299639327740349,
+        "volatility_percentile_60": 0.4166666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 1.0111267361198196e-10,
+          "sl_first_within_horizon": 1.0277181432848695e-10,
+          "neither_barrier_before_expiry": 0.9999999997961155
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 9.999999997999997e-11,
+          "sl_first_within_horizon": 9.999999997999997e-11,
+          "neither_barrier_before_expiry": 0.9999999998
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 8.906046657909833e-12,
+          "sl_first_within_horizon": 8.906046657909833e-12,
+          "neither_barrier_before_expiry": 0.9999999999821878
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 8.992354983297771e-12,
+          "sl_first_within_horizon": 9.11286472148945e-12,
+          "neither_barrier_before_expiry": 0.9999999999818947
+        }
+      }
+    },
+    {
+      "operation_id": 272,
+      "recommendation_id": 976,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-01T10:52:20.120855+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-04T23:18:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 9039,
+        "expected_candle_count": 9039,
+        "market_sha256": "b31f549dac2bafabcd75c67da2f2e67fe3b142772498ba7a866d8d6e8125ab1d"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.12442511888503306,
+        "directional_path_efficiency_2h": 0.05445405138415605,
+        "directional_path_efficiency_4h": -0.01377735452731666,
+        "volatility_percentile_60": 0.1,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6866708605080841,
+          "sl_first_within_horizon": 0.3038370621324091,
+          "neither_barrier_before_expiry": 0.009492077359506851
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6449461689684497,
+          "sl_first_within_horizon": 0.3441226863633871,
+          "neither_barrier_before_expiry": 0.010931144668163216
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.5670349521895047,
+          "sl_first_within_horizon": 0.35830235048640585,
+          "neither_barrier_before_expiry": 0.0746626973240894
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6164279236800323,
+          "sl_first_within_horizon": 0.3168677329977388,
+          "neither_barrier_before_expiry": 0.06670434332222908
+        }
+      }
+    },
+    {
+      "operation_id": 273,
+      "recommendation_id": 978,
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-01T11:00:29.462134+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-01T18:30:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 9031,
+        "expected_candle_count": 9031,
+        "market_sha256": "f717a720bc733240fed647e672c9a4b7b3e6bcfe05ed92b29767cc2f4628b12f"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.09466718774637645,
+        "directional_path_efficiency_2h": -0.08737177352720228,
+        "directional_path_efficiency_4h": -0.16885973167765428,
+        "volatility_percentile_60": 0.016666666666666666,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.7717982138094488,
+          "sl_first_within_horizon": 0.22814640744323594,
+          "neither_barrier_before_expiry": 5.5378747315121485e-05
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.7339712235054227,
+          "sl_first_within_horizon": 0.2659630444368618,
+          "neither_barrier_before_expiry": 6.57320577156027e-05
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.694423222195064,
+          "sl_first_within_horizon": 0.3022103972154763,
+          "neither_barrier_before_expiry": 0.00336638058945969
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.7399756674402631,
+          "sl_first_within_horizon": 0.2570724647596633,
+          "neither_barrier_before_expiry": 0.002951867800073578
+        }
+      }
+    },
+    {
+      "operation_id": 275,
+      "recommendation_id": 985,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-02T19:50:14.049126+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-05T20:20:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 7061,
+        "expected_candle_count": 7061,
+        "market_sha256": "0d02614b3795d12f9378d9ab1aaf5937c47c6ba089b0199a90bb019bd6fdb451"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.15005266069885348,
+        "directional_path_efficiency_2h": 0.06933314079484734,
+        "directional_path_efficiency_4h": -0.01664373720154217,
+        "volatility_percentile_60": 0.13333333333333333,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.285903005919201,
+          "sl_first_within_horizon": 0.511158602959854,
+          "neither_barrier_before_expiry": 0.202938391120945
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.2539114498051041,
+          "sl_first_within_horizon": 0.5352646237597491,
+          "neither_barrier_before_expiry": 0.21082392643514683
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.29718751108006897,
+          "sl_first_within_horizon": 0.40416189413349635,
+          "neither_barrier_before_expiry": 0.29865059478643463
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.33695205469670614,
+          "sl_first_within_horizon": 0.38125533304853776,
+          "neither_barrier_before_expiry": 0.281792612254756
+        }
+      }
+    },
+    {
+      "operation_id": 276,
+      "recommendation_id": 989,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-03T17:21:46.111764+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-03T17:23:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "f3a59a92a5e8d284c3408cd9aa28889e5063c388a7bffbb5b40a80791decd2ad"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.26131393562401245,
+        "directional_path_efficiency_2h": -0.2320232478054777,
+        "directional_path_efficiency_4h": -0.07445234671974178,
+        "volatility_percentile_60": 0.9333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.2972637528344538,
+          "sl_first_within_horizon": 0.7027162864833205,
+          "neither_barrier_before_expiry": 1.9960682225657388e-05
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.28259748526799683,
+          "sl_first_within_horizon": 0.7173806602454922,
+          "neither_barrier_before_expiry": 2.185448651098231e-05
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.31859708907257966,
+          "sl_first_within_horizon": 0.6814011136262506,
+          "neither_barrier_before_expiry": 1.7973011698497096e-06
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.3285258637665466,
+          "sl_first_within_horizon": 0.6714724932477889,
+          "neither_barrier_before_expiry": 1.6429856646325236e-06
+        }
+      }
+    },
+    {
+      "operation_id": 277,
+      "recommendation_id": 996,
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-03T22:11:09.410757+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "65b85b0049b71c53ad4b10c1310b1a8595bf64139b96088456e3d33e425eefa5"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": null,
+        "quality": null,
+        "path_resolution": null,
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.22480044846457095,
+        "directional_path_efficiency_2h": -0.00752388524384789,
+        "directional_path_efficiency_4h": -0.022131705838322392,
+        "volatility_percentile_60": 0.4666666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 1.1159838358884302e-10,
+          "sl_first_within_horizon": 9.623751563781361e-11,
+          "neither_barrier_before_expiry": 0.9999999997921641
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 9.999999997999997e-11,
+          "sl_first_within_horizon": 9.999999997999997e-11,
+          "neither_barrier_before_expiry": 0.9999999998
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 8.906046657909833e-12,
+          "sl_first_within_horizon": 8.906046657909833e-12,
+          "neither_barrier_before_expiry": 0.9999999999821878
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 9.752387089324918e-12,
+          "sl_first_within_horizon": 8.608385112357104e-12,
+          "neither_barrier_before_expiry": 0.9999999999816391
+        }
+      }
+    },
+    {
+      "operation_id": 278,
+      "recommendation_id": 997,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-03T22:24:23.491595+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "neither_barrier_before_expiry",
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "f315af6222dc6611ba08b42433960065051db443c49d53812826410829f94212"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": null,
+        "quality": null,
+        "path_resolution": null,
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.00026178869196764366,
+        "directional_path_efficiency_2h": 0.12047038734139841,
+        "directional_path_efficiency_4h": -0.09480808301370594,
+        "volatility_percentile_60": 0.5,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.150981305181839,
+          "sl_first_within_horizon": 0.389296344977084,
+          "neither_barrier_before_expiry": 0.459722349841077
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.15316288926490854,
+          "sl_first_within_horizon": 0.376876290856392,
+          "neither_barrier_before_expiry": 0.4699608198786995
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.13154721314607074,
+          "sl_first_within_horizon": 0.3783145392243761,
+          "neither_barrier_before_expiry": 0.49013824762955316
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.1293245139687164,
+          "sl_first_within_horizon": 0.388297606012688,
+          "neither_barrier_before_expiry": 0.4823778800185956
+        }
+      }
+    },
+    {
+      "operation_id": 279,
+      "recommendation_id": 999,
+      "symbol": "INJUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-04T15:01:34.181872+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.23.11-analysis-presentation",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-04T16:27:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "d2ddee014a5975afba65ee9f79dc7adbbd159e15ed96657901170ae0d1adf97b"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.10670328948349908,
+        "directional_path_efficiency_2h": -0.030399069636973374,
+        "directional_path_efficiency_4h": 0.047192643778292305,
+        "volatility_percentile_60": 0.0,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.55773888128573,
+          "sl_first_within_horizon": 0.442070829008432,
+          "neither_barrier_before_expiry": 0.000190289705838103
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5158225326709948,
+          "sl_first_within_horizon": 0.48396547079860436,
+          "neither_barrier_before_expiry": 0.00021199653040089843
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.5186601625027556,
+          "sl_first_within_horizon": 0.4812845977396542,
+          "neither_barrier_before_expiry": 5.5239757590189825e-05
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.562123655673253,
+          "sl_first_within_horizon": 0.4378264516755823,
+          "neither_barrier_before_expiry": 4.989265116478455e-05
+        }
+      }
+    },
+    {
+      "operation_id": 280,
+      "recommendation_id": 1000,
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-04T17:01:15.513137+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.0-operation-worker-monitor",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-04T17:02:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "999c0ee54aa742a5e17c486569982fbf6bb09c3fedd5ae1a1b08b48e3ced3d7a"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.05676462883576526,
+        "directional_path_efficiency_2h": -0.07030143284997464,
+        "directional_path_efficiency_4h": -0.0622491667170186,
+        "volatility_percentile_60": 0.75,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.4368573141338587,
+          "sl_first_within_horizon": 0.5631426857895326,
+          "neither_barrier_before_expiry": 7.660875219413785e-11
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.445607001697314,
+          "sl_first_within_horizon": 0.5543929982230812,
+          "neither_barrier_before_expiry": 7.960487737883372e-11
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.4896603108143457,
+          "sl_first_within_horizon": 0.5103396891782335,
+          "neither_barrier_before_expiry": 7.42084305039577e-12
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.4799937413675797,
+          "sl_first_within_horizon": 0.5200062586252245,
+          "neither_barrier_before_expiry": 7.195502298629104e-12
+        }
+      }
+    },
+    {
+      "operation_id": 281,
+      "recommendation_id": 1002,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-04T17:51:54.618173+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.2-ui-operation-sync-cache",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "ambiguous_boundary_minute",
+        "label": null,
+        "first_touch_at": "2026-08-04T17:51:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "8b2952b850ebff23fa673e2772c56312fcf2d732b0159351eb288d0dbc9c6ad4"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.05144342424106207,
+        "directional_path_efficiency_2h": 0.08768429343097423,
+        "directional_path_efficiency_4h": 0.023087630980763673,
+        "volatility_percentile_60": 0.75,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.45985551865150376,
+          "sl_first_within_horizon": 0.5401444812726698,
+          "neither_barrier_before_expiry": 7.582638035125756e-11
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.47651451201889,
+          "sl_first_within_horizon": 0.5234854879016962,
+          "neither_barrier_before_expiry": 7.941383058914095e-11
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.49025660479770206,
+          "sl_first_within_horizon": 0.5097433951948772,
+          "neither_barrier_before_expiry": 7.420779524860026e-12
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.47957744096653737,
+          "sl_first_within_horizon": 0.5204225590263148,
+          "neither_barrier_before_expiry": 7.147778572541179e-12
+        }
+      }
+    },
+    {
+      "operation_id": 282,
+      "recommendation_id": 1003,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-04T17:54:21.924317+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.2-ui-operation-sync-cache",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-04T18:02:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "1316cc3330efc25101addb7ee04c6dc1f1a4b9211169a36fafee36b47acd9d0c"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.05144342424106207,
+        "directional_path_efficiency_2h": 0.08768429343097423,
+        "directional_path_efficiency_4h": 0.023087630980763673,
+        "volatility_percentile_60": 0.75,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.524440223468145,
+          "sl_first_within_horizon": 0.475559641651134,
+          "neither_barrier_before_expiry": 1.34880721031868e-07
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5400075516053695,
+          "sl_first_within_horizon": 0.4599923077167904,
+          "neither_barrier_before_expiry": 1.4067784006557148e-07
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.5638805772475394,
+          "sl_first_within_horizon": 0.4361194183407846,
+          "neither_barrier_before_expiry": 4.411676145928246e-09
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.5541867385799326,
+          "sl_first_within_horizon": 0.44581325717069104,
+          "neither_barrier_before_expiry": 4.249376244682466e-09
+        }
+      }
+    },
+    {
+      "operation_id": 283,
+      "recommendation_id": 1004,
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-05T07:29:05.764477+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.2-ui-operation-sync-cache",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-05T07:59:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "f7aa381f1d4612d36973ce5d7466e15ec9d5ad5417648ea662c7938a3e796a88"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.1129328960823628,
+        "directional_path_efficiency_2h": 0.08239757716293157,
+        "directional_path_efficiency_4h": -0.0012938512076005218,
+        "volatility_percentile_60": 0.16666666666666666,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6192192678562242,
+          "sl_first_within_horizon": 0.38078066725851406,
+          "neither_barrier_before_expiry": 6.488526181513441e-08
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6323787096256421,
+          "sl_first_within_horizon": 0.3676212223181312,
+          "neither_barrier_before_expiry": 6.805622673280602e-08
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6539349328418848,
+          "sl_first_within_horizon": 0.34606506278691423,
+          "neither_barrier_before_expiry": 4.371200932893054e-09
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6409318895009727,
+          "sl_first_within_horizon": 0.35906810636085884,
+          "neither_barrier_before_expiry": 4.138168747509453e-09
+        }
+      }
+    },
+    {
+      "operation_id": 284,
+      "recommendation_id": 1006,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-05T07:31:28.152593+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.2-ui-operation-sync-cache",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-05T18:48:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 3480,
+        "expected_candle_count": 3480,
+        "market_sha256": "1334e298614eebad176daa4df3e8e7f848ca0fe4a2581737117708f586e43597"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.0270239950732713,
+        "directional_path_efficiency_2h": -0.09427668552771405,
+        "directional_path_efficiency_4h": 0.04503871789509458,
+        "volatility_percentile_60": 0.2,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6457993696274411,
+          "sl_first_within_horizon": 0.35417315350454504,
+          "neither_barrier_before_expiry": 2.7476868013948102e-05
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5943849140213872,
+          "sl_first_within_horizon": 0.4055833491509036,
+          "neither_barrier_before_expiry": 3.173682770932699e-05
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.5629447491856543,
+          "sl_first_within_horizon": 0.4355162972949429,
+          "neither_barrier_before_expiry": 0.0015389535194028515
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6204178940607247,
+          "sl_first_within_horizon": 0.37823000253755723,
+          "neither_barrier_before_expiry": 0.0013521034017183106
+        }
+      }
+    },
+    {
+      "operation_id": 285,
+      "recommendation_id": 1009,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-05T08:02:48.161621+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.2-ui-operation-sync-cache",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "right_censored_not_expired",
+        "label": null,
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 3449,
+        "expected_candle_count": 3449,
+        "market_sha256": "fd3374cf86cc62645d7a415e49d656ee52a25846a2927fc56d655a51c6e2318d"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": null,
+        "quality": null,
+        "path_resolution": null,
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.0270239950732713,
+        "directional_path_efficiency_2h": 0.09427668552771405,
+        "directional_path_efficiency_4h": -0.04503871789509458,
+        "volatility_percentile_60": 0.2,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.39676275207258,
+          "sl_first_within_horizon": 0.493000588194451,
+          "neither_barrier_before_expiry": 0.110236659732969
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.4380691042893169,
+          "sl_first_within_horizon": 0.4389606716638738,
+          "neither_barrier_before_expiry": 0.12297022404680924
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.41496116845925485,
+          "sl_first_within_horizon": 0.3653973461591284,
+          "neither_barrier_before_expiry": 0.21964148538161676
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.3794324204576463,
+          "sl_first_within_horizon": 0.4223362047461299,
+          "neither_barrier_before_expiry": 0.1982313747962239
+        }
+      }
+    },
+    {
+      "operation_id": 286,
+      "recommendation_id": 1012,
+      "symbol": "XRPUSDT",
+      "side": "long",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-05T09:07:47.319701+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.2-ui-operation-sync-cache",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-05T10:10:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "969f361cc0ba02f6fe9ceb6305a52211f48667aa127d33f5c546050589abc6ef"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.11829434384699526,
+        "directional_path_efficiency_2h": -0.0559719493214389,
+        "directional_path_efficiency_4h": -0.08696844847998417,
+        "volatility_percentile_60": 0.11666666666666667,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.2913154250634753,
+          "sl_first_within_horizon": 0.21473316563135023,
+          "neither_barrier_before_expiry": 0.4939514093051745
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.2942239191924348,
+          "sl_first_within_horizon": 0.1997026867350336,
+          "neither_barrier_before_expiry": 0.5060733940725317
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.2759325150913726,
+          "sl_first_within_horizon": 0.16153231120835568,
+          "neither_barrier_before_expiry": 0.5625351737002717
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.27518815196858604,
+          "sl_first_within_horizon": 0.17393085679376902,
+          "neither_barrier_before_expiry": 0.550880991237645
+        }
+      }
+    },
+    {
+      "operation_id": 287,
+      "recommendation_id": 1016,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-05T11:29:50.422221+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.3-market-price-ticks",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-05T12:10:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "950eb8e2037eda139c1b302a2e1b2dc2d97426131d8ce71c160c6beaffe2d134"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.09389517316103725,
+        "directional_path_efficiency_2h": 0.18630113202513804,
+        "directional_path_efficiency_4h": 0.08214748708482668,
+        "volatility_percentile_60": 0.25,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.5494384533274653,
+          "sl_first_within_horizon": 0.4505615465982253,
+          "neither_barrier_before_expiry": 7.430946203323484e-11
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5755959266071697,
+          "sl_first_within_horizon": 0.4244040733130066,
+          "neither_barrier_before_expiry": 7.982363710036843e-11
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.5884339331480679,
+          "sl_first_within_horizon": 0.4115660668503312,
+          "neither_barrier_before_expiry": 1.6009658829575987e-12
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.5627882854592556,
+          "sl_first_within_horizon": 0.43721171453926394,
+          "neither_barrier_before_expiry": 1.480494241046853e-12
+        }
+      }
+    },
+    {
+      "operation_id": 288,
+      "recommendation_id": 1026,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-05T15:02:23.924384+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.3-market-price-ticks",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "ambiguous_boundary_minute",
+        "label": null,
+        "first_touch_at": "2026-08-05T15:02:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "0b9c76814d2edd20b8c22021c22e6cfdabd9a76d460541403027dc32d64980ce"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.12813984633013883,
+        "directional_path_efficiency_2h": 0.08567925687593639,
+        "directional_path_efficiency_4h": 0.10735322764290937,
+        "volatility_percentile_60": 0.13333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.42586232683715225,
+          "sl_first_within_horizon": 0.5741376730910224,
+          "neither_barrier_before_expiry": 7.182541261371364e-11
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.4596318867583946,
+          "sl_first_within_horizon": 0.540368113162106,
+          "neither_barrier_before_expiry": 7.949939291930426e-11
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.45267917453840867,
+          "sl_first_within_horizon": 0.5473208254599953,
+          "neither_barrier_before_expiry": 1.5959923712746834e-12
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.4198067348696495,
+          "sl_first_within_horizon": 0.5801932651288972,
+          "neither_barrier_before_expiry": 1.4532904727720733e-12
+        }
+      }
+    },
+    {
+      "operation_id": 289,
+      "recommendation_id": 1031,
+      "symbol": "XRPUSDT",
+      "side": "short",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-05T20:33:36.207741+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.3-market-price-ticks",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-05T21:26:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "3c7161c68f33a23e074d7abfdcb64c9e2f809f522f64f585d7d060b9d95299ab"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.1838385566934914,
+        "directional_path_efficiency_2h": 0.07902959421746499,
+        "directional_path_efficiency_4h": -0.07190093651723001,
+        "volatility_percentile_60": 0.13333333333333333,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6554734701851666,
+          "sl_first_within_horizon": 0.3443474266012328,
+          "neither_barrier_before_expiry": 0.0001791032136006089
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.6037331836364556,
+          "sl_first_within_horizon": 0.39606191786053146,
+          "neither_barrier_before_expiry": 0.00020489850301289803
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6211503258331097,
+          "sl_first_within_horizon": 0.3787968256778018,
+          "neither_barrier_before_expiry": 5.2848489088514717e-05
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6689943347602777,
+          "sl_first_within_horizon": 0.3309581177539445,
+          "neither_barrier_before_expiry": 4.7547485777776305e-05
+        }
+      }
+    },
+    {
+      "operation_id": 290,
+      "recommendation_id": 1032,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-05T20:46:27.419968+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.25.3-market-price-ticks",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-06T13:25:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 2685,
+        "expected_candle_count": 2685,
+        "market_sha256": "122fc1662ea415a0331eeb0507587c8cba5eb7fea9ac651ceaac43bacf2e7bb7"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "ambiguous_boundary_candle",
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.04840355445456816,
+        "directional_path_efficiency_2h": -0.06848253719829216,
+        "directional_path_efficiency_4h": 0.0696994976755523,
+        "volatility_percentile_60": 0.2,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.7170009494678399,
+          "sl_first_within_horizon": 0.2829990426367279,
+          "neither_barrier_before_expiry": 7.895432219532849e-09
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.673196917168573,
+          "sl_first_within_horizon": 0.32680307364558137,
+          "neither_barrier_before_expiry": 9.185845571645933e-09
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6095192449143285,
+          "sl_first_within_horizon": 0.39044672140669834,
+          "neither_barrier_before_expiry": 3.403367897312747e-05
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6615866541938119,
+          "sl_first_within_horizon": 0.33838322192005943,
+          "neither_barrier_before_expiry": 3.0123886128695516e-05
+        }
+      }
+    },
+    {
+      "operation_id": 294,
+      "recommendation_id": 1041,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "short_swing",
+      "analysis_at": "2026-08-06T05:05:55.961564+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.27.1-limit-placement-fix",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "right_censored_not_expired",
+        "label": null,
+        "first_touch_at": null,
+        "coverage_ratio": 1.0,
+        "candle_count": 2186,
+        "expected_candle_count": 2186,
+        "market_sha256": "2134097f35910c3c66e7ccf150b0e7efab59b25c7ee7f152668f79de30a0f7bd"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": null,
+        "quality": null,
+        "path_resolution": null,
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.06872322394652616,
+        "directional_path_efficiency_2h": 0.07840033265907509,
+        "directional_path_efficiency_4h": -0.06271677929438739,
+        "volatility_percentile_60": 0.2,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.26096117523565,
+          "sl_first_within_horizon": 0.483239211137424,
+          "neither_barrier_before_expiry": 0.255799613626926
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.28631330960664403,
+          "sl_first_within_horizon": 0.429145439754057,
+          "neither_barrier_before_expiry": 0.28454125063929897
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.31538038617723657,
+          "sl_first_within_horizon": 0.34706638644662813,
+          "neither_barrier_before_expiry": 0.3375532273761353
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.2902835550656955,
+          "sl_first_within_horizon": 0.4008981561098944,
+          "neither_barrier_before_expiry": 0.3088182888244103
+        }
+      }
+    },
+    {
+      "operation_id": 295,
+      "recommendation_id": 1046,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-06T05:31:59.392734+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.27.1-limit-placement-fix",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-06T06:13:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "60de072eca1fe388b7facc956f2732841f1c84e7d0a16b6f8a697cdaf57d3d7a"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": -0.24732408073789944,
+        "directional_path_efficiency_2h": -0.08142156569340918,
+        "directional_path_efficiency_4h": -0.09823917993320178,
+        "volatility_percentile_60": 0.36666666666666664,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.41506437702815724,
+          "sl_first_within_horizon": 0.5847707348986123,
+          "neither_barrier_before_expiry": 0.00016488807323046108
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.4136644331263587,
+          "sl_first_within_horizon": 0.5861638473898991,
+          "neither_barrier_before_expiry": 0.00017171948374210418
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.45087320177846973,
+          "sl_first_within_horizon": 0.5490575561735108,
+          "neither_barrier_before_expiry": 6.924204801942737e-05
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.44841583061008505,
+          "sl_first_within_horizon": 0.5515173040962238,
+          "neither_barrier_before_expiry": 6.686529369111497e-05
+        }
+      }
+    },
+    {
+      "operation_id": 296,
+      "recommendation_id": 1048,
+      "symbol": "BTCUSDT",
+      "side": "short",
+      "time_horizon": "intraday_short",
+      "analysis_at": "2026-08-06T13:28:35.294638+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.27.1-limit-placement-fix",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "sl_first_within_horizon",
+        "first_touch_at": "2026-08-06T13:38:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 241,
+        "expected_candle_count": 241,
+        "market_sha256": "440be2287b2abd94555bf031f90b02a25aa5606c45bcd873eaa0151130a922d4"
+      },
+      "stored_learning_evidence": {
+        "label": "sl_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.3566931169268641,
+        "directional_path_efficiency_2h": 0.24400116001249314,
+        "directional_path_efficiency_4h": 0.08445193636081938,
+        "volatility_percentile_60": 0.38333333333333336,
+        "target_extreme_between_entry_and_tp": 1.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.5085636049277601,
+          "sl_first_within_horizon": 0.49051590360610003,
+          "neither_barrier_before_expiry": 0.0009204914661399581
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5070676557288313,
+          "sl_first_within_horizon": 0.4919748279683727,
+          "neither_barrier_before_expiry": 0.0009575163027959773
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.4790035149954698,
+          "sl_first_within_horizon": 0.5203808463223533,
+          "neither_barrier_before_expiry": 0.0006156386821769673
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.4824411455449339,
+          "sl_first_within_horizon": 0.5169634916603548,
+          "neither_barrier_before_expiry": 0.0005953627947111424
+        }
+      }
+    },
+    {
+      "operation_id": 297,
+      "recommendation_id": 1052,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-06T14:32:45.217450+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.27.1-limit-placement-fix",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-06T14:43:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 1441,
+        "expected_candle_count": 1441,
+        "market_sha256": "7974e98469f42074ea97c8597dc8a392349b2c20b2e3674ebb458f42e283d656"
+      },
+      "stored_learning_evidence": {
+        "label": "tp_first_within_horizon",
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "resolved",
+        "consistent_with_exact_reconstruction": true
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.008529003242340476,
+        "directional_path_efficiency_2h": 0.1445820590912053,
+        "directional_path_efficiency_4h": 0.10938631698819261,
+        "volatility_percentile_60": 0.05,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.5894739424850715,
+          "sl_first_within_horizon": 0.37807797305148627,
+          "neither_barrier_before_expiry": 0.03244808446344223
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5990237377335053,
+          "sl_first_within_horizon": 0.3677120647864948,
+          "neither_barrier_before_expiry": 0.03326419747999999
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.625875777510835,
+          "sl_first_within_horizon": 0.353058145060555,
+          "neither_barrier_before_expiry": 0.02106607742860993
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6159878179696182,
+          "sl_first_within_horizon": 0.3635700877211,
+          "neither_barrier_before_expiry": 0.020442094309281653
+        }
+      }
+    },
+    {
+      "operation_id": 300,
+      "recommendation_id": 1066,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-07T11:36:36.956247+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.27.1-limit-placement-fix",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-07T12:30:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 355,
+        "expected_candle_count": 355,
+        "market_sha256": "ff08f5aab07c2fa2e06b1ffb0283ae641db98affd0f8d113181a383c12afda73"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "ambiguous_boundary_candle",
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.12118339636027349,
+        "directional_path_efficiency_2h": 0.1846553475761826,
+        "directional_path_efficiency_4h": 0.1856681393955419,
+        "volatility_percentile_60": 0.06666666666666667,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.5645921682475074,
+          "sl_first_within_horizon": 0.43537303829371027,
+          "neither_barrier_before_expiry": 3.479345878226982e-05
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5969701673636042,
+          "sl_first_within_horizon": 0.4029923653348582,
+          "neither_barrier_before_expiry": 3.746730153756999e-05
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6132482500967115,
+          "sl_first_within_horizon": 0.38674454664217606,
+          "neither_barrier_before_expiry": 7.203261112376847e-06
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.5819756226471439,
+          "sl_first_within_horizon": 0.418017759743393,
+          "neither_barrier_before_expiry": 6.617609463234312e-06
+        }
+      }
+    },
+    {
+      "operation_id": 302,
+      "recommendation_id": 1077,
+      "symbol": "BTCUSDT",
+      "side": "long",
+      "time_horizon": "intraday_wide",
+      "analysis_at": "2026-08-07T15:22:57.549356+00:00",
+      "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+      "app_version": "app-v0.27.1-limit-placement-fix",
+      "scoring_version": "calibrated-plus-active-rules-v0.4",
+      "horizon_status": "stored_exact",
+      "formal_eligible_horizon": true,
+      "outcome": {
+        "status": "resolved",
+        "label": "tp_first_within_horizon",
+        "first_touch_at": "2026-08-07T15:32:00+00:00",
+        "coverage_ratio": 1.0,
+        "candle_count": 129,
+        "expected_candle_count": 129,
+        "market_sha256": "d360ffc8fb451ab73ed0d6e4eaaf1320c9b1469a9fbd7d5569ae1fe5363e6ebb"
+      },
+      "stored_learning_evidence": {
+        "label": null,
+        "status": "complete",
+        "quality": "complete_1m_with_boundary_approximation",
+        "path_resolution": "ambiguous_boundary_candle",
+        "consistent_with_exact_reconstruction": null
+      },
+      "feature_values": {
+        "directional_path_efficiency_h": 0.07272344170926537,
+        "directional_path_efficiency_2h": 0.09998425770612904,
+        "directional_path_efficiency_4h": 0.0920304213895551,
+        "volatility_percentile_60": 0.11666666666666667,
+        "target_extreme_between_entry_and_tp": 0.0
+      },
+      "active_v05_overlay_rule_ids": [
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-CONTINUOUS-REGIME-001",
+        "M4-RULE-AGGRESSOR-IMBALANCE-001",
+        "M4-RULE-OPEN-INTEREST-CHANGE-001",
+        "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-SPOT-FUTURES-BASIS-001",
+        "M4-RULE-MARK-INDEX-PREMIUM-001",
+        "M4-RULE-FUNDING-STATE-001"
+      ],
+      "model_errors": [],
+      "predictions": {
+        "stored_v04_served": {
+          "tp_first_within_horizon": 0.6244568145806301,
+          "sl_first_within_horizon": 0.3755431853466461,
+          "neither_barrier_before_expiry": 7.272383089510231e-11
+        },
+        "m6_global_core_frozen": {
+          "tp_first_within_horizon": 0.5896779587969726,
+          "sl_first_within_horizon": 0.41032204112301907,
+          "neither_barrier_before_expiry": 8.000837124771524e-11
+        },
+        "v05_horizon_core_replay": {
+          "tp_first_within_horizon": 0.6047842044132444,
+          "sl_first_within_horizon": 0.3952157955851517,
+          "neither_barrier_before_expiry": 1.6037895502305188e-12
+        },
+        "v05_horizon_full_replay": {
+          "tp_first_within_horizon": 0.6393847312599656,
+          "sl_first_within_horizon": 0.36061526873855354,
+          "neither_barrier_before_expiry": 1.4807352711729539e-12
+        }
+      }
+    }
+  ],
+  "canonical_payload_sha256": "67079e994d74a633ab9e0b1d55a9f8a757db1c6e11322984a92e01d0d1ee3c51"
+}

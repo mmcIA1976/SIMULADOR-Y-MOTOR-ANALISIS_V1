@@ -17,6 +17,7 @@ import market_data
 import data_engine
 from analysis_engine import TradeProposal, build_explained_metrics
 from analysis_engine import time_horizon_profile
+from champion_shadow_learning import build_champion_shadow_learning_audit
 from db import close_pool, connect, init_db, row_to_dict
 from economic_metrics import (
     economic_case_fields,
@@ -55,6 +56,7 @@ from m6_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
+from m8_evaluation import HORIZON_SECONDS
 from operation_worker_status import (
     add_transition_coverage,
     get_worker_status_row,
@@ -313,6 +315,51 @@ def load_limit_operation_context(db, operation: dict) -> dict | None:
         return None
     context["recommendation_id"] = int(recommendation["id"])
     return context
+
+
+def operation_evaluation_expires_at(
+    db,
+    operation: dict,
+    limit_context: dict | None = None,
+) -> datetime:
+    """Return the immutable outcome deadline for post-close learning."""
+    if limit_context is not None and (
+        operation.get("triggered_at") or operation.get("started_at")
+    ):
+        return outcome_expires_at(
+            limit_context["contract"],
+            operation.get("triggered_at") or operation.get("started_at"),
+        )
+    recommendation = row_to_dict(
+        db.execute(
+            """
+            SELECT snapshot_json
+            FROM recommendations
+            WHERE operation_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            (operation["id"],),
+        ).fetchone()
+    )
+    snapshot = parse_snapshot_json(
+        recommendation.get("snapshot_json") if recommendation else None
+    )
+    expiry_value = snapshot.get("evaluation_expires_at")
+    if expiry_value:
+        return parse_limit_utc(expiry_value)
+    horizon_seconds = int(
+        HORIZON_SECONDS.get(
+            str(operation.get("time_horizon") or "intraday_short"),
+            HORIZON_SECONDS["intraday_short"],
+        )
+    )
+    started_at = parse_limit_utc(
+        operation.get("triggered_at")
+        or operation.get("started_at")
+        or datetime.now(timezone.utc)
+    )
+    return started_at + timedelta(seconds=horizon_seconds)
 
 
 def persist_limit_activation_event(
@@ -1853,6 +1900,15 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
         )
         evaluations.append(evaluation)
     return evaluations
+
+
+@app.get("/api/learning/champion-shadow-audit")
+def champion_shadow_learning_audit(
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    with connect() as db:
+        return build_champion_shadow_learning_audit(db, int(user["id"]))
 
 
 @app.get("/api/learning/fibonacci-audit")
@@ -4587,22 +4643,47 @@ def build_new_engine_learning_pattern_text(
 
 
 def build_observation_result(db, operation: dict) -> dict:
-    ticks = db.execute(
-        """
-        SELECT price, captured_at
-        FROM price_ticks
-        WHERE operation_id = ? AND captured_at >= COALESCE(?, captured_at)
-        ORDER BY captured_at ASC
-        """,
-        (operation["id"], operation["closed_at"]),
-    ).fetchall()
-    trigger = first_plan_trigger_after_close(operation, [row_to_dict(tick) for tick in ticks])
+    trigger = None
+    evidence_status = "unavailable"
+    try:
+        evidence = reconstruct_operation_historical_evidence(operation)
+        evidence_status = str(evidence.get("status") or "unavailable")
+        post_close_touch = evidence.get("first_post_close_plan_touch")
+        if (
+            isinstance(post_close_touch, dict)
+            and post_close_touch.get("status") == "resolved"
+        ):
+            trigger = (
+                str(post_close_touch["reason"]),
+                float(post_close_touch["price"]),
+                str(post_close_touch["touched_at"]),
+            )
+    except Exception:
+        evidence_status = "fetch_failed"
+    if trigger is None and evidence_status != "complete":
+        ticks = db.execute(
+            """
+            SELECT price, captured_at
+            FROM price_ticks
+            WHERE operation_id = ?
+              AND captured_at >= COALESCE(?, captured_at)
+            ORDER BY captured_at ASC
+            """,
+            (operation["id"], operation["closed_at"]),
+        ).fetchall()
+        trigger = first_plan_trigger_after_close(
+            operation,
+            [row_to_dict(tick) for tick in ticks],
+        )
     manual_pnl = float(operation["final_pnl"] or 0)
     close_reason = operation.get("close_reason")
     if trigger is None:
         summary = (
-            f"Observacion cerrada: durante los 2 dias posteriores al cierre manual no se detecto TP ni SL. "
-            f"El cierre del usuario queda como decision no concluyente frente al plan original. PnL manual: {manual_pnl:.2f} USDT."
+            "Observacion cerrada hasta el vencimiento original del analisis: "
+            "no se detecto TP ni SL con evidencia concluyente. "
+            "El cierre del usuario queda como decision no concluyente frente "
+            f"al plan original. PnL manual: {manual_pnl:.2f} USDT. "
+            f"Estado de evidencia: {evidence_status}."
         )
         return {"result": "plan_unresolved", "summary": summary}
 
@@ -5691,6 +5772,11 @@ def close_operation(
             raise HTTPException(status_code=409, detail="La operacion ya esta cerrada")
         limit_context = load_limit_operation_context(db, operation)
         closed_at = datetime.now(timezone.utc).isoformat()
+        observation_until = operation_evaluation_expires_at(
+            db,
+            operation,
+            limit_context,
+        ).isoformat()
         pnl = approximate_pnl(operation, payload.close_price)
         update_cursor = db.execute(
             """
@@ -5706,7 +5792,7 @@ def close_operation(
                 payload.close_price,
                 payload.close_reason,
                 pnl,
-                (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
+                observation_until,
                 payload.post_emotion,
                 payload.plan_followed,
                 payload.closing_note,
@@ -5739,7 +5825,12 @@ def close_operation(
             contest_season_id=operation.get("contest_season_id"),
             note=payload.close_reason,
         )
-    return {"id": operation_id, "status": "CLOSED", "final_pnl": pnl}
+    return {
+        "id": operation_id,
+        "status": "CLOSED",
+        "final_pnl": pnl,
+        "learning_observation_until": observation_until,
+    }
 
 
 @app.post("/api/operations/{operation_id}/cancel")

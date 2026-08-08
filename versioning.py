@@ -3,19 +3,19 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.28.0-horizon-calibration"
-APP_SEMVER = "0.28.0"
-ENGINE_VERSION = "TP-SL-PROBABILITY-ENGINE-v0.5"
-SCORING_VERSION = "horizon-calibrated-active-rules-v0.5"
-LEARNING_EVALUATOR_VERSION = "learning-v0.13-execution-economics"
+APP_VERSION = "app-v0.29.0-stable-m6-champion"
+APP_SEMVER = "0.29.0"
+ENGINE_VERSION = "TP-SL-PROBABILITY-ENGINE-v0.6-stable-global"
+SCORING_VERSION = "m6-global-frozen-champion-v0.6"
+LEARNING_EVALUATOR_VERSION = "learning-v0.14-exact-horizon"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.18-limit-lifecycle"
 DATA_SOURCE_VERSION = "data-sources-v0.23-limit-context"
-DATA_CONTRACT_VERSION = "data-contract-v0.21-horizon-probabilities"
-EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.1-binance-usdm-1m"
+DATA_CONTRACT_VERSION = "data-contract-v0.22-stable-champion-shadow"
+EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.2-exact-horizon-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
-CHALLENGER_RUNTIME_VERSION = "inactive-history-only"
-PROSPECTIVE_RUNTIME_VERSION = "tp-sl-rule-library-runtime-v0.17"
+CHALLENGER_RUNTIME_VERSION = "horizon-calibrated-overlay-shadow-v0.1"
+PROSPECTIVE_RUNTIME_VERSION = "tp-sl-rule-library-runtime-v0.18-stable-champion"
 
 
 def current_version_contract() -> dict:

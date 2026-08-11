@@ -29,6 +29,7 @@ const elements = {
   contestPanel: document.querySelector("#contestPanel"),
   contestTitle: document.querySelector("#contestTitle"),
   contestDates: document.querySelector("#contestDates"),
+  contestRefreshStatus: document.querySelector("#contestRefreshStatus"),
   joinContestButton: document.querySelector("#joinContestButton"),
   contestStartingBalance: document.querySelector("#contestStartingBalance"),
   contestCash: document.querySelector("#contestCash"),
@@ -151,6 +152,7 @@ let entryMode = "market";
 let operationMode = "training";
 let fullAnalysisOpen = false;
 let contestState = null;
+let contestLoadInFlight = null;
 let proposalDraft = null;
 let newOperationViewActive = false;
 let floatingNoticeTimer = null;
@@ -947,6 +949,9 @@ function chooseDefaultOperationId(operations) {
 function clearPrivateSessionView() {
   allOperations = [];
   openOperations = [];
+  contestState = null;
+  contestLoadInFlight = null;
+  setContestRefreshStatus();
   selectedOperationId = null;
   newOperationViewActive = true;
   proposalDraft = null;
@@ -2377,22 +2382,67 @@ async function loadContest() {
   if (!currentUser) {
     contestState = null;
     renderContest(null);
+    setContestRefreshStatus();
+    return false;
+  }
+
+  if (contestLoadInFlight) {
+    return contestLoadInFlight;
+  }
+
+  const requestedUserId = Number(currentUser.id);
+  if (contestState) {
+    setContestRefreshStatus("Actualizando ranking...");
+  }
+  const request = (async () => {
+    try {
+      const nextContestState = await requestJson("/api/contest/current");
+      if (!currentUser || Number(currentUser.id) !== requestedUserId) {
+        return false;
+      }
+      contestState = nextContestState;
+      renderContest(contestState);
+      if (reconcileContestOperationsWithLocalState(contestState)) {
+        renderOperations(allOperations);
+      }
+      if (contestRefreshChangedOperations(contestState.active_refresh)) {
+        await loadOperations();
+        await loadPortfolio();
+      }
+      return true;
+    } catch (error) {
+      if (!currentUser || Number(currentUser.id) !== requestedUserId) {
+        return false;
+      }
+      if (!contestState) {
+        renderContest(null);
+      }
+      setContestRefreshStatus(
+        contestState
+          ? "Actualizacion retrasada. Se conserva el ultimo ranking valido."
+          : "No se pudo cargar el ranking. Se reintentara automaticamente.",
+        true,
+      );
+      return false;
+    }
+  })();
+  contestLoadInFlight = request;
+  try {
+    return await request;
+  } finally {
+    if (contestLoadInFlight === request) {
+      contestLoadInFlight = null;
+    }
+  }
+}
+
+function setContestRefreshStatus(message = "", delayed = false) {
+  if (!elements.contestRefreshStatus) {
     return;
   }
-  try {
-    contestState = await requestJson("/api/contest/current");
-    renderContest(contestState);
-    if (reconcileContestOperationsWithLocalState(contestState)) {
-      renderOperations(allOperations);
-    }
-    if (contestRefreshChangedOperations(contestState.active_refresh)) {
-      await loadOperations();
-      await loadPortfolio();
-    }
-  } catch {
-    contestState = null;
-    renderContest(null);
-  }
+  elements.contestRefreshStatus.textContent = message;
+  elements.contestRefreshStatus.classList.toggle("hidden", !message);
+  elements.contestRefreshStatus.classList.toggle("is-delayed", Boolean(message) && delayed);
 }
 
 function reconcileContestOperationsWithLocalState(state) {
@@ -2464,7 +2514,9 @@ function renderContest(state) {
   elements.contestPanel.classList.toggle("hidden", operationMode !== "contest");
   if (!state) {
     elements.contestTitle.textContent = "Concurso mensual";
-    elements.contestDates.textContent = "Inicia sesion para ver el concurso activo.";
+    elements.contestDates.textContent = currentUser
+      ? "Esperando datos del concurso activo."
+      : "Inicia sesion para ver el concurso activo.";
     elements.joinContestButton.textContent = "Iniciar concurso del mes";
     elements.joinContestButton.disabled = true;
     elements.contestStartingBalance.textContent = "--";
@@ -2476,6 +2528,7 @@ function renderContest(state) {
     }
     return;
   }
+  setContestRefreshStatus();
   const season = state.season || {};
   const portfolio = state.portfolio || {};
   elements.contestTitle.textContent = season.name || "Concurso mensual";

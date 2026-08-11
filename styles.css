@@ -474,6 +474,16 @@ label {
   font-size: 0.98rem;
 }
 
+.contest-header .contest-refresh-status {
+  color: var(--price);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.contest-header .contest-refresh-status.is-delayed {
+  color: #9a6200;
+}
+
 .contest-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

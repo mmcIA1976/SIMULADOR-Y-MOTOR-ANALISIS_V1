@@ -18,6 +18,7 @@ BINANCE_USDM_BASE_URLS = (
     "https://fapi3.binance.com",
     "https://fapi4.binance.com",
 )
+BINANCE_USDM_ALL_PRICES_PATH = "/fapi/v1/ticker/price"
 BINANCE_USDM_PRICE_PATH = "/fapi/v1/ticker/price?symbol={symbol}"
 BINANCE_USDM_KLINES_PATH = "/fapi/v1/klines?symbol={symbol}&interval={interval}&limit={limit}"
 BINANCE_USDM_DEPTH_PATH = "/fapi/v1/depth?symbol={symbol}&limit={limit}"
@@ -65,6 +66,8 @@ _futures_backoff_until_ms = 0
 _price_cache: dict[str, dict] = {}
 PRICE_CACHE_TTL_SECONDS = 12
 PRICE_STALE_MAX_SECONDS = 300
+RANKING_PRICE_TIMEOUT_SECONDS = 2.0
+RANKING_PRICE_MAX_HOST_ATTEMPTS = 2
 
 BINANCE_API_HEADERS = {
     "User-Agent": (
@@ -155,7 +158,12 @@ def get_json_optional(url: str) -> object | None:
         return None
 
 
-def get_futures_json(path: str) -> object:
+def get_futures_json(
+    path: str,
+    *,
+    timeout_seconds: float = BINANCE_MARKET_TIMEOUT_SECONDS,
+    max_host_attempts: int | None = None,
+) -> object:
     global _preferred_futures_base_url, _futures_backoff_until_ms
     now_ms = _now_ms()
     if _futures_backoff_until_ms and now_ms < _futures_backoff_until_ms:
@@ -167,12 +175,14 @@ def get_futures_json(path: str) -> object:
     candidate_bases = (_preferred_futures_base_url,) + tuple(
         base for base in BINANCE_USDM_BASE_URLS if base != _preferred_futures_base_url
     )
+    if max_host_attempts is not None:
+        candidate_bases = candidate_bases[:max(1, int(max_host_attempts))]
     for base_url in candidate_bases:
         url = f"{base_url}{path}"
         request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
         raw = ""
         try:
-            with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
                 payload = json.loads(raw)
             _preferred_futures_base_url = base_url
@@ -260,6 +270,63 @@ def get_price(symbol: str, *, force_refresh: bool = False) -> float:
     price = float(payload["price"])
     _remember_price(symbol, price)
     return price
+
+
+def get_prices(symbols: list[str] | tuple[str, ...] | set[str]) -> dict[str, float]:
+    """Resolve several Futures prices with at most one Binance request.
+
+    Fresh in-process values are reused first. If any symbol is missing, the
+    all-tickers endpoint is fetched once and only the requested symbols are
+    retained. A transient Binance failure falls back to the existing stale
+    cache instead of making one slow retry chain per symbol.
+    """
+    normalized_symbols = sorted({str(symbol).upper() for symbol in symbols if str(symbol).strip()})
+    if not normalized_symbols:
+        return {}
+
+    prices: dict[str, float] = {}
+    missing: list[str] = []
+    for symbol in normalized_symbols:
+        cached = get_cached_price(symbol, PRICE_CACHE_TTL_SECONDS)
+        if cached:
+            prices[symbol] = float(cached["price"])
+        else:
+            missing.append(symbol)
+
+    if not missing:
+        return prices
+
+    try:
+        payload = get_futures_json(
+            BINANCE_USDM_ALL_PRICES_PATH,
+            timeout_seconds=RANKING_PRICE_TIMEOUT_SECONDS,
+            max_host_attempts=RANKING_PRICE_MAX_HOST_ATTEMPTS,
+        )
+    except Exception:
+        payload = []
+
+    requested = set(missing)
+    if isinstance(payload, list):
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            symbol = str(item.get("symbol") or "").upper()
+            if symbol not in requested:
+                continue
+            try:
+                price = float(item["price"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            prices[symbol] = price
+            _remember_price(symbol, price, source="binance_usdm_futures_all_tickers")
+
+    for symbol in missing:
+        if symbol in prices:
+            continue
+        stale = get_cached_price(symbol, PRICE_STALE_MAX_SECONDS)
+        if stale:
+            prices[symbol] = float(stale["price"])
+    return prices
 
 
 def get_klines(

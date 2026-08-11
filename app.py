@@ -692,13 +692,24 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
     user = current_user(session_token)
     with connect() as db:
         season = ensure_current_contest_season(db)
-        active_refresh = refresh_contest_active_operations(db, int(season["id"]))
+        season_id = int(season["id"])
+        active_refresh = contest_active_refresh(db, season_id)
+        price_symbols = contest_open_price_symbols(db, season_id)
+        recorded_prices = latest_recorded_prices_for_symbols(db, price_symbols)
+    live_prices = {**recorded_prices, **live_prices_for_symbols(price_symbols)}
+    with connect() as db:
         entry = get_contest_entry(db, int(user["id"]), int(season["id"]))
         portfolio = calculate_portfolio_from_db(db, int(user["id"]))
-        leaderboard = contest_leaderboard(db, int(season["id"]))
+        leaderboard = contest_leaderboard(db, season_id, live_prices=live_prices)
         history = contest_history(db)
         if entry:
-            apply_contest_unrealized_to_portfolio(db, portfolio["contest"], int(user["id"]), int(season["id"]))
+            apply_contest_unrealized_to_portfolio(
+                db,
+                portfolio["contest"],
+                int(user["id"]),
+                season_id,
+                live_prices=live_prices,
+            )
     return {
         "season": season,
         "entry": entry,
@@ -715,12 +726,23 @@ def contest_join(session_token: str | None = Cookie(default=None, alias=SESSION_
     user = current_user(session_token)
     with connect() as db:
         season = ensure_current_contest_season(db)
-        entry = ensure_contest_entry(db, int(user["id"]), int(season["id"]))
-        active_refresh = refresh_contest_active_operations(db, int(season["id"]))
+        season_id = int(season["id"])
+        entry = ensure_contest_entry(db, int(user["id"]), season_id)
+        active_refresh = contest_active_refresh(db, season_id)
+        price_symbols = contest_open_price_symbols(db, season_id)
+        recorded_prices = latest_recorded_prices_for_symbols(db, price_symbols)
+    live_prices = {**recorded_prices, **live_prices_for_symbols(price_symbols)}
+    with connect() as db:
         portfolio = sync_user_cash_balance(db, int(user["id"]))
-        leaderboard = contest_leaderboard(db, int(season["id"]))
+        leaderboard = contest_leaderboard(db, season_id, live_prices=live_prices)
         history = contest_history(db)
-        apply_contest_unrealized_to_portfolio(db, portfolio["contest"], int(user["id"]), int(season["id"]))
+        apply_contest_unrealized_to_portfolio(
+            db,
+            portfolio["contest"],
+            int(user["id"]),
+            season_id,
+            live_prices=live_prices,
+        )
     return {
         "season": season,
         "entry": entry,
@@ -1086,6 +1108,13 @@ def refresh_contest_active_operations(db, season_id: int) -> dict[str, list[dict
         "activated_operations": list(activated.values()),
         "closed_operations": list(closed.values()),
     }
+
+
+def contest_active_refresh(db, season_id: int) -> dict[str, list[dict]]:
+    """Advance contest operations only when the web process owns transitions."""
+    if not WEB_OPERATION_REFRESH_ENABLED:
+        return {"activated_operations": [], "closed_operations": []}
+    return refresh_contest_active_operations(db, season_id)
 
 
 def activate_triggered_pending_operations(
@@ -6300,17 +6329,51 @@ def get_contest_entry(db, user_id: int, season_id: int) -> dict | None:
     return row_to_dict(row)
 
 
-def live_prices_for_operations(operations: list[dict]) -> dict[str, float]:
+def contest_open_price_symbols(db, season_id: int) -> list[str]:
+    rows = db.execute(
+        """
+        SELECT DISTINCT symbol
+        FROM operations
+        WHERE mode = 'contest'
+          AND contest_season_id = ?
+          AND status = 'OPEN'
+        ORDER BY symbol
+        """,
+        (season_id,),
+    ).fetchall()
+    return [str(row["symbol"]).upper() for row in rows]
+
+
+def live_prices_for_symbols(symbols: list[str] | tuple[str, ...] | set[str]) -> dict[str, float]:
+    try:
+        return market_data.get_prices(symbols)
+    except Exception:
+        return {}
+
+
+def latest_recorded_prices_for_symbols(db, symbols: list[str] | tuple[str, ...] | set[str]) -> dict[str, float]:
     prices: dict[str, float] = {}
-    for symbol in sorted({str(operation["symbol"]).upper() for operation in operations}):
-        try:
-            prices[symbol] = float(market_data.get_price(symbol))
-        except Exception:
-            continue
+    for symbol in sorted({str(value).upper() for value in symbols}):
+        row = latest_recorded_symbol_price(db, symbol)
+        if row is not None:
+            prices[symbol] = float(row["price"])
     return prices
 
 
-def apply_contest_unrealized_to_portfolio(db, portfolio: dict, user_id: int, season_id: int) -> None:
+def live_prices_for_operations(operations: list[dict]) -> dict[str, float]:
+    return live_prices_for_symbols(
+        {str(operation["symbol"]).upper() for operation in operations}
+    )
+
+
+def apply_contest_unrealized_to_portfolio(
+    db,
+    portfolio: dict,
+    user_id: int,
+    season_id: int,
+    *,
+    live_prices: dict[str, float] | None = None,
+) -> None:
     rows = db.execute(
         """
         SELECT *
@@ -6323,11 +6386,11 @@ def apply_contest_unrealized_to_portfolio(db, portfolio: dict, user_id: int, sea
         (user_id, season_id),
     ).fetchall()
     operations = [row_to_dict(row) for row in rows]
-    prices = live_prices_for_operations(operations)
+    prices = live_prices if live_prices is not None else live_prices_for_operations(operations)
     unrealized_pnl = sum(
-        approximate_pnl(operation, prices[operation["symbol"]])
+        approximate_pnl(operation, prices[str(operation["symbol"]).upper()])
         for operation in operations
-        if operation["symbol"] in prices
+        if str(operation["symbol"]).upper() in prices
     )
     portfolio["unrealized_pnl"] = round(unrealized_pnl, 4)
     portfolio["total_pnl"] = round(float(portfolio.get("closed_pnl") or 0), 4)
@@ -6335,7 +6398,12 @@ def apply_contest_unrealized_to_portfolio(db, portfolio: dict, user_id: int, sea
     portfolio["estimated_equity"] = round(float(portfolio.get("total_equity_without_unrealized") or 0) + unrealized_pnl, 4)
 
 
-def contest_leaderboard(db, season_id: int) -> list[dict]:
+def contest_leaderboard(
+    db,
+    season_id: int,
+    *,
+    live_prices: dict[str, float] | None = None,
+) -> list[dict]:
     rows = db.execute(
         """
         SELECT
@@ -6410,7 +6478,6 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             r.tp_probability AS recommendation_tp_probability,
             r.sl_probability AS recommendation_sl_probability,
             r.range_probability AS recommendation_range_probability,
-            r.analysis_json AS recommendation_analysis_json,
             r.created_at AS recommendation_created_at
         FROM operations o
         LEFT JOIN recommendations r ON r.id = (
@@ -6435,16 +6502,15 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
             operation[f"recommendation_{cause}_probability"] = (
                 recommendation_probability_value(operation, cause)
             )
-        operation.pop("recommendation_analysis_json", None)
         for key, value in list(operation.items()):
             if isinstance(value, datetime):
                 operation[key] = value.isoformat()
         operations_by_user.setdefault(int(operation["user_id"]), []).append(operation)
-    prices = live_prices_for_operations(open_operations)
+    prices = live_prices if live_prices is not None else live_prices_for_operations(open_operations)
     unrealized_by_user: dict[int, float] = {}
     unrealized_by_operation: dict[int, float] = {}
     for operation in open_operations:
-        symbol = operation["symbol"]
+        symbol = str(operation["symbol"]).upper()
         if symbol not in prices:
             continue
         user_id = int(operation["user_id"])
@@ -6486,10 +6552,6 @@ def contest_leaderboard(db, season_id: int) -> list[dict]:
                 "avatar_mime_type": item.get("avatar_mime_type"),
                 "avatar_updated_at": item.get("avatar_updated_at"),
             }
-        )
-        db.execute(
-            "UPDATE contest_entries SET cash_balance = ? WHERE season_id = ? AND user_id = ?",
-            (computed_cash_balance, season_id, item["user_id"]),
         )
         leaderboard.append(item)
     leaderboard.sort(key=lambda item: item["estimated_equity"], reverse=True)

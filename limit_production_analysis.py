@@ -21,9 +21,12 @@ from limit_order_contract import (
     compose_limit_probability_tree,
 )
 from m7_production_analysis import NewEngineAnalysisError, analyze_trade
+from m7_joint_temporal_engine import ENGINE_VERSION
 
 
-LIMIT_PRODUCTION_ENGINE_VERSION = "LIMIT-TWO-STAGE-ENGINE-v0.1"
+# LIMIT is an entry lifecycle around the same v0.7 TP/SL engine, not a second
+# probability engine or a separately versioned analysis result.
+LIMIT_PRODUCTION_ENGINE_VERSION = ENGINE_VERSION
 
 
 class LimitProductionAnalysisError(RuntimeError):

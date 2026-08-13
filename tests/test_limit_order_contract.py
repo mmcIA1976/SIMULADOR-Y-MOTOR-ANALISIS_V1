@@ -252,7 +252,11 @@ class LimitOrderContractTests(unittest.TestCase):
         )
         self.assertEqual(
             contract["context_rule_spaces"]["probability_effect"],
-            "none_until_validated_coefficients",
+            "none",
+        )
+        self.assertEqual(
+            contract["context_rule_spaces"]["policy"],
+            "disabled_by_single_engine_v0.7",
         )
 
     def test_snapshot_policy_is_compact_and_excludes_raw_feeds(self):

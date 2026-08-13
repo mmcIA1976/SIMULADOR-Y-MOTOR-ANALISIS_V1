@@ -19,7 +19,7 @@ from limit_lifecycle_runtime import (
     recalculate_at_activation,
 )
 from limit_order_contract import LifecycleEvent, build_limit_order_contract
-from m6_production_analysis import NewEngineAnalysisError
+from m7_production_analysis import NewEngineAnalysisError
 
 
 def contract():

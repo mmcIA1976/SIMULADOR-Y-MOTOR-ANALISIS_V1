@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from typing import Any, Mapping
 
-from m8_evaluation import HORIZON_SECONDS
+from m7_joint_temporal_engine import HORIZON_SECONDS
 
 
 LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.4"
@@ -419,7 +419,7 @@ def build_limit_order_contract(
                 "requested_limit_price_conservative_no_price_improvement_v1"
             ),
             "partial_fills_supported": False,
-            "post_activation_m6_entry": "simulated_fill_price",
+            "post_activation_v0_7_entry": "simulated_fill_price",
         },
         "probability_spaces": {
             "activation": {
@@ -436,11 +436,12 @@ def build_limit_order_contract(
             },
         },
         "context_rule_spaces": {
-            "activation_trajectory": "shadow_descriptor_available",
-            "flow_dual_role": "shadow_descriptor_available",
-            "zone_structure": "shadow_descriptor_available",
-            "liquidation_path": "shadow_descriptor_optional_source",
-            "probability_effect": "none_until_validated_coefficients",
+            "activation_trajectory": "not_executed",
+            "flow_dual_role": "not_executed",
+            "zone_structure": "not_executed",
+            "liquidation_path": "not_executed",
+            "policy": "disabled_by_single_engine_v0.7",
+            "probability_effect": "none",
         },
         "lifecycle": {
             "stable_statuses": [status.value for status in OperationStatus],
@@ -485,7 +486,7 @@ def build_limit_order_contract(
             "no_activation_is_not_post_activation_neither",
             "cancelled_pending_order_is_censored_not_negative",
             "placement_snapshot_is_never_overwritten_by_activation_snapshot",
-            "m6_market_entry_behavior_remains_unchanged",
+            "v0_7_is_the_only_post_activation_tp_sl_engine",
             "missing_optional_context_cannot_be_invented",
             "probability_effect_requires_validated_coefficients",
         ],

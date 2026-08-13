@@ -17,7 +17,6 @@ import market_data
 import data_engine
 from analysis_engine import TradeProposal, build_explained_metrics
 from analysis_engine import time_horizon_profile
-from champion_shadow_learning import build_champion_shadow_learning_audit
 from db import close_pool, connect, init_db, row_to_dict
 from economic_metrics import (
     economic_case_fields,
@@ -52,11 +51,11 @@ from limit_production_analysis import (
     LimitProductionAnalysisError,
     analyze_limit_trade,
 )
-from m6_production_analysis import (
+from m7_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
-from m8_evaluation import HORIZON_SECONDS
+from m7_joint_temporal_engine import HORIZON_SECONDS
 from operation_worker_status import (
     add_transition_coverage,
     get_worker_status_row,
@@ -64,9 +63,6 @@ from operation_worker_status import (
 )
 from predictive_rule_library import rule_metadata
 from security import create_token, hash_password, read_token, verify_password
-from shadow_runtime import (
-    build_user_shadow_audit,
-)
 from versioning import (
     APP_SEMVER,
     APP_VERSION,
@@ -1931,15 +1927,6 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
     return evaluations
 
 
-@app.get("/api/learning/champion-shadow-audit")
-def champion_shadow_learning_audit(
-    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
-) -> dict:
-    user = current_user(session_token)
-    with connect() as db:
-        return build_champion_shadow_learning_audit(db, int(user["id"]))
-
-
 @app.get("/api/learning/fibonacci-audit")
 def fibonacci_audit(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)
@@ -1973,16 +1960,6 @@ def economic_audit(session_token: str | None = Cookie(default=None, alias=SESSIO
     user = current_user(session_token)
     with connect() as db:
         return build_economic_audit_report(db, int(user["id"]))
-
-
-@app.get("/api/learning/challenger-audit")
-def challenger_audit(
-    limit: int = 100,
-    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
-) -> dict:
-    user = current_user(session_token)
-    with connect() as db:
-        return build_user_shadow_audit(db, int(user["id"]), limit)
 
 
 def build_economic_audit_report(db, user_id: int) -> dict:

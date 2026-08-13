@@ -1225,19 +1225,19 @@ def build_current_audit() -> dict:
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
     analysis_source = (ROOT / "analysis_engine.py").read_text(encoding="utf-8")
     new_engine_source = (
-        ROOT / "m6_production_analysis.py"
+        ROOT / "m7_production_analysis.py"
     ).read_text(encoding="utf-8")
     old_stamp = 'stamp_pre_trade_horizon(result["snapshot"]'
     new_cutoff_before_load = (
         new_engine_source.index("snapshot = {")
-        < new_engine_source.index("build_prospective_probability_run(")
+        < new_engine_source.index("build_production_probability_run(")
     )
     findings = [
         {
             "id": "M3-CURRENT-FAIL-01",
             "severity": (
                 "resolved"
-                if "from m6_production_analysis import" in app_source
+                if "from m7_production_analysis import" in app_source
                 and new_cutoff_before_load
                 else "critical"
             ),
@@ -1255,7 +1255,7 @@ def build_current_audit() -> dict:
             },
             "source_refs": [
                 "app.py:/api/analyze",
-                "m6_production_analysis.py:analyze_trade",
+                "m7_production_analysis.py:analyze_trade",
             ],
         },
         {

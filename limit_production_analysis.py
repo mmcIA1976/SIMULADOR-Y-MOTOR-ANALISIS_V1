@@ -10,8 +10,9 @@ from limit_activation_baseline import (
     build_limit_activation_baseline,
 )
 from limit_context_rule_runtime import (
-    LimitContextRuleError,
-    evaluate_limit_context_rule_family,
+    RULE_IDS as LIMIT_CONTEXT_RULE_IDS,
+    RUNTIME_VERSION as LIMIT_CONTEXT_RUNTIME_VERSION,
+    canonical_sha256 as limit_context_sha256,
 )
 from limit_order_contract import (
     LIMIT_ORDER_ANALYSIS_FAMILY,
@@ -19,7 +20,7 @@ from limit_order_contract import (
     build_limit_order_contract,
     compose_limit_probability_tree,
 )
-from m6_production_analysis import NewEngineAnalysisError, analyze_trade
+from m7_production_analysis import NewEngineAnalysisError, analyze_trade
 
 
 LIMIT_PRODUCTION_ENGINE_VERSION = "LIMIT-TWO-STAGE-ENGINE-v0.1"
@@ -155,12 +156,31 @@ def analyze_limit_trade(
             contract,
             sigma_horizon=float(sigma_horizon),
         )
-        context_runtime = evaluate_limit_context_rule_family(
-            contract,
-            activation_baseline,
-            m5_analysis=run.get("m5_analysis"),
-            observational_traces=run.get("observational_rule_traces"),
-            liquidation_context=live_context.get("liquidation_context"),
+        context_runtime = {
+            "runtime_version": LIMIT_CONTEXT_RUNTIME_VERSION,
+            "analysis_id": contract.get("analysis_id"),
+            "contract_version": contract.get("contract_version"),
+            "activation_model_version": activation_baseline.get(
+                "model_version"
+            ),
+            "production_effect": "none_disabled",
+            "status": "not_executed",
+            "evaluated_rule_count": 0,
+            "blocked_rule_count": len(LIMIT_CONTEXT_RULE_IDS),
+            "reason": "single_production_probability_engine_policy",
+            "rule_ids": list(LIMIT_CONTEXT_RULE_IDS),
+            "traces": [
+                {
+                    "rule_id": rule_id,
+                    "status": "blocked",
+                    "reason_codes": ["disabled_single_engine_policy"],
+                    "outputs": {},
+                }
+                for rule_id in LIMIT_CONTEXT_RULE_IDS
+            ],
+        }
+        context_runtime["runtime_trace_sha256"] = limit_context_sha256(
+            context_runtime
         )
         probability_tree = compose_limit_probability_tree(
             activation_baseline["probabilities"]["activated_by_expiry"],
@@ -171,7 +191,7 @@ def analyze_limit_trade(
             str(exc),
             status_code=400,
         ) from exc
-    except (LimitActivationBaselineError, LimitContextRuleError) as exc:
+    except LimitActivationBaselineError as exc:
         raise LimitProductionAnalysisError(
             "limit_two_stage_calculation_failed",
             {
@@ -197,7 +217,7 @@ def analyze_limit_trade(
             ),
             "setup_grade": "LIMIT en dos etapas",
             "confidence": (
-                "M6 condicional; activacion base no calibrada"
+                "v0.7 condicional; activacion base no calibrada"
             ),
             "training_decision": "decision del usuario",
             "reasons": [
@@ -213,10 +233,7 @@ def analyze_limit_trade(
                     "Si la orden activa, SL primero: "
                     f"{_probability_label(conditional['sl_first_within_outcome_horizon'])}."
                 ),
-                (
-                    f"Se evaluaron {evaluated_descriptors} de 4 descriptores "
-                    "LIMIT de trayectoria, flujo, zona y liquidaciones."
-                ),
+                "No se ejecutan reglas LIMIT observacionales en paralelo.",
             ],
             "alerts": [
                 (
@@ -255,7 +272,7 @@ def analyze_limit_trade(
                 "conditional_engine_version": conditional_result.get(
                     "model_trace",
                     {},
-                ).get("candidate_version"),
+                ).get("engine_version"),
                 "conditional_preview_stage": "placement",
                 "conditional_recompute_policy": "rerun_at_actual_activation",
             },

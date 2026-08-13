@@ -3,19 +3,21 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.29.0-stable-m6-champion"
-APP_SEMVER = "0.29.0"
-ENGINE_VERSION = "TP-SL-PROBABILITY-ENGINE-v0.6-stable-global"
-SCORING_VERSION = "m6-global-frozen-champion-v0.6"
+APP_VERSION = "app-v0.30.0-single-temporal-engine"
+APP_SEMVER = "0.30.0"
+ENGINE_VERSION = "TP-SL-TEMPORAL-FIRST-TOUCH-v0.7"
+SCORING_VERSION = "joint-first-touch-curve-frozen-v0.7"
 LEARNING_EVALUATOR_VERSION = "learning-v0.14-exact-horizon"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.18-limit-lifecycle"
 DATA_SOURCE_VERSION = "data-sources-v0.23-limit-context"
-DATA_CONTRACT_VERSION = "data-contract-v0.22-stable-champion-shadow"
+DATA_CONTRACT_VERSION = "data-contract-v0.23-single-engine-v0.7"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.2-exact-horizon-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
-CHALLENGER_RUNTIME_VERSION = "horizon-calibrated-overlay-shadow-v0.1"
-PROSPECTIVE_RUNTIME_VERSION = "tp-sl-rule-library-runtime-v0.18-stable-champion"
+# Retained only so historical offline audit modules remain readable. It is not
+# exported by current_version_contract and is not imported by the application.
+CHALLENGER_RUNTIME_VERSION = "retired-offline-only-v0.7"
+PROSPECTIVE_RUNTIME_VERSION = "single-joint-temporal-runtime-v0.7"
 
 
 def current_version_contract() -> dict:
@@ -30,7 +32,6 @@ def current_version_contract() -> dict:
         "evidence_reconstruction_version": EVIDENCE_RECONSTRUCTION_VERSION,
         "economic_normalization_version": ECONOMIC_NORMALIZATION_VERSION,
         "legacy_reevaluation_version": LEGACY_REEVALUATION_VERSION,
-        "challenger_runtime_version": CHALLENGER_RUNTIME_VERSION,
         "prospective_runtime_version": PROSPECTIVE_RUNTIME_VERSION,
     }
 

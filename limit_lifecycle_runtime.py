@@ -11,7 +11,7 @@ from limit_order_contract import (
     LifecycleEvent,
     learning_label_for_terminal_event,
 )
-from m6_production_analysis import NewEngineAnalysisError, analyze_trade
+from m7_production_analysis import NewEngineAnalysisError, analyze_trade
 
 
 LIMIT_LIFECYCLE_RUNTIME_VERSION = "limit-lifecycle-runtime-v0.1"

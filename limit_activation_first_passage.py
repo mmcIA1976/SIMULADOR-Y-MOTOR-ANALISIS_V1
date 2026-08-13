@@ -3,15 +3,35 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-from m6_first_passage import (
-    FirstPassageConvergenceError,
-    FirstPassageInputError,
-    non_negative_finite,
-    positive_finite,
-)
-
-
 SINGLE_BARRIER_SOLVER_VERSION = "LIMIT-single-barrier-first-passage-v0.1"
+
+
+class FirstPassageInputError(ValueError):
+    pass
+
+
+class FirstPassageConvergenceError(RuntimeError):
+    pass
+
+
+def positive_finite(value: float, name: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise FirstPassageInputError(f"{name}_must_be_numeric") from exc
+    if not math.isfinite(number) or number <= 0:
+        raise FirstPassageInputError(f"{name}_must_be_positive_finite")
+    return number
+
+
+def non_negative_finite(value: float, name: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise FirstPassageInputError(f"{name}_must_be_numeric") from exc
+    if not math.isfinite(number) or number < 0:
+        raise FirstPassageInputError(f"{name}_must_be_non_negative_finite")
+    return number
 
 
 @dataclass(frozen=True)
@@ -43,8 +63,8 @@ def single_barrier_first_passage(
     volatility convention. The reflection principle gives the exact
     model-implied hit probability as ``erfc(z / sqrt(2))``.
 
-    The implementation is deliberately outside the frozen M6 module. It
-    reuses M6 input semantics without changing the audited market solver.
+    This activation-stage solver is independent from the production TP/SL
+    probability engine and does not execute an alternative market model.
     """
 
     distance = positive_finite(log_distance, "log_distance")

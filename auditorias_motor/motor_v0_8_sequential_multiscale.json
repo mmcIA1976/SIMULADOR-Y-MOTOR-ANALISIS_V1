@@ -1,0 +1,565 @@
+{
+  "artifact_id": "TP-SL-SEQUENTIAL-MULTISCALE-v0.8-frozen-001",
+  "engine_version": "TP-SL-SEQUENTIAL-MULTISCALE-v0.8",
+  "scoring_version": "sequential-conditional-first-touch-frozen-v0.8",
+  "status": "frozen_production",
+  "production_authorized": true,
+  "single_engine": true,
+  "parallel_probability_engines": 0,
+  "automatic_weight_updates": false,
+  "stage_order": [
+    "intraday_short",
+    "intraday_wide",
+    "short_swing"
+  ],
+  "stage_profiles": {
+    "intraday_short": {
+      "stage_id": "stage_0_4h",
+      "label": "0-4 h",
+      "horizon_seconds": 14400,
+      "increment_seconds": 14400,
+      "interval": "5m",
+      "interval_seconds": 300
+    },
+    "intraday_wide": {
+      "stage_id": "stage_4_24h",
+      "label": "4-24 h",
+      "horizon_seconds": 86400,
+      "increment_seconds": 72000,
+      "interval": "1h",
+      "interval_seconds": 3600
+    },
+    "short_swing": {
+      "stage_id": "stage_24h_7d",
+      "label": "24 h-7 d",
+      "horizon_seconds": 604800,
+      "increment_seconds": 518400,
+      "interval": "6h",
+      "interval_seconds": 21600
+    }
+  },
+  "stage_models": {
+    "intraday_short": {
+      "enabled": true,
+      "ridge": 10.0,
+      "scaling": {
+        "geometry::tp_sigma_units": {
+          "mean": 2.679686582300879,
+          "scale": 1.322775750335898
+        },
+        "geometry::sl_sigma_units": {
+          "mean": 2.6763338716079175,
+          "scale": 1.3073264585348159
+        },
+        "geometry::log_tp_sl_ratio": {
+          "mean": -0.0005473512486150188,
+          "scale": 0.2852706691501439
+        },
+        "geometry::log_context_sigma": {
+          "mean": -4.443882140681628,
+          "scale": 0.6035058730088473
+        },
+        "intraday_short::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": {
+          "mean": -0.0016872510966992,
+          "scale": 0.16836726361925822
+        },
+        "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": {
+          "mean": -0.0006477665640090042,
+          "scale": 0.12093592248511331
+        },
+        "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": {
+          "mean": -0.0004880130530428585,
+          "scale": 0.0904283031091605
+        },
+        "intraday_short::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": {
+          "mean": 0.45326875,
+          "scale": 0.3011756639425159
+        },
+        "intraday_short::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": {
+          "mean": 0.945,
+          "scale": 0.22798026230355994
+        },
+        "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": {
+          "mean": -2.1239737653866945e-05,
+          "scale": 0.007234791894160685
+        },
+        "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": {
+          "mean": -9.341583213825706e-05,
+          "scale": 0.012915172699339447
+        },
+        "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": {
+          "mean": -0.002314545818939644,
+          "scale": 0.4737510938120663
+        },
+        "intraday_short::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": {
+          "mean": -0.0014913506929283284,
+          "scale": 0.20466035054478937
+        },
+        "intraday_short::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": {
+          "mean": -0.005779308956199627,
+          "scale": 1.1497059200355069
+        },
+        "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": {
+          "mean": -0.18476805825365158,
+          "scale": 0.6090065272909941
+        },
+        "intraday_short::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": {
+          "mean": 2.452115821362897e-05,
+          "scale": 0.05499664042799838
+        },
+        "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": {
+          "mean": 9.595125,
+          "scale": 5.406981712043698
+        },
+        "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": {
+          "mean": 9.55625,
+          "scale": 5.42336020724237
+        },
+        "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": {
+          "mean": 2.193088252174404,
+          "scale": 1.4052806453474553
+        },
+        "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+          "mean": 2.1920133993511572,
+          "scale": 1.3950857651707618
+        },
+        "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": {
+          "mean": 0.41513958333333334,
+          "scale": 0.2917182001423134
+        },
+        "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": {
+          "mean": 0.4463875,
+          "scale": 0.2867407944068708
+        },
+        "intraday_short::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": {
+          "mean": -0.034221526165207204,
+          "scale": 4.4102593045275995
+        },
+        "intraday_short::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": {
+          "mean": 0.31683951745624744,
+          "scale": 0.2090197094805863
+        },
+        "intraday_short::context_sigma": {
+          "mean": 0.01468929371324736,
+          "scale": 0.022771552616716213
+        }
+      },
+      "coefficients": {
+        "tp_first_in_stage": {
+          "intercept": 1.2845742280856856,
+          "geometry::tp_sigma_units": 0.6941810089922431,
+          "geometry::sl_sigma_units": 0.5443019931219784,
+          "geometry::log_tp_sl_ratio": 0.3026035161386913,
+          "geometry::log_context_sigma": -0.26052803285758636,
+          "intraday_short::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": -0.0428958122619958,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": -0.03166465557338007,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": -0.04908121917461227,
+          "intraday_short::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -0.3897375569686838,
+          "intraday_short::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.11547620426768865,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": -0.1673596733341753,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": 0.3117645429142826,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": 0.0026996572859253596,
+          "intraday_short::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": 0.10307016862861816,
+          "intraday_short::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": 0.07167311311868076,
+          "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": -0.32912374742404266,
+          "intraday_short::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": 0.1396836886016611,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": -0.10816998465914032,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": 0.10982157693343597,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": 0.2731372482375308,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": -0.1310875158523331,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.27556750121041274,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": 0.3848942024080505,
+          "intraday_short::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": 0.014543042347113878,
+          "intraday_short::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.029655534135359905,
+          "intraday_short::context_sigma": -0.8395278200537378
+        },
+        "sl_first_in_stage": {
+          "intercept": 1.2900883142996684,
+          "geometry::tp_sigma_units": 0.5331858025865183,
+          "geometry::sl_sigma_units": 0.5798670258465388,
+          "geometry::log_tp_sl_ratio": -0.4196787409230313,
+          "geometry::log_context_sigma": -0.03861227850608326,
+          "intraday_short::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": 0.013026787139954877,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": 0.14098514908106924,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": 0.030915058466511307,
+          "intraday_short::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -0.5247164808120671,
+          "intraday_short::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.08873824750090217,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": 0.1129513588381546,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": -0.4250219021830299,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": -0.22592862476106285,
+          "intraday_short::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": -0.21501652818400677,
+          "intraday_short::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": 0.08969749839388118,
+          "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": -0.3895900214140425,
+          "intraday_short::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": 0.03025543708858998,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": 0.10948809415199347,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": -0.09749098716722174,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": 0.16765243598029142,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.07653249524154317,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.30501810634163906,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": 0.41592662474037184,
+          "intraday_short::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": 0.0025641098347124816,
+          "intraday_short::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.06568801208623894,
+          "intraday_short::context_sigma": -0.8314113005532464
+        }
+      },
+      "fit_case_count": 8000,
+      "fit_iterations": 60
+    },
+    "intraday_wide": {
+      "enabled": true,
+      "ridge": 10.0,
+      "scaling": {
+        "geometry::tp_sigma_units": {
+          "mean": 0.9958749999999998,
+          "scale": 0.29181305552527975
+        },
+        "geometry::sl_sigma_units": {
+          "mean": 0.99315625,
+          "scale": 0.2891394137538801
+        },
+        "geometry::log_tp_sl_ratio": {
+          "mean": 0.002130385696740023,
+          "scale": 0.2983197130522708
+        },
+        "geometry::log_context_sigma": {
+          "mean": -3.4499015134330913,
+          "scale": 0.5654161165289456
+        },
+        "intraday_short::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": {
+          "mean": -0.0008635353404015263,
+          "scale": 0.1652818468722165
+        },
+        "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": {
+          "mean": -0.0007435790481558275,
+          "scale": 0.12058178736286185
+        },
+        "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": {
+          "mean": -0.0007908880540795657,
+          "scale": 0.0901186327572412
+        },
+        "intraday_short::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": {
+          "mean": 0.45162291666666665,
+          "scale": 0.3021959643405505
+        },
+        "intraday_short::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": {
+          "mean": 0.95975,
+          "scale": 0.19654500120837468
+        },
+        "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": {
+          "mean": -1.5608100739511426e-05,
+          "scale": 0.006907374797935244
+        },
+        "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": {
+          "mean": -0.00011150349531516179,
+          "scale": 0.012751846735073864
+        },
+        "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": {
+          "mean": -0.004879409646807006,
+          "scale": 0.4683102850156061
+        },
+        "intraday_short::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": {
+          "mean": -0.0008858504812470237,
+          "scale": 0.1998876685581064
+        },
+        "intraday_short::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": {
+          "mean": -0.0034986784318223113,
+          "scale": 1.123408435753517
+        },
+        "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": {
+          "mean": -0.18922523116007933,
+          "scale": 0.6025958912360645
+        },
+        "intraday_short::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": {
+          "mean": 2.8283203495867154e-05,
+          "scale": 0.054654693654038654
+        },
+        "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": {
+          "mean": 9.8235,
+          "scale": 5.397902161951437
+        },
+        "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": {
+          "mean": 9.73,
+          "scale": 5.37695080877629
+        },
+        "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": {
+          "mean": 2.366259582823546,
+          "scale": 1.3829043761781048
+        },
+        "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+          "mean": 2.342738927661985,
+          "scale": 1.3775679794147586
+        },
+        "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": {
+          "mean": 0.4054479166666667,
+          "scale": 0.2908537613333732
+        },
+        "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": {
+          "mean": 0.435575,
+          "scale": 0.2825494842353577
+        },
+        "intraday_short::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": {
+          "mean": -0.020195660590175937,
+          "scale": 4.423632704389795
+        },
+        "intraday_short::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": {
+          "mean": 0.32269937478194805,
+          "scale": 0.21135837112816278
+        },
+        "intraday_short::context_sigma": {
+          "mean": 0.01469963956947349,
+          "scale": 0.020461518701505532
+        },
+        "intraday_wide::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": {
+          "mean": -0.0021853045674269616,
+          "scale": 0.2574165723205822
+        },
+        "intraday_wide::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": {
+          "mean": -0.0008548511672335689,
+          "scale": 0.19055246312146645
+        },
+        "intraday_wide::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": {
+          "mean": -0.00017281112524849927,
+          "scale": 0.13293472742521437
+        },
+        "intraday_wide::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": {
+          "mean": 0.5104166666666667,
+          "scale": 0.30083685362667917
+        },
+        "intraday_wide::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": {
+          "mean": 0.631625,
+          "scale": 0.48236382469563366
+        },
+        "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": {
+          "mean": -0.00020829680390248854,
+          "scale": 0.029456917319760495
+        },
+        "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": {
+          "mean": 9.564109703885943e-05,
+          "scale": 0.03791799636272204
+        },
+        "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": {
+          "mean": -0.003170127613883424,
+          "scale": 0.4938036430344135
+        },
+        "intraday_wide::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": {
+          "mean": -0.0028547445867303993,
+          "scale": 0.2362222290454353
+        },
+        "intraday_wide::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": {
+          "mean": -0.013606372045187208,
+          "scale": 1.2424053738105214
+        },
+        "intraday_wide::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": {
+          "mean": 0.009995019240647328,
+          "scale": 0.5851169363642227
+        },
+        "intraday_wide::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": {
+          "mean": -0.00032917068561760966,
+          "scale": 0.031141787672198842
+        },
+        "intraday_wide::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": {
+          "mean": 2.945375,
+          "scale": 2.406946428438946
+        },
+        "intraday_wide::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": {
+          "mean": 2.950875,
+          "scale": 2.428829292967087
+        },
+        "intraday_wide::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": {
+          "mean": 0.4698215390748292,
+          "scale": 0.5391693198128803
+        },
+        "intraday_wide::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+          "mean": 0.4690590389975119,
+          "scale": 0.549230328587234
+        },
+        "intraday_wide::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": {
+          "mean": 0.4981479166666667,
+          "scale": 0.30462375529056557
+        },
+        "intraday_wide::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": {
+          "mean": 0.5087854166666667,
+          "scale": 0.29922261047698206
+        },
+        "intraday_wide::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": {
+          "mean": -0.022351942415397136,
+          "scale": 2.9020974993041326
+        },
+        "intraday_wide::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": {
+          "mean": 0.30754204081447056,
+          "scale": 0.19387665743945798
+        },
+        "intraday_wide::context_sigma": {
+          "mean": 0.03718369382773208,
+          "scale": 0.022757042797376812
+        }
+      },
+      "coefficients": {
+        "tp_first_in_stage": {
+          "intercept": -0.17548199273210477,
+          "geometry::tp_sigma_units": 0.46845745202436745,
+          "geometry::sl_sigma_units": 0.2648389713768605,
+          "geometry::log_tp_sl_ratio": -0.05328700278680234,
+          "geometry::log_context_sigma": -0.014046869785213014,
+          "intraday_short::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": -0.15946533509241131,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": -0.07053623049909175,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": -0.09703830280182954,
+          "intraday_short::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -0.26588549599230293,
+          "intraday_short::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": -0.026935960250329898,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": -0.015681242906782078,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": 0.13418277483412494,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": 0.12068116625192966,
+          "intraday_short::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": 0.01680742827585871,
+          "intraday_short::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": 0.032914460605149264,
+          "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": -0.18278380439747774,
+          "intraday_short::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": 0.09199178131254744,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": 0.12799409744053808,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": 0.08479884951656967,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": -0.34383789521450936,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": -0.20290619902747276,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.3599956455087701,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": -0.10291589608738703,
+          "intraday_short::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": 0.033373074604646086,
+          "intraday_short::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.08484441492222147,
+          "intraday_short::context_sigma": -0.038591200041715304,
+          "intraday_wide::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": 0.029555719753852825,
+          "intraday_wide::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": -0.035330155746341685,
+          "intraday_wide::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": 0.07566343253083556,
+          "intraday_wide::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -0.357052386718351,
+          "intraday_wide::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.024984744824291857,
+          "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": -0.04183137647472961,
+          "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": 0.00501674034566861,
+          "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": -0.052738048323816074,
+          "intraday_wide::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": -0.040530775837011486,
+          "intraday_wide::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": 0.1098724492274166,
+          "intraday_wide::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": 0.040919364057584215,
+          "intraday_wide::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": -0.0307215708509669,
+          "intraday_wide::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": -0.08300727310620311,
+          "intraday_wide::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": -0.1547179665257407,
+          "intraday_wide::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": -0.026020997184806726,
+          "intraday_wide::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.0051278819024887096,
+          "intraday_wide::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.03649638003293833,
+          "intraday_wide::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": -0.062023965970355706,
+          "intraday_wide::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": -0.0006794818351864463,
+          "intraday_wide::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.03032552957028985,
+          "intraday_wide::context_sigma": -0.13543659593257387
+        },
+        "sl_first_in_stage": {
+          "intercept": -0.1441864970947068,
+          "geometry::tp_sigma_units": 0.320682566567466,
+          "geometry::sl_sigma_units": 0.3933430073485448,
+          "geometry::log_tp_sl_ratio": 0.017815404174041413,
+          "geometry::log_context_sigma": -0.05576117906430285,
+          "intraday_short::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": 0.16368801774281586,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": -0.03852026465431493,
+          "intraday_short::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": 0.270962486303168,
+          "intraday_short::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -0.22578277180025222,
+          "intraday_short::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.01691402230744806,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": -0.0022241233109831773,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": -0.09011970971817766,
+          "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": -0.08100591975995594,
+          "intraday_short::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": -0.027744077483361305,
+          "intraday_short::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": -0.08599476906283929,
+          "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": -0.21514266836355128,
+          "intraday_short::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": -0.017838174884080835,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": 0.06422165757867516,
+          "intraday_short::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": 0.11215170182274185,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": -0.2172840251675244,
+          "intraday_short::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": -0.2802881821991576,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.34942735185193413,
+          "intraday_short::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": -0.11574247902611802,
+          "intraday_short::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": -0.015114902345625682,
+          "intraday_short::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.09057382811143799,
+          "intraday_short::context_sigma": 0.04837905523670353,
+          "intraday_wide::M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": -0.08323885559071002,
+          "intraday_wide::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": 0.09804703892336526,
+          "intraday_wide::M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": -0.077855537797334,
+          "intraday_wide::M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -0.45378672110291224,
+          "intraday_wide::M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.033848636725008235,
+          "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": -0.030008514084875905,
+          "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": 0.04995081891285225,
+          "intraday_wide::LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": -0.003439818677540017,
+          "intraday_wide::LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": 0.05602542873054311,
+          "intraday_wide::LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": -0.07415384788337899,
+          "intraday_wide::LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": 0.10230632298014453,
+          "intraday_wide::LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": 0.011428066254485243,
+          "intraday_wide::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": -0.12709891967752407,
+          "intraday_wide::LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": -0.07372606166152944,
+          "intraday_wide::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": -0.04147174700882889,
+          "intraday_wide::LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.04020770533406091,
+          "intraday_wide::LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.030046965286027367,
+          "intraday_wide::LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": -0.06495684066487994,
+          "intraday_wide::LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": -0.05248049147260604,
+          "intraday_wide::LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.046545143207117855,
+          "intraday_wide::context_sigma": -0.0526773906620556
+        }
+      },
+      "fit_case_count": 8000,
+      "fit_iterations": 60
+    },
+    "short_swing": {
+      "enabled": false,
+      "ridge": null,
+      "scaling": {},
+      "coefficients": {}
+    }
+  },
+  "feature_schema": {
+    "base_rule_features": [
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h",
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h",
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h",
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60",
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp",
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log",
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log",
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr",
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi",
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr",
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume",
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope",
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count",
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count",
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon",
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon",
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank",
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank",
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr",
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio"
+    ],
+    "inheritance": {
+      "intraday_short": [
+        "intraday_short"
+      ],
+      "intraday_wide": [
+        "intraday_short",
+        "intraday_wide"
+      ],
+      "short_swing": [
+        "intraday_short",
+        "intraday_wide",
+        "short_swing"
+      ]
+    },
+    "geometry": [
+      "tp_sigma_units",
+      "sl_sigma_units",
+      "log_tp_sl_ratio",
+      "log_context_sigma"
+    ]
+  },
+  "baseline": {
+    "method": "piecewise_variance_first_touch",
+    "incremental_variance": "context_sigma_squared * increment_seconds / context_horizon_seconds"
+  },
+  "training_dataset_sha256": "59da09060a3914c84b3335625e7b0aacf1d3fef68d3bfdb73a43261c138995d0",
+  "evaluation_sha256": "0940040723734d8978018d528ca84fad83a08fec0cc51fcdbb8c0987af2d21b0",
+  "invariants": {
+    "first_touch_absorbing": true,
+    "tp_cumulative_non_decreasing": true,
+    "sl_cumulative_non_decreasing": true,
+    "expiry_non_increasing": true,
+    "probability_mass_one": true
+  },
+  "artifact_sha256": "9607aef3aa20a865c26a63016311a3b06d8725d982253807d3615710f1023861"
+}

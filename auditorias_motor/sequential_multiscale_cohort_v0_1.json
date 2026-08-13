@@ -1,0 +1,52 @@
+{
+  "version": "sequential-multiscale-cohort-v0.1",
+  "source_nested_dataset_sha256": "e20876c4f923e59790b98ad7ec217e30f967ad20682e6cd04d11dbf4813796fa",
+  "dataset_path": "data\\phase1_controlled_replay\\sequential_multiscale_cases_v0_1.jsonl.gz",
+  "dataset_sha256": "59da09060a3914c84b3335625e7b0aacf1d3fef68d3bfdb73a43261c138995d0",
+  "cases": 188712,
+  "plan_groups": 62904,
+  "cases_by_partition": {
+    "development": 65448,
+    "calibration": 39096,
+    "rule_test": 39672,
+    "final_test": 44496
+  },
+  "cases_by_horizon": {
+    "intraday_short": 62904,
+    "intraday_wide": 62904,
+    "short_swing": 62904
+  },
+  "blocked": {},
+  "stage_contract": {
+    "intraday_short": {
+      "stage_id": "stage_0_4h",
+      "label": "0-4 h",
+      "horizon_seconds": 14400,
+      "increment_seconds": 14400,
+      "interval": "5m",
+      "interval_seconds": 300
+    },
+    "intraday_wide": {
+      "stage_id": "stage_4_24h",
+      "label": "4-24 h",
+      "horizon_seconds": 86400,
+      "increment_seconds": 72000,
+      "interval": "1h",
+      "interval_seconds": 3600
+    },
+    "short_swing": {
+      "stage_id": "stage_24h_7d",
+      "label": "24 h-7 d",
+      "horizon_seconds": 604800,
+      "increment_seconds": 518400,
+      "interval": "6h",
+      "interval_seconds": 21600
+    }
+  },
+  "same_plan_across_stages": true,
+  "past_data_only": true,
+  "first_touch_nested": true,
+  "production_effect": "none",
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "584e6b4977ecfdd6c19118b222eca4191cc3634da7db3da80c8545a1043af458"
+}

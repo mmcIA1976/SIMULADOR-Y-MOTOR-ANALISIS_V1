@@ -1,0 +1,27 @@
+{
+  "version": "phase1-current-engine-freeze-v0.1",
+  "engine_contract": "TP-SL-PROBABILITY-ENGINE-v0.6-stable-global",
+  "coefficient_artifact_id": "M6-CANDIDATE-NO-H-RIDGE-10-v0.2",
+  "coefficient_artifact_sha256": "9f3b47775c67e19f5c1727d5b73f6fe066a2de384ef6f9d813d97850f74f7f1f",
+  "artifact_file_sha256": "c33035fbb67d08545ab1c05721bc62fa6bf2b6898f9655d348d8d784fc34f3cb",
+  "artifact_production_authorized_field": false,
+  "fitted_predictive_rules": [
+    "M4-RULE-MTF-HIERARCHY-001",
+    "M4-RULE-VOLATILITY-RANK-001",
+    "M4-RULE-PRIOR-EXTREMA-001"
+  ],
+  "baseline_variant": {
+    "coefficient_artifact": null,
+    "evidence_status": "baseline_only_no_artifact",
+    "inputs": [
+      "plan_geometry",
+      "horizon",
+      "realized_volatility",
+      "first_passage"
+    ]
+  },
+  "automatic_weight_updates": false,
+  "production_mutation": false,
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "1e1417013e17ab95011c0f3c6da9274936fb9284bb59d8e970c307d4ec2186b4"
+}

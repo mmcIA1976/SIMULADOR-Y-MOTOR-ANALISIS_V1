@@ -119,9 +119,9 @@ const PRICE_FETCH_TIMEOUT_MS = 20000;
 const PRICE_RECORD_TIMEOUT_MS = 25000;
 const PROPOSAL_HISTORY_MINUTES = 60;
 const TIME_HORIZON_LABELS = {
-  intraday_short: "Intradia corto · 30 min-4 h",
-  intraday_wide: "Intradia amplio · 4-24 h",
-  short_swing: "Swing corto · 1-7 dias",
+  intraday_short: "Intradía corto · acumulado hasta 4 h",
+  intraday_wide: "Intradía medio · acumulado hasta 24 h",
+  short_swing: "Intradía largo · acumulado hasta 7 días",
 };
 let side = "long";
 let timerId = null;

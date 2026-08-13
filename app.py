@@ -51,11 +51,11 @@ from limit_production_analysis import (
     LimitProductionAnalysisError,
     analyze_limit_trade,
 )
-from m7_production_analysis import (
+from sequential_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
-from m7_joint_temporal_engine import HORIZON_SECONDS
+from sequential_temporal_engine import HORIZON_SECONDS
 from operation_worker_status import (
     add_transition_coverage,
     get_worker_status_row,

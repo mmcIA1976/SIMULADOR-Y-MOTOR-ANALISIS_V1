@@ -20,11 +20,11 @@ from limit_order_contract import (
     build_limit_order_contract,
     compose_limit_probability_tree,
 )
-from m7_production_analysis import NewEngineAnalysisError, analyze_trade
-from m7_joint_temporal_engine import ENGINE_VERSION
+from sequential_production_analysis import NewEngineAnalysisError, analyze_trade
+from sequential_temporal_engine import ENGINE_VERSION
 
 
-# LIMIT is an entry lifecycle around the same v0.7 TP/SL engine, not a second
+# LIMIT is an entry lifecycle around the same v0.8 TP/SL engine, not a second
 # probability engine or a separately versioned analysis result.
 LIMIT_PRODUCTION_ENGINE_VERSION = ENGINE_VERSION
 
@@ -220,7 +220,7 @@ def analyze_limit_trade(
             ),
             "setup_grade": "LIMIT en dos etapas",
             "confidence": (
-                "v0.7 condicional; activacion base no calibrada"
+                "v0.8 secuencial condicional; activación base no calibrada"
             ),
             "training_decision": "decision del usuario",
             "reasons": [

@@ -1,0 +1,47 @@
+{
+  "version": "single-engine-horizon-value-protocol-v0.1",
+  "question": "Does limiting the same trade plan to the selected duration improve TP-first versus SL-first versus expiry probabilities?",
+  "single_engine": true,
+  "independent_engines_by_frame": false,
+  "same_plan_contract": [
+    "same symbol",
+    "same analysis timestamp",
+    "same side",
+    "same entry",
+    "same take profit",
+    "same stop loss"
+  ],
+  "only_changed_plan_input": "horizon_seconds",
+  "horizon_seconds": {
+    "intraday_short": 14400,
+    "intraday_wide": 86400,
+    "short_swing": 604800
+  },
+  "models": {
+    "horizon_blind_physics": "first-passage with fixed 24h reference volatility for every row",
+    "horizon_aware_physics": "same volatility rate scaled by sqrt(selected_seconds / 24h)",
+    "horizon_blind_rules": "blind physics plus one shared coefficient vector over fixed 24h rule context",
+    "horizon_aware_rules": "aware physics plus the same coefficient schema over selected-duration context",
+    "horizon_aware_interactions": "aware rules plus continuous log-duration interactions in one model"
+  },
+  "primary_metric": "macro_horizon_log_loss_3c",
+  "secondary_metric": "macro_horizon_brier_3c",
+  "paired_inference_block": "UTC calendar week shared by all symbols and horizons",
+  "selection": "ridge on calibration; choose eligible time-aware candidate on rule_test; open final_test once after freezing",
+  "candidate_gate": [
+    "positive mean log-loss and Brier improvement on calibration",
+    "positive mean log-loss and Brier improvement on rule_test",
+    "final weekly-bootstrap 95% lower bounds above zero against blind counterpart",
+    "final mean log-loss and Brier not worse in any selected horizon"
+  ],
+  "partitions": {
+    "development_end": "2024-12-31T23:59:59+00:00",
+    "calibration_end": "2025-06-30T23:59:59+00:00",
+    "rule_test_end": "2025-12-31T23:59:59+00:00",
+    "final_end": "2026-07-31T23:59:59+00:00"
+  },
+  "automatic_weight_updates": false,
+  "production_effect": "none",
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "fad81e78055d4f39f4420bab28e6f50b172ec8edc5e7e1d51493eb52f17ed886"
+}

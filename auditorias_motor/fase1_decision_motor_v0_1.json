@@ -1,0 +1,215 @@
+{
+  "version": "phase1-final-engine-decision-v0.1",
+  "validation_sha256": "195776615de9c3865d0f103d40553cc732b2027c5f601bb0ceebcf81988d5b63",
+  "current_engine_audit_sha256": "5af15d9ea8b1aed83eeff8b07286a36dababa6c5380a9f26785a9fc9f1dd50d9",
+  "decision": "no_new_engine_promotion_keep_v0_6_frozen_only_intraday_wide_supported",
+  "facts": {
+    "new_supported_rule_horizon_count": 0,
+    "new_joint_challenger_created": false,
+    "current_engine_by_horizon": {
+      "intraday_short": "current_engine_predictive_value_not_demonstrated",
+      "intraday_wide": "current_engine_supported_out_of_sample",
+      "short_swing": "current_engine_predictive_value_not_demonstrated"
+    },
+    "baseline_calibration_by_horizon": {
+      "intraday_short": {
+        "status": "calibration_supported_out_of_sample",
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.036222808809300476,
+          "mean_brier_improvement": 0.020239909376870764,
+          "log_loss_bootstrap_95ci": [
+            0.02072448581166105,
+            0.05156011026930204
+          ],
+          "brier_bootstrap_95ci": [
+            0.009994781294219992,
+            0.02993461035189446
+          ],
+          "one_sided_normal_p_log_loss": 1.8805989087100627e-06,
+          "one_sided_normal_p_brier": 3.286177105588095e-05,
+          "bootstrap_episode_sample_size": 368
+        },
+        "final_test": {
+          "episodes": 424,
+          "mean_log_loss_improvement": 0.04335217173858583,
+          "mean_brier_improvement": 0.024946955294345517,
+          "log_loss_bootstrap_95ci": [
+            0.026750814567007147,
+            0.06153672064973631
+          ],
+          "brier_bootstrap_95ci": [
+            0.01411388039859298,
+            0.03704354458775956
+          ],
+          "one_sided_normal_p_log_loss": 1.8263677281638024e-07,
+          "one_sided_normal_p_brier": 3.962918815991756e-06,
+          "bootstrap_episode_sample_size": 424
+        }
+      },
+      "intraday_wide": {
+        "status": "calibration_not_demonstrated",
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.00036640954529691824,
+          "mean_brier_improvement": 0.0017219034715227298,
+          "log_loss_bootstrap_95ci": [
+            -0.009227026601879448,
+            0.009593929486393371
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0037427768389425124,
+            0.00789740157254025
+          ],
+          "one_sided_normal_p_log_loss": 0.5318336012000136,
+          "one_sided_normal_p_brier": 0.2691825683772042,
+          "bootstrap_episode_sample_size": 184
+        },
+        "final_test": {
+          "episodes": 211,
+          "mean_log_loss_improvement": -4.1455067830697936e-05,
+          "mean_brier_improvement": 5.687275236752068e-05,
+          "log_loss_bootstrap_95ci": [
+            -0.0005807551293722289,
+            0.0004288853137104427
+          ],
+          "brier_bootstrap_95ci": [
+            -0.00029854613039278463,
+            0.0003573458586779616
+          ],
+          "one_sided_normal_p_log_loss": 0.5614180195290934,
+          "one_sided_normal_p_brier": 0.36959502138385303,
+          "bootstrap_episode_sample_size": 211
+        }
+      },
+      "short_swing": {
+        "status": "calibration_not_demonstrated",
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0011528298782817385,
+          "mean_brier_improvement": 0.0011900670144277662,
+          "log_loss_bootstrap_95ci": [
+            -0.008181495497608094,
+            0.008852502528770243
+          ],
+          "brier_bootstrap_95ci": [
+            -0.004683247873357408,
+            0.0060519784164255
+          ],
+          "one_sided_normal_p_log_loss": 0.3941408111670276,
+          "one_sided_normal_p_brier": 0.3294023360825188,
+          "bootstrap_episode_sample_size": 26
+        },
+        "final_test": {
+          "episodes": 29,
+          "mean_log_loss_improvement": 0.00013236275553678287,
+          "mean_brier_improvement": 3.35430632742257e-05,
+          "log_loss_bootstrap_95ci": [
+            -0.0014294686037567739,
+            0.001783441621075684
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0010066451905574392,
+            0.0011238439013287983
+          ],
+          "one_sided_normal_p_log_loss": 0.4361885986442243,
+          "one_sided_normal_p_brier": 0.47523840103935244,
+          "bootstrap_episode_sample_size": 29
+        }
+      }
+    },
+    "rule_watchlist_by_horizon": {
+      "intraday_short": [
+        {
+          "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+          "reason": "positive_but_uncertainty_interval_not_conclusive",
+          "rule_test_log_loss_improvement": 0.0019530433157559852,
+          "rule_test_brier_improvement": 0.0004883343687210486,
+          "rule_test_fdr_adjusted_p": 0.9942597924446614,
+          "independent_time_clusters": 368
+        }
+      ],
+      "intraday_wide": [
+        {
+          "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+          "reason": "positive_but_failed_multiple_test_control",
+          "rule_test_log_loss_improvement": 0.05132282721036728,
+          "rule_test_brier_improvement": 0.027577676477299067,
+          "rule_test_fdr_adjusted_p": 0.06242749942413495,
+          "independent_time_clusters": 184
+        },
+        {
+          "rule_id": "LIB-CAND-RELATIVE-VOLUME-001",
+          "reason": "positive_but_failed_multiple_test_control",
+          "rule_test_log_loss_improvement": 0.02342117911513639,
+          "rule_test_brier_improvement": 0.013084781846160019,
+          "rule_test_fdr_adjusted_p": 0.06242749942413495,
+          "independent_time_clusters": 184
+        },
+        {
+          "rule_id": "LIB-CAND-COMPRESSION-001",
+          "reason": "positive_but_failed_multiple_test_control",
+          "rule_test_log_loss_improvement": 0.030345135631920057,
+          "rule_test_brier_improvement": 0.015887698992515287,
+          "rule_test_fdr_adjusted_p": 0.24625880440035797,
+          "independent_time_clusters": 184
+        }
+      ],
+      "short_swing": [
+        {
+          "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+          "reason": "positive_but_insufficient_independent_time_clusters",
+          "rule_test_log_loss_improvement": 0.06381182391883396,
+          "rule_test_brier_improvement": 0.038392958826740715,
+          "rule_test_fdr_adjusted_p": 0.7621627217969326,
+          "independent_time_clusters": 26
+        },
+        {
+          "rule_id": "LIB-CAND-RELATIVE-VOLUME-001",
+          "reason": "positive_but_insufficient_independent_time_clusters",
+          "rule_test_log_loss_improvement": 0.0025539765748920783,
+          "rule_test_brier_improvement": 0.0012599476812214655,
+          "rule_test_fdr_adjusted_p": 0.9942597924446614,
+          "independent_time_clusters": 26
+        },
+        {
+          "rule_id": "LIB-CAND-CVD-SLOPE-001",
+          "reason": "positive_but_insufficient_independent_time_clusters",
+          "rule_test_log_loss_improvement": 0.0040648321201937915,
+          "rule_test_brier_improvement": 0.0024549995735510125,
+          "rule_test_fdr_adjusted_p": 0.9942597924446614,
+          "independent_time_clusters": 26
+        },
+        {
+          "rule_id": "LIB-CAND-COMPRESSION-001",
+          "reason": "positive_but_insufficient_independent_time_clusters",
+          "rule_test_log_loss_improvement": 0.0001656464702827467,
+          "rule_test_brier_improvement": 0.0011961792016930975,
+          "rule_test_fdr_adjusted_p": 0.9942597924446614,
+          "independent_time_clusters": 26
+        },
+        {
+          "rule_id": "LIB-CAND-ABSORPTION-001",
+          "reason": "positive_but_insufficient_independent_time_clusters",
+          "rule_test_log_loss_improvement": 0.007934753090454005,
+          "rule_test_brier_improvement": 0.004414988075742589,
+          "rule_test_fdr_adjusted_p": 0.9942597924446614,
+          "independent_time_clusters": 26
+        }
+      ]
+    }
+  },
+  "actions": {
+    "promote_new_engine": false,
+    "mutate_production_engine": false,
+    "delete_current_engine": false,
+    "delete_historical_operations": false,
+    "start_prospective_challenger": false,
+    "automatic_learning_or_weight_updates": false,
+    "preserve_current_v0_6_for_audit_lineage": true
+  },
+  "reason": "The frozen current engine is supported only for intraday_wide; intraday_short is worse than its calibrated baseline and short_swing lacks enough independent final time clusters. No new rule passes the predeclared complete selection gate.",
+  "production_effect": "none",
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "27e05448d5f565db5be468e4ee04ba4a00affee67dc64da5d43cf40bd9245d31"
+}

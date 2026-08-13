@@ -1225,7 +1225,7 @@ def build_current_audit() -> dict:
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
     analysis_source = (ROOT / "analysis_engine.py").read_text(encoding="utf-8")
     new_engine_source = (
-        ROOT / "m7_production_analysis.py"
+        ROOT / "sequential_production_analysis.py"
     ).read_text(encoding="utf-8")
     old_stamp = 'stamp_pre_trade_horizon(result["snapshot"]'
     new_cutoff_before_load = (
@@ -1237,12 +1237,12 @@ def build_current_audit() -> dict:
             "id": "M3-CURRENT-FAIL-01",
             "severity": (
                 "resolved"
-                if "from m7_production_analysis import" in app_source
+                if "from sequential_production_analysis import" in app_source
                 and new_cutoff_before_load
                 else "critical"
             ),
             "reason": (
-                "The active M6 engine stamps analysis_at and the data cutoff "
+                "The active sequential engine stamps analysis_at and the data cutoff "
                 "before loading the closed pre-trade candles."
             ),
             "observation": {
@@ -1255,7 +1255,7 @@ def build_current_audit() -> dict:
             },
             "source_refs": [
                 "app.py:/api/analyze",
-                "m7_production_analysis.py:analyze_trade",
+                "sequential_production_analysis.py:analyze_trade",
             ],
         },
         {

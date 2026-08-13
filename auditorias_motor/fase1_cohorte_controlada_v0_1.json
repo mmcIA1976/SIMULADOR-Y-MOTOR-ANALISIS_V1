@@ -1,0 +1,126 @@
+{
+  "version": "phase1-controlled-replay-v0.1",
+  "source": "Binance USD-M monthly 5m kline archives",
+  "dataset_path": "data\\phase1_controlled_replay\\controlled_market_cases_v0_1.jsonl.gz",
+  "dataset_sha256": "04d04c987fec51c37787c2bd3c272811a8002c6743fffea2e313f605df0de46e",
+  "episode_set_sha256": "72d2ad5641fa41cfb88733e7b70d87db37588444a97c1867330d832c7ccf3767",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "INJUSDT"
+  ],
+  "horizons": {
+    "intraday_short": {
+      "seconds": 14400,
+      "interval_seconds": 300,
+      "anchor_step_seconds": 43200
+    },
+    "intraday_wide": {
+      "seconds": 86400,
+      "interval_seconds": 3600,
+      "anchor_step_seconds": 86400
+    },
+    "short_swing": {
+      "seconds": 604800,
+      "interval_seconds": 21600,
+      "anchor_step_seconds": 604800
+    }
+  },
+  "geometries_sigma": [
+    [
+      0.5,
+      0.5
+    ],
+    [
+      0.75,
+      1.0
+    ],
+    [
+      1.0,
+      0.75
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.5,
+      1.0
+    ],
+    [
+      1.0,
+      1.5
+    ]
+  ],
+  "partitions": {
+    "development_end": "2024-12-31T23:59:59+00:00",
+    "calibration_end": "2025-06-30T23:59:59+00:00",
+    "rule_test_end": "2025-12-31T23:59:59+00:00",
+    "final_end": "2026-07-31T23:59:59+00:00"
+  },
+  "outcome_resolution": {
+    "primary_interval": "5m",
+    "same_candle_both_barriers": "ambiguous_excluded",
+    "first_barrier_semantics": true
+  },
+  "counts": {
+    "episodes": 23802,
+    "resolved_cases": 285590,
+    "ambiguous_cases": 10,
+    "blocked_rule_evaluation": 24
+  },
+  "cases_by_horizon": {
+    "intraday_short": 186902,
+    "intraday_wide": 89700,
+    "short_swing": 8988
+  },
+  "cases_by_partition": {
+    "development": 155226,
+    "calibration": 40968,
+    "rule_test": 41592,
+    "final_test": 47804
+  },
+  "cases_by_symbol": {
+    "BTCUSDT": 47602,
+    "ETHUSDT": 47598,
+    "SOLUSDT": 47604,
+    "BNBUSDT": 47604,
+    "XRPUSDT": 47602,
+    "INJUSDT": 47580
+  },
+  "rule_feature_coverage": {
+    "M4-RULE-PATH-STRUCTURE-001": 285590,
+    "M4-RULE-MTF-HIERARCHY-001": 285590,
+    "M4-RULE-VOLATILITY-RANK-001": 285590,
+    "LIB-CAND-EMA-TREND-001": 285590,
+    "LIB-CAND-RSI-WILDER-001": 285590,
+    "LIB-CAND-ATR-EXTENSION-001": 285590,
+    "LIB-CAND-RELATIVE-VOLUME-001": 285590,
+    "LIB-CAND-CVD-SLOPE-001": 285590,
+    "LIB-CAND-COMPRESSION-001": 285590,
+    "LIB-CAND-ABSORPTION-001": 285590,
+    "LIB-CAND-PULLBACK-CONTEXT-001": 285590,
+    "M4-RULE-PRIOR-EXTREMA-001": 285590,
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001": 285590,
+    "LIB-CAND-FIBONACCI-DISTANCE-001": 285590
+  },
+  "data_blocked_rules": {
+    "M4-RULE-OPEN-INTEREST-CHANGE-001": "exact_historical_oi_not_in_kline_archive",
+    "M4-RULE-PRICE-OI-STATE-001": "exact_historical_oi_not_in_kline_archive",
+    "M4-RULE-SPOT-FUTURES-BASIS-001": "synchronized_spot_book_history_unavailable",
+    "M4-RULE-MARK-INDEX-PREMIUM-001": "mark_index_history_not_in_kline_archive",
+    "M4-RULE-FUNDING-STATE-001": "funding_history_requires_separate_point_in_time_contract",
+    "LIB-CAND-ORDERBOOK-IMBALANCE-001": "historical_order_book_snapshots_unavailable",
+    "LIB-CAND-FUNDING-PERCENTILE-001": "funding_history_requires_separate_point_in_time_contract",
+    "LIB-CAND-CROWDING-PERCENTILE-001": "historical_crowding_snapshots_unavailable",
+    "LIB-CAND-SENTIMENT-PERCENTILE-001": "historical_sentiment_snapshots_unavailable",
+    "LIB-CAND-LIQUIDATION-ZONE-001": "historical_liquidation_map_snapshots_unavailable",
+    "LIB-CAND-SHOCK-001": "exact_cross_market_event_contract_unavailable",
+    "LIB-CAND-CROSS-VENUE-DIVERGENCE-001": "synchronized_cross_venue_history_unavailable"
+  },
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "ff2047fdb03050825e77c14e34851a6248b2259da329a398934520a3325512d2"
+}

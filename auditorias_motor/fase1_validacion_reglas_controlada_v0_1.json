@@ -1,0 +1,5165 @@
+{
+  "version": "phase1-controlled-rule-validation-v0.1",
+  "dataset_sha256": "04d04c987fec51c37787c2bd3c272811a8002c6743fffea2e313f605df0de46e",
+  "manifest_sha256": "8f528ac86dd00c8edac3d00ee9bea7400e65ed58169f2c063e25c4e185df0a1b",
+  "method": {
+    "baseline": "first_passage_plus_horizon_intercepts",
+    "rule_model": "multiclass_log_probability_offset_ridge",
+    "ridge_selection": "calibration_log_loss_then_brier",
+    "rule_test": "opened_after_ridge_selection_for_rule_screening",
+    "final_test": "opened_once_for_frozen_joint_challenger",
+    "uncertainty": "episode_bootstrap_1000",
+    "fit_case_cap": 3000,
+    "fit_iterations": 80,
+    "multiple_test_control": "Benjamini-Hochberg on the worse one-sided rule-test p-value at FDR 0.05",
+    "minimum_independent_clusters_for_rule_selection": 100,
+    "minimum_independent_clusters_for_sealed_gate": 100,
+    "promotion_requires": "positive development calibration and rule-test deltas; rule-test intervals and FDR pass; frozen joint challenger then requires both sealed-final intervals above zero"
+  },
+  "baseline_by_horizon": [
+    {
+      "time_horizon": "intraday_short",
+      "development_fit": {
+        "coefficients": {
+          "tp_first_within_horizon": {
+            "intercept": -0.533303332656431
+          },
+          "sl_first_within_horizon": {
+            "intercept": -0.5333033326564312
+          }
+        },
+        "fit_cases": 3000
+      },
+      "development": {
+        "n": 103818,
+        "episodes": 8652,
+        "inference_clusters": 1442,
+        "class_counts": {
+          "tp_first_within_horizon": 29170,
+          "neither_barrier_before_expiry": 45478,
+          "sl_first_within_horizon": 29170
+        },
+        "log_loss_3c": 1.0106515837107906,
+        "brier_3c": 0.6008574819017256
+      },
+      "calibration": {
+        "n": 26064,
+        "episodes": 2172,
+        "inference_clusters": 362,
+        "class_counts": {
+          "neither_barrier_before_expiry": 11608,
+          "sl_first_within_horizon": 7228,
+          "tp_first_within_horizon": 7228
+        },
+        "log_loss_3c": 0.9869005755639049,
+        "brier_3c": 0.5898157201528494
+      },
+      "rule_test": {
+        "n": 26496,
+        "episodes": 2208,
+        "inference_clusters": 368,
+        "class_counts": {
+          "sl_first_within_horizon": 7318,
+          "neither_barrier_before_expiry": 11860,
+          "tp_first_within_horizon": 7318
+        },
+        "log_loss_3c": 0.990501652770779,
+        "brier_3c": 0.589895066285305
+      },
+      "sealed_final_refit": {
+        "coefficients": {
+          "tp_first_within_horizon": {
+            "intercept": -0.6251553031076604
+          },
+          "sl_first_within_horizon": {
+            "intercept": -0.6251553031076604
+          }
+        },
+        "fit_cases": 3000
+      },
+      "final_test": {
+        "n": 30524,
+        "episodes": 2544,
+        "inference_clusters": 424,
+        "class_counts": {
+          "sl_first_within_horizon": 8273,
+          "neither_barrier_before_expiry": 13978,
+          "tp_first_within_horizon": 8273
+        },
+        "log_loss_3c": 0.9713184340562986,
+        "brier_3c": 0.5794673095762006
+      },
+      "final_calibration": {
+        "tp_first_within_horizon": {
+          "expected_calibration_error": 0.0076180650839705495,
+          "bins": [
+            {
+              "lower": 0.0,
+              "upper": 0.1,
+              "n": 5088,
+              "mean_predicted": 0.09012697412370939,
+              "observed_frequency": 0.0994496855345912
+            },
+            {
+              "lower": 0.2,
+              "upper": 0.3,
+              "n": 15263,
+              "mean_predicted": 0.23453799242926254,
+              "observed_frequency": 0.23278516674310423
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 5087,
+              "mean_predicted": 0.3680979591420862,
+              "observed_frequency": 0.3674071161784942
+            },
+            {
+              "lower": 0.4,
+              "upper": 0.5,
+              "n": 5086,
+              "mean_predicted": 0.4915124196541336,
+              "observed_frequency": 0.4610696028313016
+            }
+          ]
+        },
+        "sl_first_within_horizon": {
+          "expected_calibration_error": 0.007618065083970552,
+          "bins": [
+            {
+              "lower": 0.0,
+              "upper": 0.1,
+              "n": 5088,
+              "mean_predicted": 0.09012697412370937,
+              "observed_frequency": 0.0994496855345912
+            },
+            {
+              "lower": 0.2,
+              "upper": 0.3,
+              "n": 15263,
+              "mean_predicted": 0.23453799242926254,
+              "observed_frequency": 0.23278516674310423
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 5087,
+              "mean_predicted": 0.3680979591420862,
+              "observed_frequency": 0.3674071161784942
+            },
+            {
+              "lower": 0.4,
+              "upper": 0.5,
+              "n": 5086,
+              "mean_predicted": 0.4915124196541336,
+              "observed_frequency": 0.4610696028313016
+            }
+          ]
+        },
+        "neither_barrier_before_expiry": {
+          "expected_calibration_error": 0.0316690779401512,
+          "bins": [
+            {
+              "lower": 0.0,
+              "upper": 0.1,
+              "n": 5086,
+              "mean_predicted": 0.01697516069173271,
+              "observed_frequency": 0.07786079433739677
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 10174,
+              "mean_predicted": 0.38100070603568786,
+              "observed_frequency": 0.40868881462551604
+            },
+            {
+              "lower": 0.5,
+              "upper": 0.6,
+              "n": 5088,
+              "mean_predicted": 0.5240494840185117,
+              "observed_frequency": 0.529874213836478
+            },
+            {
+              "lower": 0.6,
+              "upper": 0.7,
+              "n": 10176,
+              "mean_predicted": 0.6951324253357511,
+              "observed_frequency": 0.6611635220125787
+            }
+          ]
+        }
+      },
+      "raw_first_passage_final": {
+        "n": 30524,
+        "episodes": 2544,
+        "inference_clusters": 424,
+        "class_counts": {
+          "sl_first_within_horizon": 8273,
+          "neither_barrier_before_expiry": 13978,
+          "tp_first_within_horizon": 8273
+        },
+        "log_loss_3c": 1.0146754757579701,
+        "brier_3c": 0.6044190220959382
+      },
+      "calibrated_vs_raw_first_passage": {
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 0.03502315387281103,
+          "mean_brier_improvement": 0.019957672031499042,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 2.1477633539435104e-06,
+          "one_sided_normal_p_brier": 3.0046671021244364e-05,
+          "bootstrap_episode_sample_size": 0
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.036222808809300476,
+          "mean_brier_improvement": 0.020239909376870764,
+          "log_loss_bootstrap_95ci": [
+            0.02072448581166105,
+            0.05156011026930204
+          ],
+          "brier_bootstrap_95ci": [
+            0.009994781294219992,
+            0.02993461035189446
+          ],
+          "one_sided_normal_p_log_loss": 1.8805989087100627e-06,
+          "one_sided_normal_p_brier": 3.286177105588095e-05,
+          "bootstrap_episode_sample_size": 368
+        },
+        "final_test": {
+          "episodes": 424,
+          "mean_log_loss_improvement": 0.04335217173858583,
+          "mean_brier_improvement": 0.024946955294345517,
+          "log_loss_bootstrap_95ci": [
+            0.026750814567007147,
+            0.06153672064973631
+          ],
+          "brier_bootstrap_95ci": [
+            0.01411388039859298,
+            0.03704354458775956
+          ],
+          "one_sided_normal_p_log_loss": 1.8263677281638024e-07,
+          "one_sided_normal_p_brier": 3.962918815991756e-06,
+          "bootstrap_episode_sample_size": 424
+        }
+      }
+    },
+    {
+      "time_horizon": "intraday_wide",
+      "development_fit": {
+        "coefficients": {
+          "tp_first_within_horizon": {
+            "intercept": 0.20813023894610858
+          },
+          "sl_first_within_horizon": {
+            "intercept": 0.20813023894610863
+          }
+        },
+        "fit_cases": 3000
+      },
+      "development": {
+        "n": 48240,
+        "episodes": 4020,
+        "inference_clusters": 670,
+        "class_counts": {
+          "sl_first_within_horizon": 16138,
+          "tp_first_within_horizon": 16138,
+          "neither_barrier_before_expiry": 15964
+        },
+        "log_loss_3c": 1.0602575191846673,
+        "brier_3c": 0.635428092484204
+      },
+      "calibration": {
+        "n": 13032,
+        "episodes": 1086,
+        "inference_clusters": 181,
+        "class_counts": {
+          "sl_first_within_horizon": 4215,
+          "neither_barrier_before_expiry": 4602,
+          "tp_first_within_horizon": 4215
+        },
+        "log_loss_3c": 1.0461287888199118,
+        "brier_3c": 0.6292135524206909
+      },
+      "rule_test": {
+        "n": 13236,
+        "episodes": 1103,
+        "inference_clusters": 184,
+        "class_counts": {
+          "sl_first_within_horizon": 4556,
+          "neither_barrier_before_expiry": 4124,
+          "tp_first_within_horizon": 4556
+        },
+        "log_loss_3c": 1.0656744972812848,
+        "brier_3c": 0.6377108868715051
+      },
+      "sealed_final_refit": {
+        "coefficients": {
+          "tp_first_within_horizon": {
+            "intercept": 0.013431223827768839
+          },
+          "sl_first_within_horizon": {
+            "intercept": 0.013431223827768828
+          }
+        },
+        "fit_cases": 3000
+      },
+      "final_test": {
+        "n": 15192,
+        "episodes": 1266,
+        "inference_clusters": 211,
+        "class_counts": {
+          "tp_first_within_horizon": 5082,
+          "neither_barrier_before_expiry": 5028,
+          "sl_first_within_horizon": 5082
+        },
+        "log_loss_3c": 1.0415605735660227,
+        "brier_3c": 0.6283137492046533
+      },
+      "final_calibration": {
+        "tp_first_within_horizon": {
+          "expected_calibration_error": 0.01682596887500993,
+          "bins": [
+            {
+              "lower": 0.1,
+              "upper": 0.2,
+              "n": 2532,
+              "mean_predicted": 0.1341326719704838,
+              "observed_frequency": 0.17812006319115323
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 7596,
+              "mean_predicted": 0.3138917076731132,
+              "observed_frequency": 0.30963665086887837
+            },
+            {
+              "lower": 0.4,
+              "upper": 0.5,
+              "n": 5064,
+              "mean_predicted": 0.4721411202791169,
+              "observed_frequency": 0.45003949447077407
+            }
+          ]
+        },
+        "sl_first_within_horizon": {
+          "expected_calibration_error": 0.01682596887500993,
+          "bins": [
+            {
+              "lower": 0.1,
+              "upper": 0.2,
+              "n": 2532,
+              "mean_predicted": 0.1341326719704838,
+              "observed_frequency": 0.17812006319115323
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 7596,
+              "mean_predicted": 0.3138917076731132,
+              "observed_frequency": 0.30963665086887837
+            },
+            {
+              "lower": 0.4,
+              "upper": 0.5,
+              "n": 5064,
+              "mean_predicted": 0.4721411202791169,
+              "observed_frequency": 0.45003949447077407
+            }
+          ]
+        },
+        "neither_barrier_before_expiry": {
+          "expected_calibration_error": 0.03728455777361811,
+          "bins": [
+            {
+              "lower": 0.0,
+              "upper": 0.1,
+              "n": 2532,
+              "mean_predicted": 0.009035926863442897,
+              "observed_frequency": 0.05766192733017378
+            },
+            {
+              "lower": 0.2,
+              "upper": 0.3,
+              "n": 5064,
+              "mean_predicted": 0.2452905469829359,
+              "observed_frequency": 0.2792259083728278
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 2532,
+              "mean_predicted": 0.36764938088629184,
+              "observed_frequency": 0.37598736176935227
+            },
+            {
+              "lower": 0.5,
+              "upper": 0.6,
+              "n": 5064,
+              "mean_predicted": 0.5462767635941395,
+              "observed_frequency": 0.4968404423380727
+            }
+          ]
+        }
+      },
+      "raw_first_passage_final": {
+        "n": 15192,
+        "episodes": 1266,
+        "inference_clusters": 211,
+        "class_counts": {
+          "tp_first_within_horizon": 5082,
+          "neither_barrier_before_expiry": 5028,
+          "sl_first_within_horizon": 5082
+        },
+        "log_loss_3c": 1.0415191184981918,
+        "brier_3c": 0.6283706219570209
+      },
+      "calibrated_vs_raw_first_passage": {
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": -0.008948580816863992,
+          "mean_brier_improvement": -0.004381716896546012,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9787015403992885,
+          "one_sided_normal_p_brier": 0.9422823661653608,
+          "bootstrap_episode_sample_size": 0
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.00036640954529691824,
+          "mean_brier_improvement": 0.0017219034715227298,
+          "log_loss_bootstrap_95ci": [
+            -0.009227026601879448,
+            0.009593929486393371
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0037427768389425124,
+            0.00789740157254025
+          ],
+          "one_sided_normal_p_log_loss": 0.5318336012000136,
+          "one_sided_normal_p_brier": 0.2691825683772042,
+          "bootstrap_episode_sample_size": 184
+        },
+        "final_test": {
+          "episodes": 211,
+          "mean_log_loss_improvement": -4.1455067830697936e-05,
+          "mean_brier_improvement": 5.687275236752068e-05,
+          "log_loss_bootstrap_95ci": [
+            -0.0005807551293722289,
+            0.0004288853137104427
+          ],
+          "brier_bootstrap_95ci": [
+            -0.00029854613039278463,
+            0.0003573458586779616
+          ],
+          "one_sided_normal_p_log_loss": 0.5614180195290934,
+          "one_sided_normal_p_brier": 0.36959502138385303,
+          "bootstrap_episode_sample_size": 211
+        }
+      }
+    },
+    {
+      "time_horizon": "short_swing",
+      "development_fit": {
+        "coefficients": {
+          "tp_first_within_horizon": {
+            "intercept": 0.0714969603259647
+          },
+          "sl_first_within_horizon": {
+            "intercept": 0.07149696032596464
+          }
+        },
+        "fit_cases": 3000
+      },
+      "development": {
+        "n": 3168,
+        "episodes": 264,
+        "inference_clusters": 44,
+        "class_counts": {
+          "tp_first_within_horizon": 1098,
+          "neither_barrier_before_expiry": 972,
+          "sl_first_within_horizon": 1098
+        },
+        "log_loss_3c": 1.0478012987387941,
+        "brier_3c": 0.6318278585042008
+      },
+      "calibration": {
+        "n": 1872,
+        "episodes": 156,
+        "inference_clusters": 26,
+        "class_counts": {
+          "tp_first_within_horizon": 577,
+          "sl_first_within_horizon": 577,
+          "neither_barrier_before_expiry": 718
+        },
+        "log_loss_3c": 1.0606955323091474,
+        "brier_3c": 0.6252829619714085
+      },
+      "rule_test": {
+        "n": 1860,
+        "episodes": 155,
+        "inference_clusters": 26,
+        "class_counts": {
+          "tp_first_within_horizon": 645,
+          "sl_first_within_horizon": 645,
+          "neither_barrier_before_expiry": 570
+        },
+        "log_loss_3c": 1.051887457356777,
+        "brier_3c": 0.6349339546166899
+      },
+      "sealed_final_refit": {
+        "coefficients": {
+          "tp_first_within_horizon": {
+            "intercept": -0.015529066086690116
+          },
+          "sl_first_within_horizon": {
+            "intercept": -0.01552906608669031
+          }
+        },
+        "fit_cases": 3000
+      },
+      "final_test": {
+        "n": 2088,
+        "episodes": 174,
+        "inference_clusters": 29,
+        "class_counts": {
+          "tp_first_within_horizon": 690,
+          "neither_barrier_before_expiry": 708,
+          "sl_first_within_horizon": 690
+        },
+        "log_loss_3c": 1.02245176319827,
+        "brier_3c": 0.6224612370506406
+      },
+      "final_calibration": {
+        "tp_first_within_horizon": {
+          "expected_calibration_error": 0.015093037194988865,
+          "bins": [
+            {
+              "lower": 0.1,
+              "upper": 0.2,
+              "n": 348,
+              "mean_predicted": 0.13201363638142555,
+              "observed_frequency": 0.16666666666666666
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 1044,
+              "mean_predicted": 0.3103526758829807,
+              "observed_frequency": 0.30842911877394635
+            },
+            {
+              "lower": 0.4,
+              "upper": 0.5,
+              "n": 696,
+              "mean_predicted": 0.4704695596293692,
+              "observed_frequency": 0.4454022988505747
+            }
+          ]
+        },
+        "sl_first_within_horizon": {
+          "expected_calibration_error": 0.015093037194988824,
+          "bins": [
+            {
+              "lower": 0.1,
+              "upper": 0.2,
+              "n": 348,
+              "mean_predicted": 0.13201363638142552,
+              "observed_frequency": 0.16666666666666666
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 1044,
+              "mean_predicted": 0.31035267588298066,
+              "observed_frequency": 0.30842911877394635
+            },
+            {
+              "lower": 0.4,
+              "upper": 0.5,
+              "n": 696,
+              "mean_predicted": 0.47046955962936915,
+              "observed_frequency": 0.4454022988505747
+            }
+          ]
+        },
+        "neither_barrier_before_expiry": {
+          "expected_calibration_error": 0.031219607404286233,
+          "bins": [
+            {
+              "lower": 0.0,
+              "upper": 0.1,
+              "n": 348,
+              "mean_predicted": 0.009298967018446281,
+              "observed_frequency": 0.034482758620689655
+            },
+            {
+              "lower": 0.2,
+              "upper": 0.3,
+              "n": 696,
+              "mean_predicted": 0.25069122590422716,
+              "observed_frequency": 0.29310344827586204
+            },
+            {
+              "lower": 0.3,
+              "upper": 0.4,
+              "n": 348,
+              "mean_predicted": 0.3744075963607898,
+              "observed_frequency": 0.3793103448275862
+            },
+            {
+              "lower": 0.5,
+              "upper": 0.6,
+              "n": 696,
+              "mean_predicted": 0.5534447091170488,
+              "observed_frequency": 0.5172413793103449
+            }
+          ]
+        }
+      },
+      "raw_first_passage_final": {
+        "n": 2088,
+        "episodes": 174,
+        "inference_clusters": 29,
+        "class_counts": {
+          "tp_first_within_horizon": 690,
+          "neither_barrier_before_expiry": 708,
+          "sl_first_within_horizon": 690
+        },
+        "log_loss_3c": 1.0225841259538069,
+        "brier_3c": 0.6224947801139148
+      },
+      "calibrated_vs_raw_first_passage": {
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.004362213428913412,
+          "mean_brier_improvement": -0.0019035321849492988,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.8432040357639681,
+          "one_sided_normal_p_brier": 0.7644585431952499,
+          "bootstrap_episode_sample_size": 0
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0011528298782817385,
+          "mean_brier_improvement": 0.0011900670144277662,
+          "log_loss_bootstrap_95ci": [
+            -0.008181495497608094,
+            0.008852502528770243
+          ],
+          "brier_bootstrap_95ci": [
+            -0.004683247873357408,
+            0.0060519784164255
+          ],
+          "one_sided_normal_p_log_loss": 0.3941408111670276,
+          "one_sided_normal_p_brier": 0.3294023360825188,
+          "bootstrap_episode_sample_size": 26
+        },
+        "final_test": {
+          "episodes": 29,
+          "mean_log_loss_improvement": 0.00013236275553678287,
+          "mean_brier_improvement": 3.35430632742257e-05,
+          "log_loss_bootstrap_95ci": [
+            -0.0014294686037567739,
+            0.001783441621075684
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0010066451905574392,
+            0.0011238439013287983
+          ],
+          "one_sided_normal_p_log_loss": 0.4361885986442243,
+          "one_sided_normal_p_brier": 0.47523840103935244,
+          "bootstrap_episode_sample_size": 29
+        }
+      }
+    }
+  ],
+  "rule_results": [
+    {
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "directional_path_efficiency_h"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "directional_path_efficiency_h": {
+          "mean": 0.0,
+          "scale": 0.1676545772626346
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.5344311707950585,
+          "directional_path_efficiency_h": -0.05144393335667101
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.5344311707950586,
+          "directional_path_efficiency_h": 0.05144393335667097
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.0009103024967525426,
+          "mean_brier_improvement": -0.00036217641244772097,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9393080422478903,
+          "one_sided_normal_p_brier": 0.8413842191227903,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0115630073242798,
+            "brier_3c": 0.6012202600434668
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.003591124155567392,
+          "mean_brier_improvement": -0.00209197401815099,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9970597746628425,
+          "one_sided_normal_p_brier": 0.9954788723993504,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9904916997194722,
+            "brier_3c": 0.5919076941710004
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.0033058386088633636,
+          "mean_brier_improvement": -0.002077114024544029,
+          "log_loss_bootstrap_95ci": [
+            -0.005879419620251252,
+            -0.000605425463082159
+          ],
+          "brier_bootstrap_95ci": [
+            -0.003665931979554948,
+            -0.00033215089693575047
+          ],
+          "one_sided_normal_p_log_loss": 0.9942597924446614,
+          "one_sided_normal_p_brier": 0.9939075828602575,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9938074913796423,
+            "brier_3c": 0.591972180309849
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "directional_path_efficiency_2h",
+        "directional_path_efficiency_4h"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "directional_path_efficiency_2h": {
+          "mean": 0.0,
+          "scale": 0.12187483668404184
+        },
+        "directional_path_efficiency_4h": {
+          "mean": 0.0,
+          "scale": 0.08864840509616514
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.471957582423904,
+          "directional_path_efficiency_2h": 0.008337165174029257,
+          "directional_path_efficiency_4h": 0.07214545247934266
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.47195758242390395,
+          "directional_path_efficiency_2h": -0.008337165174029151,
+          "directional_path_efficiency_4h": -0.07214545247934277
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.0013465657852962318,
+          "mean_brier_improvement": -0.0009024540558065024,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9122743662831414,
+          "one_sided_normal_p_brier": 0.9202623262234622,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0119991712464553,
+            "brier_3c": 0.6017607367888089
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 0.0003997333230152568,
+          "mean_brier_improvement": 1.3877877902424665e-05,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.42999248934451684,
+          "one_sided_normal_p_brier": 0.4961818536759831,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9865008422408896,
+            "brier_3c": 0.589801842274947
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.0002959507566089897,
+          "mean_brier_improvement": 0.00018627430367788037,
+          "log_loss_bootstrap_95ci": [
+            -0.004384379151491701,
+            0.004872640738836165
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0026895316220448486,
+            0.00312536639500458
+          ],
+          "one_sided_normal_p_log_loss": 0.44769418482207446,
+          "one_sided_normal_p_brier": 0.44939283819161113,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9902057020141699,
+            "brier_3c": 0.5897087919816271
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "volatility_percentile_60"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "volatility_percentile_60": {
+          "mean": 0.567067046819113,
+          "scale": 0.29379441735349276
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.4775770281087205,
+          "volatility_percentile_60": -0.5324791322563205
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.4775770281087205,
+          "volatility_percentile_60": -0.5324791322563203
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": 0.014685657011813017,
+          "mean_brier_improvement": 0.008631648015304482,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 5.501808955310494e-06,
+          "one_sided_normal_p_brier": 2.290164348606183e-05,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 0.9959698661950197,
+            "brier_3c": 0.5922286988108945
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 0.008433442709535598,
+          "mean_brier_improvement": 0.004389578076216165,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.10663484245454269,
+          "one_sided_normal_p_brier": 0.1562566517053965,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9784671328543693,
+            "brier_3c": 0.5854261420766332
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.0019530433157559852,
+          "mean_brier_improvement": 0.0004883343687210486,
+          "log_loss_bootstrap_95ci": [
+            -0.012594320718296258,
+            0.015107869670835453
+          ],
+          "brier_bootstrap_95ci": [
+            -0.008802633283786401,
+            0.008825841055201077
+          ],
+          "one_sided_normal_p_log_loss": 0.39238456788099396,
+          "one_sided_normal_p_brier": 0.4573144478657224,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.988548609455023,
+            "brier_3c": 0.589406731916584
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "target_extreme_between_entry_and_tp"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "target_extreme_between_entry_and_tp": {
+          "mean": 0.6275982970197846,
+          "scale": 0.4834445931000272
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.7713434758149811,
+          "target_extreme_between_entry_and_tp": 0.035623139300591
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.7678502513949532,
+          "target_extreme_between_entry_and_tp": 0.06765150023416737
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.0028242171162946683,
+          "mean_brier_improvement": -0.0039876303884884565,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9543485225001253,
+          "one_sided_normal_p_brier": 0.9999014429384537,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.013470425851389,
+            "brier_3c": 0.6048415133662232
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.0021095999978892528,
+          "mean_brier_improvement": -0.00290761259037495,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7343085542074256,
+          "one_sided_normal_p_brier": 0.9077404134552158,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.989010175561794,
+            "brier_3c": 0.5927233327432243
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.0012174009421189772,
+          "mean_brier_improvement": -0.002588831599681578,
+          "log_loss_bootstrap_95ci": [
+            -0.008129880319110203,
+            0.005817923291999921
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0071250255679357645,
+            0.00197540020876194
+          ],
+          "one_sided_normal_p_log_loss": 0.6379806127378259,
+          "one_sided_normal_p_brier": 0.8775808278002433,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9917190537128978,
+            "brier_3c": 0.5924838978849866
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-EMA-TREND-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "side_adjusted_close_vs_ema50_log",
+        "side_adjusted_ema50_vs_ema200_log",
+        "side_adjusted_slope_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_close_vs_ema50_log": {
+          "mean": 0.0,
+          "scale": 0.008907882032981916
+        },
+        "side_adjusted_ema50_vs_ema200_log": {
+          "mean": 0.0,
+          "scale": 0.011040003311661122
+        },
+        "side_adjusted_slope_atr": {
+          "mean": 0.0,
+          "scale": 0.4535341864989018
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.44665873891529223,
+          "side_adjusted_close_vs_ema50_log": 0.09829541014968572,
+          "side_adjusted_ema50_vs_ema200_log": -0.06950997756991092,
+          "side_adjusted_slope_atr": -0.08323220128919427
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.44665873891529223,
+          "side_adjusted_close_vs_ema50_log": -0.09829541014968571,
+          "side_adjusted_ema50_vs_ema200_log": 0.06950997756991094,
+          "side_adjusted_slope_atr": 0.08323220128919434
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.00422486495852558,
+          "mean_brier_improvement": -0.002099387502978984,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9999632899433513,
+          "one_sided_normal_p_brier": 0.9986937941703091,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0148783349730115,
+            "brier_3c": 0.6029583721133697
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.007025810986429855,
+          "mean_brier_improvement": -0.004125465088279564,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.999223514090984,
+          "one_sided_normal_p_brier": 0.9976391628381782,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9939263865503347,
+            "brier_3c": 0.5939411852411289
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.005609661902693226,
+          "mean_brier_improvement": -0.0032491475009232703,
+          "log_loss_bootstrap_95ci": [
+            -0.010055043914621208,
+            -0.0012183510231611027
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0061451959583902135,
+            -0.00036522046972337015
+          ],
+          "one_sided_normal_p_log_loss": 0.9933061385062061,
+          "one_sided_normal_p_brier": 0.984753988887523,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9961113146734721,
+            "brier_3c": 0.5931442137862283
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-RSI-WILDER-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "side_adjusted_centered_rsi"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_centered_rsi": {
+          "mean": 0.0,
+          "scale": 0.21444421497338714
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.40016074647280175,
+          "side_adjusted_centered_rsi": 0.12093039567628434
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.4001607464728017,
+          "side_adjusted_centered_rsi": -0.12093039567628434
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.005154817353071895,
+          "mean_brier_improvement": -0.003073325671530573,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9984838269452414,
+          "one_sided_normal_p_brier": 0.9964831025505863,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0158077148312765,
+            "brier_3c": 0.6039321843487381
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.002674305827935511,
+          "mean_brier_improvement": -0.0014610478886449027,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7702193808835679,
+          "one_sided_normal_p_brier": 0.7307919791118451,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9895748813918405,
+            "brier_3c": 0.5912767680414943
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.0037208297051659687,
+          "mean_brier_improvement": -0.0023715709451016197,
+          "log_loss_bootstrap_95ci": [
+            -0.011118457452324548,
+            0.0044856507979503515
+          ],
+          "brier_bootstrap_95ci": [
+            -0.00738272574853789,
+            0.0031108512077198426
+          ],
+          "one_sided_normal_p_log_loss": 0.8265101972669884,
+          "one_sided_normal_p_brier": 0.8137260007758312,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9942224824759449,
+            "brier_3c": 0.5922666372304065
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-ATR-EXTENSION-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "side_adjusted_extension_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 2998,
+      "scaling": {
+        "side_adjusted_extension_atr": {
+          "mean": 0.0,
+          "scale": 1.1932827770999272
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.6122249702094406,
+          "side_adjusted_extension_atr": 0.05417402143406894
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.6122249702094407,
+          "side_adjusted_extension_atr": -0.054174021434068916
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.0001088406859887098,
+          "mean_brier_improvement": -0.001008513061845715,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.553111410510072,
+          "one_sided_normal_p_brier": 0.9765516205465785,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0107578272095337,
+            "brier_3c": 0.6018644607616049
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 0.0015529781501024,
+          "mean_brier_improvement": 0.0003413218550616196,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.16991139495029461,
+          "one_sided_normal_p_brier": 0.36894195758663095,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9853475974138024,
+            "brier_3c": 0.5894743982977878
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.0021063771653602446,
+          "mean_brier_improvement": 0.0005020008589505285,
+          "log_loss_bootstrap_95ci": [
+            -0.0015334351769884153,
+            0.005645859150481136
+          ],
+          "brier_bootstrap_95ci": [
+            -0.001894050018067206,
+            0.002788953080859549
+          ],
+          "one_sided_normal_p_log_loss": 0.11928562869814296,
+          "one_sided_normal_p_brier": 0.32768841093175993,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9883952756054187,
+            "brier_3c": 0.5893930654263544
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-RELATIVE-VOLUME-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "log_relative_horizon_volume"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "log_relative_horizon_volume": {
+          "mean": 0.20238870460407055,
+          "scale": 0.6702600449822657
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.8072527503881798,
+          "log_relative_horizon_volume": -0.19036054183726975
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.8072527503881799,
+          "log_relative_horizon_volume": -0.1903605418372697
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": 0.00245351178404242,
+          "mean_brier_improvement": -0.0009502974447224713,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.15408146111302878,
+          "one_sided_normal_p_brier": 0.7343145353502237,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.008190023042084,
+            "brier_3c": 0.6018025360542761
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 0.0037050579023684225,
+          "mean_brier_improvement": 0.0003744823177546554,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.22413235885118432,
+          "one_sided_normal_p_brier": 0.4521753252559403,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9831955176615366,
+            "brier_3c": 0.5894412378350947
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.0034737300096072043,
+          "mean_brier_improvement": -4.705823322186928e-06,
+          "log_loss_bootstrap_95ci": [
+            -0.006095019988158461,
+            0.012903845245651122
+          ],
+          "brier_bootstrap_95ci": [
+            -0.006150715323796551,
+            0.006074851157293689
+          ],
+          "one_sided_normal_p_log_loss": 0.24093384765549597,
+          "one_sided_normal_p_brier": 0.5005963711806873,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9870279227611717,
+            "brier_3c": 0.5898997721086271
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-CVD-SLOPE-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "side_adjusted_normalized_cvd_slope"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_normalized_cvd_slope": {
+          "mean": 0.0,
+          "scale": 0.04552276636652381
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.8068011138252777,
+          "side_adjusted_normalized_cvd_slope": 0.08978603415764339
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.8068011138252777,
+          "side_adjusted_normalized_cvd_slope": -0.08978603415764347
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.006925850699900579,
+          "mean_brier_improvement": -0.006806992928824858,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9995445756298954,
+          "one_sided_normal_p_brier": 0.9999998896758064,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.017569960331909,
+            "brier_3c": 0.6076597091577863
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.002610479148128799,
+          "mean_brier_improvement": -0.003598821008432302,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7321071879484642,
+          "one_sided_normal_p_brier": 0.9108249269955576,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9895110547120336,
+            "brier_3c": 0.5934145411612817
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.0021943459787521335,
+          "mean_brier_improvement": -0.0036413502348753304,
+          "log_loss_bootstrap_95ci": [
+            -0.011191432812920657,
+            0.006241928101744759
+          ],
+          "brier_bootstrap_95ci": [
+            -0.009307124577875914,
+            0.0016841595183261712
+          ],
+          "one_sided_normal_p_log_loss": 0.6952620926012719,
+          "one_sided_normal_p_brier": 0.9101345760571149,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9926959987495311,
+            "brier_3c": 0.5935364165201803
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "target_path_level_count",
+        "adverse_path_level_count"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "target_path_level_count": {
+          "mean": 6.048074515016664,
+          "scale": 4.517492996585666
+        },
+        "adverse_path_level_count": {
+          "mean": 6.048074515016664,
+          "scale": 4.517492996585666
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.5536613509941123,
+          "target_path_level_count": 0.11069625738937176,
+          "adverse_path_level_count": 0.12154434502000885
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.5536613509941122,
+          "target_path_level_count": 0.12154434502000881,
+          "adverse_path_level_count": 0.11069625738937182
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.0006156959958991353,
+          "mean_brier_improvement": -0.0014938740872852386,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7333059936894484,
+          "one_sided_normal_p_brier": 0.9883008270663796,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0112677553400211,
+            "brier_3c": 0.6023517936389436
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.0001497154711941148,
+          "mean_brier_improvement": -0.0009382029388444359,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.5299513316381166,
+          "one_sided_normal_p_brier": 0.7566911904705843,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.987050291035099,
+            "brier_3c": 0.5907539230916938
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.0018470474766973134,
+          "mean_brier_improvement": 9.229131444198444e-05,
+          "log_loss_bootstrap_95ci": [
+            -0.0022821163371570417,
+            0.006273775989487553
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0026734153911466933,
+            0.0031095975801518675
+          ],
+          "one_sided_normal_p_log_loss": 0.19485039323836983,
+          "one_sided_normal_p_brier": 0.4744732431977593,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9886546052940816,
+            "brier_3c": 0.589802774970863
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-FIBONACCI-DISTANCE-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "nearest_to_take_profit.absolute_distance_sigma_horizon",
+        "nearest_to_stop_loss.absolute_distance_sigma_horizon"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "nearest_to_take_profit.absolute_distance_sigma_horizon": {
+          "mean": 0.5563550579280722,
+          "scale": 0.4801065531289005
+        },
+        "nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+          "mean": 0.5563550579280722,
+          "scale": 0.4801065531289005
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.7247826266775158,
+          "nearest_to_take_profit.absolute_distance_sigma_horizon": 0.18458403226055084,
+          "nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.11252344320430041
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.7247826266775157,
+          "nearest_to_take_profit.absolute_distance_sigma_horizon": 0.11252344320430047,
+          "nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.1845840322605508
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": 0.000782681608384551,
+          "mean_brier_improvement": -0.0028478056710159604,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.30625955677479644,
+          "one_sided_normal_p_brier": 0.9985398453760994,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0098644700649,
+            "brier_3c": 0.6037026726459002
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 8.039783733884264e-05,
+          "mean_brier_improvement": -0.0021423155650458587,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.48933300458348905,
+          "one_sided_normal_p_brier": 0.8708802959629667,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.986820177726566,
+            "brier_3c": 0.5919580357178953
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": 0.005867321238097839,
+          "mean_brier_improvement": 0.0004534528680032567,
+          "log_loss_bootstrap_95ci": [
+            -2.994623706158792e-07,
+            0.011655234467930996
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0031717575559171768,
+            0.0039349551895382865
+          ],
+          "one_sided_normal_p_log_loss": 0.024837653866857767,
+          "one_sided_normal_p_brier": 0.40374481202276147,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9846343315326811,
+            "brier_3c": 0.5894416134173017
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-COMPRESSION-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "compression_vector.atr_rank",
+        "compression_vector.bollinger_width_rank"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "compression_vector.atr_rank": {
+          "mean": 0.5550977030315873,
+          "scale": 0.309188164541536
+        },
+        "compression_vector.bollinger_width_rank": {
+          "mean": 0.5453973941577247,
+          "scale": 0.2998235915992249
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.6575237176201809,
+          "compression_vector.atr_rank": -0.059927504022794856,
+          "compression_vector.bollinger_width_rank": -0.3669075345299826
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.6575237176201809,
+          "compression_vector.atr_rank": -0.05992750402279484,
+          "compression_vector.bollinger_width_rank": -0.3669075345299826
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.0019407851599748678,
+          "mean_brier_improvement": -0.0025987125055625016,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7522677883568887,
+          "one_sided_normal_p_brier": 0.9236992370695609,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0125855920598636,
+            "brier_3c": 0.6034519100040144
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.0021837902274872453,
+          "mean_brier_improvement": -0.002778303396166789,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.6435456479528883,
+          "one_sided_normal_p_brier": 0.7668774074726613,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.989084365791392,
+            "brier_3c": 0.5925940235490162
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.0055357383156602715,
+          "mean_brier_improvement": -0.005186673190036744,
+          "log_loss_bootstrap_95ci": [
+            -0.018524463931023534,
+            0.006765195338056605
+          ],
+          "brier_bootstrap_95ci": [
+            -0.013573791992443776,
+            0.0026031336222877934
+          ],
+          "one_sided_normal_p_log_loss": 0.8196239758642261,
+          "one_sided_normal_p_brier": 0.9088526185373744,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9960373910864392,
+            "brier_3c": 0.5950817394753417
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-ABSORPTION-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "side_adjusted_horizon_displacement_atr",
+        "flow_opposing_wick_ratio"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_horizon_displacement_atr": {
+          "mean": 0.0,
+          "scale": 4.1150528165522084
+        },
+        "flow_opposing_wick_ratio": {
+          "mean": 0.32342182894018906,
+          "scale": 0.20171001391781485
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.6142496247468019,
+          "side_adjusted_horizon_displacement_atr": -0.027473401040052053,
+          "flow_opposing_wick_ratio": -0.0835493144237013
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.614249624746802,
+          "side_adjusted_horizon_displacement_atr": 0.027473401040051942,
+          "flow_opposing_wick_ratio": -0.08354931442370132
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": 0.0004833162939687564,
+          "mean_brier_improvement": -0.0002998184653313876,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.27514685927869853,
+          "one_sided_normal_p_brier": 0.719837954274402,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0101673154287447,
+            "brier_3c": 0.6011566204552522
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": -0.0009913791842815984,
+          "mean_brier_improvement": -0.0009547104168264968,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7383308942948323,
+          "one_sided_normal_p_brier": 0.8305899603889568,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9878919547481865,
+            "brier_3c": 0.5907704305696759
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.0015464019710134506,
+          "mean_brier_improvement": -0.0014477657259714108,
+          "log_loss_bootstrap_95ci": [
+            -0.004433763832512326,
+            0.0015297735572217838
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0033142757736710766,
+            0.0005213427303644572
+          ],
+          "one_sided_normal_p_log_loss": 0.843896640037124,
+          "one_sided_normal_p_brier": 0.9289143908193908,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.9920480547417924,
+            "brier_3c": 0.5913428320112764
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-PULLBACK-CONTEXT-001",
+      "time_horizon": "intraday_short",
+      "features": [
+        "side_adjusted_ema50_vs_ema200_log",
+        "side_adjusted_ema50_slope_6bars_atr",
+        "side_adjusted_extension_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_ema50_vs_ema200_log": {
+          "mean": 0.0,
+          "scale": 0.011040003311661122
+        },
+        "side_adjusted_ema50_slope_6bars_atr": {
+          "mean": 0.0,
+          "scale": 0.4535341864989018
+        },
+        "side_adjusted_extension_atr": {
+          "mean": 0.0,
+          "scale": 1.1932827770999272
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.6454951743125613,
+          "side_adjusted_ema50_vs_ema200_log": -0.06286784640418078,
+          "side_adjusted_ema50_slope_6bars_atr": 0.2193939007099651,
+          "side_adjusted_extension_atr": -0.15522106562725543
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.6454951743125613,
+          "side_adjusted_ema50_vs_ema200_log": 0.06286784640418085,
+          "side_adjusted_ema50_slope_6bars_atr": -0.21939390070996515,
+          "side_adjusted_extension_atr": 0.15522106562725546
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 1442,
+          "mean_log_loss_improvement": -0.004669318783232462,
+          "mean_brier_improvement": -0.004076049126655319,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9979239799746211,
+          "one_sided_normal_p_brier": 0.9999851058057616,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 103818,
+            "episodes": 8652,
+            "inference_clusters": 1442,
+            "class_counts": {
+              "tp_first_within_horizon": 29170,
+              "neither_barrier_before_expiry": 45478,
+              "sl_first_within_horizon": 29170
+            },
+            "log_loss_3c": 1.0153165948343668,
+            "brier_3c": 0.6049308911150375
+          }
+        },
+        "calibration": {
+          "episodes": 362,
+          "mean_log_loss_improvement": 0.0013658450100697407,
+          "mean_brier_improvement": -9.28659649316756e-05,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.3549779696017983,
+          "one_sided_normal_p_brier": 0.5166328877812485,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 26064,
+            "episodes": 2172,
+            "inference_clusters": 362,
+            "class_counts": {
+              "neither_barrier_before_expiry": 11608,
+              "sl_first_within_horizon": 7228,
+              "tp_first_within_horizon": 7228
+            },
+            "log_loss_3c": 0.9855347305538351,
+            "brier_3c": 0.5899085861177811
+          }
+        },
+        "rule_test": {
+          "episodes": 368,
+          "mean_log_loss_improvement": -0.005393525481749191,
+          "mean_brier_improvement": -0.00417955052988791,
+          "log_loss_bootstrap_95ci": [
+            -0.013526894993509921,
+            0.002365810095351932
+          ],
+          "brier_bootstrap_95ci": [
+            -0.008957224775188996,
+            0.000426615944012772
+          ],
+          "one_sided_normal_p_log_loss": 0.921245729092541,
+          "one_sided_normal_p_brier": 0.9650813275936733,
+          "bootstrap_episode_sample_size": 368,
+          "model_metrics": {
+            "n": 26496,
+            "episodes": 2208,
+            "inference_clusters": 368,
+            "class_counts": {
+              "sl_first_within_horizon": 7318,
+              "neither_barrier_before_expiry": 11860,
+              "tp_first_within_horizon": 7318
+            },
+            "log_loss_3c": 0.995895178252528,
+            "brier_3c": 0.5940746168151928
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "directional_path_efficiency_h"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "directional_path_efficiency_h": {
+          "mean": 0.0,
+          "scale": 0.25641080892312546
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.20722578790547203,
+          "directional_path_efficiency_h": -0.039369726216044315
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.207225787905472,
+          "directional_path_efficiency_h": 0.03936972621604429
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": -0.0009364946944798874,
+          "mean_brier_improvement": -0.0006469642211161098,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.906800793969879,
+          "one_sided_normal_p_brier": 0.8973170153330167,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0611940138791471,
+            "brier_3c": 0.6360750567053199
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": -0.002911339740268641,
+          "mean_brier_improvement": -0.0018982214815812465,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9662754153970929,
+          "one_sided_normal_p_brier": 0.9516048729484009,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0490401285601805,
+            "brier_3c": 0.6311117739022721
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.0019589989404574354,
+          "mean_brier_improvement": -0.0014481791571845978,
+          "log_loss_bootstrap_95ci": [
+            -0.0051748707310196405,
+            0.0008386907706147965
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0036984833997576187,
+            0.0005510113232105835
+          ],
+          "one_sided_normal_p_log_loss": 0.9027336318173627,
+          "one_sided_normal_p_brier": 0.9074628494774258,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.067606972045777,
+            "brier_3c": 0.639136062836697
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "directional_path_efficiency_2h",
+        "directional_path_efficiency_4h"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "directional_path_efficiency_2h": {
+          "mean": 0.0,
+          "scale": 0.18394551984619212
+        },
+        "directional_path_efficiency_4h": {
+          "mean": 0.0,
+          "scale": 0.13728357173160213
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.08220201090150873,
+          "directional_path_efficiency_2h": 0.0005511550205464981,
+          "directional_path_efficiency_4h": 0.18981171815507422
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.08220201090150883,
+          "directional_path_efficiency_2h": -0.0005511550205465625,
+          "directional_path_efficiency_4h": -0.18981171815507417
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": -0.0010540515848953141,
+          "mean_brier_improvement": -0.003945500215029274,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.5952302576806783,
+          "one_sided_normal_p_brier": 0.9217677666484726,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0613115707695626,
+            "brier_3c": 0.6393735926992331
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": -0.000578715524609706,
+          "mean_brier_improvement": -0.0029438180691354504,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.5243348007578372,
+          "one_sided_normal_p_brier": 0.6846601378127122,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0467075043445215,
+            "brier_3c": 0.6321573704898262
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.007645037231969237,
+          "mean_brier_improvement": -0.008028760073955784,
+          "log_loss_bootstrap_95ci": [
+            -0.025721310511510297,
+            0.010903149167072227
+          ],
+          "brier_bootstrap_95ci": [
+            -0.019562792289563005,
+            0.0034506471140405286
+          ],
+          "one_sided_normal_p_log_loss": 0.7917063859485253,
+          "one_sided_normal_p_brier": 0.9117839928994189,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.073479757090575,
+            "brier_3c": 0.645839963193221
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "volatility_percentile_60"
+      ],
+      "status": "not_supported_after_multiple_test_control",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "volatility_percentile_60": {
+          "mean": 0.5005887230514097,
+          "scale": 0.30389845214315986
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.17838004275817468,
+          "volatility_percentile_60": -0.8670307230349289
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.17838004275817473,
+          "volatility_percentile_60": -0.8670307230349289
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.054303695940185685,
+          "mean_brier_improvement": 0.030212299716494667,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 3.241851231905457e-14,
+          "one_sided_normal_p_brier": 8.462119893692943e-13,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0059538232444816,
+            "brier_3c": 0.6052157927677092
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.05505528457411244,
+          "mean_brier_improvement": 0.03338807875296627,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 6.677586342129782e-05,
+          "one_sided_normal_p_brier": 6.05054925117976e-05,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 0.9910735042457994,
+            "brier_3c": 0.5958254736677246
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": 0.05132282721036728,
+          "mean_brier_improvement": 0.027577676477299067,
+          "log_loss_bootstrap_95ci": [
+            0.02045086320244673,
+            0.08279205881584567
+          ],
+          "brier_bootstrap_95ci": [
+            0.009426780780881513,
+            0.046192200794364945
+          ],
+          "one_sided_normal_p_log_loss": 0.0005638884756493656,
+          "one_sided_normal_p_brier": 0.0018954416692139597,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0146186013966585,
+            "brier_3c": 0.6102937165415895
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.06242749942413495
+    },
+    {
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "target_extreme_between_entry_and_tp"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "target_extreme_between_entry_and_tp": {
+          "mean": 0.597139303482587,
+          "scale": 0.49047319571911147
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.06248075817617048,
+          "target_extreme_between_entry_and_tp": 0.03171947737330215
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.06372598069457175,
+          "target_extreme_between_entry_and_tp": 0.02655397482988737
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.004395744218081654,
+          "mean_brier_improvement": 0.0005206626795131971,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.06049885019718537,
+          "one_sided_normal_p_brier": 0.38252651232043866,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0558617749665857,
+            "brier_3c": 0.6349074298046907
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.010189128887462416,
+          "mean_brier_improvement": 0.004699588873571058,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.035381937031264465,
+          "one_sided_normal_p_brier": 0.09327648455818438,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0359396599324493,
+            "brier_3c": 0.6245139635471199
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.0003193803085940425,
+          "mean_brier_improvement": -0.0028746838189193874,
+          "log_loss_bootstrap_95ci": [
+            -0.011351080298171182,
+            0.010697212755771762
+          ],
+          "brier_bootstrap_95ci": [
+            -0.009444638441197402,
+            0.003993033700318008
+          ],
+          "one_sided_normal_p_log_loss": 0.5215259771370659,
+          "one_sided_normal_p_brier": 0.7875397981754773,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0660904131072482,
+            "brier_3c": 0.6406461918547499
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-EMA-TREND-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "side_adjusted_close_vs_ema50_log",
+        "side_adjusted_ema50_vs_ema200_log",
+        "side_adjusted_slope_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_close_vs_ema50_log": {
+          "mean": 0.0,
+          "scale": 0.028662254857917055
+        },
+        "side_adjusted_ema50_vs_ema200_log": {
+          "mean": 0.0,
+          "scale": 0.03885351674370834
+        },
+        "side_adjusted_slope_atr": {
+          "mean": 0.0,
+          "scale": 0.455337260738871
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.22168476360203346,
+          "side_adjusted_close_vs_ema50_log": -0.11516028454029326,
+          "side_adjusted_ema50_vs_ema200_log": -0.12074643808508895,
+          "side_adjusted_slope_atr": 0.1694841375907747
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.2216847636020335,
+          "side_adjusted_close_vs_ema50_log": 0.11516028454029328,
+          "side_adjusted_ema50_vs_ema200_log": 0.12074643808508885,
+          "side_adjusted_slope_atr": -0.1694841375907746
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": -0.006352780546219806,
+          "mean_brier_improvement": -0.0076835116840638365,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.8993630347431991,
+          "one_sided_normal_p_brier": 0.9936724000459544,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.066610299730887,
+            "brier_3c": 0.6431116041682677
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.011337096651809169,
+          "mean_brier_improvement": 0.003892994053690685,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.11736630106006485,
+          "one_sided_normal_p_brier": 0.2581871278645427,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0347916921681026,
+            "brier_3c": 0.6253205583670002
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.010739527151087004,
+          "mean_brier_improvement": -0.011750820649001922,
+          "log_loss_bootstrap_95ci": [
+            -0.03220005013559054,
+            0.010973098433649348
+          ],
+          "brier_bootstrap_95ci": [
+            -0.025104129928127005,
+            0.0013797241443088443
+          ],
+          "one_sided_normal_p_log_loss": 0.8439844741847458,
+          "one_sided_normal_p_brier": 0.9625054176741911,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.076474100782669,
+            "brier_3c": 0.6494899602782334
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-RSI-WILDER-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "side_adjusted_centered_rsi"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_centered_rsi": {
+          "mean": 0.0,
+          "scale": 0.23306607552943026
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.17250176357355024,
+          "side_adjusted_centered_rsi": -0.05196716031397826
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.1725017635735502,
+          "side_adjusted_centered_rsi": 0.051967160313978224
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": -0.0006865933149754249,
+          "mean_brier_improvement": -0.0008103362473045701,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7427281598753258,
+          "one_sided_normal_p_brier": 0.8656548741151036,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0609441124996426,
+            "brier_3c": 0.6362384287315085
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": -0.0016339459314315581,
+          "mean_brier_improvement": -0.0012849412380268282,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.7536238212532902,
+          "one_sided_normal_p_brier": 0.7811849653271852,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0477627347513434,
+            "brier_3c": 0.6304984936587177
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.0005445212978274875,
+          "mean_brier_improvement": -0.0007335661598356974,
+          "log_loss_bootstrap_95ci": [
+            -0.005005007752375129,
+            0.0036601359018404076
+          ],
+          "brier_bootstrap_95ci": [
+            -0.003827587196994606,
+            0.0023025223362646953
+          ],
+          "one_sided_normal_p_log_loss": 0.6052092443872052,
+          "one_sided_normal_p_brier": 0.6962141617438914,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0661878763042176,
+            "brier_3c": 0.6384150690725034
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-ATR-EXTENSION-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "side_adjusted_extension_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_extension_atr": {
+          "mean": 0.0,
+          "scale": 1.208376025916407
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.16307776180203826,
+          "side_adjusted_extension_atr": -0.05238260175471176
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.16307776180203823,
+          "side_adjusted_extension_atr": 0.05238260175471177
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.0003367435987549205,
+          "mean_brier_improvement": -0.002759785571348052,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.46708864387811977,
+          "one_sided_normal_p_brier": 0.8607883812692969,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0599207755859124,
+            "brier_3c": 0.638187878055552
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.006705486406995922,
+          "mean_brier_improvement": 0.0021279812431241377,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.21568569336357202,
+          "one_sided_normal_p_brier": 0.34801779393302334,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.039423302412916,
+            "brier_3c": 0.6270855711775667
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.0065806241852116466,
+          "mean_brier_improvement": -0.007831805545897632,
+          "log_loss_bootstrap_95ci": [
+            -0.022819727939467897,
+            0.009420111208072573
+          ],
+          "brier_bootstrap_95ci": [
+            -0.017636519490778067,
+            0.0021107980325633783
+          ],
+          "one_sided_normal_p_log_loss": 0.7859477976721911,
+          "one_sided_normal_p_brier": 0.9370497094252604,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0723485315389727,
+            "brier_3c": 0.6455971901307702
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-RELATIVE-VOLUME-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "log_relative_horizon_volume"
+      ],
+      "status": "not_supported_after_multiple_test_control",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "log_relative_horizon_volume": {
+          "mean": 0.04648756847805904,
+          "scale": 0.656169669381616
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.029156409481012002,
+          "log_relative_horizon_volume": -0.4778746981353157
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.029156409481012044,
+          "log_relative_horizon_volume": -0.4778746981353157
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.02815481336428605,
+          "mean_brier_improvement": 0.015530822096918303,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 1.0202949596305189e-11,
+          "one_sided_normal_p_brier": 8.377436522266635e-10,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0321027058203813,
+            "brier_3c": 0.6198972703872856
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.03651299654143978,
+          "mean_brier_improvement": 0.02201985443735786,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 2.771134943735376e-08,
+          "one_sided_normal_p_brier": 9.203214146324967e-08,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.009615792278472,
+            "brier_3c": 0.607193697983333
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": 0.02342117911513639,
+          "mean_brier_improvement": 0.013084781846160019,
+          "log_loss_bootstrap_95ci": [
+            0.008288795702971285,
+            0.03823399669009657
+          ],
+          "brier_bootstrap_95ci": [
+            0.003843547624348065,
+            0.022213873945867626
+          ],
+          "one_sided_normal_p_log_loss": 0.0011399260665807542,
+          "one_sided_normal_p_brier": 0.00297273806781595,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0425345486717632,
+            "brier_3c": 0.6248012426776247
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.06242749942413495
+    },
+    {
+      "rule_id": "LIB-CAND-CVD-SLOPE-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "side_adjusted_normalized_cvd_slope"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_normalized_cvd_slope": {
+          "mean": 0.0,
+          "scale": 0.028946441299171347
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.01011708745086939,
+          "side_adjusted_normalized_cvd_slope": 0.10832455400180976
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.010117087450869337,
+          "side_adjusted_normalized_cvd_slope": -0.1083245540018096
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.0019762480477540636,
+          "mean_brier_improvement": -0.0008533483223200826,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.24028203606429022,
+          "one_sided_normal_p_brier": 0.6829133518160936,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0582812711369132,
+            "brier_3c": 0.636281440806524
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.012106089079703482,
+          "mean_brier_improvement": 0.005752893213843134,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.00959322471865387,
+          "one_sided_normal_p_brier": 0.043855875681383605,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0340226997402084,
+            "brier_3c": 0.6234606592068477
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.004600932379351343,
+          "mean_brier_improvement": -0.005831692212266447,
+          "log_loss_bootstrap_95ci": [
+            -0.017730940118709564,
+            0.007870633402349189
+          ],
+          "brier_bootstrap_95ci": [
+            -0.014252924259812455,
+            0.002068238801495385
+          ],
+          "one_sided_normal_p_log_loss": 0.7603510926085424,
+          "one_sided_normal_p_brier": 0.9193589146935672,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.070379523111109,
+            "brier_3c": 0.6436121134643121
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "target_path_level_count",
+        "adverse_path_level_count"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "target_path_level_count": {
+          "mean": 2.9521973466003315,
+          "scale": 2.4274880684732567
+        },
+        "adverse_path_level_count": {
+          "mean": 2.9521973466003315,
+          "scale": 2.4274880684732567
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.10224530931551416,
+          "target_path_level_count": 0.05927111564440173,
+          "adverse_path_level_count": 0.04930603895362017
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.10224530931551422,
+          "target_path_level_count": 0.049306038953620276,
+          "adverse_path_level_count": 0.059271115644401795
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.003413767947489981,
+          "mean_brier_improvement": -0.0006369464959269285,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.14563276672316305,
+          "one_sided_normal_p_brier": 0.6259367354215339,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0568437512371773,
+            "brier_3c": 0.6360650389801308
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.006838888509480905,
+          "mean_brier_improvement": 0.0019565638727258297,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.13876453183531834,
+          "one_sided_normal_p_brier": 0.31057524547970394,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.039289900310431,
+            "brier_3c": 0.627256988547965
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.002254863590833925,
+          "mean_brier_improvement": -0.004683717269714935,
+          "log_loss_bootstrap_95ci": [
+            -0.016364426658915222,
+            0.011059717662021547
+          ],
+          "brier_bootstrap_95ci": [
+            -0.013263478499960157,
+            0.003162951345719055
+          ],
+          "one_sided_normal_p_log_loss": 0.6276652935355043,
+          "one_sided_normal_p_brier": 0.8671120231634837,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0680643938096028,
+            "brier_3c": 0.6424794007292962
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-FIBONACCI-DISTANCE-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "nearest_to_take_profit.absolute_distance_sigma_horizon",
+        "nearest_to_stop_loss.absolute_distance_sigma_horizon"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "nearest_to_take_profit.absolute_distance_sigma_horizon": {
+          "mean": 0.44213019428529965,
+          "scale": 0.5164161594716071
+        },
+        "nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+          "mean": 0.44213019428529965,
+          "scale": 0.5164161594716071
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.15954424660184413,
+          "nearest_to_take_profit.absolute_distance_sigma_horizon": 0.12821969229065538,
+          "nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.07038437252588353
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.15954424660184405,
+          "nearest_to_take_profit.absolute_distance_sigma_horizon": 0.07038437252588348,
+          "nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.12821969229065536
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.005120415629997978,
+          "mean_brier_improvement": -0.0004421838211364929,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.09955294844403129,
+          "one_sided_normal_p_brier": 0.572116163960294,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0551371035546693,
+            "brier_3c": 0.6358702763053404
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.01621016555867344,
+          "mean_brier_improvement": 0.007333897034019113,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.016985332338774417,
+          "one_sided_normal_p_brier": 0.06363605471450162,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0299186232612385,
+            "brier_3c": 0.6218796553866718
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.00308450713222704,
+          "mean_brier_improvement": -0.006216228067492846,
+          "log_loss_bootstrap_95ci": [
+            -0.01940704077331943,
+            0.013936243398794079
+          ],
+          "brier_bootstrap_95ci": [
+            -0.01623926863270693,
+            0.004671251805065885
+          ],
+          "one_sided_normal_p_log_loss": 0.6394939739096474,
+          "one_sided_normal_p_brier": 0.8825710639281207,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.0688854920217814,
+            "brier_3c": 0.6440063805764956
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-COMPRESSION-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "compression_vector.atr_rank",
+        "compression_vector.bollinger_width_rank"
+      ],
+      "status": "not_supported_after_multiple_test_control",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "compression_vector.atr_rank": {
+          "mean": 0.4946558872305141,
+          "scale": 0.30812088578949337
+        },
+        "compression_vector.bollinger_width_rank": {
+          "mean": 0.5031218905472636,
+          "scale": 0.29869255740503836
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.045434241534827224,
+          "compression_vector.atr_rank": -0.20824453400125062,
+          "compression_vector.bollinger_width_rank": -0.3638213069502386
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.04543424153482727,
+          "compression_vector.atr_rank": -0.20824453400125065,
+          "compression_vector.bollinger_width_rank": -0.3638213069502386
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.03497281770574463,
+          "mean_brier_improvement": 0.01906570617899419,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 5.037694705833928e-10,
+          "one_sided_normal_p_brier": 3.8176402705758505e-08,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0252847014789226,
+            "brier_3c": 0.6163623863052097
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.03934501524167826,
+          "mean_brier_improvement": 0.02343333415527004,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.00020207859717824572,
+          "one_sided_normal_p_brier": 0.00046587646898521573,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.0067837735782337,
+            "brier_3c": 0.6057802182654207
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": 0.030345135631920057,
+          "mean_brier_improvement": 0.015887698992515287,
+          "log_loss_bootstrap_95ci": [
+            0.007434101391748366,
+            0.05483868580366018
+          ],
+          "brier_bootstrap_95ci": [
+            0.0015313619160166772,
+            0.031051873178084742
+          ],
+          "one_sided_normal_p_log_loss": 0.005325146799536551,
+          "one_sided_normal_p_brier": 0.01758991460002557,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.035586959787711,
+            "brier_3c": 0.6219802800408274
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.24625880440035797
+    },
+    {
+      "rule_id": "LIB-CAND-ABSORPTION-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "side_adjusted_horizon_displacement_atr",
+        "flow_opposing_wick_ratio"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_horizon_displacement_atr": {
+          "mean": 0.0,
+          "scale": 2.7923174589437023
+        },
+        "flow_opposing_wick_ratio": {
+          "mean": 0.32455327045837346,
+          "scale": 0.1926339136930754
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.0076371118057217535,
+          "side_adjusted_horizon_displacement_atr": 0.06408966452306539,
+          "flow_opposing_wick_ratio": 0.032295157905243226
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.007637111805721692,
+          "side_adjusted_horizon_displacement_atr": -0.06408966452306528,
+          "flow_opposing_wick_ratio": 0.03229515790524337
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.0029659493070792724,
+          "mean_brier_improvement": 0.00013187241661268166,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.1039063384129768,
+          "one_sided_normal_p_brier": 0.46465464548722135,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.057291569877588,
+            "brier_3c": 0.6352962200675912
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.011004650002552659,
+          "mean_brier_improvement": 0.0053113979449318114,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.0078905883980539,
+          "one_sided_normal_p_brier": 0.034409380203787476,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.035124138817359,
+            "brier_3c": 0.623902154475759
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": 0.0011456107491407406,
+          "mean_brier_improvement": -0.0011971754814906657,
+          "log_loss_bootstrap_95ci": [
+            -0.00933077215046345,
+            0.011966565421719842
+          ],
+          "brier_bootstrap_95ci": [
+            -0.007857909551142708,
+            0.005848578528137067
+          ],
+          "one_sided_normal_p_log_loss": 0.41376900241245695,
+          "one_sided_normal_p_brier": 0.6410642225983468,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.064599562211937,
+            "brier_3c": 0.6389571336647362
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-PULLBACK-CONTEXT-001",
+      "time_horizon": "intraday_wide",
+      "features": [
+        "side_adjusted_ema50_vs_ema200_log",
+        "side_adjusted_ema50_slope_6bars_atr",
+        "side_adjusted_extension_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_ema50_vs_ema200_log": {
+          "mean": 0.0,
+          "scale": 0.03885351674370834
+        },
+        "side_adjusted_ema50_slope_6bars_atr": {
+          "mean": 0.0,
+          "scale": 0.455337260738871
+        },
+        "side_adjusted_extension_atr": {
+          "mean": 0.0,
+          "scale": 1.208376025916407
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": -0.09323446445112869,
+          "side_adjusted_ema50_vs_ema200_log": 0.07755676651851308,
+          "side_adjusted_ema50_slope_6bars_atr": 0.1277457300680782,
+          "side_adjusted_extension_atr": -0.10101706483092479
+        },
+        "sl_first_within_horizon": {
+          "intercept": -0.09323446445112875,
+          "side_adjusted_ema50_vs_ema200_log": -0.07755676651851305,
+          "side_adjusted_ema50_slope_6bars_atr": -0.12774573006807832,
+          "side_adjusted_extension_atr": 0.10101706483092465
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 670,
+          "mean_log_loss_improvement": 0.0022650540551277117,
+          "mean_brier_improvement": -0.0014913375104400627,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.2746243826777375,
+          "one_sided_normal_p_brier": 0.734586648718939,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 48240,
+            "episodes": 4020,
+            "inference_clusters": 670,
+            "class_counts": {
+              "sl_first_within_horizon": 16138,
+              "tp_first_within_horizon": 16138,
+              "neither_barrier_before_expiry": 15964
+            },
+            "log_loss_3c": 1.0579924651295396,
+            "brier_3c": 0.6369194299946439
+          }
+        },
+        "calibration": {
+          "episodes": 181,
+          "mean_log_loss_improvement": 0.002304461323358743,
+          "mean_brier_improvement": -0.001186308247550637,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.3915707322277938,
+          "one_sided_normal_p_brier": 0.5874349102285741,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 13032,
+            "episodes": 1086,
+            "inference_clusters": 181,
+            "class_counts": {
+              "sl_first_within_horizon": 4215,
+              "neither_barrier_before_expiry": 4602,
+              "tp_first_within_horizon": 4215
+            },
+            "log_loss_3c": 1.043824327496553,
+            "brier_3c": 0.6303998606682415
+          }
+        },
+        "rule_test": {
+          "episodes": 184,
+          "mean_log_loss_improvement": -0.007807342508821319,
+          "mean_brier_improvement": -0.00825276557323569,
+          "log_loss_bootstrap_95ci": [
+            -0.025507497631111126,
+            0.0081236059143033
+          ],
+          "brier_bootstrap_95ci": [
+            -0.019327399078454734,
+            0.001977694462574216
+          ],
+          "one_sided_normal_p_log_loss": 0.8261478115731508,
+          "one_sided_normal_p_brier": 0.9445218654672761,
+          "bootstrap_episode_sample_size": 184,
+          "model_metrics": {
+            "n": 13236,
+            "episodes": 1103,
+            "inference_clusters": 184,
+            "class_counts": {
+              "sl_first_within_horizon": 4556,
+              "neither_barrier_before_expiry": 4124,
+              "tp_first_within_horizon": 4556
+            },
+            "log_loss_3c": 1.073606361462026,
+            "brier_3c": 0.6460464475975527
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "directional_path_efficiency_h"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "directional_path_efficiency_h": {
+          "mean": 0.0,
+          "scale": 0.2522090352777326
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.07148677261526058,
+          "directional_path_efficiency_h": 0.008819036546794758
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.07148677261526057,
+          "directional_path_efficiency_h": -0.00881903654679472
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.00012617358363496952,
+          "mean_brier_improvement": 5.812967238044938e-05,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.42092850334054266,
+          "one_sided_normal_p_brier": 0.44884547308159106,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.047675125155159,
+            "brier_3c": 0.6317697288318204
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.000678723141135571,
+          "mean_brier_improvement": 0.000480371846702166,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.05842029158499629,
+          "one_sided_normal_p_brier": 0.06128708521079085,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0600168091680118,
+            "brier_3c": 0.6248025901247063
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.0006477311462531531,
+          "mean_brier_improvement": -0.0005255783398259676,
+          "log_loss_bootstrap_95ci": [
+            -0.0027488534624720475,
+            0.0015886354138901434
+          ],
+          "brier_bootstrap_95ci": [
+            -0.00196448262103397,
+            0.0010953109545673216
+          ],
+          "one_sided_normal_p_log_loss": 0.7191446508693566,
+          "one_sided_normal_p_brier": 0.7502500882218923,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0525066526747564,
+            "brier_3c": 0.6354351737344349
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-MTF-HIERARCHY-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "directional_path_efficiency_2h",
+        "directional_path_efficiency_4h"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "directional_path_efficiency_2h": {
+          "mean": 0.0,
+          "scale": 0.18638372652849317
+        },
+        "directional_path_efficiency_4h": {
+          "mean": 0.0,
+          "scale": 0.13629241412671161
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.15326632869764462,
+          "directional_path_efficiency_2h": 0.03484212653541011,
+          "directional_path_efficiency_4h": -0.05848250640931901
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.15326632869764467,
+          "directional_path_efficiency_2h": -0.0348421265354101,
+          "directional_path_efficiency_4h": 0.05848250640931896
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.0004948289177836821,
+          "mean_brier_improvement": 0.001060937899316311,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.45819377433925024,
+          "one_sided_normal_p_brier": 0.3689099978510596,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0473064698210104,
+            "brier_3c": 0.6307669206048845
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.008064545481988223,
+          "mean_brier_improvement": -0.004246103810684465,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9442152824259579,
+          "one_sided_normal_p_brier": 0.9145045405654666,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0687600777911357,
+            "brier_3c": 0.629529065782093
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.007654404630068701,
+          "mean_brier_improvement": -0.004721133422152149,
+          "log_loss_bootstrap_95ci": [
+            -0.01847128441626853,
+            0.0038571865596453486
+          ],
+          "brier_bootstrap_95ci": [
+            -0.011846301725225189,
+            0.0027913000584860012
+          ],
+          "one_sided_normal_p_log_loss": 0.90664835768554,
+          "one_sided_normal_p_brier": 0.8917783930081183,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0596882047924914,
+            "brier_3c": 0.6397672234881522
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "M4-RULE-VOLATILITY-RANK-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "volatility_percentile_60"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "volatility_percentile_60": {
+          "mean": 0.5766414141414141,
+          "scale": 0.2835735749788457
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.27856810590347836,
+          "volatility_percentile_60": -1.0251424112681053
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.2785681059034784,
+          "volatility_percentile_60": -1.0251424112681053
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.08302108418990503,
+          "mean_brier_improvement": 0.046500621798153265,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.0014369572033328115,
+          "one_sided_normal_p_brier": 0.0019518366359084771,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 0.964780214548889,
+            "brier_3c": 0.5853272367060476
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.04576787989236385,
+          "mean_brier_improvement": 0.027628699529654816,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.1804965774206323,
+          "one_sided_normal_p_brier": 0.14641114955922352,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0149276524167836,
+            "brier_3c": 0.5976542624417538
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.06381182391883396,
+          "mean_brier_improvement": 0.038392958826740715,
+          "log_loss_bootstrap_95ci": [
+            -0.03347354694114556,
+            0.1438232977798993
+          ],
+          "brier_bootstrap_95ci": [
+            -0.010809340717885061,
+            0.08000775259789414
+          ],
+          "one_sided_normal_p_log_loss": 0.07258692588542215,
+          "one_sided_normal_p_brier": 0.04579304746053092,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 0.987066967212008,
+            "brier_3c": 0.5958579602195161
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.7621627217969326
+    },
+    {
+      "rule_id": "M4-RULE-PRIOR-EXTREMA-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "target_extreme_between_entry_and_tp"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "target_extreme_between_entry_and_tp": {
+          "mean": 0.5672348484848485,
+          "scale": 0.4954588531343642
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.11642564915437122,
+          "target_extreme_between_entry_and_tp": 0.09324012121381334
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.10387360769862165,
+          "target_extreme_between_entry_and_tp": -0.0640684971600604
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.0020052851061674506,
+          "mean_brier_improvement": 0.0017916582740172624,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.3339892513106333,
+          "one_sided_normal_p_brier": 0.29117727204879174,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0457960136326265,
+            "brier_3c": 0.6300362002301836
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.003216609817978227,
+          "mean_brier_improvement": 0.00328090265680475,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.22449390302614936,
+          "one_sided_normal_p_brier": 0.13544914307013567,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0574789224911691,
+            "brier_3c": 0.6220020593146037
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.002756801813361207,
+          "mean_brier_improvement": -0.002116109678132502,
+          "log_loss_bootstrap_95ci": [
+            -0.015258370682294152,
+            0.01135849772814504
+          ],
+          "brier_bootstrap_95ci": [
+            -0.010594347682755577,
+            0.007472329483027635
+          ],
+          "one_sided_normal_p_log_loss": 0.6506895986846757,
+          "one_sided_normal_p_brier": 0.6672890622128382,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0546060031390083,
+            "brier_3c": 0.6370263236665034
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-EMA-TREND-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "side_adjusted_close_vs_ema50_log",
+        "side_adjusted_ema50_vs_ema200_log",
+        "side_adjusted_slope_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_close_vs_ema50_log": {
+          "mean": 0.0,
+          "scale": 0.07231286844145325
+        },
+        "side_adjusted_ema50_vs_ema200_log": {
+          "mean": 0.0,
+          "scale": 0.09559388619975367
+        },
+        "side_adjusted_slope_atr": {
+          "mean": 0.0,
+          "scale": 0.5112924022595039
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.04401656436793913,
+          "side_adjusted_close_vs_ema50_log": 0.31916532416858945,
+          "side_adjusted_ema50_vs_ema200_log": -0.19452686950103426,
+          "side_adjusted_slope_atr": -0.20475048578642585
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.04401656436793917,
+          "side_adjusted_close_vs_ema50_log": -0.3191653241685894,
+          "side_adjusted_ema50_vs_ema200_log": 0.19452686950103423,
+          "side_adjusted_slope_atr": 0.20475048578642563
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.013960829743734237,
+          "mean_brier_improvement": 0.007424180389568485,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.12836280000607148,
+          "one_sided_normal_p_brier": 0.20324729635216432,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0338404689950598,
+            "brier_3c": 0.6244036781146324
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.019753322917036922,
+          "mean_brier_improvement": -0.014507999006757958,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.9084890337458866,
+          "one_sided_normal_p_brier": 0.9292878714639511,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0804488552261844,
+            "brier_3c": 0.6397909609781666
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.04107802628065774,
+          "mean_brier_improvement": -0.02668334313990716,
+          "log_loss_bootstrap_95ci": [
+            -0.07794696277368612,
+            -0.005206626163148634
+          ],
+          "brier_bootstrap_95ci": [
+            -0.05314112865023127,
+            -0.002086263702121553
+          ],
+          "one_sided_normal_p_log_loss": 0.9852064466330039,
+          "one_sided_normal_p_brier": 0.9795036633500869,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.092019428121127,
+            "brier_3c": 0.6608615477948785
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-RSI-WILDER-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "side_adjusted_centered_rsi"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_centered_rsi": {
+          "mean": 0.0,
+          "scale": 0.24729219099947441
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.06158537893907168,
+          "side_adjusted_centered_rsi": 0.11025983708182809
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.06158537893907169,
+          "side_adjusted_centered_rsi": -0.11025983708182809
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.003180671183033364,
+          "mean_brier_improvement": 0.002349635755016308,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.34651322970604703,
+          "one_sided_normal_p_brier": 0.33638512102974316,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0446206275557608,
+            "brier_3c": 0.6294782227491845
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.009850071375434356,
+          "mean_brier_improvement": 0.006370113639313896,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.03986593344446221,
+          "one_sided_normal_p_brier": 0.05679780161140435,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.050845460933713,
+            "brier_3c": 0.6189128483320946
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.011259230242611282,
+          "mean_brier_improvement": -0.008753474332075307,
+          "log_loss_bootstrap_95ci": [
+            -0.03206936737293981,
+            0.011350594707184879
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0230878298667161,
+            0.00710754280344804
+          ],
+          "one_sided_normal_p_log_loss": 0.8356805078927991,
+          "one_sided_normal_p_brier": 0.8601920754573829,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.062676613394289,
+            "brier_3c": 0.6433012095264301
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-ATR-EXTENSION-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "side_adjusted_extension_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_extension_atr": {
+          "mean": 0.0,
+          "scale": 1.1826983976840109
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.13307664838313632,
+          "side_adjusted_extension_atr": 0.15186650215043948
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.1330766483831363,
+          "side_adjusted_extension_atr": -0.1518665021504396
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.00739004055151517,
+          "mean_brier_improvement": 0.005619443484855828,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.26033213056829085,
+          "one_sided_normal_p_brier": 0.24172884411000273,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0404112581872789,
+            "brier_3c": 0.626208415019345
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0064961763597615844,
+          "mean_brier_improvement": 0.005069675633203616,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.27422150910451126,
+          "one_sided_normal_p_brier": 0.25392895892323464,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0541993559493859,
+            "brier_3c": 0.6202132863382049
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.019236675722596356,
+          "mean_brier_improvement": -0.013920649156447725,
+          "log_loss_bootstrap_95ci": [
+            -0.04866979035461697,
+            0.011289383048507361
+          ],
+          "brier_bootstrap_95ci": [
+            -0.034299464116899964,
+            0.00777933615980573
+          ],
+          "one_sided_normal_p_log_loss": 0.8885762608793251,
+          "one_sided_normal_p_brier": 0.8935728475632037,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0704978589953011,
+            "brier_3c": 0.6483403792598658
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-RELATIVE-VOLUME-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "log_relative_horizon_volume"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "log_relative_horizon_volume": {
+          "mean": 0.2527682259630732,
+          "scale": 0.6198184835814409
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.16812576793195122,
+          "log_relative_horizon_volume": -0.46266196949462357
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.16812576793195122,
+          "log_relative_horizon_volume": -0.4626619694946235
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.021980106402954266,
+          "mean_brier_improvement": 0.012865460840357817,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.035030904104326854,
+          "one_sided_normal_p_brier": 0.04732704372985563,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0258211923358398,
+            "brier_3c": 0.618962397663843
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.005117185513360801,
+          "mean_brier_improvement": 0.0042694399728978975,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.3682440105401761,
+          "one_sided_normal_p_brier": 0.32647462859835563,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0555783467957867,
+            "brier_3c": 0.6210135219985106
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0025539765748920783,
+          "mean_brier_improvement": 0.0012599476812214655,
+          "log_loss_bootstrap_95ci": [
+            -0.03924131048046205,
+            0.03849241206372968
+          ],
+          "brier_bootstrap_95ci": [
+            -0.02272666255408306,
+            0.0219476180936873
+          ],
+          "one_sided_normal_p_log_loss": 0.45162169796667373,
+          "one_sided_normal_p_brier": 0.45804396979863127,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0487870630909395,
+            "brier_3c": 0.6332925685461046
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-CVD-SLOPE-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "side_adjusted_normalized_cvd_slope"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_normalized_cvd_slope": {
+          "mean": 0.0,
+          "scale": 0.02355450038688678
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.08193099450977151,
+          "side_adjusted_normalized_cvd_slope": 0.0975158654420878
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.0819309945097715,
+          "side_adjusted_normalized_cvd_slope": -0.0975158654420878
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.0038072198253745397,
+          "mean_brier_improvement": 0.0022555966719856706,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.29527930243754164,
+          "one_sided_normal_p_brier": 0.32480690661691125,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0439940789134197,
+            "brier_3c": 0.6295722618322152
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0070889433064314274,
+          "mean_brier_improvement": 0.005403065368453825,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.12506453002802398,
+          "one_sided_normal_p_brier": 0.11170039951114075,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.053606589002716,
+            "brier_3c": 0.6198798966029546
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0040648321201937915,
+          "mean_brier_improvement": 0.0024549995735510125,
+          "log_loss_bootstrap_95ci": [
+            -0.019140802318691186,
+            0.027402248336028133
+          ],
+          "brier_bootstrap_95ci": [
+            -0.013981595674337462,
+            0.01849087142440831
+          ],
+          "one_sided_normal_p_log_loss": 0.3697540606218388,
+          "one_sided_normal_p_brier": 0.38835069690106183,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0473352390458497,
+            "brier_3c": 0.6320841463819058
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "target_path_level_count",
+        "adverse_path_level_count"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "target_path_level_count": {
+          "mean": 3.22885101010101,
+          "scale": 2.6437869691803972
+        },
+        "adverse_path_level_count": {
+          "mean": 3.22885101010101,
+          "scale": 2.6437869691803972
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.11498944919327188,
+          "target_path_level_count": -0.18673085105459805,
+          "adverse_path_level_count": -0.03873463914636882
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.11498944919327182,
+          "target_path_level_count": -0.03873463914636891,
+          "adverse_path_level_count": -0.18673085105459797
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.004686424889605814,
+          "mean_brier_improvement": 0.003545213562425893,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.2228241019772712,
+          "one_sided_normal_p_brier": 0.18889379882126756,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0431148738491882,
+            "brier_3c": 0.628282644941775
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.001334379279562821,
+          "mean_brier_improvement": 0.0002844980753090268,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.449472936790015,
+          "one_sided_normal_p_brier": 0.4831593845862232,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0593611530295848,
+            "brier_3c": 0.6249984638960996
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.0010410475448767269,
+          "mean_brier_improvement": -0.0005173666760855225,
+          "log_loss_bootstrap_95ci": [
+            -0.01651062472449212,
+            0.014883391990001835
+          ],
+          "brier_bootstrap_95ci": [
+            -0.010463723824818543,
+            0.009431258418535688
+          ],
+          "one_sided_normal_p_log_loss": 0.5512119924781614,
+          "one_sided_normal_p_brier": 0.5401281388318949,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0527611411553166,
+            "brier_3c": 0.6353238490071654
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-FIBONACCI-DISTANCE-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "nearest_to_take_profit.absolute_distance_sigma_horizon",
+        "nearest_to_stop_loss.absolute_distance_sigma_horizon"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "nearest_to_take_profit.absolute_distance_sigma_horizon": {
+          "mean": 0.46725172550595345,
+          "scale": 0.5012321683645101
+        },
+        "nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+          "mean": 0.46725172550595345,
+          "scale": 0.5012321683645101
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.07534794866809341,
+          "nearest_to_take_profit.absolute_distance_sigma_horizon": 0.21819939994592405,
+          "nearest_to_stop_loss.absolute_distance_sigma_horizon": -0.03446489532873347
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.07534794866809341,
+          "nearest_to_take_profit.absolute_distance_sigma_horizon": -0.03446489532873344,
+          "nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.218199399945924
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.014887565693304843,
+          "mean_brier_improvement": 0.011448070498792269,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.1590238838590372,
+          "one_sided_normal_p_brier": 0.12104504620414158,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0329137330454892,
+            "brier_3c": 0.6203797880054086
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.006382130037898255,
+          "mean_brier_improvement": 0.004072355621518523,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.32659572921617086,
+          "one_sided_normal_p_brier": 0.33518148350284416,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.054313402271249,
+            "brier_3c": 0.62121060634989
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.012222857892473514,
+          "mean_brier_improvement": -0.00874360165442865,
+          "log_loss_bootstrap_95ci": [
+            -0.043308815497315294,
+            0.0170659410390587
+          ],
+          "brier_bootstrap_95ci": [
+            -0.03029030095078859,
+            0.010747178482175943
+          ],
+          "one_sided_normal_p_log_loss": 0.7676047865820042,
+          "one_sided_normal_p_brier": 0.7855648539986098,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0641209166084131,
+            "brier_3c": 0.6436919088859926
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-COMPRESSION-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "compression_vector.atr_rank",
+        "compression_vector.bollinger_width_rank"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "compression_vector.atr_rank": {
+          "mean": 0.5828914141414141,
+          "scale": 0.2719737342370311
+        },
+        "compression_vector.bollinger_width_rank": {
+          "mean": 0.5666666666666667,
+          "scale": 0.28410841696893213
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.18680739165698682,
+          "compression_vector.atr_rank": -0.43443716602784294,
+          "compression_vector.bollinger_width_rank": -0.3183106185347665
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.18680739165698682,
+          "compression_vector.atr_rank": -0.4344371660278428,
+          "compression_vector.bollinger_width_rank": -0.3183106185347665
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.04538302107975855,
+          "mean_brier_improvement": 0.026257552845831363,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.017115426905403908,
+          "one_sided_normal_p_brier": 0.021349287226640645,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0024182776590356,
+            "brier_3c": 0.6055703056583694
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.01076059120362104,
+          "mean_brier_improvement": 0.009784755123184616,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.3894647463781823,
+          "one_sided_normal_p_brier": 0.31533105658882854,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0499349411055263,
+            "brier_3c": 0.6154982068482239
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.0001656464702827467,
+          "mean_brier_improvement": 0.0011961792016930975,
+          "log_loss_bootstrap_95ci": [
+            -0.08080008156833905,
+            0.07808205444370486
+          ],
+          "brier_bootstrap_95ci": [
+            -0.042874717225594536,
+            0.04541022709020797
+          ],
+          "one_sided_normal_p_log_loss": 0.4984260151130566,
+          "one_sided_normal_p_brier": 0.4794118782194301,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0509790407063682,
+            "brier_3c": 0.6331859301313426
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-ABSORPTION-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "side_adjusted_horizon_displacement_atr",
+        "flow_opposing_wick_ratio"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 0.1,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_horizon_displacement_atr": {
+          "mean": 0.0,
+          "scale": 3.395663610111849
+        },
+        "flow_opposing_wick_ratio": {
+          "mean": 0.3191842441194886,
+          "scale": 0.20409077631016828
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.07561552666548431,
+          "side_adjusted_horizon_displacement_atr": 0.024977521084658033,
+          "flow_opposing_wick_ratio": -0.1792316378743128
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.07561552666548439,
+          "side_adjusted_horizon_displacement_atr": -0.02497752108465816,
+          "flow_opposing_wick_ratio": -0.17923163787431273
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.0038568285334103754,
+          "mean_brier_improvement": 0.0021116096831712994,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.3049735620286509,
+          "one_sided_normal_p_brier": 0.32127001968180946,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.0439444702053835,
+            "brier_3c": 0.6297162488210295
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.015183859773161354,
+          "mean_brier_improvement": 0.007776528729826659,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.11965253643127738,
+          "one_sided_normal_p_brier": 0.13871051863865924,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.045511672535986,
+            "brier_3c": 0.6175064332415818
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": 0.007934753090454005,
+          "mean_brier_improvement": 0.004414988075742589,
+          "log_loss_bootstrap_95ci": [
+            -0.004447202330980194,
+            0.022100914504630705
+          ],
+          "brier_bootstrap_95ci": [
+            -0.0037069617860906153,
+            0.013116029195712855
+          ],
+          "one_sided_normal_p_log_loss": 0.1239827158780229,
+          "one_sided_normal_p_brier": 0.15811672733344428,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.0439290454513153,
+            "brier_3c": 0.6304965105075074
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    },
+    {
+      "rule_id": "LIB-CAND-PULLBACK-CONTEXT-001",
+      "time_horizon": "short_swing",
+      "features": [
+        "side_adjusted_ema50_vs_ema200_log",
+        "side_adjusted_ema50_slope_6bars_atr",
+        "side_adjusted_extension_atr"
+      ],
+      "status": "not_supported_for_probability_integration",
+      "selected_ridge": 10.0,
+      "fit_cases": 3000,
+      "scaling": {
+        "side_adjusted_ema50_vs_ema200_log": {
+          "mean": 0.0,
+          "scale": 0.09559388619975367
+        },
+        "side_adjusted_ema50_slope_6bars_atr": {
+          "mean": 0.0,
+          "scale": 0.5112924022595039
+        },
+        "side_adjusted_extension_atr": {
+          "mean": 0.0,
+          "scale": 1.1826983976840109
+        }
+      },
+      "coefficients": {
+        "tp_first_within_horizon": {
+          "intercept": 0.09537748112420028,
+          "side_adjusted_ema50_vs_ema200_log": -0.023423966019945765,
+          "side_adjusted_ema50_slope_6bars_atr": -0.33410587887792687,
+          "side_adjusted_extension_atr": 0.43079298863210286
+        },
+        "sl_first_within_horizon": {
+          "intercept": 0.09537748112420028,
+          "side_adjusted_ema50_vs_ema200_log": 0.023423966019945796,
+          "side_adjusted_ema50_slope_6bars_atr": 0.334105878877927,
+          "side_adjusted_extension_atr": -0.4307929886321029
+        }
+      },
+      "comparisons_vs_calibrated_baseline": {
+        "development": {
+          "episodes": 44,
+          "mean_log_loss_improvement": 0.02204210942738509,
+          "mean_brier_improvement": 0.015126986417035264,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.10847776769402917,
+          "one_sided_normal_p_brier": 0.10394147441480328,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 3168,
+            "episodes": 264,
+            "inference_clusters": 44,
+            "class_counts": {
+              "tp_first_within_horizon": 1098,
+              "neither_barrier_before_expiry": 972,
+              "sl_first_within_horizon": 1098
+            },
+            "log_loss_3c": 1.025759189311409,
+            "brier_3c": 0.6167008720871655
+          }
+        },
+        "calibration": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.00617930380477071,
+          "mean_brier_improvement": -0.004464135075045505,
+          "log_loss_bootstrap_95ci": null,
+          "brier_bootstrap_95ci": null,
+          "one_sided_normal_p_log_loss": 0.6321800090085106,
+          "one_sided_normal_p_brier": 0.6352933608912177,
+          "bootstrap_episode_sample_size": 0,
+          "model_metrics": {
+            "n": 1872,
+            "episodes": 156,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 577,
+              "sl_first_within_horizon": 577,
+              "neither_barrier_before_expiry": 718
+            },
+            "log_loss_3c": 1.0668748361139182,
+            "brier_3c": 0.629747097046454
+          }
+        },
+        "rule_test": {
+          "episodes": 26,
+          "mean_log_loss_improvement": -0.0372228249689298,
+          "mean_brier_improvement": -0.02391906832013087,
+          "log_loss_bootstrap_95ci": [
+            -0.07335372200803515,
+            0.001176699490845617
+          ],
+          "brier_bootstrap_95ci": [
+            -0.04794270932191856,
+            0.0015708715119557974
+          ],
+          "one_sided_normal_p_log_loss": 0.9764363192178886,
+          "one_sided_normal_p_brier": 0.9715409974856334,
+          "bootstrap_episode_sample_size": 26,
+          "model_metrics": {
+            "n": 1860,
+            "episodes": 155,
+            "inference_clusters": 26,
+            "class_counts": {
+              "tp_first_within_horizon": 645,
+              "sl_first_within_horizon": 645,
+              "neither_barrier_before_expiry": 570
+            },
+            "log_loss_3c": 1.088518699842775,
+            "brier_3c": 0.65834291664216
+          }
+        }
+      },
+      "rule_test_intersection_p_value_fdr_adjusted": 0.9942597924446614
+    }
+  ],
+  "supported_rules_by_horizon": {},
+  "supported_rule_count": 0,
+  "joint_challenger_by_horizon": [
+    {
+      "time_horizon": "intraday_short",
+      "rule_ids": [],
+      "status": "no_supported_rules_no_challenger"
+    },
+    {
+      "time_horizon": "intraday_wide",
+      "rule_ids": [],
+      "status": "no_supported_rules_no_challenger"
+    },
+    {
+      "time_horizon": "short_swing",
+      "rule_ids": [],
+      "status": "no_supported_rules_no_challenger"
+    }
+  ],
+  "decision": "evidence_insufficient_no_promotion",
+  "production_candidate_authorized": false,
+  "prospective_shadow": {
+    "required_only_if_historical_gate_passes_all_horizons": true,
+    "automatic_weight_updates": false,
+    "episode_definition": "unique_linked_operation_not_geometry_rows",
+    "minimum_closed_episodes_per_horizon": 200,
+    "minimum_tp_first_episodes_per_horizon": 50,
+    "minimum_sl_first_episodes_per_horizon": 50,
+    "maximum_review_episodes_per_horizon": 500,
+    "acceptance": "both paired episode-bootstrap 95 percent improvement intervals above zero without refitting",
+    "status": "not_started_historical_gate_failed"
+  },
+  "data_blocked_rules": {
+    "M4-RULE-OPEN-INTEREST-CHANGE-001": "exact_historical_oi_not_in_kline_archive",
+    "M4-RULE-PRICE-OI-STATE-001": "exact_historical_oi_not_in_kline_archive",
+    "M4-RULE-SPOT-FUTURES-BASIS-001": "synchronized_spot_book_history_unavailable",
+    "M4-RULE-MARK-INDEX-PREMIUM-001": "mark_index_history_not_in_kline_archive",
+    "M4-RULE-FUNDING-STATE-001": "funding_history_requires_separate_point_in_time_contract",
+    "LIB-CAND-ORDERBOOK-IMBALANCE-001": "historical_order_book_snapshots_unavailable",
+    "LIB-CAND-FUNDING-PERCENTILE-001": "funding_history_requires_separate_point_in_time_contract",
+    "LIB-CAND-CROWDING-PERCENTILE-001": "historical_crowding_snapshots_unavailable",
+    "LIB-CAND-SENTIMENT-PERCENTILE-001": "historical_sentiment_snapshots_unavailable",
+    "LIB-CAND-LIQUIDATION-ZONE-001": "historical_liquidation_map_snapshots_unavailable",
+    "LIB-CAND-SHOCK-001": "exact_cross_market_event_contract_unavailable",
+    "LIB-CAND-CROSS-VENUE-DIVERGENCE-001": "synchronized_cross_venue_history_unavailable"
+  },
+  "production_effect": "none",
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "195776615de9c3865d0f103d40553cc732b2027c5f601bb0ceebcf81988d5b63"
+}

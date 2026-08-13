@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from typing import Any, Mapping
 
-from m7_joint_temporal_engine import HORIZON_SECONDS
+from sequential_temporal_engine import HORIZON_SECONDS
 
 
 LIMIT_ORDER_CONTRACT_VERSION = "limit-order-contract-v1.4"

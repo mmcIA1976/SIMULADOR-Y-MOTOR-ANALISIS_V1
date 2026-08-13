@@ -11,10 +11,10 @@ from limit_order_contract import (
     LifecycleEvent,
     learning_label_for_terminal_event,
 )
-from m7_production_analysis import NewEngineAnalysisError, analyze_trade
+from sequential_production_analysis import NewEngineAnalysisError, analyze_trade
 
 
-LIMIT_LIFECYCLE_RUNTIME_VERSION = "limit-lifecycle-runtime-v0.1"
+LIMIT_LIFECYCLE_RUNTIME_VERSION = "limit-lifecycle-runtime-v0.2-sequential-v0.8"
 
 
 def parse_utc(value: Any) -> datetime:
@@ -168,7 +168,13 @@ def recalculate_at_activation(
     except Exception as exc:
         post_vector = {
             "status": "blocked",
-            "code": f"activation_reanalysis_{type(exc).__name__}",
+            "code": str(
+                getattr(
+                    exc,
+                    "code",
+                    f"activation_reanalysis_{type(exc).__name__}",
+                )
+            ),
             "mode": "historical_reconstruction" if historical else "live_activation",
         }
         data_cutoff_at = activation_time.isoformat()

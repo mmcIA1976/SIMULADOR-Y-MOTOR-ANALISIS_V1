@@ -696,7 +696,7 @@
   "phase": "E1.3",
   "production_modified": false,
   "scope": "coherencia matematica y semantica del champion congelado",
-  "source_sha256": "dc3dbb7e46e68f0db44f2f53a6d63908425b09c7baae5e8b638019f851937fd4",
+  "source_sha256": "7a5ca78117d717f6042da0465fa77f7a88c011d3de8b51ca5bed83bac105f7ac",
   "summary": {
     "critical": 7,
     "failed": 16,

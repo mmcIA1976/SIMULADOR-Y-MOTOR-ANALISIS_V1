@@ -1,0 +1,88 @@
+{
+  "version": "nested-horizon-cohort-v0.1",
+  "protocol_sha256": "92d08fc2bc7bbaecacaa8eab54e99b817d57d1552d8bef1da20e568271734cea",
+  "dataset_path": "data\\phase1_controlled_replay\\nested_horizon_cases_v0_1.jsonl.gz",
+  "dataset_sha256": "e20876c4f923e59790b98ad7ec217e30f967ad20682e6cd04d11dbf4813796fa",
+  "plan_group_set_sha256": "23537e1d2603fb4f7fd18964e8adb518700bf62212b8169750ec30f75855ff1b",
+  "same_plan_across_horizons": true,
+  "reference_volatility_horizon": "intraday_wide",
+  "reference_volatility_seconds": 86400,
+  "anchor_step_seconds": 86400,
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "INJUSDT"
+  ],
+  "horizon_seconds": {
+    "intraday_short": 14400,
+    "intraday_wide": 86400,
+    "short_swing": 604800
+  },
+  "counts": {
+    "blocked_pretrade": 2562,
+    "anchors": 5244,
+    "plan_groups": 62904,
+    "cases": 188712,
+    "blocked_future_coverage": 36,
+    "blocked_rule_evaluation": 24
+  },
+  "cases_by_horizon": {
+    "intraday_short": 62904,
+    "intraday_wide": 62904,
+    "short_swing": 62904
+  },
+  "cases_by_partition": {
+    "development": 65448,
+    "calibration": 39096,
+    "rule_test": 39672,
+    "final_test": 44496
+  },
+  "cases_by_symbol": {
+    "BTCUSDT": 31464,
+    "ETHUSDT": 31464,
+    "SOLUSDT": 31464,
+    "BNBUSDT": 31464,
+    "XRPUSDT": 31464,
+    "INJUSDT": 31392
+  },
+  "labels_by_horizon": {
+    "intraday_short:tp_first_within_horizon": 5168,
+    "intraday_wide:tp_first_within_horizon": 20947,
+    "short_swing:tp_first_within_horizon": 30888,
+    "intraday_short:neither_barrier_before_expiry": 52568,
+    "intraday_short:sl_first_within_horizon": 5168,
+    "intraday_wide:sl_first_within_horizon": 20947,
+    "short_swing:sl_first_within_horizon": 30888,
+    "intraday_wide:neither_barrier_before_expiry": 21010,
+    "short_swing:neither_barrier_before_expiry": 1128
+  },
+  "rule_feature_coverage": {
+    "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": 188712,
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": 188712,
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": 188712,
+    "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": 188712,
+    "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 188712,
+    "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": 188712,
+    "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": 188712,
+    "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": 188712,
+    "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": 188712,
+    "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": 188712,
+    "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": 188712,
+    "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": 188712,
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": 188712,
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": 188712,
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": 188712,
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": 188712,
+    "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 188712,
+    "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": 188712,
+    "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": 188712,
+    "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": 188712
+  },
+  "nested_first_touch_invariant": true,
+  "production_effect": "none",
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "872eb30e9da18d96b763a21afe7554ecd78dcd7605cb6091aa4158b02b9ffaec"
+}

@@ -1,0 +1,402 @@
+{
+  "version": "single-engine-horizon-candidate-v0.1",
+  "status": "historically_qualified_for_prospective_shadow_only",
+  "single_engine": true,
+  "spec_name": "horizon_aware_interactions",
+  "counterpart": "horizon_blind_rules",
+  "ridge": 0.1,
+  "scaling": {
+    "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": {
+      "mean": 0.31039798440168,
+      "scale": 0.20253419848090468
+    },
+    "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": {
+      "mean": -0.05514973364071317,
+      "scale": 3.5941496390632617
+    },
+    "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": {
+      "mean": -0.02167909558241235,
+      "scale": 1.2347384490777344
+    },
+    "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": {
+      "mean": 0.46743055555555557,
+      "scale": 0.3018779490181339
+    },
+    "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": {
+      "mean": 0.4852527777777778,
+      "scale": 0.29516735835239033
+    },
+    "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": {
+      "mean": -0.0006610352514533036,
+      "scale": 0.03899260761910897
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": {
+      "mean": -0.0004116711007734838,
+      "scale": 0.043405965704850245
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": {
+      "mean": -0.0003842279174145761,
+      "scale": 0.0607681510211016
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": {
+      "mean": -0.0050081151333469485,
+      "scale": 0.47641246467290504
+    },
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": {
+      "mean": 0.9651354511267887,
+      "scale": 1.2404611476649998
+    },
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": {
+      "mean": 0.955777579832666,
+      "scale": 1.243456644349564
+    },
+    "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": {
+      "mean": 0.001881494539274389,
+      "scale": 0.6332320370850212
+    },
+    "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": {
+      "mean": -0.003689934259432303,
+      "scale": 0.2305551102467378
+    },
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": {
+      "mean": 4.479583333333333,
+      "scale": 5.002640951842892
+    },
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": {
+      "mean": 4.5485,
+      "scale": 5.048232141056907
+    },
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": {
+      "mean": -0.0020196309940955655,
+      "scale": 0.16323752553487608
+    },
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": {
+      "mean": -0.0010751640021654796,
+      "scale": 0.11947356321445589
+    },
+    "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": {
+      "mean": -0.0035493425863051924,
+      "scale": 0.22949090927527047
+    },
+    "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": {
+      "mean": 0.5815833333333333,
+      "scale": 0.493299259803035
+    },
+    "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": {
+      "mean": 0.4879847222222222,
+      "scale": 0.3017652674156543
+    },
+    "log_duration_ratio": {
+      "mean": 0.05138355994241942,
+      "scale": 1.526329747364333
+    },
+    "log_duration_ratio_squared": {
+      "mean": 2.332322767921624,
+      "scale": 1.6658908425845782
+    },
+    "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio::x_log_duration": {
+      "mean": 0.01019421547774044,
+      "scale": 0.5746101688037693
+    },
+    "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio::x_log_duration_squared": {
+      "mean": 0.7314619598494991,
+      "scale": 0.7913310128967217
+    },
+    "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr::x_log_duration": {
+      "mean": 0.036046077824039,
+      "scale": 5.835779608828317
+    },
+    "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr::x_log_duration_squared": {
+      "mean": -0.13600287297244373,
+      "scale": 10.792958055201634
+    },
+    "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr::x_log_duration": {
+      "mean": 0.021238784945396636,
+      "scale": 1.865135973413292
+    },
+    "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr::x_log_duration_squared": {
+      "mean": -0.0433149524855578,
+      "scale": 3.5182000551402206
+    },
+    "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank::x_log_duration": {
+      "mean": 0.09192930062321229,
+      "scale": 0.8406978997820677
+    },
+    "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank::x_log_duration_squared": {
+      "mean": 1.0865628621771266,
+      "scale": 1.171712467748076
+    },
+    "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank::x_log_duration": {
+      "mean": 0.07568700234629032,
+      "scale": 0.8609252378364787
+    },
+    "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank::x_log_duration_squared": {
+      "mean": 1.1310701304406485,
+      "scale": 1.1744694692075375
+    },
+    "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope::x_log_duration": {
+      "mean": 0.0009592864631691328,
+      "scale": 0.06236060295459192
+    },
+    "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope::x_log_duration_squared": {
+      "mean": -0.001625704964312192,
+      "scale": 0.1132414742406358
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log::x_log_duration": {
+      "mean": -0.00047011681377716357,
+      "scale": 0.07751532565823784
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log::x_log_duration_squared": {
+      "mean": -0.0012397933036695195,
+      "scale": 0.1507302421518311
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log::x_log_duration": {
+      "mean": -0.00045576448494147635,
+      "scale": 0.11010691173556447
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log::x_log_duration_squared": {
+      "mean": -0.0010111331199885876,
+      "scale": 0.21402597913560104
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr::x_log_duration": {
+      "mean": 0.004799070416759552,
+      "scale": 0.7102626628068771
+    },
+    "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr::x_log_duration_squared": {
+      "mean": -0.015700592919160077,
+      "scale": 1.3295972328199985
+    },
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon::x_log_duration": {
+      "mean": -1.1407745748613403,
+      "scale": 2.472707830079232
+    },
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon::x_log_duration_squared": {
+      "mean": 2.6459078713512865,
+      "scale": 4.1188444376924656
+    },
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon::x_log_duration": {
+      "mean": -1.134914039326793,
+      "scale": 2.4770944098416696
+    },
+    "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon::x_log_duration_squared": {
+      "mean": 2.639436483990733,
+      "scale": 4.126648130178536
+    },
+    "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume::x_log_duration": {
+      "mean": 0.24358119476766574,
+      "scale": 0.9408909447428551
+    },
+    "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume::x_log_duration_squared": {
+      "mean": 0.059050979506271147,
+      "scale": 1.822789008080316
+    },
+    "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi::x_log_duration": {
+      "mean": 0.003947649076600593,
+      "scale": 0.34638719445648425
+    },
+    "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi::x_log_duration_squared": {
+      "mean": -0.007356071931267325,
+      "scale": 0.6549035791327198
+    },
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count::x_log_duration": {
+      "mean": -4.844085567303423,
+      "scale": 10.367702722916675
+    },
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count::x_log_duration_squared": {
+      "mean": 11.614159974934301,
+      "scale": 16.975528371940264
+    },
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count::x_log_duration": {
+      "mean": -4.962157012421951,
+      "scale": 10.487260348048467
+    },
+    "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count::x_log_duration_squared": {
+      "mean": 11.841474138132936,
+      "scale": 17.163673763854675
+    },
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h::x_log_duration": {
+      "mean": -0.0019239706381010263,
+      "scale": 0.2279238011273468
+    },
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h::x_log_duration_squared": {
+      "mean": -0.007310444571270428,
+      "scale": 0.4333305666031006
+    },
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h::x_log_duration": {
+      "mean": 8.215086488618706e-06,
+      "scale": 0.170558512313041
+    },
+    "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h::x_log_duration_squared": {
+      "mean": -0.004695017935424869,
+      "scale": 0.32395552710037817
+    },
+    "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h::x_log_duration": {
+      "mean": 0.0008935022492961573,
+      "scale": 0.32671320456811076
+    },
+    "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h::x_log_duration_squared": {
+      "mean": -0.00707146434287921,
+      "scale": 0.6215987392182304
+    },
+    "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp::x_log_duration": {
+      "mean": -0.43259934937903594,
+      "scale": 1.035491977619255
+    },
+    "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp::x_log_duration_squared": {
+      "mean": 1.259385832797001,
+      "scale": 1.6131788285452409
+    },
+    "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60::x_log_duration": {
+      "mean": 0.07477532509318277,
+      "scale": 0.8768230877084564
+    },
+    "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60::x_log_duration_squared": {
+      "mean": 1.1479267840845035,
+      "scale": 1.1974852700197571
+    }
+  },
+  "coefficients": {
+    "tp_first_within_horizon": {
+      "intercept": -0.5978792966820157,
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.1436865437579267,
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": 0.06529567261674261,
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": 0.09548981822059943,
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.6766004946061835,
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": -0.11487724192218494,
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": -0.006252668893799959,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": 0.07187662884645633,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": -0.07375423300984486,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": -0.05008959429335878,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.13346379622368496,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": 0.00014035582769972473,
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": -0.18755398696205752,
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": -0.07999242955003394,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": -0.27597971353897727,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": -0.077909776029428,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": -0.023441021373680163,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": 0.05759662706460604,
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": -0.030843733273050112,
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.09819761440970855,
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -1.053262714575748,
+      "log_duration_ratio": -0.020225003334707965,
+      "log_duration_ratio_squared": -0.380126242856698,
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio::x_log_duration": -0.02267043560413999,
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio::x_log_duration_squared": 0.19909290875996238,
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr::x_log_duration": 0.06946969856458171,
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr::x_log_duration_squared": 0.05399050091987275,
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr::x_log_duration": -0.003611315719234756,
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr::x_log_duration_squared": 0.06366633663858429,
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank::x_log_duration": -0.49488323625309205,
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank::x_log_duration_squared": 0.09885465813404297,
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank::x_log_duration": -0.4907708990886018,
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank::x_log_duration_squared": 0.07355174288055628,
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope::x_log_duration": -0.04197497858519243,
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope::x_log_duration_squared": -0.01678975650399229,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log::x_log_duration": -0.03635109476495754,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log::x_log_duration_squared": -0.0472476872556369,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log::x_log_duration": -0.06313416460544267,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log::x_log_duration_squared": 0.020218414401339223,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr::x_log_duration": -0.053537138943208044,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr::x_log_duration_squared": -0.04109547590605246,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon::x_log_duration": -0.1454093135667823,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon::x_log_duration_squared": -0.4231592250886795,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon::x_log_duration": -0.13370509172563047,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon::x_log_duration_squared": -0.26464042564493284,
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume::x_log_duration": 0.11421012197116802,
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume::x_log_duration_squared": 0.07842845416169855,
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi::x_log_duration": -0.08024956808748311,
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi::x_log_duration_squared": 0.019539116637500426,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count::x_log_duration": -0.4744613013290561,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count::x_log_duration_squared": 0.18126036912282195,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count::x_log_duration": -0.37369394727335287,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count::x_log_duration_squared": -0.19664535025874416,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h::x_log_duration": 0.033347550071998446,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h::x_log_duration_squared": 0.004133482339640057,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h::x_log_duration": 0.03882714906740873,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h::x_log_duration_squared": 0.007414949768769152,
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h::x_log_duration": 0.030922536203286097,
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h::x_log_duration_squared": 0.01793862927087493,
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp::x_log_duration": 0.0447526182400484,
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp::x_log_duration_squared": -0.21556618788305607,
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60::x_log_duration": -0.04071857305610544,
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60::x_log_duration_squared": -0.0529934492195378
+    },
+    "sl_first_within_horizon": {
+      "intercept": -0.6818216731631271,
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio": -0.13633087830455654,
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr": 0.01430062719889637,
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr": -0.07398552135488845,
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.6622368116617392,
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank": -0.10457424630588555,
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope": -0.08000216476437946,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log": -0.0920139130546339,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log": -0.0035864365173889465,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr": 0.03177238398681165,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon": 0.2140554063434167,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon": 0.08866939302263627,
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume": -0.17294262734752416,
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi": 0.034746793238329944,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count": -0.08598829451375234,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count": -0.19416528467894223,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h": 0.08037914439348698,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h": -0.11843560044518714,
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": 0.05768856748348316,
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp": 0.06657167390520721,
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60": -1.0684883664004685,
+      "log_duration_ratio": 0.09671386399873834,
+      "log_duration_ratio_squared": -0.4894334010663886,
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio::x_log_duration": -0.09761626946701212,
+      "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio::x_log_duration_squared": 0.266836126835914,
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr::x_log_duration": -0.0706499994652293,
+      "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr::x_log_duration_squared": -0.019663981367605037,
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr::x_log_duration": -0.035595584613182796,
+      "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr::x_log_duration_squared": 0.023843216290848904,
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank::x_log_duration": -0.3989800789749607,
+      "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank::x_log_duration_squared": 0.08803748638124097,
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank::x_log_duration": -0.3478801075279685,
+      "LIB-CAND-COMPRESSION-001::compression_vector.bollinger_width_rank::x_log_duration_squared": 0.05894710815542307,
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope::x_log_duration": -0.11273319401417588,
+      "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope::x_log_duration_squared": -0.03968973776413261,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log::x_log_duration": 0.04983485676037247,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log::x_log_duration_squared": 0.06787665905864575,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log::x_log_duration": -0.02080813605322441,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log::x_log_duration_squared": -0.08024345449312728,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr::x_log_duration": 0.08563088134622047,
+      "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr::x_log_duration_squared": -0.05509330668208837,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon::x_log_duration": -0.07883773954787308,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_stop_loss.absolute_distance_sigma_horizon::x_log_duration_squared": -0.43695627550782956,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon::x_log_duration": -0.23527074817212942,
+      "LIB-CAND-FIBONACCI-DISTANCE-001::nearest_to_take_profit.absolute_distance_sigma_horizon::x_log_duration_squared": -0.3676432156669845,
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume::x_log_duration": 0.12643394737336405,
+      "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume::x_log_duration_squared": 0.061299347863848073,
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi::x_log_duration": 0.06575635354098508,
+      "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi::x_log_duration_squared": 0.00610904330190982,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count::x_log_duration": -0.35258363485289157,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::adverse_path_level_count::x_log_duration_squared": -0.18546237568435078,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count::x_log_duration": -0.32785811109895896,
+      "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001::target_path_level_count::x_log_duration_squared": 0.15277289984897394,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h::x_log_duration": 0.028487293249142988,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_2h::x_log_duration_squared": -0.040456693016985394,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h::x_log_duration": 0.04946151891657707,
+      "M4-RULE-MTF-HIERARCHY-001::directional_path_efficiency_4h::x_log_duration_squared": -0.014308470203934415,
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h::x_log_duration": -0.003020916890392733,
+      "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h::x_log_duration_squared": 0.029653020149390016,
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp::x_log_duration": -0.010568389217284157,
+      "M4-RULE-PRIOR-EXTREMA-001::target_extreme_between_entry_and_tp::x_log_duration_squared": -0.1814300703754888,
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60::x_log_duration": -0.2345724733308951,
+      "M4-RULE-VOLATILITY-RANK-001::volatility_percentile_60::x_log_duration_squared": 0.021770809181459756
+    }
+  },
+  "feature_source": "horizon_rule_features",
+  "offset": "horizon_aware_probabilities",
+  "duration_interactions": true,
+  "protocol_sha256": "fad81e78055d4f39f4420bab28e6f50b172ec8edc5e7e1d51493eb52f17ed886",
+  "dataset_sha256": "e20876c4f923e59790b98ad7ec217e30f967ad20682e6cd04d11dbf4813796fa",
+  "production_authorized": false,
+  "production_effect": "none",
+  "automatic_weight_updates": false,
+  "candidate_vs_blind_gate_passed": true,
+  "horizon_gate_passed": true,
+  "rule_layer_uniform_gate_passed": false,
+  "canonical_payload_sha256": "4142a8f8833ce51afc7b6462521512d7fa7d90aac98acf14a9e45391726963d1"
+}

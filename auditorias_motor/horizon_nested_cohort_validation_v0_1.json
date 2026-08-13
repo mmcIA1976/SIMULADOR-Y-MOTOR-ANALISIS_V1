@@ -1,0 +1,11 @@
+{
+  "version": "nested-horizon-cohort-validation-v0.1",
+  "dataset_sha256": "e20876c4f923e59790b98ad7ec217e30f967ad20682e6cd04d11dbf4813796fa",
+  "plan_groups": 62904,
+  "cases": 188712,
+  "error_counts": {},
+  "valid": true,
+  "production_effect": "none",
+  "supabase_writes": 0,
+  "canonical_payload_sha256": "0386c7251efd3b0385d45d56540b56bb30a6053edf0b32d55bc290df31c8b7c7"
+}

@@ -3,21 +3,21 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.31.0-sequential-multiscale-engine"
-APP_SEMVER = "0.31.0"
-ENGINE_VERSION = "TP-SL-SEQUENTIAL-MULTISCALE-v0.8"
-SCORING_VERSION = "sequential-conditional-first-touch-frozen-v0.8"
+APP_VERSION = "app-v0.32.0-empirical-multiscale-engine"
+APP_SEMVER = "0.32.0"
+ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
+SCORING_VERSION = "historical-analog-first-touch-v0.9"
 LEARNING_EVALUATOR_VERSION = "learning-v0.14-exact-horizon"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.18-limit-lifecycle"
-DATA_SOURCE_VERSION = "data-sources-v0.24-sequential-multiscale"
-DATA_CONTRACT_VERSION = "data-contract-v0.24-sequential-multiscale-v0.8"
+DATA_SOURCE_VERSION = "data-sources-v0.25-empirical-multiscale"
+DATA_CONTRACT_VERSION = "data-contract-v0.25-empirical-multiscale-v0.9"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.2-exact-horizon-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 # Retained only so historical offline audit modules remain readable. It is not
 # exported by current_version_contract and is not imported by the application.
 CHALLENGER_RUNTIME_VERSION = "retired-offline-only-v0.7"
-PROSPECTIVE_RUNTIME_VERSION = "sequential-multiscale-runtime-v0.8"
+PROSPECTIVE_RUNTIME_VERSION = "empirical-analog-runtime-v0.9"
 
 
 def current_version_contract() -> dict:

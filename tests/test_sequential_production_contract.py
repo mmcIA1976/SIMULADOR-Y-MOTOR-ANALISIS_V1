@@ -16,7 +16,7 @@ from multiscale_feature_runtime import (
     required_candle_count,
 )
 from sequential_production_runtime import build_production_probability_run
-from sequential_temporal_engine import ENGINE_VERSION
+from empirical_temporal_engine import ENGINE_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -92,9 +92,10 @@ class SequentialProductionContractTests(unittest.TestCase):
                     )
                 )
 
+    @patch("sequential_production_runtime.empirical_probabilities")
     @patch("sequential_production_runtime.build_stage_context")
     def test_medium_requests_only_short_and_medium_and_executes_one_engine(
-        self, stage_builder
+        self, stage_builder, probability_engine
     ):
         stage_builder.side_effect = lambda plan, _candles: {
             "stage_id": STAGE_PROFILES[plan["time_horizon"]]["stage_id"],
@@ -105,6 +106,9 @@ class SequentialProductionContractTests(unittest.TestCase):
             "rule_traces": [],
         }
         requested_intervals = []
+        probability_engine.return_value = {
+            "executed_stages": ["intraday_short", "intraday_wide"],
+        }
 
         def loader(_symbol, interval, _limit, **_kwargs):
             requested_intervals.append(interval)
@@ -137,7 +141,8 @@ class SequentialProductionContractTests(unittest.TestCase):
         command = (
             "import sys, app; "
             "print(','.join(sorted(name for name in sys.modules "
-            "if name.startswith(('m6_', 'm7_', 'm8_')))))"
+            "if name.startswith(('m6_', 'm7_', 'm8_')) "
+            "or name == 'sequential_temporal_engine')))"
         )
         process = subprocess.run(
             [sys.executable, "-c", command],

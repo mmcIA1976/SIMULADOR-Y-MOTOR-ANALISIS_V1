@@ -11,10 +11,10 @@ from multiscale_feature_runtime import (
     build_stage_context,
     required_candle_count,
 )
-from sequential_temporal_engine import (
+from empirical_temporal_engine import (
     ENGINE_VERSION,
+    empirical_probabilities,
     selected_stage_order,
-    sequential_probabilities,
 )
 from versioning import PROSPECTIVE_RUNTIME_VERSION
 
@@ -196,13 +196,15 @@ def build_production_probability_run(
             stage_contexts[horizon] = build_stage_context(
                 _stage_plan(plan, horizon), candles
             )
-        probability_result = sequential_probabilities(
+        probability_result = empirical_probabilities(
+            symbol=plan["symbol"],
             side=plan["side"],
             entry=plan["entry"],
             take_profit=plan["take_profit"],
             stop_loss=plan["stop_loss"],
             time_horizon=plan["time_horizon"],
             stage_contexts=stage_contexts,
+            analysis_at=plan["analysis_at"],
         )
     except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
         details = {

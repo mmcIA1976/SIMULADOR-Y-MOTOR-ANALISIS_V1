@@ -522,9 +522,10 @@ def availability(snapshot: dict) -> dict:
     }
 
 
-def build_market_snapshot(symbol: str) -> dict:
+def build_market_snapshot(symbol: str, *, current_price: float | None = None) -> dict:
     symbol = symbol.upper()
-    current_price = market_data.get_price(symbol)
+    if current_price is None:
+        current_price = market_data.get_price(symbol)
     with ThreadPoolExecutor(max_workers=12) as executor:
         futures = {
             "depth": executor.submit(market_data.get_depth, symbol),

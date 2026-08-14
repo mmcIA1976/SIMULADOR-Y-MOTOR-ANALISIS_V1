@@ -25,14 +25,19 @@ class RowcountCursor:
 
 
 class ActiveSymbolsDb:
-    def __init__(self, rows):
+    def __init__(self, rows, watched_rows=None):
         self.rows = rows
+        self.watched_rows = watched_rows or []
         self.queries = []
 
     def execute(self, query, params=None):
         self.queries.append((query, params))
         if "GROUP BY symbol" in query:
             return RowsCursor(self.rows)
+        if "FROM market_price_state" in query:
+            return RowsCursor(self.watched_rows)
+        if "INSERT INTO market_price_state" in query:
+            return RowcountCursor(1)
         if "status = 'PENDING_ENTRY'" in query:
             return RowsCursor([])
         raise AssertionError(f"Unexpected SQL in worker orchestration test: {query}")
@@ -104,7 +109,7 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertTrue(result["dry_run"])
         self.assertEqual(result["persisted_price_samples"], 0)
 
-    def test_worker_cycle_reads_prices_but_persists_no_periodic_samples(self):
+    def test_worker_cycle_publishes_replaceable_prices_without_periodic_samples(self):
         db = ActiveSymbolsDb(
             [
                 {"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"},
@@ -141,6 +146,7 @@ class OperationWorkerTests(unittest.TestCase):
             self.assertEqual(call.kwargs["market_klines"], [])
             self.assertFalse(call.kwargs["persist_exit_window"])
         self.assertEqual(result["persisted_price_samples"], 0)
+        self.assertEqual(result["published_price_states"], 2)
         self.assertEqual(result["failures"], 0)
         self.assertEqual(result["active_symbols"], 2)
         self.assertTrue(result["reconciled"])
@@ -192,15 +198,43 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertEqual(state.last_reconcile_ms, 1_775_383_000_000)
 
     def test_web_price_poll_is_read_only_when_worker_owns_transitions(self):
+        captured_at = datetime.now(timezone.utc)
+        db = ActiveSymbolsDb([])
+        db.watched_rows = []
+
+        def execute(query, params=None):
+            db.queries.append((query, params))
+            if "INSERT INTO market_price_state" in query:
+                return RowcountCursor(1)
+            if "FROM market_price_state" in query:
+                return RowsCursor(
+                    [
+                        {
+                            "symbol": "BTCUSDT",
+                            "price": 64000.0,
+                            "source": "binance_usdm_futures_ticker_batch",
+                            "publisher": "operation_worker",
+                            "captured_at": captured_at,
+                            "watch_until": captured_at,
+                            "requested_at": captured_at,
+                            "updated_at": captured_at,
+                        }
+                    ]
+                )
+            raise AssertionError(f"Unexpected SQL in price test: {query}")
+
+        db.execute = execute
         with (
             patch.object(app, "WEB_OPERATION_REFRESH_ENABLED", False),
-            patch.object(app.market_data, "get_price", return_value=64000.0),
-            patch.object(app, "connect") as connect_mock,
+            patch.object(app.market_data, "get_price") as get_price,
+            patch.object(app, "connect", connect_factory_for(db)),
         ):
             result = app.price(symbol="BTCUSDT", record=True, session_token=None)
 
-        connect_mock.assert_not_called()
+        get_price.assert_not_called()
         self.assertEqual(result["operation_processing"], "worker")
+        self.assertEqual(result["authority"], "operation_worker")
+        self.assertFalse(result["stale"])
         self.assertEqual(result["operation_ids"], [])
         self.assertEqual(result["closed_operations"], [])
 

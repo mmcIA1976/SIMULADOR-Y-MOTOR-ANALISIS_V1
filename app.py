@@ -51,6 +51,13 @@ from limit_production_analysis import (
     LimitProductionAnalysisError,
     analyze_limit_trade,
 )
+from market_price_state import (
+    MARKET_PRICE_AUTHORITY,
+    fresh_market_prices,
+    get_market_price_row,
+    request_market_price_watch,
+    summarize_market_price,
+)
 from sequential_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
@@ -191,14 +198,9 @@ def resolve_market_execution_price(
     stop_loss: float,
     take_profit: float,
 ) -> tuple[float, str]:
-    """Obtain the real Binance fill used to open a simulated market order."""
-    try:
-        execution_price = float(market_data.get_price(symbol.upper(), force_refresh=True))
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"No se pudo obtener el precio real de mercado para {symbol.upper()}: {exc}",
-        ) from exc
+    """Use the fresh quote published by the operation worker."""
+    quote = require_fresh_worker_market_price(symbol)
+    execution_price = float(quote["price"])
     if not math.isfinite(execution_price) or execution_price <= 0:
         raise HTTPException(status_code=502, detail="Binance devolvio un precio de mercado no valido")
     try:
@@ -211,7 +213,7 @@ def resolve_market_execution_price(
                 "Actualiza el precio y vuelve a analizarla."
             ),
         ) from exc
-    return execution_price, datetime.now(timezone.utc).isoformat()
+    return execution_price, str(quote["captured_at"])
 
 
 def entry_order_type(side: str, trigger_condition: str | None) -> str | None:
@@ -764,31 +766,55 @@ def latest_recorded_symbol_price(db, symbol: str) -> dict | None:
     return row_to_dict(row)
 
 
-def stale_price_fallback(symbol: str, error: Exception) -> dict | None:
-    cached = market_data.get_cached_price(symbol, None)
-    if cached:
-        return {
-            "symbol": symbol.upper(),
-            "price": float(cached["price"]),
-            "source": cached.get("source") or "binance_usdm_futures_memory_cache",
-            "captured_at": cached.get("captured_at"),
-            "stale": True,
-            "price_error": str(error),
-            "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
-        }
+def worker_market_price_snapshot(
+    symbol: str,
+    *,
+    register_watch: bool = True,
+) -> dict | None:
+    """Read the worker-owned quote; never query Binance from the web process."""
+    normalized = symbol.upper()
     with connect() as db:
-        recorded = latest_recorded_symbol_price(db, symbol)
-    if not recorded:
+        if register_watch:
+            request_market_price_watch(db, normalized)
+        quote = summarize_market_price(get_market_price_row(db, normalized))
+        if quote is not None:
+            return quote
+        recorded = latest_recorded_symbol_price(db, normalized)
+    if recorded is None:
         return None
     return {
-        "symbol": symbol.upper(),
+        "symbol": normalized,
         "price": float(recorded["price"]),
         "source": f"stored_price_tick:{recorded.get('source') or 'unknown'}",
+        "publisher": "historical_fallback",
         "captured_at": recorded.get("captured_at"),
-        "stale": True,
-        "price_error": str(error),
-        "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+        "age_seconds": None,
+        "fresh": False,
+        "authority": MARKET_PRICE_AUTHORITY,
     }
+
+
+def require_fresh_worker_market_price(symbol: str) -> dict:
+    quote = worker_market_price_snapshot(symbol)
+    if quote is None or not quote.get("fresh"):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "worker_market_price_pending",
+                "message": (
+                    "El worker todavia no ha publicado un precio fresco para "
+                    f"{symbol.upper()}. La aplicacion reintentara automaticamente."
+                ),
+                "symbol": symbol.upper(),
+                "captured_at": quote.get("captured_at") if quote else None,
+            },
+        )
+    return quote
+
+
+def worker_market_price_loader(symbol: str, *, force_refresh: bool = False) -> float:
+    del force_refresh
+    return float(require_fresh_worker_market_price(symbol)["price"])
 
 
 @app.get("/api/price")
@@ -798,121 +824,37 @@ def price(
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     symbol = symbol.upper()
-    stale_response: dict | None = None
-    try:
-        value = market_data.get_price(symbol)
-    except Exception as exc:
-        stale_response = stale_price_fallback(symbol, exc)
-        if stale_response is None:
-            raise HTTPException(
-                status_code=502,
-                detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
-            ) from exc
-        value = float(stale_response["price"])
-    if not record:
-        return {
-            "symbol": symbol,
-            "price": value,
-            "operation_ids": [],
-            "activated_operations": [],
-            "closed_operations": [],
-            "source": stale_response["source"] if stale_response else "binance_usdm_futures_ticker",
-            "stale": bool(stale_response),
-            "captured_at": stale_response.get("captured_at") if stale_response else None,
-            "price_error": stale_response.get("price_error") if stale_response else None,
-            "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms") if stale_response else 0,
-            "operation_processing": "web" if WEB_OPERATION_REFRESH_ENABLED else "worker",
-        }
-    if not WEB_OPERATION_REFRESH_ENABLED:
-        return {
-            "symbol": symbol,
-            "price": value,
-            "operation_ids": [],
-            "activated_operations": [],
-            "closed_operations": [],
-            "source": stale_response["source"] if stale_response else "binance_usdm_futures_ticker",
-            "stale": bool(stale_response),
-            "captured_at": (
-                stale_response.get("captured_at")
-                if stale_response
-                else datetime.now(timezone.utc).isoformat()
-            ),
-            "price_error": stale_response.get("price_error") if stale_response else None,
-            "operation_refresh_error": None,
-            "binance_backoff_until_ms": (
-                stale_response.get("binance_backoff_until_ms")
-                if stale_response
-                else market_data.futures_backoff_until_ms()
-            ),
-            "operation_processing": "worker",
-        }
-    if stale_response:
-        return {
-            "symbol": symbol,
-            "price": value,
-            "operation_ids": [],
-            "activated_operations": [],
-            "closed_operations": [],
-            "source": stale_response["source"],
-            "stale": True,
-            "captured_at": stale_response.get("captured_at"),
-            "price_error": stale_response.get("price_error"),
-            "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms"),
-        }
-    operation_ids: list[int] = []
-    activated_operations: list[dict] = []
-    closed_operations: list[dict] = []
-    operation_refresh_error: str | None = None
-    user = None
-    if session_token:
-        try:
-            user = current_user(session_token)
-        except HTTPException:
-            user = None
-    with connect() as db:
-        finalize_due_observations(db)
-        try:
-            activated_by_trigger, closed_by_trigger = refresh_symbol_active_operations(db, symbol, value)
-        except Exception as exc:
-            activated_by_trigger, closed_by_trigger = {}, {}
-            operation_refresh_error = str(exc)
-        if closed_by_trigger:
-            refresh_learning_conclusions(db)
-            refresh_learning_evaluations(db)
-        if user:
-            activated_operations.extend(
-                operation for operation in activated_by_trigger.values() if operation.get("user_id") == user["id"]
-            )
-            closed_operations.extend(
-                operation for operation in closed_by_trigger.values() if operation.get("user_id") == user["id"]
-            )
-            rows = db.execute(
-                """
-                SELECT * FROM operations
-                WHERE user_id = ?
-                  AND symbol = ?
-                  AND (status IN ('OPEN', 'PENDING_ENTRY') OR observation_status = 'OBSERVING')
-                """,
-                (user["id"], symbol),
-            ).fetchall()
-            for row in rows:
-                operation = row_to_dict(row)
-                operation_id = int(operation["id"])
-                if record:
-                    operation_ids.append(operation_id)
+    del record, session_token
+    quote = worker_market_price_snapshot(symbol)
+    if quote is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "worker_market_price_pending",
+                "message": (
+                    "El worker ha recibido la solicitud del simbolo y todavia "
+                    "no ha publicado su primer precio."
+                ),
+                "symbol": symbol,
+            },
+        )
+    is_stale = not bool(quote.get("fresh"))
     return {
         "symbol": symbol,
-        "price": value,
-        "operation_ids": operation_ids,
-        "activated_operations": activated_operations,
-        "closed_operations": closed_operations,
-        "source": "binance_usdm_futures_ticker",
-        "stale": False,
-        "captured_at": datetime.now(timezone.utc).isoformat(),
-        "price_error": None,
-        "operation_refresh_error": operation_refresh_error,
-        "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
-        "operation_processing": "web",
+        "price": float(quote["price"]),
+        "operation_ids": [],
+        "activated_operations": [],
+        "closed_operations": [],
+        "source": quote["source"],
+        "authority": quote["authority"],
+        "publisher": quote["publisher"],
+        "stale": is_stale,
+        "captured_at": quote.get("captured_at"),
+        "price_age_seconds": quote.get("age_seconds"),
+        "price_error": "worker_market_price_stale" if is_stale else None,
+        "operation_refresh_error": None,
+        "binance_backoff_until_ms": 0,
+        "operation_processing": "worker",
     }
 
 
@@ -983,38 +925,32 @@ def check_operation_exits(
 ) -> dict:
     user = current_user(session_token)
     symbol = symbol.upper()
-    try:
-        current_price = market_data.get_price(symbol)
-    except Exception as exc:
-        stale_response = stale_price_fallback(symbol, exc)
-        if stale_response is None:
-            raise HTTPException(
-                status_code=502,
-                detail=f"No se pudo consultar precio Binance Futures para {symbol}: {exc}",
-            ) from exc
+    quote = worker_market_price_snapshot(symbol)
+    if quote is None or not quote.get("fresh"):
         return {
             "symbol": symbol,
-            "price": float(stale_response["price"]),
+            "price": float(quote["price"]) if quote else None,
             "activated_operations": [],
             "closed_operations": [],
-            "source": stale_response["source"],
+            "source": quote.get("source") if quote else None,
             "stale": True,
-            "captured_at": stale_response.get("captured_at"),
-            "price_error": stale_response.get("price_error"),
-            "binance_backoff_until_ms": stale_response.get("binance_backoff_until_ms"),
+            "captured_at": quote.get("captured_at") if quote else None,
+            "price_error": "worker_market_price_pending",
+            "binance_backoff_until_ms": 0,
             "operation_processing": "worker" if not WEB_OPERATION_REFRESH_ENABLED else "web",
         }
+    current_price = float(quote["price"])
     if not WEB_OPERATION_REFRESH_ENABLED:
         return {
             "symbol": symbol,
             "price": current_price,
             "activated_operations": [],
             "closed_operations": [],
-            "source": "binance_usdm_futures_ticker",
+            "source": quote["source"],
             "stale": False,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": quote["captured_at"],
             "price_error": None,
-            "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+            "binance_backoff_until_ms": 0,
             "operation_processing": "worker",
         }
     with connect() as db:
@@ -1031,11 +967,11 @@ def check_operation_exits(
         "closed_operations": [
             operation for operation in closed_by_trigger.values() if operation.get("user_id") == user["id"]
         ],
-        "source": "binance_usdm_futures_ticker",
+        "source": quote["source"],
         "stale": False,
-        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "captured_at": quote["captured_at"],
         "price_error": None,
-        "binance_backoff_until_ms": market_data.futures_backoff_until_ms(),
+        "binance_backoff_until_ms": 0,
         "operation_processing": "web",
     }
 
@@ -1085,12 +1021,15 @@ def refresh_contest_active_operations(db, season_id: int) -> dict[str, list[dict
     ).fetchall()
     activated: dict[int, dict] = {}
     closed: dict[int, dict] = {}
+    symbols = [str(row["symbol"]).upper() for row in rows]
+    for symbol in symbols:
+        request_market_price_watch(db, symbol)
+    prices = fresh_market_prices(db, symbols)
     for row in rows:
         symbol = str(row["symbol"]).upper()
-        try:
-            current_price = market_data.get_price(symbol)
-        except Exception:
+        if symbol not in prices:
             continue
+        current_price = prices[symbol]
         try:
             activated_for_symbol, closed_for_symbol = refresh_symbol_active_operations(db, symbol, current_price)
         except Exception:
@@ -5168,7 +5107,11 @@ def top_assets(limit: int = 100) -> dict:
 
 @app.get("/api/market/snapshot")
 def market_snapshot(symbol: str = "BTCUSDT") -> dict:
-    return data_engine.build_market_snapshot(symbol)
+    quote = require_fresh_worker_market_price(symbol)
+    return data_engine.build_market_snapshot(
+        symbol,
+        current_price=float(quote["price"]),
+    )
 
 
 @app.post("/api/analyze")
@@ -5207,7 +5150,10 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
     try:
         result = (
-            analyze_limit_trade(proposal)
+            analyze_limit_trade(
+                proposal,
+                price_loader=worker_market_price_loader,
+            )
             if entry_type == "pending"
             else analyze_trade(proposal)
         )
@@ -6249,7 +6195,10 @@ def contest_expiry_price(db, operation: dict, ends_at: datetime) -> tuple[float,
     if tick:
         return round(float(tick["price"]), 8), "contest_expiry_last_tick"
 
-    return round(float(market_data.get_price(symbol)), 8), "contest_expiry_binance_usdm_futures_live_fallback"
+    quote = summarize_market_price(get_market_price_row(db, symbol))
+    if quote and quote["fresh"]:
+        return round(float(quote["price"]), 8), "contest_expiry_operation_worker_price"
+    raise RuntimeError(f"No hay precio fresco del worker para cerrar {symbol}")
 
 
 def contest_history(db, limit: int = 12) -> list[dict]:
@@ -6322,8 +6271,14 @@ def contest_open_price_symbols(db, season_id: int) -> list[str]:
 
 
 def live_prices_for_symbols(symbols: list[str] | tuple[str, ...] | set[str]) -> dict[str, float]:
+    normalized = sorted({str(symbol).upper() for symbol in symbols})
+    if not normalized:
+        return {}
     try:
-        return market_data.get_prices(symbols)
+        with connect() as db:
+            for symbol in normalized:
+                request_market_price_watch(db, symbol)
+            return fresh_market_prices(db, normalized)
     except Exception:
         return {}
 

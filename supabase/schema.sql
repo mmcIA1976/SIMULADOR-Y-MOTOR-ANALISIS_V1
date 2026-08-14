@@ -411,6 +411,23 @@ CREATE TABLE IF NOT EXISTS operation_worker_state (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS market_price_state (
+    symbol TEXT PRIMARY KEY CHECK(symbol ~ '^[A-Z0-9]{5,20}$'),
+    price DOUBLE PRECISION CHECK(price IS NULL OR price > 0),
+    source TEXT,
+    publisher TEXT NOT NULL DEFAULT 'operation_worker'
+        CHECK(publisher = 'operation_worker'),
+    captured_at TIMESTAMPTZ,
+    watch_until TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK(
+        (price IS NULL AND captured_at IS NULL AND source IS NULL)
+        OR
+        (price IS NOT NULL AND captured_at IS NOT NULL AND source IS NOT NULL)
+    )
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -471,6 +488,7 @@ ALTER TABLE public.challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.m6_prospective_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.limit_learning_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operation_worker_state ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.market_price_state ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL PRIVILEGES ON TABLE public.users FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operations FROM anon, authenticated;
@@ -489,6 +507,7 @@ REVOKE ALL PRIVILEGES ON TABLE public.challenger_shadow_runs FROM anon, authenti
 REVOKE ALL PRIVILEGES ON TABLE public.m6_prospective_runs FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.limit_learning_snapshots FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operation_worker_state FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.market_price_state FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON SCHEMA public FROM anon, authenticated;
 

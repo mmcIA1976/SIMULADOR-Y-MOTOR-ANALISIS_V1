@@ -22,6 +22,12 @@ from app import (
     refresh_symbol_active_operations,
 )
 from db import close_pool, connect
+from market_price_state import (
+    MARKET_PRICE_SOURCE,
+    ensure_market_price_state_table,
+    publish_market_prices,
+    watched_market_symbols,
+)
 from operation_worker_status import ensure_worker_status_table, upsert_worker_status
 from versioning import APP_VERSION, ENGINE_VERSION
 
@@ -196,14 +202,23 @@ def load_active_symbol_starts(connect_factory: ConnectFactory = connect) -> dict
     return starts
 
 
+def load_watched_market_symbols(
+    connect_factory: ConnectFactory = connect,
+) -> set[str]:
+    """Read temporary UI demand without creating an unbounded queue."""
+    with connect_factory() as db:
+        return watched_market_symbols(db)
+
+
 def collect_market_inputs(
     symbol_starts: dict[str, int],
+    watched_symbols: set[str],
     state: WorkerState,
     settings: WorkerSettings,
     now_ms: int,
     price_loader: PriceLoader = market_data.get_price,
     kline_loader: KlineLoader = get_operation_klines_1m,
-) -> tuple[list[SymbolMarketInput], bool, int]:
+) -> tuple[list[SymbolMarketInput], bool, int, dict[str, float]]:
     reconcile_due = (
         state.last_reconcile_ms is None
         or now_ms - state.last_reconcile_ms >= int(settings.reconcile_seconds * 1000)
@@ -211,11 +226,39 @@ def collect_market_inputs(
     first_reconciliation = state.last_reconcile_ms is None
     inputs: list[SymbolMarketInput] = []
     failures = 0
-    for symbol, earliest_start_ms in symbol_starts.items():
+    requested_symbols = sorted(set(symbol_starts).union(watched_symbols))
+    if price_loader is market_data.get_price:
+        price_snapshot = market_data.get_prices(
+            requested_symbols,
+            allow_stale=False,
+        )
+    else:
+        price_snapshot = {}
+        for symbol in requested_symbols:
+            try:
+                price_snapshot[symbol] = float(price_loader(symbol))
+            except Exception as exc:
+                failures += 1
+                log_event(
+                    "worker_market_price_failed",
+                    symbol=symbol,
+                    error=str(exc),
+                )
+    for symbol in requested_symbols:
+        if symbol not in price_snapshot:
+            if price_loader is market_data.get_price:
+                failures += 1
+                log_event(
+                    "worker_market_price_failed",
+                    symbol=symbol,
+                    error="batch_price_missing",
+                )
+            continue
+        price = float(price_snapshot[symbol])
+        earliest_start_ms = symbol_starts.get(symbol)
         try:
-            price = float(price_loader(symbol))
             klines: list[list] = []
-            if reconcile_due:
+            if reconcile_due and earliest_start_ms is not None:
                 if first_reconciliation:
                     startup_floor_ms = now_ms - settings.startup_lookback_minutes * ONE_MINUTE_MS
                     scan_start_ms = max(earliest_start_ms, startup_floor_ms)
@@ -234,7 +277,7 @@ def collect_market_inputs(
         except Exception as exc:
             failures += 1
             log_event("worker_market_input_failed", symbol=symbol, error=str(exc))
-    return inputs, reconcile_due, failures
+    return inputs, reconcile_due, failures, price_snapshot
 
 
 def run_worker_cycle(
@@ -246,11 +289,13 @@ def run_worker_cycle(
     kline_loader: KlineLoader = get_operation_klines_1m,
     now_ms: int | None = None,
 ) -> dict:
-    """Process one cycle; ordinary price checks perform no database writes."""
+    """Process one cycle; quotes replace state instead of appending history."""
     cycle_started_ms = now_ms if now_ms is not None else utc_now_ms()
     symbol_starts = load_active_symbol_starts(connect_factory)
-    market_inputs, reconcile_due, failures = collect_market_inputs(
+    watched_symbols = load_watched_market_symbols(connect_factory)
+    market_inputs, reconcile_due, failures, price_snapshot = collect_market_inputs(
         symbol_starts,
+        watched_symbols,
         state,
         settings,
         cycle_started_ms,
@@ -261,7 +306,23 @@ def run_worker_cycle(
     activated: list[dict] = []
     closed: list[dict] = []
     finalized: list[dict] = []
+    published_price_states = 0
     if not settings.dry_run:
+        if price_snapshot:
+            try:
+                with connect_factory() as db:
+                    published_price_states = publish_market_prices(
+                        db,
+                        price_snapshot,
+                        captured_at=datetime.fromtimestamp(
+                            cycle_started_ms / 1000,
+                            tz=timezone.utc,
+                        ),
+                        source=MARKET_PRICE_SOURCE,
+                    )
+            except Exception as exc:
+                failures += 1
+                log_event("worker_market_price_publish_failed", error=str(exc))
         market_symbols = {item.symbol for item in market_inputs}
         for missing_symbol in set(symbol_starts).difference(market_symbols):
             try:
@@ -279,6 +340,8 @@ def run_worker_cycle(
                     error=str(exc),
                 )
         for market_input in market_inputs:
+            if market_input.symbol not in symbol_starts:
+                continue
             try:
                 with connect_factory() as db:
                     activated_by_id, closed_by_id = refresh_symbol_active_operations(
@@ -315,6 +378,8 @@ def run_worker_cycle(
     return {
         "cycle": state.cycles,
         "active_symbols": len(symbol_starts),
+        "watched_symbols": len(watched_symbols),
+        "requested_symbols": len(set(symbol_starts).union(watched_symbols)),
         "market_symbols": len(market_inputs),
         "activated": len(activated),
         "closed": len(closed),
@@ -322,6 +387,7 @@ def run_worker_cycle(
         "failures": failures,
         "reconciled": reconcile_due,
         "persisted_price_samples": 0,
+        "published_price_states": published_price_states,
         "persist_exit_window": settings.persist_exit_window,
         "dry_run": settings.dry_run,
     }
@@ -342,6 +408,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
     last_result: dict | None = None
     try:
         with connect() as db:
+            ensure_market_price_state_table(db)
             ensure_worker_status_table(db)
     except Exception as exc:
         log_event("worker_status_storage_failed", error=str(exc))

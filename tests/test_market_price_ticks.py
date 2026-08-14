@@ -66,7 +66,14 @@ class MarketPriceTickTests(unittest.TestCase):
 
         with (
             patch.object(app, "current_user", return_value={"id": 3}),
-            patch.object(app.market_data, "get_price", return_value=1.0653) as get_price,
+            patch.object(
+                app,
+                "require_fresh_worker_market_price",
+                return_value={
+                    "price": 1.0653,
+                    "captured_at": "2026-08-05T10:00:00+00:00",
+                },
+            ) as get_price,
             patch.object(app, "connect", connect_factory_for(db)),
             patch.object(app, "ensure_training_wallet_funded"),
             patch.object(
@@ -78,7 +85,7 @@ class MarketPriceTickTests(unittest.TestCase):
         ):
             result = app.create_operation(payload, session_token="token")
 
-        get_price.assert_called_once_with("XRPUSDT", force_refresh=True)
+        get_price.assert_called_once_with("XRPUSDT")
         self.assertEqual(result["entry"], 1.0653)
         self.assertEqual(result["requested_entry"], 1.07)
         self.assertEqual(db.operation_params[4], 1.0653)
@@ -104,7 +111,14 @@ class MarketPriceTickTests(unittest.TestCase):
 
         with (
             patch.object(app, "current_user", return_value={"id": 3}),
-            patch.object(app.market_data, "get_price", return_value=1.08),
+            patch.object(
+                app,
+                "require_fresh_worker_market_price",
+                return_value={
+                    "price": 1.08,
+                    "captured_at": "2026-08-05T10:00:00+00:00",
+                },
+            ),
             self.assertRaises(app.HTTPException) as raised,
         ):
             app.create_operation(payload, session_token="token")
@@ -190,7 +204,7 @@ class MarketPriceTickTests(unittest.TestCase):
         self.assertIn("Puntos mostrados", index_html)
         self.assertNotIn("Registros guardados", index_html)
         self.assertIn("sample_seconds=120", app_js)
-        self.assertIn("historial reconstruido desde Binance", app_js)
+        self.assertIn("Precio vivo publicado por el worker", app_js)
 
 
 if __name__ == "__main__":

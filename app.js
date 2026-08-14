@@ -113,6 +113,7 @@ const history = [];
 const MAX_HISTORY_POINTS = 240;
 const UPDATE_INTERVAL_MS = 120000;
 const LIVE_PRICE_INTERVAL_MS = 30000;
+const WORKER_PRICE_DISCOVERY_RETRY_MS = 2000;
 const WORKER_STATUS_INTERVAL_MS = 60000;
 const OPERATION_STATE_SYNC_INTERVAL_MS = 10000;
 const PRICE_FETCH_TIMEOUT_MS = 20000;
@@ -1157,7 +1158,10 @@ function scheduleLivePriceFetch() {
   if (liveTimerId) {
     window.clearTimeout(liveTimerId);
   }
-  liveTimerId = window.setTimeout(() => fetchPrice({ record: false }), LIVE_PRICE_INTERVAL_MS);
+  const delay = hasFreshCurrentPriceForSymbol(getActivePriceSymbol())
+    ? LIVE_PRICE_INTERVAL_MS
+    : WORKER_PRICE_DISCOVERY_RETRY_MS;
+  liveTimerId = window.setTimeout(() => fetchPrice({ record: false }), delay);
 }
 
 function money(value) {
@@ -1440,7 +1444,7 @@ function updateMetrics() {
   elements.chartSubtitle.textContent = !currentUser
     ? "Inicia sesion para ver operaciones, analisis y niveles de riesgo."
     : operation
-      ? `Viendo operacion #${operation.id} en ${symbolLabel(operation.symbol)}. Precio actualizado cada 120 segundos; historial reconstruido desde Binance.`
+      ? `Viendo operacion #${operation.id} en ${symbolLabel(operation.symbol)}. Precio vivo publicado por el worker; grafica actualizada cada 120 segundos.`
       : `Viendo nueva operacion. Grafica ${symbolLabel(config.symbol)} con velas de Binance Futures 1m de los ultimos 60 minutos.`;
   updateHistoryCount();
 

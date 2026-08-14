@@ -9,6 +9,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
+from market_price_state import ensure_market_price_state_table
 from operation_worker_status import ensure_worker_status_table
 from limit_order_contract import (
     LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY,
@@ -608,6 +609,7 @@ def init_db() -> None:
             );
             """
         )
+        ensure_market_price_state_table(db)
         ensure_worker_status_table(db)
         ensure_column(db, "operations", "observation_until", "TEXT")
         ensure_column(db, "operations", "observation_status", "TEXT")

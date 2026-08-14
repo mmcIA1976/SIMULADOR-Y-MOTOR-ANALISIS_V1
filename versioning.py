@@ -3,14 +3,14 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.32.0-empirical-multiscale-engine"
-APP_SEMVER = "0.32.0"
+APP_VERSION = "app-v0.33.0-worker-price-authority"
+APP_SEMVER = "0.33.0"
 ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
 SCORING_VERSION = "historical-analog-first-touch-v0.9"
 LEARNING_EVALUATOR_VERSION = "learning-v0.14-exact-horizon"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.18-limit-lifecycle"
-DATA_SOURCE_VERSION = "data-sources-v0.25-empirical-multiscale"
-DATA_CONTRACT_VERSION = "data-contract-v0.25-empirical-multiscale-v0.9"
+DATA_SOURCE_VERSION = "data-sources-v0.26-worker-price-authority"
+DATA_CONTRACT_VERSION = "data-contract-v0.26-worker-price-authority-v0.9"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.2-exact-horizon-binance-usdm-1m"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"

@@ -18,7 +18,7 @@ El champion actual no satisface el contrato probabilistico de la Fase 1. La audi
 - Severidad alta: 9
 - Severidad media: 1
 - Produccion modificada: false
-- SHA-256 del codigo auditado: `7a5ca78117d717f6042da0465fa77f7a88c011d3de8b51ca5bed83bac105f7ac`
+- SHA-256 del codigo auditado: `c6bfdb16470858558d63a7137e7fdba70ffea21d1c26416774521ba75cfd4974`
 
 ## Hallazgos
 

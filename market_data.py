@@ -272,13 +272,17 @@ def get_price(symbol: str, *, force_refresh: bool = False) -> float:
     return price
 
 
-def get_prices(symbols: list[str] | tuple[str, ...] | set[str]) -> dict[str, float]:
+def get_prices(
+    symbols: list[str] | tuple[str, ...] | set[str],
+    *,
+    allow_stale: bool = True,
+) -> dict[str, float]:
     """Resolve several Futures prices with at most one Binance request.
 
     Fresh in-process values are reused first. If any symbol is missing, the
     all-tickers endpoint is fetched once and only the requested symbols are
-    retained. A transient Binance failure falls back to the existing stale
-    cache instead of making one slow retry chain per symbol.
+    retained. Callers that make execution decisions set ``allow_stale=False``;
+    display-only legacy callers may still opt into the bounded stale cache.
     """
     normalized_symbols = sorted({str(symbol).upper() for symbol in symbols if str(symbol).strip()})
     if not normalized_symbols:
@@ -323,7 +327,11 @@ def get_prices(symbols: list[str] | tuple[str, ...] | set[str]) -> dict[str, flo
     for symbol in missing:
         if symbol in prices:
             continue
-        stale = get_cached_price(symbol, PRICE_STALE_MAX_SECONDS)
+        stale = (
+            get_cached_price(symbol, PRICE_STALE_MAX_SECONDS)
+            if allow_stale
+            else None
+        )
         if stale:
             prices[symbol] = float(stale["price"])
     return prices

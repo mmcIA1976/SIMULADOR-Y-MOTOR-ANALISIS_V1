@@ -53,6 +53,24 @@ class ContestRankingResilienceTests(unittest.TestCase):
 
         self.assertEqual(prices, {"BTCUSDT": 63950.0})
 
+    def test_execution_batch_never_republishes_stale_memory_as_fresh(self):
+        market_data._remember_price("BTCUSDT", 63950.0)
+
+        with (
+            patch.object(market_data, "PRICE_CACHE_TTL_SECONDS", -1),
+            patch.object(
+                market_data,
+                "get_futures_json",
+                side_effect=RuntimeError("temporary"),
+            ),
+        ):
+            prices = market_data.get_prices(
+                ["BTCUSDT"],
+                allow_stale=False,
+            )
+
+        self.assertEqual(prices, {})
+
     def test_current_contest_skips_web_transitions_and_reuses_one_price_snapshot(self):
         season = {"id": 4, "code": "2026-08", "starting_balance": 1000}
         entry = {"id": 9, "user_id": 7, "season_id": 4}

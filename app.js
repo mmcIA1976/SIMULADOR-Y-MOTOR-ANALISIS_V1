@@ -803,7 +803,7 @@ function escapeHtml(value) {
 
 function safeMetricBias(value) {
   const bias = String(value || "neutral").toLowerCase();
-  return ["favorable", "desfavorable", "alerta", "contexto", "neutral"].includes(bias) ? bias : "neutral";
+  return ["favorable", "desfavorable", "alerta", "contexto", "neutral", "tramo_condicional"].includes(bias) ? bias : "neutral";
 }
 
 function clampPercentValue(value) {
@@ -1726,7 +1726,7 @@ function renderParameterAdvice(advice) {
   }
 }
 
-function renderExplainedMetrics(metrics) {
+function renderExplainedMetrics(metrics, analysis = {}) {
   elements.explainedMetrics.innerHTML = "";
   if (metrics.length) {
     const intro = document.createElement("div");
@@ -1741,17 +1741,43 @@ function renderExplainedMetrics(metrics) {
     const card = document.createElement("article");
     card.className = "explain-card";
     const biasClass = safeMetricBias(metric.bias);
+    const isConditionalStage = biasClass === "tramo_condicional";
+    const stageTrace = isConditionalStage
+      ? (analysis.model_trace?.stage_traces || []).find((trace) => trace.stage_id === metric.id)
+      : null;
+    const conditional = stageTrace?.conditional_probabilities || {};
+    const tpConditional = Number(conditional.tp_first_in_stage);
+    const slConditional = Number(conditional.sl_first_in_stage);
+    const survivesStage = Number(conditional.survive_stage);
+    const hasConditionalProbabilities = [tpConditional, slConditional, survivesStage].every(Number.isFinite);
+    const hasScore = metric.score !== null && metric.score !== undefined && Number.isFinite(Number(metric.score));
+    const source = isConditionalStage
+      ? `${Number(stageTrace?.selected_analogs || 0) || "--"} trayectorias historicas comparables · first-touch exacto`
+      : String(metric.source || "").trim();
     card.innerHTML = `
       <div class="explain-head">
         <strong>${escapeHtml(metric.label)}</strong>
         <span>${escapeHtml(metric.value)}</span>
       </div>
       <span class="metric-bias ${biasClass}">${biasLabel(biasClass)}</span>
-      <div class="mini-bar" aria-hidden="true">
-        <div class="mini-bar-fill ${biasClass}" style="width: ${clampPercentValue(metric.score)}%"></div>
-      </div>
+      ${isConditionalStage && hasConditionalProbabilities ? `
+        <div class="stage-probability-bar" aria-label="Distribucion condicional del tramo">
+          <span class="tp" style="width: ${clampPercentValue(tpConditional * 100)}%"></span>
+          <span class="sl" style="width: ${clampPercentValue(slConditional * 100)}%"></span>
+          <span class="unresolved" style="width: ${clampPercentValue(survivesStage * 100)}%"></span>
+        </div>
+        <div class="stage-probability-legend">
+          <span class="tp">TP ${percent(tpConditional)}</span>
+          <span class="sl">SL ${percent(slConditional)}</span>
+          <span>Continua ${percent(survivesStage)}</span>
+        </div>
+      ` : hasScore ? `
+        <div class="mini-bar" aria-hidden="true">
+          <div class="mini-bar-fill ${biasClass}" style="width: ${clampPercentValue(metric.score)}%"></div>
+        </div>
+      ` : ""}
       <p>${escapeHtml(metric.explanation)}</p>
-      <span class="explain-source">Fuente: ${escapeHtml(metric.source)}</span>
+      ${source ? `<span class="explain-source">Fuente: ${escapeHtml(source)}</span>` : ""}
     `;
     elements.explainedMetrics.appendChild(card);
   }
@@ -1764,6 +1790,7 @@ function biasLabel(bias) {
     alerta: "Alerta",
     contexto: "Contexto",
     neutral: "Neutro",
+    tramo_condicional: "Tramo condicional",
   }[bias] || "Neutro";
 }
 
@@ -1825,7 +1852,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   renderAnalysisKeypoints(analysis);
   renderParameterAdvice(analysis.parameter_advice || {});
   renderAnalysisInterpretation(analysis, analysis.explained_metrics || []);
-  renderExplainedMetrics(analysis.explained_metrics || []);
+  renderExplainedMetrics(analysis.explained_metrics || [], analysis);
   renderDataSources(analysis.snapshot?.availability || {}, analysis.snapshot?.source || {});
   elements.analysisReasons.innerHTML = "";
   for (const reason of [...(analysis.reasons || []), ...(analysis.alerts || [])]) {
@@ -1847,6 +1874,10 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
 
 function renderAnalysisInterpretation(analysis, metrics) {
   if (!elements.analysisInterpretation) {
+    return;
+  }
+  if (isEmpiricalStageAnalysis(analysis, metrics)) {
+    renderEmpiricalAnalysisInterpretation(analysis, metrics);
     return;
   }
   const buckets = {
@@ -1889,6 +1920,89 @@ function renderAnalysisInterpretation(analysis, metrics) {
           ${primary.map(({ metric, tone }) => renderEvidenceItem(metric, tone)).join("")}
         </div>
       ` : ""}
+    </section>
+  `;
+}
+
+function isEmpiricalStageAnalysis(analysis, metrics) {
+  return analysis?.horizon_calibration?.method === "historical_analog_exact_first_touch"
+    || metrics.some((metric) => String(metric.bias || "").toLowerCase() === "tramo_condicional");
+}
+
+function empiricalInterpretationHeadline(analysis) {
+  const tpProbability = Number(analysis.tp_probability);
+  const slProbability = Number(analysis.sl_probability);
+  if (!Number.isFinite(tpProbability) || !Number.isFinite(slProbability)) {
+    return "Resultado empirico disponible, pero sin probabilidades acumuladas validas.";
+  }
+  const difference = tpProbability - slProbability;
+  if (difference >= 0.1) {
+    return "La frecuencia historica favorece alcanzar TP antes que SL.";
+  }
+  if (difference <= -0.1) {
+    return "La frecuencia historica favorece tocar SL antes que TP.";
+  }
+  return "La frecuencia historica esta equilibrada entre TP y SL.";
+}
+
+function probabilityRangeDetail(analysis, key, fallback) {
+  const label = String(analysis?.probability_ranges?.[key]?.label || "").trim();
+  return label ? `Intervalo empirico 95%: ${label}` : fallback;
+}
+
+function renderProbabilitySummaryCard(label, value, detail, tone) {
+  return `
+    <article class="interpretation-bucket ${tone} empirical-probability-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(percent(Number(value)))}</strong>
+      <p>${escapeHtml(detail)}</p>
+    </article>
+  `;
+}
+
+function renderEmpiricalAnalysisInterpretation(analysis, metrics) {
+  const sideLabel = analysis?.snapshot?.side || side;
+  const alerts = (analysis.alerts || []).filter(Boolean);
+  const stageLabels = metrics.map((metric) => metric.label).filter(Boolean);
+  const stageText = stageLabels.length
+    ? stageLabels.join(" · ")
+    : "Sin tramos temporales disponibles";
+  elements.analysisInterpretation.innerHTML = `
+    <section class="interpretation-panel empirical-interpretation-panel">
+      <div class="interpretation-head">
+        <span class="label">Lectura empirica acumulada</span>
+        <strong>${escapeHtml(empiricalInterpretationHeadline(analysis))}</strong>
+        <p>Resultado para esta propuesta ${escapeHtml(String(sideLabel).toUpperCase())}: cada tramo evalua solo los casos que no tocaron TP ni SL en los tramos anteriores.</p>
+      </div>
+      <div class="interpretation-summary-grid">
+        ${renderProbabilitySummaryCard(
+          "TP antes que SL",
+          analysis.tp_probability,
+          probabilityRangeDetail(analysis, "tp", "Probabilidad acumulada dentro del horizonte"),
+          "favorable",
+        )}
+        ${renderProbabilitySummaryCard(
+          "SL antes que TP",
+          analysis.sl_probability,
+          probabilityRangeDetail(analysis, "sl", "Probabilidad acumulada dentro del horizonte"),
+          "desfavorable",
+        )}
+        ${renderProbabilitySummaryCard(
+          "Sin resolver",
+          analysis.range_probability,
+          probabilityRangeDetail(analysis, "range", "No toca ninguna barrera antes del vencimiento"),
+          "contexto",
+        )}
+        <article class="interpretation-bucket alerta empirical-probability-card">
+          <span>Alertas metodologicas</span>
+          <strong>${alerts.length}</strong>
+          <p>${escapeHtml(alerts.slice(0, 2).join(" · ") || "Sin alertas metodologicas")}</p>
+        </article>
+      </div>
+      <div class="empirical-stage-continuity">
+        <strong>Continuidad temporal aplicada</strong>
+        <p>${escapeHtml(stageText)}</p>
+      </div>
     </section>
   `;
 }

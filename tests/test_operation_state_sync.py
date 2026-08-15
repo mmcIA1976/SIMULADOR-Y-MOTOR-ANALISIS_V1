@@ -104,7 +104,7 @@ class OperationStateSnapshotTests(unittest.TestCase):
 
         self.assertEqual(response.headers.get("cache-control"), "no-store")
         index_html = (Path(__file__).resolve().parents[1] / "index.html").read_text(encoding="utf-8")
-        self.assertIn("/static/app.js?v=20260814-empirical-v09", index_html)
+        self.assertIn("/static/app.js?v=20260815-empirical-analysis-panel", index_html)
 
 
 if __name__ == "__main__":

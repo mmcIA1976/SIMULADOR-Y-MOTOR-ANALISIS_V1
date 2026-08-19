@@ -109,6 +109,11 @@ AVATAR_MIME_TO_EXT = {
 }
 VALID_OPERATION_MODES = {"training", "contest"}
 VALID_TIME_HORIZONS = {"intraday_short", "intraday_wide", "short_swing"}
+TIME_HORIZON_DISPLAY_NAMES = {
+    "intraday_short": "intradía corto (hasta 4 horas)",
+    "intraday_wide": "intradía medio (hasta 24 horas)",
+    "short_swing": "intradía largo (hasta 7 días)",
+}
 TRAINING_RECHARGE_AMOUNT = 1000.0
 STALE_LEARNING_SUMMARY_MARKERS = (
     "este caso debe reforzar esas senales de riesgo",
@@ -190,6 +195,40 @@ def validate_entry_order(entry_type: str, trigger_condition: str | None) -> None
         raise HTTPException(status_code=400, detail="Tipo de entrada no valido")
     if entry_type == "pending" and trigger_condition not in {"price_lte", "price_gte"}:
         raise HTTPException(status_code=400, detail="Condicion de activacion no valida")
+
+
+def new_engine_error_detail(exc: NewEngineAnalysisError, symbol: str) -> dict:
+    raw_code = str(exc.code or "analysis_unavailable")
+    match = re.fullmatch(
+        r"context_outside_historical_support:([^:]+):([0-9.]+)>([0-9.]+)",
+        raw_code,
+    )
+    if match:
+        time_horizon, nearest_distance, maximum_distance = match.groups()
+        horizon_name = TIME_HORIZON_DISPLAY_NAMES.get(time_horizon, time_horizon)
+        return {
+            "code": "context_outside_historical_support",
+            "message": (
+                f"El contexto actual de {symbol.upper()} queda fuera del histórico "
+                f"fiable para {horizon_name}. El motor ha detenido el análisis para "
+                "no mostrar probabilidades sin respaldo. No se ha guardado ningún análisis."
+            ),
+            "details": {
+                **exc.details,
+                "time_horizon": time_horizon,
+                "nearest_context_distance": float(nearest_distance),
+                "maximum_context_distance_allowed": float(maximum_distance),
+                "analysis_saved": False,
+            },
+        }
+    return {
+        "code": raw_code,
+        "message": (
+            "El motor no pudo completar un cálculo fiable y ha detenido el análisis "
+            "sin guardar resultados ni recurrir a otro motor."
+        ),
+        "details": {**exc.details, "analysis_saved": False},
+    }
 
 
 def resolve_market_execution_price(
@@ -5180,14 +5219,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
         )
         raise HTTPException(
             status_code=503,
-            detail={
-                "code": exc.code,
-                "message": (
-                    "El nuevo motor no pudo completar un calculo fiable. "
-                    "No se ha usado el motor anterior como sustituto."
-                ),
-                "details": exc.details,
-            },
+            detail=new_engine_error_detail(exc, proposal.symbol),
         ) from exc
     entry_context = {
         "entry_type": entry_type,

@@ -767,7 +767,17 @@ function requestJson(url, options = {}) {
       if (request.status >= 200 && request.status < 300) {
         resolve(payload);
       } else {
-        reject(new Error(payload.detail || payload.error || `Error HTTP ${request.status}`));
+        const detail = payload?.detail;
+        const structuredDetail = detail && typeof detail === "object" ? detail : null;
+        const message = structuredDetail?.message
+          || (typeof detail === "string" ? detail : null)
+          || payload?.error
+          || `Error HTTP ${request.status}`;
+        const error = new Error(message);
+        error.code = structuredDetail?.code || null;
+        error.details = structuredDetail?.details || null;
+        error.httpStatus = request.status;
+        reject(error);
       }
     };
     request.onerror = () => reject(new Error(options.errorMessage || "No se pudo completar la consulta."));
@@ -1711,8 +1721,19 @@ async function analyzeOperation() {
     renderAnalysisPayload(analysis);
     updateMetrics();
   } catch (error) {
-    elements.analysisHeadline.textContent = "Error";
+    const outsideHistoricalSupport = error.code === "context_outside_historical_support";
+    elements.analysisHeadline.textContent = outsideHistoricalSupport
+      ? "Análisis no disponible con fiabilidad"
+      : "Error";
     elements.analysisDecision.textContent = error.message;
+    elements.analysisSummary.textContent = outsideHistoricalSupport
+      ? "No se han generado porcentajes ni se ha guardado este intento."
+      : "";
+    showFloatingNotice(
+      outsideHistoricalSupport ? "Sin estimación fiable" : "No se pudo completar el análisis",
+      error.message,
+      outsideHistoricalSupport ? 7000 : 4000,
+    );
   }
 }
 

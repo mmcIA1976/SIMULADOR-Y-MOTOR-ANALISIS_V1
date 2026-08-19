@@ -3,8 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.33.1-empirical-analysis-panel"
-APP_SEMVER = "0.33.1"
+APP_VERSION = "app-v0.33.2-explained-analysis-blocks"
+APP_SEMVER = "0.33.2"
 ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
 SCORING_VERSION = "historical-analog-first-touch-v0.9"
 LEARNING_EVALUATOR_VERSION = "learning-v0.14-exact-horizon"

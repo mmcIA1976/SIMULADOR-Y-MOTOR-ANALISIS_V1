@@ -26,11 +26,16 @@ class AnalysisErrorPresentationTests(unittest.TestCase):
 
     def test_frontend_reads_structured_api_errors(self):
         javascript = Path("app.js").read_text(encoding="utf-8")
+        html = Path("index.html").read_text(encoding="utf-8")
 
         self.assertIn("structuredDetail?.message", javascript)
         self.assertIn('error.code === "context_outside_historical_support"', javascript)
         self.assertIn("Análisis no disponible con fiabilidad", javascript)
         self.assertIn("No se han generado porcentajes", javascript)
+        self.assertIn(
+            "/static/app.js?v=20260819-explained-analysis-blocks",
+            html,
+        )
 
 
 if __name__ == "__main__":

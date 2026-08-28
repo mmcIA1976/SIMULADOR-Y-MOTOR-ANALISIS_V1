@@ -91,6 +91,33 @@ class SequentialProductionContractTests(unittest.TestCase):
                         for value in context["feature_values"].values()
                     )
                 )
+                traced_rule_ids = {
+                    str(trace["rule_id"])
+                    for trace in context["rule_traces"]
+                    if trace.get("rule_id")
+                }
+                feature_rule_ids = {
+                    feature_name.split("::", 1)[0]
+                    for feature_name in context["feature_values"]
+                }
+                self.assertTrue(feature_rule_ids <= traced_rule_ids)
+                trace_by_id = {
+                    str(trace["rule_id"]): trace
+                    for trace in context["rule_traces"]
+                    if trace.get("rule_id")
+                }
+                self.assertEqual(
+                    trace_by_id["LIB-CAND-COMPRESSION-001"][
+                        "probability_effect"
+                    ],
+                    "analog_distance_input",
+                )
+                self.assertEqual(
+                    trace_by_id["LIB-CAND-FIBONACCI-DISTANCE-001"][
+                        "probability_effect"
+                    ],
+                    "none_observation_only",
+                )
 
     @patch("sequential_production_runtime.empirical_probabilities")
     @patch("sequential_production_runtime.build_stage_context")

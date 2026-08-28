@@ -519,6 +519,41 @@ def build_stage_context(plan: dict, candles: list[dict]) -> dict:
         "target_extreme_between_entry_and_tp": 1.0 if target_between else 0.0
     }
     features.update(_structural_features(plan, material))
+    # Keep a complete per-stage trace for every deterministic feature that is
+    # stored in the v0.9 snapshot.  The empirical model remains frozen: only
+    # the four audited analog-distance inputs below affect probabilities; the
+    # rest are explicitly observational and can be evaluated after closure.
+    active_analog_rules = {
+        "M4-RULE-PATH-STRUCTURE-001",
+        "M4-RULE-MTF-HIERARCHY-001",
+        "M4-RULE-VOLATILITY-RANK-001",
+        "LIB-CAND-COMPRESSION-001",
+    }
+    trace_by_id = {
+        str(trace.get("rule_id")): trace
+        for trace in traces
+        if isinstance(trace, dict) and trace.get("rule_id")
+    }
+    for rule_id, outputs in features.items():
+        trace = trace_by_id.get(rule_id)
+        if trace is None:
+            trace = {
+                "rule_id": rule_id,
+                "status": (
+                    "evaluated"
+                    if rule_id in active_analog_rules
+                    else "evaluated_shadow"
+                ),
+                "outputs": outputs,
+                "source_data_sha256": material["data_sha256"],
+            }
+            traces.append(trace)
+            trace_by_id[rule_id] = trace
+        trace["probability_effect"] = (
+            "analog_distance_input"
+            if rule_id in active_analog_rules
+            else "none_observation_only"
+        )
     flat = flatten_rule_features(features)
     sigma = math.sqrt(float(material["current_variance"]))
     return {

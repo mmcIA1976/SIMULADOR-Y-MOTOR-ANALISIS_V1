@@ -261,6 +261,28 @@ def first_plan_touch(
             )
             if resolved:
                 return resolved
+            # A partial boundary candle cannot prove a historical touch by
+            # itself because its high/low may belong to the seconds outside
+            # the operation window.  For an automatically closed operation,
+            # however, the recorded terminal event is independent evidence of
+            # the only barrier present in that candle.  Treat that case as a
+            # resolved touch instead of contaminating learning with a false
+            # ambiguity.  A contradictory close reason remains ambiguous.
+            if boundary_partial and stop_hit != target_hit:
+                reason = "stop_loss" if stop_hit else "take_profit"
+                if operation.get("close_reason") == reason:
+                    return {
+                        "status": "resolved",
+                        "reason": reason,
+                        "price": float(operation[reason]),
+                        "touched_at": iso_from_ms(candle["open_time_ms"]),
+                        "time_precision": "minute_boundary_confirmed_by_recorded_exit",
+                        "source": EVIDENCE_SOURCE,
+                        "resolution_basis": "recorded_terminal_event_confirms_single_barrier",
+                        "stop_hit": stop_hit,
+                        "target_hit": target_hit,
+                        "aggregate_trades_available": trades_available,
+                    }
             status = "ambiguous_same_candle" if stop_hit and target_hit else "ambiguous_boundary_candle"
             return {
                 "status": status,
@@ -308,7 +330,11 @@ def recorded_result_consistency(operation: dict, first_touch: dict, post_close_t
         expected = "take_profit"
     elif observation_result == "plan_unresolved":
         expected = "no_plan_touch"
-    if expected is None or post_close_touch is None:
+    if expected is None:
+        return "not_comparable"
+    if post_close_touch is None:
+        if expected == "no_plan_touch" and first_touch.get("status") == "no_plan_touch":
+            return "consistent"
         return "not_comparable"
     if post_close_touch.get("status", "").startswith("ambiguous"):
         return "ambiguous"
@@ -326,6 +352,10 @@ def reconstructed_plan_result(operation: dict, first_touch: dict, post_close_tou
         if first_touch.get("status", "").startswith("ambiguous"):
             return "ambiguous_same_candle"
         return "plan_unresolved"
+    if operation.get("observation_result") == "plan_unresolved" and first_touch.get(
+        "status"
+    ) == "no_plan_touch":
+        return "plan_unresolved"
     if post_close_touch is None:
         return "manual_pending_or_unclassified"
     if post_close_touch.get("status") == "resolved":
@@ -333,6 +363,56 @@ def reconstructed_plan_result(operation: dict, first_touch: dict, post_close_tou
     if post_close_touch.get("status", "").startswith("ambiguous"):
         return "ambiguous_same_candle"
     return "plan_unresolved"
+
+
+def upgrade_stored_historical_evidence(operation: dict, evidence: dict) -> dict:
+    """Upgrade stored evidence without downloading the historical path again."""
+    updated = json.loads(json.dumps(evidence))
+    previous_version = updated.get("version")
+    first_touch = (
+        updated.get("first_plan_touch")
+        if isinstance(updated.get("first_plan_touch"), dict)
+        else {}
+    )
+    if first_touch.get("status") == "ambiguous_boundary_candle":
+        stop_hit = bool(first_touch.get("stop_hit"))
+        target_hit = bool(first_touch.get("target_hit"))
+        if stop_hit != target_hit:
+            reason = "stop_loss" if stop_hit else "take_profit"
+            if operation.get("close_reason") == reason:
+                first_touch.update(
+                    {
+                        "status": "resolved",
+                        "reason": reason,
+                        "price": float(operation[reason]),
+                        "time_precision": (
+                            "minute_boundary_confirmed_by_recorded_exit"
+                        ),
+                        "resolution_basis": (
+                            "recorded_terminal_event_confirms_single_barrier"
+                        ),
+                    }
+                )
+    post_close_touch = (
+        updated.get("first_post_close_plan_touch")
+        if isinstance(updated.get("first_post_close_plan_touch"), dict)
+        else None
+    )
+    updated["version"] = EVIDENCE_RECONSTRUCTION_VERSION
+    updated["upgraded_from_version"] = previous_version
+    updated["reconstructed_at"] = datetime.now(timezone.utc).isoformat()
+    updated["path_resolution"] = first_touch.get("status", "not_evaluable")
+    updated["recorded_result_consistency"] = recorded_result_consistency(
+        operation,
+        first_touch,
+        post_close_touch,
+    )
+    updated["reconstructed_plan_result"] = reconstructed_plan_result(
+        operation,
+        first_touch,
+        post_close_touch,
+    )
+    return updated
 
 
 def candle_fingerprint(candles: list[dict]) -> str | None:

@@ -6,6 +6,7 @@ import logging
 import math
 import os
 import re
+import time
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -29,6 +30,7 @@ from economic_metrics import (
 from learning_evidence import (
     build_historical_evidence,
     reconstruction_window,
+    upgrade_stored_historical_evidence,
 )
 from limit_learning_persistence import (
     LimitLearningPersistenceError,
@@ -98,6 +100,7 @@ MAX_EXIT_TRADE_PAGES = 8
 EXIT_WINDOW_BEFORE_MINUTES = 90
 EXIT_WINDOW_AFTER_MINUTES = 30
 OPERATION_STATUS_SNAPSHOT_MAX_IDS = 16
+UNSELECTED_ANALYSIS_FULL_PAYLOAD_TTL_HOURS = 24
 WEB_OPERATION_REFRESH_ENABLED = os.environ.get(
     "WEB_OPERATION_REFRESH_ENABLED",
     "true",
@@ -540,6 +543,7 @@ def set_session_cookie(response: Response, user_id: int) -> None:
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    ensure_analysis_attempt_storage()
     ensure_pending_entry_columns()
     migrate_file_avatars_to_database()
     finalize_due_observations()
@@ -854,6 +858,130 @@ def require_fresh_worker_market_price(symbol: str) -> dict:
 def worker_market_price_loader(symbol: str, *, force_refresh: bool = False) -> float:
     del force_refresh
     return float(require_fresh_worker_market_price(symbol)["price"])
+
+
+def ensure_analysis_attempt_storage() -> None:
+    """Apply the small, idempotent analysis-attempt migration."""
+    with connect() as db:
+        db.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS analysis_attempts (
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                recommendation_id BIGINT REFERENCES recommendations(id) ON DELETE SET NULL,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL CHECK(side IN ('long', 'short')),
+                time_horizon TEXT NOT NULL,
+                entry_type TEXT NOT NULL CHECK(entry_type IN ('market', 'pending')),
+                outcome TEXT NOT NULL CHECK(outcome IN ('completed', 'blocked', 'failed')),
+                error_code TEXT,
+                engine_version TEXT NOT NULL,
+                duration_ms INTEGER NOT NULL CHECK(duration_ms >= 0),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_attempts_user_time
+                ON analysis_attempts(user_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_analysis_attempts_outcome_time
+                ON analysis_attempts(outcome, created_at);
+            ALTER TABLE analysis_attempts ENABLE ROW LEVEL SECURITY;
+            REVOKE ALL PRIVILEGES ON TABLE analysis_attempts FROM anon, authenticated;
+            """
+        )
+
+
+def compact_expired_unselected_analyses(db) -> int:
+    """Remove bulky payloads after 24 h but retain the small audit row."""
+    cursor = db.execute(
+        """
+        UPDATE recommendations
+        SET analysis_json = NULL,
+            snapshot_json = ?,
+            parameter_advice_json = '{}',
+            reasons_json = '[]',
+            alerts_json = '[]'
+        WHERE operation_id IS NULL
+          AND app_version = ?
+          AND analysis_json IS NOT NULL
+          AND created_at < CURRENT_TIMESTAMP - INTERVAL '24 hours'
+        """,
+        (
+            json.dumps(
+                {
+                    "retention_status": "expired_unselected_analysis",
+                    "full_payload_retention_hours": (
+                        UNSELECTED_ANALYSIS_FULL_PAYLOAD_TTL_HOURS
+                    ),
+                    "learning_eligible": False,
+                }
+            ),
+            APP_VERSION,
+        ),
+    )
+    return max(int(getattr(cursor, "rowcount", 0) or 0), 0)
+
+
+def insert_analysis_attempt(
+    db,
+    *,
+    user_id: int,
+    proposal: TradeProposal,
+    entry_type: str,
+    outcome: str,
+    duration_ms: int,
+    engine_version: str,
+    recommendation_id: int | None = None,
+    error_code: str | None = None,
+) -> None:
+    db.execute(
+        """
+        INSERT INTO analysis_attempts (
+            user_id, recommendation_id, symbol, side, time_horizon,
+            entry_type, outcome, error_code, engine_version, duration_ms
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            int(user_id),
+            recommendation_id,
+            proposal.symbol,
+            proposal.side,
+            proposal.time_horizon,
+            entry_type,
+            outcome,
+            error_code,
+            engine_version,
+            max(int(duration_ms), 0),
+        ),
+    )
+
+
+def record_failed_analysis_attempt(
+    *,
+    user_id: int,
+    proposal: TradeProposal,
+    entry_type: str,
+    started_at: float,
+    outcome: str,
+    error_code: str,
+) -> None:
+    try:
+        with connect() as db:
+            insert_analysis_attempt(
+                db,
+                user_id=user_id,
+                proposal=proposal,
+                entry_type=entry_type,
+                outcome=outcome,
+                duration_ms=round((time.perf_counter() - started_at) * 1000),
+                engine_version=(
+                    "PENDING-LIMIT-TWO-STAGE"
+                    if entry_type == "pending"
+                    else ENGINE_VERSION
+                ),
+                error_code=error_code[:240],
+            )
+    except Exception:
+        logger.exception("Could not persist the minimal analysis-attempt audit row")
 
 
 @app.get("/api/price")
@@ -1832,7 +1960,8 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
             r.tp_probability AS recommendation_tp_probability,
             r.sl_probability AS recommendation_sl_probability,
             r.range_probability AS recommendation_range_probability,
-            r.snapshot_json AS recommendation_snapshot_json
+            r.snapshot_json AS recommendation_snapshot_json,
+            le.evidence_json AS existing_learning_evidence_json
         FROM operations o
         LEFT JOIN recommendations r ON r.id = (
             SELECT r2.id
@@ -1841,15 +1970,20 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
             ORDER BY r2.created_at DESC, r2.id DESC
             LIMIT 1
         )
+        LEFT JOIN learning_evaluations le ON le.operation_id = o.id
         WHERE o.status = 'CLOSED'
           AND COALESCE(o.observation_status, '') != 'OBSERVING'
-          AND NOT EXISTS (
-              SELECT 1
-              FROM learning_evaluations le
-              WHERE le.operation_id = o.id
+          AND (
+              le.id IS NULL
+              OR (
+                  r.engine_version = ?
+                  AND COALESCE(le.learning_evaluator_version, '') != ?
+                  AND le.evidence_json IS NOT NULL
+              )
           )
         ORDER BY o.closed_at ASC, o.id ASC
-        """
+        """,
+        (ENGINE_VERSION, LEARNING_EVALUATOR_VERSION),
     ).fetchall()
     evaluations = []
     for row in rows:
@@ -1866,7 +2000,14 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
                 (operation["id"],),
             ).fetchall()
         ]
-        historical_evidence = reconstruct_operation_historical_evidence(operation)
+        previous_evidence = parse_snapshot_json(
+            operation.get("existing_learning_evidence_json")
+        )
+        historical_evidence = (
+            upgrade_stored_historical_evidence(operation, previous_evidence)
+            if previous_evidence
+            else reconstruct_operation_historical_evidence(operation)
+        )
         evaluation = build_structured_learning_evaluation(
             operation,
             ticks,
@@ -1877,7 +2018,7 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
             db,
             int(operation["id"]),
             historical_evidence,
-            before_payload=None,
+            before_payload=previous_evidence or None,
             after_payload={
                 "max_favorable_pct": evaluation["max_favorable_pct"],
                 "max_adverse_pct": evaluation["max_adverse_pct"],
@@ -2959,11 +3100,234 @@ def recommendation_version_contract(operation: dict, snapshot: dict) -> dict:
     }
 
 
+def observed_outcome_from_plan_result(plan_result: str) -> str:
+    if plan_result in {"plan_success", "plan_would_succeed"}:
+        return "tp_first_within_horizon"
+    if plan_result in {"plan_failure", "plan_would_fail"}:
+        return "sl_first_within_horizon"
+    return "neither_or_censored"
+
+
+def learning_rule_metadata(rule_id: str) -> dict:
+    try:
+        return rule_metadata(rule_id)
+    except KeyError:
+        return {
+            "family_id": "MODEL-OR-UNKNOWN",
+            "role": "baseline",
+            "interactions": {"parent_rule_ids": []},
+            "evidence": {"source_ids": []},
+        }
+
+
+def v09_predictive_rule_learning_snapshot(
+    snapshot: dict,
+    *,
+    plan_result: str,
+) -> dict | None:
+    """Join the real v0.9 multiscale traces to the observed outcome.
+
+    v0.9 does not expose the legacy ``m5_rule_effects`` contract.  Its active
+    inputs live in ``probability_trace.stage_traces.current_feature_values``
+    and its candidate observations live in ``stage_rule_traces``.  Keeping
+    those two roles separate prevents observational rules from being reported
+    as if they had changed the served probability.
+    """
+    stage_rule_payload = snapshot.get("stage_rule_traces")
+    probability_trace = snapshot.get("probability_trace")
+    if not isinstance(stage_rule_payload, dict) or not isinstance(
+        probability_trace, dict
+    ):
+        return None
+    model_stage_traces = probability_trace.get("stage_traces")
+    if not isinstance(model_stage_traces, list) or not model_stage_traces:
+        return None
+
+    active_features: dict[str, dict[str, float | None]] = {}
+    active_groups: list[str] = []
+    context_sigma_features: dict[str, float | None] = {}
+    for stage in model_stage_traces:
+        if not isinstance(stage, dict):
+            continue
+        horizon = str(stage.get("time_horizon") or stage.get("stage_id") or "")
+        for group in stage.get("active_rule_groups", []):
+            group_name = str(group)
+            if group_name and group_name not in active_groups:
+                active_groups.append(group_name)
+        current_values = stage.get("current_feature_values")
+        if not isinstance(current_values, dict):
+            continue
+        for feature_name, value in current_values.items():
+            feature_key = str(feature_name)
+            parts = feature_key.split("::", 2)
+            if len(parts) == 3:
+                active_features.setdefault(parts[1], {})[feature_key] = safe_float(
+                    value
+                )
+            elif feature_key.endswith("::log_context_sigma"):
+                context_sigma_features[horizon or parts[0]] = safe_float(value)
+
+    stage_traces_by_rule: dict[str, list[dict]] = {}
+    traced_stage_rules: set[tuple[str, str]] = set()
+    for horizon, raw_traces in stage_rule_payload.items():
+        if not isinstance(raw_traces, list):
+            continue
+        for raw_trace in raw_traces:
+            if not isinstance(raw_trace, dict) or not raw_trace.get("rule_id"):
+                continue
+            rule_id = str(raw_trace["rule_id"])
+            trace = {
+                **raw_trace,
+                "time_horizon": str(horizon),
+                "probability_effect": (
+                    "analog_distance_input"
+                    if rule_id in active_features
+                    else raw_trace.get("probability_effect")
+                    or "none_observation_only"
+                ),
+            }
+            stage_traces_by_rule.setdefault(rule_id, []).append(trace)
+            traced_stage_rules.add((str(horizon), rule_id))
+
+    # Early v0.9 rows already contain deterministic structural/Fibonacci
+    # values in stage_contexts, although their trace list omitted those rules.
+    # Reconstruct only the missing trace wrapper from that immutable snapshot;
+    # no market data or probability is recalculated.
+    stage_contexts = snapshot.get("stage_contexts")
+    if isinstance(stage_contexts, dict):
+        for horizon, raw_context in stage_contexts.items():
+            if not isinstance(raw_context, dict):
+                continue
+            source_sha = raw_context.get("source_data_sha256")
+            feature_values = raw_context.get("feature_values")
+            if not isinstance(feature_values, dict):
+                continue
+            features_by_rule: dict[str, dict[str, float | None]] = {}
+            for feature_name, value in feature_values.items():
+                parts = str(feature_name).split("::", 1)
+                if len(parts) != 2:
+                    continue
+                features_by_rule.setdefault(parts[0], {})[parts[1]] = safe_float(
+                    value
+                )
+            for rule_id, values in features_by_rule.items():
+                stage_key = (str(horizon), rule_id)
+                if stage_key in traced_stage_rules:
+                    continue
+                stage_traces_by_rule.setdefault(rule_id, []).append(
+                    {
+                        "rule_id": rule_id,
+                        "time_horizon": str(horizon),
+                        "status": (
+                            "evaluated"
+                            if rule_id in active_features
+                            else "evaluated_observation_reconstructed"
+                        ),
+                        "outputs": values,
+                        "source_data_sha256": source_sha,
+                        "probability_effect": (
+                            "analog_distance_input"
+                            if rule_id in active_features
+                            else "none_observation_only"
+                        ),
+                        "trace_origin": "reconstructed_from_stage_context",
+                    }
+                )
+                traced_stage_rules.add(stage_key)
+
+    active_rule_ids = list(active_features)
+    for rule_id in active_rule_ids:
+        if rule_id not in stage_traces_by_rule:
+            stage_traces_by_rule[rule_id] = [
+                {
+                    "rule_id": rule_id,
+                    "status": "evaluated",
+                    "probability_effect": "analog_distance_input",
+                    "feature_values": active_features[rule_id],
+                    "trace_origin": "reconstructed_from_probability_trace",
+                }
+            ]
+
+    observational_rule_ids = [
+        rule_id
+        for rule_id in stage_traces_by_rule
+        if rule_id not in active_features
+    ]
+    metadata = {
+        rule_id: learning_rule_metadata(rule_id)
+        for rule_id in {*active_rule_ids, *observational_rule_ids}
+    }
+    baseline_rule_ids = (
+        ["MODEL-BASELINE-CONTEXT-SIGMA-v0.9"]
+        if context_sigma_features
+        else []
+    )
+    baseline_rules = {}
+    if context_sigma_features:
+        baseline_rules[baseline_rule_ids[0]] = {
+            "family_id": "MODEL-EMPIRICAL-ANALOG-DISTANCE",
+            "role": "baseline",
+            "status": "evaluated",
+            "probability_effect": "analog_distance_input",
+            "feature_values": context_sigma_features,
+        }
+    return {
+        "trace_contract": "empirical_multiscale_v0.9",
+        "active_rule_groups": active_groups,
+        "active_rule_ids": active_rule_ids,
+        "active_rule_count": len(active_rule_ids),
+        "baseline_rule_ids": baseline_rule_ids,
+        "baseline_rules": baseline_rules,
+        "observational_rule_ids": observational_rule_ids,
+        "observational_rule_count": len(observational_rule_ids),
+        "observational_rules": {
+            rule_id: {
+                "family_id": metadata[rule_id]["family_id"],
+                "role": metadata[rule_id]["role"],
+                "parent_rule_ids": metadata[rule_id]["interactions"][
+                    "parent_rule_ids"
+                ],
+                "stage_traces": stage_traces_by_rule[rule_id],
+                "probability_effect": "none_observation_only",
+            }
+            for rule_id in observational_rule_ids
+        },
+        "observed_outcome": observed_outcome_from_plan_result(plan_result),
+        "rules": {
+            rule_id: {
+                "family_id": metadata[rule_id]["family_id"],
+                "role": metadata[rule_id]["role"],
+                "parent_rule_ids": metadata[rule_id]["interactions"][
+                    "parent_rule_ids"
+                ],
+                "source_ids": metadata[rule_id]["evidence"]["source_ids"],
+                "rule_status": "evaluated",
+                "probability_effect": "analog_distance_input",
+                "probability_effect_reason": (
+                    "La variable participa en la distancia que selecciona "
+                    "analogos historicos; no es un ajuste aditivo."
+                ),
+                "features": list(active_features[rule_id]),
+                "feature_values": active_features[rule_id],
+                "stage_traces": stage_traces_by_rule[rule_id],
+                "effect_mode": "empirical_analog_distance",
+            }
+            for rule_id in active_rule_ids
+        },
+    }
+
+
 def predictive_rule_learning_snapshot(
     snapshot: dict,
     *,
     plan_result: str,
 ) -> dict:
+    v09_snapshot = v09_predictive_rule_learning_snapshot(
+        snapshot,
+        plan_result=plan_result,
+    )
+    if v09_snapshot is not None:
+        return v09_snapshot
     feature_snapshot = (
         snapshot.get("feature_snapshot")
         if isinstance(snapshot.get("feature_snapshot"), dict)
@@ -3039,13 +3403,7 @@ def predictive_rule_learning_snapshot(
                 "interactions": {"parent_rule_ids": []},
                 "evidence": {"source_ids": []},
             }
-    observed_outcome = (
-        "tp_first_within_horizon"
-        if plan_result in {"plan_success", "plan_would_succeed"}
-        else "sl_first_within_horizon"
-        if plan_result in {"plan_failure", "plan_would_fail"}
-        else "neither_or_censored"
-    )
+    observed_outcome = observed_outcome_from_plan_result(plan_result)
     return {
         "active_rule_ids": active_rule_ids,
         "active_rule_count": len(active_rule_ids),
@@ -5187,6 +5545,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     if proposal.time_horizon not in VALID_TIME_HORIZONS:
         raise HTTPException(status_code=400, detail="Marco temporal no valido")
     validate_trade_plan(proposal.side, proposal.entry, proposal.stop_loss, proposal.take_profit)
+    analysis_started_at = time.perf_counter()
     try:
         result = (
             analyze_limit_trade(
@@ -5197,6 +5556,14 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             else analyze_trade(proposal)
         )
     except LimitProductionAnalysisError as exc:
+        record_failed_analysis_attempt(
+            user_id=int(user["id"]),
+            proposal=proposal,
+            entry_type=entry_type,
+            started_at=analysis_started_at,
+            outcome="blocked",
+            error_code=str(exc.code or "limit_analysis_blocked"),
+        )
         logger.exception(
             "LIMIT analysis engine blocked the request: %s",
             exc.code,
@@ -5213,6 +5580,14 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             },
         ) from exc
     except NewEngineAnalysisError as exc:
+        record_failed_analysis_attempt(
+            user_id=int(user["id"]),
+            proposal=proposal,
+            entry_type=entry_type,
+            started_at=analysis_started_at,
+            outcome="blocked",
+            error_code=str(exc.code or "analysis_blocked"),
+        )
         logger.exception(
             "New analysis engine blocked the request: %s",
             exc.code,
@@ -5221,6 +5596,16 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             status_code=503,
             detail=new_engine_error_detail(exc, proposal.symbol),
         ) from exc
+    except Exception as exc:
+        record_failed_analysis_attempt(
+            user_id=int(user["id"]),
+            proposal=proposal,
+            entry_type=entry_type,
+            started_at=analysis_started_at,
+            outcome="failed",
+            error_code=type(exc).__name__,
+        )
+        raise
     entry_context = {
         "entry_type": entry_type,
         "trigger_condition": trigger_condition,
@@ -5249,6 +5634,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     result["snapshot"]["version_contract"] = version_contract
     result["data_contract"] = build_data_contract(pre_trade_features=result["snapshot"])
     with connect() as db:
+        compact_expired_unselected_analyses(db)
         cursor = db.execute(
             """
             INSERT INTO recommendations (
@@ -5289,6 +5675,16 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             ),
         )
         recommendation_id = int(cursor.lastrowid)
+        insert_analysis_attempt(
+            db,
+            user_id=int(user["id"]),
+            proposal=proposal,
+            entry_type=entry_type,
+            outcome="completed",
+            duration_ms=round((time.perf_counter() - analysis_started_at) * 1000),
+            engine_version=result.get("engine_version", ENGINE_VERSION),
+            recommendation_id=recommendation_id,
+        )
     return {"recommendation_id": recommendation_id, **result}
 
 

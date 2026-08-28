@@ -108,10 +108,12 @@ class VersionedDataContractTests(unittest.TestCase):
         def __init__(self):
             self.query = ""
             self.params = ()
+            self.queries = []
 
         def execute(self, query, params):
             self.query = query
             self.params = params
+            self.queries.append((query, params))
             return type("Cursor", (), {"lastrowid": 42})()
 
     class DbContext:
@@ -262,10 +264,25 @@ class VersionedDataContractTests(unittest.TestCase):
         self.assertIsNone(result["data_contract"]["post_trade_outcomes"])
         self.assertIsNone(result["data_contract"]["diagnostic_labels"])
         self.assertNotIn("data_contract", result["data_contract"]["pre_trade_features"])
-        self.assertEqual(db.query.count("?"), len(db.params))
-        self.assertEqual(len(db.params), 24)
-        self.assertIn(ENGINE_VERSION, db.params)
-        self.assertIn(SCORING_VERSION, db.params)
+        recommendation_query, recommendation_params = next(
+            item
+            for item in db.queries
+            if "INSERT INTO recommendations" in item[0]
+        )
+        self.assertEqual(
+            recommendation_query.count("?"),
+            len(recommendation_params),
+        )
+        self.assertEqual(len(recommendation_params), 24)
+        self.assertIn(ENGINE_VERSION, recommendation_params)
+        self.assertIn(SCORING_VERSION, recommendation_params)
+        attempt_query, attempt_params = next(
+            item
+            for item in db.queries
+            if "INSERT INTO analysis_attempts" in item[0]
+        )
+        self.assertEqual(attempt_query.count("?"), len(attempt_params))
+        self.assertIn("completed", attempt_params)
 
 
 if __name__ == "__main__":

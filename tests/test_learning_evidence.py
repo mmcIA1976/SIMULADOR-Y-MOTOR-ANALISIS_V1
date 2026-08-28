@@ -4,6 +4,7 @@ from learning_evidence import (
     apply_evidence_to_structured,
     build_historical_evidence,
     reconstruction_window,
+    upgrade_stored_historical_evidence,
 )
 
 
@@ -123,6 +124,69 @@ class LearningEvidenceTests(unittest.TestCase):
 
         self.assertEqual(evidence["quality"], "complete_1m_with_boundary_approximation")
         self.assertEqual(evidence["path_resolution"], "ambiguous_boundary_candle")
+
+    def test_recorded_exit_resolves_single_barrier_in_boundary_candle(self):
+        evidence = build_historical_evidence(
+            operation(
+                started_at="1970-01-01T00:00:30+00:00",
+                closed_at="1970-01-01T00:00:59.999000+00:00",
+                close_reason="stop_loss",
+            ),
+            [kline(0, 100, 104, 94, 100)],
+            now_ms=10 * 24 * 60 * MINUTE,
+        )
+
+        self.assertEqual(evidence["path_resolution"], "resolved")
+        self.assertEqual(evidence["first_plan_touch"]["reason"], "stop_loss")
+        self.assertEqual(evidence["reconstructed_plan_result"], "plan_failure")
+        self.assertEqual(evidence["recorded_result_consistency"], "consistent")
+
+    def test_expired_manual_plan_without_touch_is_not_left_unclassified(self):
+        evidence = build_historical_evidence(
+            operation(
+                closed_at="1970-01-01T00:03:00+00:00",
+                close_reason="manual",
+                observation_status="OBSERVATION_CLOSED",
+                observation_until="1970-01-01T00:02:00+00:00",
+                observation_result="plan_unresolved",
+            ),
+            [
+                kline(0, 100, 104, 98, 102),
+                kline(1, 102, 106, 99, 104),
+            ],
+            now_ms=10 * 24 * 60 * MINUTE,
+        )
+
+        self.assertEqual(evidence["first_plan_touch"]["status"], "no_plan_touch")
+        self.assertEqual(evidence["reconstructed_plan_result"], "plan_unresolved")
+        self.assertEqual(evidence["recorded_result_consistency"], "consistent")
+
+    def test_stored_boundary_evidence_is_upgraded_without_new_market_data(self):
+        upgraded = upgrade_stored_historical_evidence(
+            operation(close_reason="take_profit"),
+            {
+                "version": "evidence-v0.2-exact-horizon-binance-usdm-1m",
+                "status": "complete",
+                "quality": "complete_1m_with_boundary_approximation",
+                "first_plan_touch": {
+                    "status": "ambiguous_boundary_candle",
+                    "reason": None,
+                    "touched_at": "1970-01-01T00:00:00+00:00",
+                    "stop_hit": False,
+                    "target_hit": True,
+                },
+                "first_post_close_plan_touch": None,
+            },
+        )
+
+        self.assertEqual(upgraded["path_resolution"], "resolved")
+        self.assertEqual(upgraded["first_plan_touch"]["reason"], "take_profit")
+        self.assertEqual(upgraded["reconstructed_plan_result"], "plan_success")
+        self.assertEqual(upgraded["recorded_result_consistency"], "consistent")
+        self.assertEqual(
+            upgraded["upgraded_from_version"],
+            "evidence-v0.2-exact-horizon-binance-usdm-1m",
+        )
 
     def test_manual_observation_has_separate_post_close_path(self):
         evidence = build_historical_evidence(

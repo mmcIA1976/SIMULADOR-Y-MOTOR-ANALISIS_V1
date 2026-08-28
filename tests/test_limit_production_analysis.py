@@ -207,10 +207,19 @@ class LimitProductionAnalysisTests(unittest.TestCase):
 
         self.assertEqual(response["recommendation_id"], 77)
         analyze.assert_called_once()
-        self.assertEqual(len(db.queries), 1)
-        self.assertIn("INSERT INTO recommendations", db.queries[0][0])
-        self.assertNotIn("limit_learning_snapshots", db.queries[0][0])
-        self.assertIn(LIMIT_PRODUCTION_ENGINE_VERSION, db.queries[0][1])
+        self.assertEqual(len(db.queries), 3)
+        recommendation_query = next(
+            item for item in db.queries if "INSERT INTO recommendations" in item[0]
+        )
+        attempt_query = next(
+            item for item in db.queries if "INSERT INTO analysis_attempts" in item[0]
+        )
+        self.assertNotIn(
+            "limit_learning_snapshots",
+            " ".join(query for query, _params in db.queries),
+        )
+        self.assertIn(LIMIT_PRODUCTION_ENGINE_VERSION, recommendation_query[1])
+        self.assertIn("completed", attempt_query[1])
 
     def test_api_rejects_stop_order_before_any_limit_analysis(self):
         payload = app.TradePayload(

@@ -3,15 +3,15 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.33.2-explained-analysis-blocks"
-APP_SEMVER = "0.33.2"
+APP_VERSION = "app-v0.34.0-learning-evidence-contract"
+APP_SEMVER = "0.34.0"
 ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
 SCORING_VERSION = "historical-analog-first-touch-v0.9"
-LEARNING_EVALUATOR_VERSION = "learning-v0.14-exact-horizon"
-LEARNING_SCHEMA_VERSION = "learning-schema-v0.18-limit-lifecycle"
+LEARNING_EVALUATOR_VERSION = "learning-v0.15-v09-rule-traces"
+LEARNING_SCHEMA_VERSION = "learning-schema-v0.19-analysis-attempts"
 DATA_SOURCE_VERSION = "data-sources-v0.26-worker-price-authority"
-DATA_CONTRACT_VERSION = "data-contract-v0.26-worker-price-authority-v0.9"
-EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.2-exact-horizon-binance-usdm-1m"
+DATA_CONTRACT_VERSION = "data-contract-v0.27-learning-evidence-v0.9"
+EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.3-terminal-confirmed-boundaries"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 # Retained only so historical offline audit modules remain readable. It is not

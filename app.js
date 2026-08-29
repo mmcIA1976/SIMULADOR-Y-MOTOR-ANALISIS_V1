@@ -2889,8 +2889,13 @@ function updateAnalysisFullVisibility(hasAnalysis = true) {
 
 function renderDataSources(availability, sources) {
   const labels = {
-    futures_price: "Precio futuros",
-    futures_klines: "Velas futuros multi-TF",
+    futures_price: "Precio de entrada",
+    futures_klines: "Velas cerradas multiescala",
+    multiscale_5m: "Tramo 0-4 h · 5m",
+    multiscale_1h: "Tramo 4-24 h · 1h",
+    multiscale_6h: "Tramo 24 h-7 d · 6h",
+    structural_levels: "Niveles estructurales",
+    order_book_dynamics: "Dinámica del libro",
     order_book: "Order book",
     futures_trade_flow: "CVD/delta futuros",
     ticker_24h: "Ticker 24h",
@@ -2903,11 +2908,21 @@ function renderDataSources(availability, sources) {
     fear_greed: "Fear & Greed",
     global_crypto_market: "Mercado global",
   };
+  const sourceLabels = {
+    entry_price: "Entrada",
+    probability_market_data: "Trayectorias",
+    probability_model: "Motor",
+    structural_observation: "Estructura",
+    fibonacci_observation: "Fibonacci",
+    liquidation_observation: "Liquidaciones",
+    order_book_observation: "Libro",
+  };
   const sourceText = Object.entries(sources)
-    .map(([key, value]) => `${key}: ${value}`)
+    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .map(([key, value]) => `${sourceLabels[key] || key}: ${value}`)
     .join(" · ");
-  const chips = Object.entries(labels)
-    .map(([key, label]) => `<span class="${availability[key] ? "source-on" : "source-off"}">${escapeHtml(label)}</span>`)
+  const chips = Object.entries(availability)
+    .map(([key, available]) => `<span class="${available ? "source-on" : "source-off"}">${escapeHtml(labels[key] || key)}</span>`)
     .join("");
   elements.dataSourcesBox.innerHTML = `
     <span class="label">Datos usados en el analisis</span>

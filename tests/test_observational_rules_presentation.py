@@ -31,11 +31,11 @@ class ObservationalRulesPresentationTests(unittest.TestCase):
 
     def test_static_assets_are_cache_busted(self):
         self.assertIn(
-            "/static/app.js?v=20260829-observational-rule-readings",
+            "/static/app.js?v=20260829-analysis-source-availability",
             self.html,
         )
         self.assertIn(
-            "/static/styles.css?v=20260829-observational-rule-readings",
+            "/static/styles.css?v=20260829-analysis-source-availability",
             self.html,
         )
 

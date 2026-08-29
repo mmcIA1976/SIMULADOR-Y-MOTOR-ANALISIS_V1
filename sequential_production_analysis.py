@@ -23,6 +23,13 @@ from empirical_temporal_engine import (
 
 ENGINE_FAMILY = "empirical_multiscale_first_touch"
 OWNER_ACTIVATION = "owner_explicit_empirical_multiscale_v0.9_2026-08-14"
+STRUCTURAL_LEVEL_RULE_ID = "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"
+FIBONACCI_RULE_ID = "LIB-CAND-FIBONACCI-DISTANCE-001"
+AVAILABLE_TRACE_STATUSES = {
+    "evaluated",
+    "evaluated_shadow",
+    "partially_evaluated_shadow",
+}
 HORIZON_LABELS = {
     "intraday_short": "Intradía corto · hasta 4 h",
     "intraday_wide": "Intradía medio · hasta 24 h",
@@ -320,6 +327,75 @@ def _analysis_stamp(
     }
 
 
+def _rule_available_in_all_stages(
+    stage_rule_traces: dict,
+    stages: list[str],
+    rule_id: str,
+) -> bool:
+    """Report availability only when the rule produced data in every stage."""
+    if not stages:
+        return False
+    for horizon in stages:
+        traces = stage_rule_traces.get(horizon) or []
+        matching = next(
+            (
+                trace
+                for trace in traces
+                if isinstance(trace, dict)
+                and str(trace.get("rule_id") or "") == rule_id
+            ),
+            None,
+        )
+        if (
+            matching is None
+            or matching.get("status") not in AVAILABLE_TRACE_STATUSES
+            or not isinstance(matching.get("outputs"), dict)
+            or not matching["outputs"]
+        ):
+            return False
+    return True
+
+
+def _analysis_availability(
+    run: dict,
+    proposal: Any,
+    stages: list[str],
+    *,
+    liquidation_available: bool,
+    order_book_available: bool,
+) -> dict[str, bool]:
+    """Build the public source summary from the evidence actually produced."""
+    stage_contexts = run.get("stage_contexts") or {}
+    stage_rule_traces = run.get("stage_rule_traces") or {}
+    try:
+        entry = float(proposal.entry)
+        futures_price_available = math.isfinite(entry) and entry > 0
+    except (TypeError, ValueError, OverflowError):
+        futures_price_available = False
+    futures_klines_available = bool(stages) and all(
+        horizon in stage_contexts for horizon in stages
+    )
+    return {
+        "futures_price": futures_price_available,
+        "futures_klines": futures_klines_available,
+        "multiscale_5m": "intraday_short" in stages,
+        "multiscale_1h": "intraday_wide" in stages,
+        "multiscale_6h": "short_swing" in stages,
+        "fibonacci": _rule_available_in_all_stages(
+            stage_rule_traces,
+            stages,
+            FIBONACCI_RULE_ID,
+        ),
+        "structural_levels": _rule_available_in_all_stages(
+            stage_rule_traces,
+            stages,
+            STRUCTURAL_LEVEL_RULE_ID,
+        ),
+        "liquidation_heatmap": bool(liquidation_available),
+        "order_book_dynamics": bool(order_book_available),
+    }
+
+
 def _explained_metrics(probability_result: dict) -> list[dict]:
     metrics = []
     for trace in probability_result["stage_traces"]:
@@ -426,26 +502,30 @@ def analyze_trade(
     stages = probability_result["executed_stages"]
     temporal_profile = _temporal_profile(time_horizon, artifact, stages)
     decision_probabilities = probability_result["decision_probabilities"]
+    availability = _analysis_availability(
+        run,
+        proposal,
+        stages,
+        liquidation_available=liquidation_observation["available"],
+        order_book_available=order_book_observation["available"],
+    )
     snapshot.update(
         {
             **_geometry(proposal),
             "data_cutoff_at": run["data_cutoff_at"],
-            "availability": {
-                "futures_price": False,
-                "futures_klines": True,
-                "multiscale_5m": "intraday_short" in stages,
-                "multiscale_1h": "intraday_wide" in stages,
-                "multiscale_6h": "short_swing" in stages,
-                "fibonacci": False,
-                "structural_levels": False,
-                "liquidation_heatmap": liquidation_observation["available"],
-                "order_book_dynamics": order_book_observation["available"],
-            },
+            "availability": availability,
             "source": {
+                "entry_price": "validated trade-plan entry price",
                 "probability_market_data": (
                     "Binance USD-M closed 5m/1h/6h klines according to stage"
                 ),
                 "probability_model": ENGINE_VERSION,
+                "structural_observation": (
+                    "confirmed pivots derived independently for each stage"
+                ),
+                "fibonacci_observation": (
+                    "completed pivot swings derived independently for each stage"
+                ),
                 "liquidation_observation": (
                     liquidation_observation.get("provider")
                     or liquidation_observation.get("provider_reason")
@@ -557,6 +637,7 @@ __all__ = (
     "ENGINE_FAMILY",
     "HORIZON_LABELS",
     "NewEngineAnalysisError",
+    "_analysis_availability",
     "attach_liquidation_observation",
     "attach_order_book_observation",
     "analyze_trade",

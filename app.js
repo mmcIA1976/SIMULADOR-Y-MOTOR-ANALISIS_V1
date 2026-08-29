@@ -88,6 +88,7 @@ const elements = {
   parameterAdvice: document.querySelector("#parameterAdvice"),
   analysisInterpretation: document.querySelector("#analysisInterpretation"),
   explainedMetrics: document.querySelector("#explainedMetrics"),
+  observationalRulesPanel: document.querySelector("#observationalRulesPanel"),
   dataSourcesBox: document.querySelector("#dataSourcesBox"),
   analysisReasons: document.querySelector("#analysisReasons"),
   operationSelector: document.querySelector("#operationSelector"),
@@ -982,6 +983,7 @@ function clearPrivateSessionView() {
   elements.parameterAdvice.innerHTML = "";
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
+  elements.observationalRulesPanel.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
   elements.analysisReasons.innerHTML = "";
   drawChart();
@@ -1701,6 +1703,7 @@ async function analyzeOperation() {
   elements.parameterAdvice.innerHTML = "";
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
+  elements.observationalRulesPanel.innerHTML = "";
   elements.dataSourcesBox.innerHTML = "";
   elements.analysisReasons.innerHTML = "";
   scrollToAnalysisResult();
@@ -1804,6 +1807,555 @@ function renderExplainedMetrics(metrics, analysis = {}) {
   }
 }
 
+const OBSERVATIONAL_RULE_ORDER = [
+  "M4-RULE-AGGRESSOR-IMBALANCE-001",
+  "LIB-CAND-EMA-TREND-001",
+  "LIB-CAND-RSI-WILDER-001",
+  "LIB-CAND-ATR-EXTENSION-001",
+  "LIB-CAND-RELATIVE-VOLUME-001",
+  "LIB-CAND-CVD-SLOPE-001",
+  "LIB-CAND-ABSORPTION-001",
+  "M4-RULE-PRIOR-EXTREMA-001",
+  "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",
+  "LIB-CAND-FIBONACCI-DISTANCE-001",
+  "LIB-CAND-LIQUIDATION-ZONE-001",
+  "LIB-CAND-ORDERBOOK-IMBALANCE-001",
+];
+
+const OBSERVATIONAL_RULE_TITLES = {
+  "M4-RULE-AGGRESSOR-IMBALANCE-001": "Desequilibrio de flujo agresor",
+  "LIB-CAND-EMA-TREND-001": "Tendencia y alineación EMA",
+  "LIB-CAND-RSI-WILDER-001": "RSI de Wilder",
+  "LIB-CAND-ATR-EXTENSION-001": "Extensión respecto a EMA20",
+  "LIB-CAND-RELATIVE-VOLUME-001": "Volumen relativo",
+  "LIB-CAND-CVD-SLOPE-001": "Pendiente del flujo ejecutado (CVD)",
+  "LIB-CAND-ABSORPTION-001": "Absorción flujo–volumen–precio",
+  "M4-RULE-PRIOR-EXTREMA-001": "Extremo previo en el camino al TP",
+  "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001": "Niveles estructurales en las rutas",
+  "LIB-CAND-FIBONACCI-DISTANCE-001": "Distancias Fibonacci normalizadas",
+  "LIB-CAND-LIQUIDATION-ZONE-001": "Mapa de liquidaciones observado",
+  "LIB-CAND-ORDERBOOK-IMBALANCE-001": "Dinámica del libro de órdenes",
+};
+
+const OBSERVATIONAL_TECHNICAL_LABELS = {
+  ATI_H: "Desequilibrio agresor",
+  rsi14: "RSI 14",
+  side_adjusted_centered_rsi: "RSI ajustado a dirección",
+  side_adjusted_extension_atr: "Extensión ajustada (ATR)",
+  relative_horizon_volume: "Volumen relativo",
+  volume_midrank_60: "Percentil de volumen",
+  side_adjusted_normalized_cvd_slope: "Pendiente CVD ajustada",
+  side_adjusted_terminal_imbalance: "Flujo terminal ajustado",
+  target_path_level_count: "Niveles hacia TP",
+  adverse_path_level_count: "Niveles hacia SL",
+  target_extreme_between_entry_and_tp: "Extremo previo hacia TP",
+  executed_flow_imbalance: "Desequilibrio ejecutado",
+  side_adjusted_executed_flow_imbalance: "Flujo ejecutado ajustado",
+  unmatched_removal_fraction: "Retirada no explicada",
+  sign_flip_count: "Cambios de signo",
+  persistence_fraction: "Persistencia",
+  sample_count: "Muestras",
+  window_observed_seconds: "Ventana observada",
+};
+
+function observationNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function observationMetric(label, value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  return { label, value: String(value) };
+}
+
+function observationSignedPercent(value, digits = 1) {
+  const number = observationNumber(value);
+  if (number === null) {
+    return "--";
+  }
+  const scaled = number * 100;
+  return `${scaled > 0 ? "+" : ""}${scaled.toFixed(digits)}%`;
+}
+
+function observationPercent(value, digits = 1) {
+  const number = observationNumber(value);
+  return number === null ? "--" : `${(number * 100).toFixed(digits)}%`;
+}
+
+function observationSignedNumber(value, digits = 3) {
+  const number = observationNumber(value);
+  if (number === null) {
+    return "--";
+  }
+  return `${number > 0 ? "+" : ""}${number.toFixed(digits)}`;
+}
+
+function observationMultiple(value, digits = 2) {
+  const number = observationNumber(value);
+  return number === null ? "--" : `${number.toFixed(digits)}x`;
+}
+
+function observationDirectionTone(values, epsilon = 0.02) {
+  const finite = values
+    .map(observationNumber)
+    .filter((value) => value !== null && Math.abs(value) > epsilon);
+  if (!finite.length) {
+    return "contexto";
+  }
+  const positive = finite.some((value) => value > 0);
+  const negative = finite.some((value) => value < 0);
+  if (positive && negative) {
+    return "mixto";
+  }
+  return positive ? "favorable" : "desfavorable";
+}
+
+function observationToneLabel(tone) {
+  return {
+    favorable: "A favor",
+    desfavorable: "En contra",
+    alerta: "Alerta",
+    mixto: "Mixta",
+    bloqueada: "Sin evaluar",
+    contexto: "Contexto",
+  }[tone] || "Contexto";
+}
+
+function observationVerdictFromTone(tone, subject) {
+  if (tone === "favorable") {
+    return `${subject} acompaña cuantitativamente la dirección propuesta.`;
+  }
+  if (tone === "desfavorable") {
+    return `${subject} contradice cuantitativamente la dirección propuesta.`;
+  }
+  if (tone === "mixto") {
+    return `${subject} presenta señales cuantitativas enfrentadas.`;
+  }
+  return `${subject} aporta contexto medido, pero no una dirección concluyente.`;
+}
+
+function observationSideSign(analysis) {
+  const value = String(analysis?.snapshot?.side || analysis?.side || side || "long").toLowerCase();
+  return value === "short" ? -1 : 1;
+}
+
+function observationRuleView(trace, analysis) {
+  const ruleId = String(trace.rule_id || "REGLA-SIN-ID");
+  const outputs = trace.outputs && typeof trace.outputs === "object" ? trace.outputs : {};
+  const title = OBSERVATIONAL_RULE_TITLES[ruleId] || ruleId.replaceAll("_", " ");
+  const blocked = String(trace.status || "").includes("blocked") || !Object.keys(outputs).length;
+  if (blocked) {
+    const reasons = Array.isArray(trace.reason_codes) ? trace.reason_codes.join(" · ") : "datos no disponibles";
+    return {
+      title,
+      tone: "bloqueada",
+      verdict: `No se pudo evaluar: ${reasons || "datos no disponibles"}.`,
+      metrics: [],
+    };
+  }
+
+  if (ruleId === "M4-RULE-AGGRESSOR-IMBALANCE-001") {
+    const adjusted = observationSideSign(analysis) * Number(outputs.ATI_H || 0);
+    const tone = observationDirectionTone([adjusted]);
+    return {
+      title,
+      tone,
+      verdict: observationVerdictFromTone(tone, "El flujo de órdenes ejecutadas"),
+      metrics: [
+        observationMetric("Flujo ajustado", observationSignedPercent(adjusted)),
+        observationMetric("Compras agresoras", money(Number(outputs.buy_taker_volume || 0))),
+        observationMetric("Ventas agresoras", money(Number(outputs.sell_taker_volume || 0))),
+        observationMetric("Cobertura", outputs.coverage_complete === false ? "Incompleta" : "Completa"),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-EMA-TREND-001") {
+    const closeVs = observationNumber(outputs.side_adjusted_close_vs_ema50_log);
+    const alignment = observationNumber(outputs.side_adjusted_ema50_vs_ema200_log);
+    const slope = observationNumber(outputs.side_adjusted_slope_atr);
+    const tone = observationDirectionTone([closeVs, alignment, slope], 0.00005);
+    return {
+      title,
+      tone,
+      verdict: observationVerdictFromTone(tone, "La posición del precio y las medias"),
+      metrics: [
+        observationMetric("Precio vs EMA50", closeVs === null ? "--" : observationSignedPercent(Math.expm1(closeVs), 2)),
+        observationMetric("EMA50 vs EMA200", alignment === null ? "--" : observationSignedPercent(Math.expm1(alignment), 2)),
+        observationMetric("Pendiente EMA50", `${observationSignedNumber(slope, 3)} ATR`),
+        observationMetric("Último precio", priceText(Number(outputs.close))),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-RSI-WILDER-001") {
+    const adjusted = observationNumber(outputs.side_adjusted_centered_rsi);
+    const tone = observationDirectionTone([adjusted], 0.05);
+    return {
+      title,
+      tone,
+      verdict: observationVerdictFromTone(tone, "El momento RSI"),
+      metrics: [
+        observationMetric("RSI 14", observationNumber(outputs.rsi14)?.toFixed(1) || "--"),
+        observationMetric("Sesgo hacia la operación", observationSignedPercent(adjusted)),
+        observationMetric("Centro neutral", "50"),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-ATR-EXTENSION-001") {
+    const extension = observationNumber(outputs.side_adjusted_extension_atr);
+    const tone = extension !== null && extension > 1.5
+      ? "alerta"
+      : observationDirectionTone([extension], 0.1);
+    const verdict = tone === "alerta"
+      ? "El precio avanza en la dirección propuesta, pero ya está muy extendido respecto a EMA20."
+      : observationVerdictFromTone(tone, "La extensión respecto a EMA20");
+    return {
+      title,
+      tone,
+      verdict,
+      metrics: [
+        observationMetric("Extensión direccional", `${observationSignedNumber(extension, 2)} ATR`),
+        observationMetric("ATR 14", priceText(Number(outputs.atr14))),
+        observationMetric("ATR / precio", observationPercent(outputs.atr14_fraction_price, 2)),
+        observationMetric("EMA20", priceText(Number(outputs.ema20))),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-RELATIVE-VOLUME-001") {
+    const relative = observationNumber(outputs.relative_horizon_volume);
+    const percentile = observationNumber(outputs.volume_midrank_60);
+    const activity = relative === null ? "sin dato" : relative >= 1.5 ? "actividad alta" : relative <= 0.65 ? "actividad baja" : "actividad normal";
+    return {
+      title,
+      tone: "contexto",
+      verdict: `El tramo presenta ${activity}; el volumen por sí solo no define LONG o SHORT.`,
+      metrics: [
+        observationMetric("Volumen relativo", observationMultiple(relative)),
+        observationMetric("Percentil histórico", observationPercent(percentile)),
+        observationMetric("Ventanas de referencia", Number(outputs.reference_horizon_count || 0).toFixed(0)),
+        observationMetric("Volumen actual", money(Number(outputs.current_horizon_volume || 0))),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-CVD-SLOPE-001") {
+    const slope = observationNumber(outputs.side_adjusted_normalized_cvd_slope);
+    const terminal = observationNumber(outputs.side_adjusted_terminal_imbalance);
+    const tone = observationDirectionTone([slope, terminal], 0.015);
+    return {
+      title,
+      tone,
+      verdict: observationVerdictFromTone(tone, "La trayectoria del flujo ejecutado"),
+      metrics: [
+        observationMetric("Pendiente CVD ajustada", observationSignedPercent(slope)),
+        observationMetric("Flujo terminal ajustado", observationSignedPercent(terminal)),
+        observationMetric("CVD terminal", money(Number(outputs.terminal_cvd || 0))),
+        observationMetric("Pendiente por periodo", money(Number(outputs.theil_sen_cvd_slope_per_period || 0))),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-ABSORPTION-001") {
+    const flow = observationNumber(outputs.side_adjusted_ATI_H);
+    const displacement = observationNumber(outputs.side_adjusted_horizon_displacement_atr);
+    const tone = observationDirectionTone([flow, displacement], 0.05);
+    return {
+      title,
+      tone,
+      verdict: `${observationVerdictFromTone(tone, "Flujo y desplazamiento")} La mecha opuesta cuantifica posible rechazo o absorción.`,
+      metrics: [
+        observationMetric("Flujo ajustado", observationSignedPercent(flow)),
+        observationMetric("Desplazamiento", `${observationSignedNumber(displacement, 2)} ATR`),
+        observationMetric("Mecha opuesta al flujo", observationPercent(outputs.flow_opposing_wick_ratio)),
+        observationMetric("Volumen relativo", observationMultiple(outputs.relative_horizon_volume)),
+      ],
+    };
+  }
+
+  if (ruleId === "M4-RULE-PRIOR-EXTREMA-001") {
+    const between = Number(outputs.target_extreme_between_entry_and_tp || 0) >= 0.5;
+    return {
+      title,
+      tone: "contexto",
+      verdict: between
+        ? "Existe un extremo previo entre la entrada y el TP; puede actuar como referencia, fricción o zona de reacción."
+        : "No existe un extremo previo confirmado entre la entrada y el TP en este tramo.",
+      metrics: [observationMetric("Extremo en ruta TP", between ? "Sí" : "No")],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001") {
+    const target = observationNumber(outputs.target_path_level_count) || 0;
+    const adverse = observationNumber(outputs.adverse_path_level_count) || 0;
+    return {
+      title,
+      tone: "contexto",
+      verdict: `Se observan ${target.toFixed(0)} niveles en la ruta al TP y ${adverse.toFixed(0)} en la ruta al SL; su efecto todavía debe aprenderse.`,
+      metrics: [
+        observationMetric("Niveles hacia TP", target.toFixed(0)),
+        observationMetric("Niveles hacia SL", adverse.toFixed(0)),
+        observationMetric("Diferencia TP − SL", observationSignedNumber(target - adverse, 0)),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-FIBONACCI-DISTANCE-001") {
+    const tpDistance = observationNumber(outputs["nearest_to_take_profit.absolute_distance_sigma_horizon"]);
+    const slDistance = observationNumber(outputs["nearest_to_stop_loss.absolute_distance_sigma_horizon"]);
+    return {
+      title,
+      tone: "contexto",
+      verdict: "Mide la cercanía de niveles Fibonacci a ambas barreras en unidades de volatilidad; cercanía no equivale todavía a ventaja.",
+      metrics: [
+        observationMetric("Fib más próximo a TP", tpDistance === null ? "--" : `${tpDistance.toFixed(2)} σ`),
+        observationMetric("Fib más próximo a SL", slDistance === null ? "--" : `${slDistance.toFixed(2)} σ`),
+        observationMetric("Diferencia TP − SL", tpDistance === null || slDistance === null ? "--" : `${observationSignedNumber(tpDistance - slDistance, 2)} σ`),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-LIQUIDATION-ZONE-001") {
+    const targetMass = observationNumber(outputs.target_cascade_mass?.within_2pct);
+    const adverseMass = observationNumber(outputs.adverse_cascade_mass?.within_2pct);
+    const ratio = targetMass !== null && adverseMass !== null && adverseMass > 0
+      ? targetMass / adverseMass
+      : null;
+    const tone = ratio === null ? "contexto" : ratio >= 1.25 ? "favorable" : ratio <= 0.8 ? "desfavorable" : "mixto";
+    return {
+      title,
+      tone,
+      verdict: ratio === null
+        ? "No hay masa comparable suficiente a ambos lados para emitir una lectura direccional."
+        : `${observationVerdictFromTone(tone, "La masa agregada del lado objetivo y adverso")} Es una estimación de Hyperliquid a ±2% del precio de referencia, no todo el mercado.`,
+      metrics: [
+        observationMetric("Masa lado objetivo ±2%", targetMass === null ? "--" : money(targetMass)),
+        observationMetric("Masa lado adverso ±2%", adverseMass === null ? "--" : money(adverseMass)),
+        observationMetric("Ratio TP / adversa", observationMultiple(ratio)),
+        observationMetric("Muestra del proveedor", Number(outputs.sample_size || 0).toLocaleString("es-ES")),
+      ],
+    };
+  }
+
+  if (ruleId === "LIB-CAND-ORDERBOOK-IMBALANCE-001") {
+    const book = observationNumber(outputs.persistence?.top_20?.side_adjusted_mean);
+    const flow = observationNumber(outputs.executed_flow?.side_adjusted_executed_flow_imbalance);
+    const walls = Array.isArray(outputs.walls?.current_candidates) ? outputs.walls.current_candidates : [];
+    const favorableWalls = walls.filter((item) => item.relationship_to_trade === "favorable").length;
+    const adverseWalls = walls.filter((item) => item.relationship_to_trade === "adverse").length;
+    const wallSignal = walls.length ? (favorableWalls - adverseWalls) / walls.length : 0;
+    const favorableAbsorption = observationNumber(outputs.absorption?.favorable_absorption_score) || 0;
+    const adverseAbsorption = observationNumber(outputs.absorption?.adverse_absorption_score) || 0;
+    const absorptionSignal = favorableAbsorption - adverseAbsorption;
+    const tone = observationDirectionTone([book, flow, wallSignal, absorptionSignal], 0.025);
+    return {
+      title,
+      tone,
+      verdict: `${observationVerdictFromTone(tone, "Libro persistente, flujo y paredes")} Las retiradas no ejecutadas sólo son posibles cancelaciones.`,
+      metrics: [
+        observationMetric("Desequilibrio persistente", observationSignedPercent(book)),
+        observationMetric("Flujo ejecutado ajustado", observationSignedPercent(flow)),
+        observationMetric("Paredes favorables / adversas", `${favorableWalls} / ${adverseWalls}`),
+        observationMetric("Retirada no explicada", observationPercent(outputs.change_activity?.unmatched_removal_fraction)),
+        observationMetric("Absorción favorable / adversa", `${favorableAbsorption.toFixed(2)} / ${adverseAbsorption.toFixed(2)}`),
+        observationMetric("Cambios de signo", Number(outputs.persistence?.top_20?.sign_flip_count || 0).toFixed(0)),
+      ],
+    };
+  }
+
+  const scalarRows = flattenObservationalValues(outputs).slice(0, 4);
+  return {
+    title,
+    tone: "contexto",
+    verdict: "La regla produjo medidas válidas, pero todavía no existe una traducción direccional calibrada.",
+    metrics: scalarRows.map(([label, value]) => observationMetric(label, value)),
+  };
+}
+
+function observationalTechnicalLabel(path) {
+  const key = String(path).split(".").at(-1);
+  return OBSERVATIONAL_TECHNICAL_LABELS[key] || String(path).replaceAll("_", " ");
+}
+
+function observationalTechnicalValue(value) {
+  if (value === null || value === undefined) {
+    return "n/d";
+  }
+  if (typeof value === "boolean") {
+    return value ? "sí" : "no";
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      return "n/d";
+    }
+    const absolute = Math.abs(value);
+    if (Number.isInteger(value)) {
+      return value.toLocaleString("es-ES");
+    }
+    if (absolute >= 1000) {
+      return value.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+    }
+    if (absolute < 0.0001 && absolute > 0) {
+      return value.toExponential(3);
+    }
+    return value.toLocaleString("es-ES", { maximumFractionDigits: 6 });
+  }
+  return String(value);
+}
+
+function flattenObservationalValues(value, prefix = "", depth = 0, rows = []) {
+  if (rows.length >= 36) {
+    return rows;
+  }
+  if (Array.isArray(value)) {
+    rows.push([observationalTechnicalLabel(prefix || "elementos"), `${value.length} elementos`]);
+    return rows;
+  }
+  if (value && typeof value === "object" && depth < 4) {
+    for (const [key, nested] of Object.entries(value)) {
+      if (String(key).includes("sha256")) {
+        continue;
+      }
+      const path = prefix ? `${prefix}.${key}` : key;
+      flattenObservationalValues(nested, path, depth + 1, rows);
+      if (rows.length >= 36) {
+        break;
+      }
+    }
+    return rows;
+  }
+  rows.push([observationalTechnicalLabel(prefix || "valor"), observationalTechnicalValue(value)]);
+  return rows;
+}
+
+function isObservationalRuleTrace(trace) {
+  if (!trace || typeof trace !== "object" || !trace.rule_id) {
+    return false;
+  }
+  const effect = String(trace.probability_effect || "").toLowerCase();
+  return effect !== "analog_distance_input"
+    && effect !== "baseline_input"
+    && effect !== "provisional_rule_contribution";
+}
+
+function observationalRuleSort(left, right) {
+  const leftIndex = OBSERVATIONAL_RULE_ORDER.indexOf(String(left.rule_id));
+  const rightIndex = OBSERVATIONAL_RULE_ORDER.indexOf(String(right.rule_id));
+  const safeLeft = leftIndex < 0 ? OBSERVATIONAL_RULE_ORDER.length : leftIndex;
+  const safeRight = rightIndex < 0 ? OBSERVATIONAL_RULE_ORDER.length : rightIndex;
+  return safeLeft - safeRight || String(left.rule_id).localeCompare(String(right.rule_id));
+}
+
+function renderObservationalTechnicalDetails(trace) {
+  const rows = flattenObservationalValues(trace.outputs || {});
+  if (!rows.length) {
+    return "";
+  }
+  return `
+    <details class="observational-technical">
+      <summary>Ver todos los valores técnicos (${rows.length})</summary>
+      <dl>
+        ${rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join("")}
+      </dl>
+    </details>
+  `;
+}
+
+function renderObservationalRuleCard(trace, analysis) {
+  const view = observationRuleView(trace, analysis);
+  const inputs = trace.inputs && typeof trace.inputs === "object" ? trace.inputs : {};
+  const qualityParts = [
+    inputs.sample_count != null ? `${inputs.sample_count} muestras` : "",
+    inputs.window_observed_seconds != null ? `${Number(inputs.window_observed_seconds).toFixed(1)} s observados` : "",
+    trace.time_horizon_relevance === "primary_microstructure" ? "microestructura principal" : "",
+    trace.time_horizon_relevance === "prospective_context_only" ? "sólo contexto prospectivo" : "",
+  ].filter(Boolean);
+  return `
+    <article class="observational-rule-card ${escapeHtml(view.tone)}">
+      <div class="observational-rule-head">
+        <div>
+          <strong>${escapeHtml(view.title)}</strong>
+          <code>${escapeHtml(String(trace.rule_id))}</code>
+        </div>
+        <span class="observational-tone">${escapeHtml(observationToneLabel(view.tone))}</span>
+      </div>
+      <p>${escapeHtml(view.verdict)}</p>
+      ${view.metrics.length ? `
+        <div class="observational-metrics">
+          ${view.metrics.filter(Boolean).map((metric) => `
+            <div class="observational-metric">
+              <span>${escapeHtml(metric.label)}</span>
+              <b>${escapeHtml(metric.value)}</b>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      <div class="observational-quality">
+        ${escapeHtml(qualityParts.join(" · ") || String(trace.status || "evaluada"))} · Sin peso probabilístico
+      </div>
+      ${renderObservationalTechnicalDetails(trace)}
+    </article>
+  `;
+}
+
+function renderObservationalRules(analysis) {
+  if (!elements.observationalRulesPanel) {
+    return;
+  }
+  const stagePayload = analysis?.snapshot?.stage_rule_traces || analysis?.stage_rule_traces;
+  if (!stagePayload || typeof stagePayload !== "object") {
+    elements.observationalRulesPanel.innerHTML = "";
+    return;
+  }
+  const groups = Object.entries(stagePayload)
+    .map(([stage, traces]) => ({
+      stage,
+      traces: Array.isArray(traces)
+        ? traces.filter(isObservationalRuleTrace).sort(observationalRuleSort)
+        : [],
+    }))
+    .filter((group) => group.traces.length);
+  if (!groups.length) {
+    elements.observationalRulesPanel.innerHTML = "";
+    return;
+  }
+  const selectedHorizon = String(analysis.time_horizon || analysis.snapshot?.time_horizon || "intraday_short");
+  const total = groups.reduce((sum, group) => sum + group.traces.length, 0);
+  const evaluated = groups.reduce(
+    (sum, group) => sum + group.traces.filter((trace) => Object.keys(trace.outputs || {}).length).length,
+    0,
+  );
+  elements.observationalRulesPanel.innerHTML = `
+    <section class="observational-rules-shell">
+      <div class="observational-rules-head">
+        <span>Reglas observacionales</span>
+        <strong>Qué dicen cuantitativamente las reglas que todavía no puntúan</strong>
+        <p>${evaluated} de ${total} lecturas disponibles. No intervienen en los porcentajes mostrados: se enseñan para entender la operación y acumular evidencia antes de autorizar cualquier peso.</p>
+      </div>
+      ${groups.map((group) => {
+        const open = group.stage === selectedHorizon ? " open" : "";
+        const available = group.traces.filter((trace) => Object.keys(trace.outputs || {}).length).length;
+        return `
+          <details class="observational-stage"${open}>
+            <summary>
+              <strong>${escapeHtml(timeHorizonLabel(group.stage))}</strong>
+              <span>${available}/${group.traces.length} evaluadas</span>
+            </summary>
+            <p class="observational-stage-note">Las etiquetas expresan el signo de la medida respecto a la operación, no una probabilidad de éxito.</p>
+            <div class="observational-rule-grid">
+              ${group.traces.map((trace) => renderObservationalRuleCard(trace, analysis)).join("")}
+            </div>
+          </details>
+        `;
+      }).join("")}
+    </section>
+  `;
+}
+
 function biasLabel(bias) {
   return {
     favorable: "A favor",
@@ -1836,6 +2388,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   elements.parameterAdvice.innerHTML = "";
   elements.analysisInterpretation.innerHTML = "";
   elements.explainedMetrics.innerHTML = "";
+  elements.observationalRulesPanel.innerHTML = "";
     elements.dataSourcesBox.innerHTML = "";
     elements.analysisReasons.innerHTML = "";
     return;
@@ -1874,6 +2427,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   renderParameterAdvice(analysis.parameter_advice || {});
   renderAnalysisInterpretation(analysis, analysis.explained_metrics || []);
   renderExplainedMetrics(analysis.explained_metrics || [], analysis);
+  renderObservationalRules(analysis);
   renderDataSources(analysis.snapshot?.availability || {}, analysis.snapshot?.source || {});
   elements.analysisReasons.innerHTML = "";
   for (const reason of [...(analysis.reasons || []), ...(analysis.alerts || [])]) {

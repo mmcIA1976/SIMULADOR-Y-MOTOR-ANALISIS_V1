@@ -1739,6 +1739,243 @@ button:hover {
   background: #9aa59a;
 }
 
+.observational-rules-panel {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 14px;
+}
+
+.observational-rules-panel:empty {
+  display: none;
+}
+
+.observational-rules-shell {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(100, 79, 148, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(100, 79, 148, 0.08), rgba(255, 255, 255, 0.98));
+  padding: 18px;
+}
+
+.observational-rules-head {
+  display: grid;
+  gap: 6px;
+}
+
+.observational-rules-head > span {
+  color: #645094;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.observational-rules-head strong {
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+}
+
+.observational-rules-head p,
+.observational-stage-note,
+.observational-rule-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.observational-stage {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.observational-stage > summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 13px 15px;
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.observational-stage > summary span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.observational-stage[open] > summary {
+  border-bottom: 1px solid var(--line);
+  background: rgba(100, 79, 148, 0.055);
+}
+
+.observational-stage-note {
+  padding: 12px 15px 0;
+  font-size: 0.84rem;
+}
+
+.observational-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.observational-rule-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--price);
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.observational-rule-card.favorable {
+  border-top-color: var(--target);
+}
+
+.observational-rule-card.desfavorable {
+  border-top-color: var(--risk);
+}
+
+.observational-rule-card.alerta {
+  border-top-color: var(--accent);
+}
+
+.observational-rule-card.mixto {
+  border-top-color: #645094;
+}
+
+.observational-rule-card.bloqueada {
+  border-top-color: #9aa59a;
+  background: #f7f8f5;
+}
+
+.observational-rule-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.observational-rule-head div {
+  min-width: 0;
+}
+
+.observational-rule-head strong {
+  display: block;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.observational-rule-head code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.observational-tone {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(31, 122, 140, 0.1);
+  padding: 5px 8px;
+  color: var(--price);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.observational-rule-card.favorable .observational-tone {
+  background: rgba(31, 157, 104, 0.12);
+  color: var(--target);
+}
+
+.observational-rule-card.desfavorable .observational-tone {
+  background: rgba(214, 75, 75, 0.11);
+  color: var(--risk);
+}
+
+.observational-rule-card.alerta .observational-tone {
+  background: rgba(197, 138, 43, 0.14);
+  color: #9a6500;
+}
+
+.observational-rule-card.mixto .observational-tone {
+  background: rgba(100, 79, 148, 0.12);
+  color: #645094;
+}
+
+.observational-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.observational-metric {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcf9;
+  padding: 9px 10px;
+}
+
+.observational-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.observational-metric b {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.observational-quality {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.observational-technical summary {
+  cursor: pointer;
+  color: #645094;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.observational-technical dl {
+  display: grid;
+  grid-template-columns: minmax(130px, 1.2fr) minmax(90px, 1fr);
+  gap: 5px 10px;
+  margin: 9px 0 0;
+  font-size: 0.72rem;
+}
+
+.observational-technical dt {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.observational-technical dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--ink);
+  font-weight: 750;
+  text-align: right;
+}
+
 .stage-probability-bar {
   display: flex;
   overflow: hidden;
@@ -2745,6 +2982,9 @@ select.field-error {
   .interpretation-summary-grid,
   .prob-grid,
   .metric-explain-grid,
+  .observational-rule-grid,
+  .observational-metrics,
+  .observational-technical dl,
   .contest-summary-grid,
   .exit-evidence-grid,
   .market-metrics,
@@ -2754,6 +2994,15 @@ select.field-error {
   .evidence-item {
     grid-template-columns: 1fr !important;
     gap: 10px;
+  }
+  .observational-rules-shell {
+    padding: 13px;
+  }
+  .observational-rule-grid {
+    padding: 11px;
+  }
+  .observational-technical dd {
+    text-align: left;
   }
   /* Segmented toggles (Entrenamiento/Concurso) keep 2 cols but stretch */
   .segmented {

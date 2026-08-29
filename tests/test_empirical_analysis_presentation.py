@@ -38,8 +38,8 @@ class EmpiricalAnalysisPresentationTests(unittest.TestCase):
         self.assertIn('${source ? `<span class="explain-source">', self.javascript)
 
     def test_assets_are_cache_busted_for_new_panel(self) -> None:
-        self.assertIn("/static/app.js?v=20260819-explained-analysis-blocks", self.index_html)
-        self.assertIn("/static/styles.css?v=20260815-empirical-analysis-panel", self.index_html)
+        self.assertIn("/static/app.js?v=20260829-observational-rule-readings", self.index_html)
+        self.assertIn("/static/styles.css?v=20260829-observational-rule-readings", self.index_html)
 
 
 if __name__ == "__main__":

@@ -81,6 +81,15 @@ class AnalysisSourceAvailabilityTests(unittest.TestCase):
         self.assertIn('order_book_dynamics: "Dinámica del libro"', javascript)
         self.assertIn('multiscale_6h: "Tramo 24 h-7 d · 6h"', javascript)
 
+    def test_frontend_repairs_historical_metadata_from_stored_rule_traces(self):
+        project_dir = Path(__file__).resolve().parents[1]
+        javascript = (project_dir / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("function resolveDataAvailability(analysis)", javascript)
+        self.assertIn('ruleAvailableInEveryStage("LIB-CAND-FIBONACCI-DISTANCE-001")', javascript)
+        self.assertIn('ruleAvailableInEveryStage("LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001")', javascript)
+        self.assertIn("renderDataSources(resolveDataAvailability(analysis)", javascript)
+
 
 if __name__ == "__main__":
     unittest.main()

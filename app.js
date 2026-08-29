@@ -2428,7 +2428,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   renderAnalysisInterpretation(analysis, analysis.explained_metrics || []);
   renderExplainedMetrics(analysis.explained_metrics || [], analysis);
   renderObservationalRules(analysis);
-  renderDataSources(analysis.snapshot?.availability || {}, analysis.snapshot?.source || {});
+  renderDataSources(resolveDataAvailability(analysis), analysis.snapshot?.source || {});
   elements.analysisReasons.innerHTML = "";
   for (const reason of [...(analysis.reasons || []), ...(analysis.alerts || [])]) {
     const item = document.createElement("li");
@@ -2885,6 +2885,39 @@ function updateAnalysisFullVisibility(hasAnalysis = true) {
   elements.analysisToggle.textContent = fullAnalysisOpen ? "Ocultar analisis completo" : "Ver analisis completo";
   elements.analysisFull.classList.toggle("hidden", !hasAnalysis || !fullAnalysisOpen);
   document.querySelector("#analysisResult")?.classList.toggle("analysis-expanded", fullAnalysisOpen);
+}
+
+function resolveDataAvailability(analysis) {
+  const declared = { ...(analysis?.snapshot?.availability || {}) };
+  const stagePayload = analysis?.snapshot?.stage_rule_traces || analysis?.stage_rule_traces;
+  if (!stagePayload || typeof stagePayload !== "object") {
+    return declared;
+  }
+  const stages = Object.keys(stagePayload).filter((stage) => Array.isArray(stagePayload[stage]));
+  if (!stages.length) {
+    return declared;
+  }
+  const availableStatuses = new Set(["evaluated", "evaluated_shadow", "partially_evaluated_shadow"]);
+  const ruleAvailableInEveryStage = (ruleId) => stages.every((stage) =>
+    stagePayload[stage].some((trace) =>
+      trace?.rule_id === ruleId
+      && availableStatuses.has(trace?.status)
+      && trace?.outputs
+      && typeof trace.outputs === "object"
+      && Object.keys(trace.outputs).length > 0
+    )
+  );
+  const entry = Number(analysis?.snapshot?.entry);
+  return {
+    ...declared,
+    futures_price: Number.isFinite(entry) && entry > 0,
+    futures_klines: true,
+    multiscale_5m: stages.includes("intraday_short"),
+    multiscale_1h: stages.includes("intraday_wide"),
+    multiscale_6h: stages.includes("short_swing"),
+    fibonacci: ruleAvailableInEveryStage("LIB-CAND-FIBONACCI-DISTANCE-001"),
+    structural_levels: ruleAvailableInEveryStage("LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"),
+  };
 }
 
 function renderDataSources(availability, sources) {

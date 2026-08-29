@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 import market_data
 import data_engine
+import liquidation_data
 from analysis_engine import TradeProposal, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import close_pool, connect, init_db, row_to_dict
@@ -5551,9 +5552,14 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
             analyze_limit_trade(
                 proposal,
                 price_loader=worker_market_price_loader,
+                context_loader=liquidation_data.get_liquidation_context,
             )
             if entry_type == "pending"
-            else analyze_trade(proposal)
+            else analyze_trade(
+                proposal,
+                context_loader=liquidation_data.get_liquidation_context,
+                context_market_price=float(proposal.entry),
+            )
         )
     except LimitProductionAnalysisError as exc:
         record_failed_analysis_attempt(

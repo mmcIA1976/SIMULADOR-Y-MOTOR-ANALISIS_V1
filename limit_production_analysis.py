@@ -66,6 +66,7 @@ def analyze_limit_trade(
     *,
     price_loader: Callable[..., float] = market_data.get_price,
     conditional_analyzer: Callable[..., dict] = analyze_trade,
+    context_loader: Callable[..., dict] | None = None,
 ) -> dict:
     if str(getattr(proposal, "entry_type", "market")).lower() != "pending":
         raise LimitProductionAnalysisError(
@@ -104,6 +105,7 @@ def analyze_limit_trade(
     try:
         conditional_result = conditional_analyzer(
             conditional_proposal,
+            context_loader=context_loader,
             context_market_price=current_price,
             include_internal_runtime=True,
         )

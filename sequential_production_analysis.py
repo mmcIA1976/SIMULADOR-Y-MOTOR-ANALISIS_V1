@@ -5,6 +5,10 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 import market_data
+from liquidation_rule_runtime import (
+    RULE_ID as LIQUIDATION_RULE_ID,
+    evaluate_liquidation_rule_family,
+)
 from multiscale_feature_runtime import STAGE_ORDER, STAGE_PROFILES
 from sequential_production_runtime import build_production_probability_run
 from empirical_temporal_engine import (
@@ -81,6 +85,100 @@ def _geometry(proposal: Any) -> dict:
         "tp_distance_pct": tp_move * 100.0,
         "sl_distance_pct": sl_move * 100.0,
     }
+
+
+def attach_liquidation_observation(
+    run: dict,
+    proposal: Any,
+    *,
+    context_loader: Callable[..., dict] | None,
+    context_market_price: float | None,
+    analysis_at: str,
+) -> tuple[dict, dict]:
+    """Attach one compact, probability-neutral heatmap trace per stage.
+
+    The provider is queried once.  Its immutable pre-trade observation is then
+    interpreted against each cumulative horizon using that stage's volatility.
+    Missing, stale and unsupported observations remain explicit blocked traces
+    and never block or alter the served empirical probabilities.
+    """
+    try:
+        market_price = float(context_market_price)
+    except (TypeError, ValueError, OverflowError):
+        market_price = float(proposal.entry)
+    if not math.isfinite(market_price) or market_price <= 0:
+        market_price = float(proposal.entry)
+
+    provider_requested = context_loader is not None
+    if context_loader is None:
+        context = {
+            "available": False,
+            "status": "not_configured",
+            "reason": "liquidation_context_loader_not_configured",
+        }
+    else:
+        try:
+            loaded = context_loader(
+                str(proposal.symbol).upper(),
+                market_price,
+            )
+            context = loaded if isinstance(loaded, dict) else {
+                "available": False,
+                "status": "unavailable",
+                "reason": "invalid_liquidation_context_payload",
+            }
+        except Exception as exc:
+            context = {
+                "available": False,
+                "status": "unavailable",
+                "reason": "liquidation_context_request_failed",
+                "error_type": type(exc).__name__,
+            }
+
+    live_context = {"liquidation_context": context}
+    stage_contexts = run.get("stage_contexts") or {}
+    stage_order = list(
+        (run.get("details") or {}).get("stage_order")
+        or stage_contexts
+    )
+    traces_by_stage = run.setdefault("stage_rule_traces", {})
+    statuses = {}
+    for horizon in stage_order:
+        stage_context = stage_contexts.get(horizon) or {}
+        result = evaluate_liquidation_rule_family(
+            live_context,
+            side=str(proposal.side).lower(),
+            entry=float(proposal.entry),
+            take_profit=float(proposal.take_profit),
+            stop_loss=float(proposal.stop_loss),
+            sigma_horizon=stage_context.get("context_sigma"),
+            analysis_at=analysis_at,
+            include_cluster_details=False,
+        )
+        trace = result["traces"][0]
+        traces_by_stage.setdefault(horizon, []).append(trace)
+        statuses[horizon] = trace.get("status")
+
+    available = any(status == "evaluated_shadow" for status in statuses.values())
+    summary = {
+        "contract_version": "liquidation-observation-v0.1",
+        "rule_id": LIQUIDATION_RULE_ID,
+        "status": "evaluated_observation" if available else "unavailable_observation",
+        "available": available,
+        "provider": context.get("provider"),
+        "scope": context.get("scope"),
+        "provider_status": context.get("status"),
+        "provider_reason": context.get("reason"),
+        "as_of": context.get("as_of"),
+        "age_seconds": context.get("age_seconds"),
+        "supported_provider_symbols": ["BTC", "ETH", "SOL"],
+        "provider_query_count": 1 if provider_requested else 0,
+        "queried_once": provider_requested,
+        "stored_payload": "compact_rule_outputs_without_cluster_arrays",
+        "stage_statuses": statuses,
+        "probability_effect": "none_observation_only",
+    }
+    return live_context, summary
 
 
 def _temporal_profile(time_horizon: str, artifact: dict, stages: list[str]) -> dict:
@@ -168,7 +266,6 @@ def analyze_trade(
     include_internal_runtime: bool = False,
     effective_analysis_at: datetime | None = None,
 ) -> dict:
-    del context_loader, context_market_price
     if str(getattr(proposal, "entry_type", "market")).lower() != "market":
         raise NewEngineAnalysisError("market_entry_required")
     time_horizon = str(proposal.time_horizon)
@@ -213,6 +310,13 @@ def analyze_trade(
         "executed_analysis_engines"
     ) != [ENGINE_VERSION]:
         raise NewEngineAnalysisError("single_engine_runtime_contract_violated")
+    live_context, liquidation_observation = attach_liquidation_observation(
+        run,
+        proposal,
+        context_loader=context_loader,
+        context_market_price=context_market_price,
+        analysis_at=snapshot["analysis_at"],
+    )
     probability_result = run["probability_result"]
     classes = probability_result["probabilities"]
     probabilities = {
@@ -238,13 +342,18 @@ def analyze_trade(
                 "multiscale_6h": "short_swing" in stages,
                 "fibonacci": False,
                 "structural_levels": False,
-                "liquidation_heatmap": False,
+                "liquidation_heatmap": liquidation_observation["available"],
             },
             "source": {
                 "probability_market_data": (
                     "Binance USD-M closed 5m/1h/6h klines according to stage"
                 ),
                 "probability_model": ENGINE_VERSION,
+                "liquidation_observation": (
+                    liquidation_observation.get("provider")
+                    or liquidation_observation.get("provider_reason")
+                    or "unavailable"
+                ),
             },
             "new_engine_only": True,
             "legacy_engine_executed": False,
@@ -252,6 +361,7 @@ def analyze_trade(
             "executed_analysis_engines": [ENGINE_VERSION],
             "stage_contexts": run["stage_contexts"],
             "stage_rule_traces": run["stage_rule_traces"],
+            "liquidation_observation": liquidation_observation,
             "probability_trace": probability_result,
             "temporal_profile": temporal_profile,
             "decision_probabilities": decision_probabilities,
@@ -301,7 +411,7 @@ def analyze_trade(
         "alerts": [
             "La estimación expresa frecuencia histórica condicionada, no certeza futura.",
             HORIZON_VALIDATION_NOTES[time_horizon],
-            "Fibonacci, niveles estructurales y liquidaciones no puntúan en v0.9 porque no superaron todavía el contrato histórico exigido.",
+            "El mapa de liquidaciones se registra como observación y no altera las probabilidades v0.9; Fibonacci y niveles estructurales tampoco puntúan.",
             "La probabilidad no incorpora costes ni garantiza rentabilidad.",
         ],
         "plain_summary": (
@@ -333,7 +443,10 @@ def analyze_trade(
         },
     }
     if include_internal_runtime:
-        result["_internal_runtime"] = {"run": run, "live_context": {}}
+        result["_internal_runtime"] = {
+            "run": run,
+            "live_context": live_context,
+        }
     return result
 
 
@@ -341,5 +454,6 @@ __all__ = (
     "ENGINE_FAMILY",
     "HORIZON_LABELS",
     "NewEngineAnalysisError",
+    "attach_liquidation_observation",
     "analyze_trade",
 )

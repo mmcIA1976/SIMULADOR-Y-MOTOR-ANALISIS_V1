@@ -136,6 +136,7 @@ def evaluate_liquidation_zone(
     stop_loss: float,
     sigma_horizon: float,
     analysis_at: str,
+    include_cluster_details: bool = True,
 ) -> dict:
     context = (live_context or {}).get("liquidation_context") or {}
     normalized_side = str(side).lower()
@@ -288,8 +289,6 @@ def evaluate_liquidation_zone(
         "target_path_visible_notional_usd": target_mass,
         "adverse_path_visible_notional_usd": adverse_mass,
         "target_visible_path_mass_fraction": target_fraction,
-        "target_path_clusters": target_path,
-        "adverse_path_clusters": adverse_path,
         "nearest_target_path_cluster_to_tp": nearest(target_path),
         "nearest_adverse_path_cluster_to_sl": nearest(adverse_path),
         "target_cascade_mass": target_cascade,
@@ -300,6 +299,9 @@ def evaluate_liquidation_zone(
         "net_oi_skew": context.get("net_oi_skew"),
         "crowd_leverage": context.get("crowd_leverage"),
     }
+    if include_cluster_details:
+        outputs["target_path_clusters"] = target_path
+        outputs["adverse_path_clusters"] = adverse_path
     return _trace(
         inputs=inputs,
         outputs=outputs,
@@ -319,6 +321,7 @@ def evaluate_liquidation_rule_family(
     stop_loss: float,
     sigma_horizon: float,
     analysis_at: str,
+    include_cluster_details: bool = True,
 ) -> dict:
     trace = evaluate_liquidation_zone(
         live_context,
@@ -328,6 +331,7 @@ def evaluate_liquidation_rule_family(
         stop_loss=stop_loss,
         sigma_horizon=sigma_horizon,
         analysis_at=analysis_at,
+        include_cluster_details=include_cluster_details,
     )
     payload = {
         "runtime_version": RUNTIME_VERSION,

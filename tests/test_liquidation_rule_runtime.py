@@ -139,6 +139,36 @@ class LiquidationRuleRuntimeTests(unittest.TestCase):
             4_000_000,
         )
 
+    def test_compact_observation_omits_cluster_arrays_but_keeps_evidence(
+        self,
+    ) -> None:
+        result = evaluate_liquidation_rule_family(
+            available_context(),
+            side="long",
+            entry=100,
+            take_profit=103,
+            stop_loss=97,
+            sigma_horizon=0.02,
+            analysis_at=ANALYSIS_AT,
+            include_cluster_details=False,
+        )
+
+        trace = result["traces"][0]
+        outputs = trace["outputs"]
+        self.assertNotIn("target_path_clusters", outputs)
+        self.assertNotIn("adverse_path_clusters", outputs)
+        self.assertEqual(outputs["target_path_cluster_count"], 1)
+        self.assertEqual(outputs["adverse_path_cluster_count"], 1)
+        self.assertEqual(
+            outputs["nearest_target_path_cluster_to_tp"]["price"],
+            102.0,
+        )
+        self.assertEqual(
+            trace["probability_effect"],
+            "none_shadow_observation",
+        )
+        self.assertTrue(trace["trace_sha256"])
+
     def test_unavailable_provider_blocks_without_using_stale_clusters(
         self,
     ) -> None:

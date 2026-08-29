@@ -92,6 +92,14 @@ Al arrancar, el worker reconcilia por defecto los ultimos siete dias de velas
 de los simbolos activos. En ciclos normales solo relee el intervalo reciente
 con dos minutos de superposicion, sin guardar esas velas en Supabase.
 
+El mismo worker mantiene una ventana movil compacta del libro de ordenes para
+los simbolos activos o visibles. Compara depth de 100 niveles con `aggTrades`,
+mide persistencia, cambios de signo, paredes, velocidad de modificacion y
+absorcion. Los depth y trades crudos permanecen solo en memoria. Supabase
+recibe cada 30 segundos como maximo una unica fila reemplazable por simbolo en
+`order_book_observation_state`; estas observaciones nunca alteran por si solas
+las probabilidades de produccion.
+
 Transicion recomendada:
 
 1. Desplegar el worker con `OPERATION_WORKER_DRY_RUN=true` y

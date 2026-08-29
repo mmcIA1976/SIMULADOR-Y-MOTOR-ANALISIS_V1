@@ -3,14 +3,14 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.34.1-liquidation-observation"
-APP_SEMVER = "0.34.1"
+APP_VERSION = "app-v0.35.0-order-book-dynamics-observation"
+APP_SEMVER = "0.35.0"
 ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
 SCORING_VERSION = "historical-analog-first-touch-v0.9"
 LEARNING_EVALUATOR_VERSION = "learning-v0.15-v09-rule-traces"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.19-analysis-attempts"
-DATA_SOURCE_VERSION = "data-sources-v0.27-liquidation-observation"
-DATA_CONTRACT_VERSION = "data-contract-v0.28-liquidation-rule-trace"
+DATA_SOURCE_VERSION = "data-sources-v0.28-worker-order-book-dynamics"
+DATA_CONTRACT_VERSION = "data-contract-v0.29-order-book-dynamics-traces"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.3-terminal-confirmed-boundaries"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"

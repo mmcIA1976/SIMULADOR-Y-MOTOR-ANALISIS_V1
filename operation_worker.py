@@ -7,7 +7,7 @@ import signal
 import threading
 import time
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
 
@@ -27,6 +27,11 @@ from market_price_state import (
     ensure_market_price_state_table,
     publish_market_prices,
     watched_market_symbols,
+)
+from order_book_observation import OrderBookObservationTracker
+from order_book_observation_state import (
+    ensure_order_book_observation_state_table,
+    publish_order_book_observations,
 )
 from operation_worker_status import ensure_worker_status_table, upsert_worker_status
 from versioning import APP_VERSION, ENGINE_VERSION
@@ -73,6 +78,9 @@ class WorkerSettings:
     recent_max_kline_pages: int = 2
     persist_exit_window: bool = False
     dry_run: bool = False
+    order_book_observation_enabled: bool = False
+    order_book_window_seconds: int = 60
+    order_book_publish_seconds: int = 30
 
     @classmethod
     def from_env(cls) -> "WorkerSettings":
@@ -86,6 +94,20 @@ class WorkerSettings:
             recent_max_kline_pages=env_int("OPERATION_WORKER_RECENT_MAX_KLINE_PAGES", 2, 1),
             persist_exit_window=env_bool("OPERATION_WORKER_PERSIST_EXIT_WINDOW", False),
             dry_run=env_bool("OPERATION_WORKER_DRY_RUN", True),
+            order_book_observation_enabled=env_bool(
+                "ORDER_BOOK_OBSERVATION_ENABLED",
+                True,
+            ),
+            order_book_window_seconds=env_int(
+                "ORDER_BOOK_OBSERVATION_WINDOW_SECONDS",
+                60,
+                20,
+            ),
+            order_book_publish_seconds=env_int(
+                "ORDER_BOOK_OBSERVATION_PUBLISH_SECONDS",
+                30,
+                10,
+            ),
         )
 
 
@@ -93,6 +115,11 @@ class WorkerSettings:
 class WorkerState:
     last_reconcile_ms: int | None = None
     cycles: int = 0
+    order_book_tracker: OrderBookObservationTracker = field(
+        default_factory=OrderBookObservationTracker
+    )
+    order_book_last_publish_ms: dict[str, int] = field(default_factory=dict)
+    order_book_last_published_status: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -105,6 +132,8 @@ class SymbolMarketInput:
 ConnectFactory = Callable[[], AbstractContextManager]
 PriceLoader = Callable[[str], float]
 KlineLoader = Callable[..., list[list]]
+DepthLoader = Callable[..., dict]
+TradeLoader = Callable[..., list[dict]]
 
 
 def utc_now_ms() -> int:
@@ -280,6 +309,51 @@ def collect_market_inputs(
     return inputs, reconcile_due, failures, price_snapshot
 
 
+def collect_order_book_observations(
+    state: WorkerState,
+    symbols: set[str],
+    now_ms: int,
+    *,
+    depth_loader: DepthLoader = market_data.get_depth,
+    trade_loader: TradeLoader = market_data.get_agg_trades,
+) -> tuple[dict[str, dict], int]:
+    observations: dict[str, dict] = {}
+    failures = 0
+    for symbol in sorted(symbols):
+        try:
+            depth = depth_loader(symbol, 100)
+            try:
+                observation_capture_ms = int(
+                    depth.get("receivedAt") or now_ms
+                )
+            except (AttributeError, TypeError, ValueError, OverflowError):
+                observation_capture_ms = int(now_ms)
+            trade_start = state.order_book_tracker.trade_start_time_ms(
+                symbol,
+                observation_capture_ms,
+            )
+            trades = trade_loader(
+                symbol,
+                1000,
+                start_time_ms=trade_start,
+                end_time_ms=observation_capture_ms,
+            )
+            observations[symbol] = state.order_book_tracker.observe(
+                symbol,
+                depth,
+                trades,
+                captured_at_ms=observation_capture_ms,
+            )
+        except Exception as exc:
+            failures += 1
+            log_event(
+                "worker_order_book_observation_failed",
+                symbol=symbol,
+                error=str(exc),
+            )
+    return observations, failures
+
+
 def run_worker_cycle(
     state: WorkerState,
     settings: WorkerSettings,
@@ -287,6 +361,8 @@ def run_worker_cycle(
     connect_factory: ConnectFactory = connect,
     price_loader: PriceLoader = market_data.get_price,
     kline_loader: KlineLoader = get_operation_klines_1m,
+    depth_loader: DepthLoader = market_data.get_depth,
+    trade_loader: TradeLoader = market_data.get_agg_trades,
     now_ms: int | None = None,
 ) -> dict:
     """Process one cycle; quotes replace state instead of appending history."""
@@ -302,11 +378,25 @@ def run_worker_cycle(
         price_loader=price_loader,
         kline_loader=kline_loader,
     )
+    order_book_observations: dict[str, dict] = {}
+    order_book_observation_failures = 0
+    if settings.order_book_observation_enabled and price_snapshot:
+        (
+            order_book_observations,
+            order_book_observation_failures,
+        ) = collect_order_book_observations(
+            state,
+            set(price_snapshot),
+            cycle_started_ms,
+            depth_loader=depth_loader,
+            trade_loader=trade_loader,
+        )
 
     activated: list[dict] = []
     closed: list[dict] = []
     finalized: list[dict] = []
     published_price_states = 0
+    published_order_book_states = 0
     if not settings.dry_run:
         if price_snapshot:
             try:
@@ -323,6 +413,35 @@ def run_worker_cycle(
             except Exception as exc:
                 failures += 1
                 log_event("worker_market_price_publish_failed", error=str(exc))
+        due_order_book = {
+            symbol: observation
+            for symbol, observation in order_book_observations.items()
+            if (
+                symbol not in state.order_book_last_publish_ms
+                or str(observation.get("status"))
+                != state.order_book_last_published_status.get(symbol)
+                or cycle_started_ms - state.order_book_last_publish_ms[symbol]
+                >= int(settings.order_book_publish_seconds * 1000)
+            )
+        }
+        if due_order_book:
+            try:
+                with connect_factory() as db:
+                    published_order_book_states = publish_order_book_observations(
+                        db,
+                        due_order_book,
+                    )
+                for symbol in due_order_book:
+                    state.order_book_last_publish_ms[symbol] = cycle_started_ms
+                    state.order_book_last_published_status[symbol] = str(
+                        due_order_book[symbol].get("status")
+                    )
+            except Exception as exc:
+                order_book_observation_failures += 1
+                log_event(
+                    "worker_order_book_observation_publish_failed",
+                    error=str(exc),
+                )
         market_symbols = {item.symbol for item in market_inputs}
         for missing_symbol in set(symbol_starts).difference(market_symbols):
             try:
@@ -388,6 +507,11 @@ def run_worker_cycle(
         "reconciled": reconcile_due,
         "persisted_price_samples": 0,
         "published_price_states": published_price_states,
+        "order_book_observation_enabled": settings.order_book_observation_enabled,
+        "order_book_observation_symbols": len(order_book_observations),
+        "order_book_observation_failures": order_book_observation_failures,
+        "published_order_book_states": published_order_book_states,
+        "order_book_storage_strategy": "single_row_upsert_per_symbol_no_raw_depth",
         "persist_exit_window": settings.persist_exit_window,
         "dry_run": settings.dry_run,
     }
@@ -402,7 +526,11 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
 
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
-    state = WorkerState()
+    state = WorkerState(
+        order_book_tracker=OrderBookObservationTracker(
+            window_seconds=settings.order_book_window_seconds,
+        )
+    )
     last_heartbeat = 0.0
     started_at = datetime.now(timezone.utc).isoformat()
     last_result: dict | None = None
@@ -410,6 +538,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
         with connect() as db:
             ensure_market_price_state_table(db)
             ensure_worker_status_table(db)
+            ensure_order_book_observation_state_table(db)
     except Exception as exc:
         log_event("worker_status_storage_failed", error=str(exc))
     publish_runtime_status(settings, started_at, "starting")
@@ -419,6 +548,9 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
         reconcile_seconds=settings.reconcile_seconds,
         persist_exit_window=settings.persist_exit_window,
         dry_run=settings.dry_run,
+        order_book_observation_enabled=settings.order_book_observation_enabled,
+        order_book_window_seconds=settings.order_book_window_seconds,
+        order_book_publish_seconds=settings.order_book_publish_seconds,
     )
     try:
         while not stop_event.is_set():
@@ -452,6 +584,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                 or result["closed"]
                 or result["finalized_observations"]
                 or result["failures"]
+                or result["order_book_observation_failures"]
                 or now_monotonic - last_heartbeat >= settings.heartbeat_seconds
             ):
                 lifecycle_status = "degraded" if result["failures"] else "running"

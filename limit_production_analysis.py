@@ -67,6 +67,7 @@ def analyze_limit_trade(
     price_loader: Callable[..., float] = market_data.get_price,
     conditional_analyzer: Callable[..., dict] = analyze_trade,
     context_loader: Callable[..., dict] | None = None,
+    order_book_observation_loader: Callable[[str], dict | None] | None = None,
 ) -> dict:
     if str(getattr(proposal, "entry_type", "market")).lower() != "pending":
         raise LimitProductionAnalysisError(
@@ -107,6 +108,7 @@ def analyze_limit_trade(
             conditional_proposal,
             context_loader=context_loader,
             context_market_price=current_price,
+            order_book_observation_loader=order_book_observation_loader,
             include_internal_runtime=True,
         )
     except NewEngineAnalysisError as exc:

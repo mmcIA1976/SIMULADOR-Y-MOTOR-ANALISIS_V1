@@ -3066,7 +3066,7 @@
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
       "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
-      "objective": "Visible depth imbalance at declared depth D may condition short-horizon first-barrier behavior.",
+      "objective": "Persistent visible-depth imbalance, wall survival and executed-flow-confirmed changes at declared depth D may condition short-horizon first-barrier behavior.",
       "applicable_pairs": [
         "all_application_pairs"
       ],
@@ -3080,17 +3080,29 @@
           "names": [
             "timestamped_depth_snapshot"
           ],
-          "provider": "binance_usdm_depth_snapshot_100_levels",
+          "provider": "operation_worker_rolling_binance_usdm_depth_and_aggtrades",
           "unit_policy": "dimensionless_or_within_pair_normalized"
         }
       ],
       "formula_ids": [
         "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-01",
-        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-02"
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-02",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-03",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-04",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-05",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-06",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-07",
+        "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-08"
       ],
       "deterministic_formulas": [
         "obi_D=(bid_notional_D-ask_notional_D)/(bid_notional_D+ask_notional_D)",
-        "D in {top5,top20,10bps,20bps,50bps}"
+        "D in {top5,top20,10bps,20bps,50bps}",
+        "persistence_D=stats(obi_D over the bounded rolling window)",
+        "sign_flips_D=count(non_neutral_sign_t != non_neutral_sign_t-1)",
+        "modification_velocity=(added_notional+removed_notional)/(visible_notional*delta_t)",
+        "wall=level_notional>=3*median_side_level_notional within 50bps",
+        "unmatched_removal=max(visible_removal-opposite_aggressor_execution,0)",
+        "absorption=executed_opposing_flow*confirmed_visible_removal*missing_price_follow_through"
       ],
       "probability_integration_formula": "none_until_implemented_and_approved",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
@@ -3109,7 +3121,7 @@
         ],
         "supported_claim": "Sources support data definitions, indicator construction or the general research family only.",
         "unsupported_claim": "Sources do not establish this project's exact sign, threshold, weight, TP effect, SL effect or cross-pair validity.",
-        "project_hypothesis": "Visible depth imbalance at declared depth D may condition short-horizon first-barrier behavior."
+        "project_hypothesis": "Persistent visible-depth imbalance, wall survival and executed-flow-confirmed changes at declared depth D may condition short-horizon first-barrier behavior."
       },
       "expected_probability_effect": {
         "mode": "hypothesis_not_active",
@@ -4767,5 +4779,5 @@
     "implemented_observational": 16,
     "data_blocked": 2
   },
-  "catalog_sha256": "c31778be090469de4390a3a89bcadc2bcce2c0dd9e5b7ca6ef183be2d0460cfa"
+  "catalog_sha256": "425afe9be4e7a30635798dd7a475b33b19ce3c2d1981d33858600b27ed7a3c10"
 }

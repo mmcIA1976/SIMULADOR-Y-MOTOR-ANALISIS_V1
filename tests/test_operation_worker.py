@@ -176,6 +176,49 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertEqual(result["persisted_price_samples"], 0)
         self.assertEqual(result["failures"], 0)
 
+    def test_order_book_summary_publishes_on_first_sample_and_ready_transition(self):
+        db = ActiveSymbolsDb(
+            [{"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"}]
+        )
+        settings = operation_worker.WorkerSettings(
+            reconcile_seconds=60,
+            order_book_observation_enabled=True,
+            order_book_publish_seconds=30,
+        )
+        state = operation_worker.WorkerState()
+        current_ms = {"value": 1_775_383_200_000}
+
+        def depth_loader(_symbol, _limit):
+            return {
+                "receivedAt": current_ms["value"],
+                "bids": [["99.99", "10"], ["99.98", "8"]],
+                "asks": [["100.01", "10"], ["100.02", "8"]],
+            }
+
+        with (
+            patch.object(operation_worker, "refresh_symbol_active_operations", return_value=({}, {})),
+            patch.object(operation_worker, "finalize_due_observations", return_value=[]),
+            patch.object(operation_worker, "publish_order_book_observations", return_value=1) as publish,
+        ):
+            for offset in (0, 10_000, 20_000):
+                current_ms["value"] = 1_775_383_200_000 + offset
+                operation_worker.run_worker_cycle(
+                    state,
+                    settings,
+                    connect_factory=connect_factory_for(db),
+                    price_loader=Mock(return_value=64_000.0),
+                    kline_loader=Mock(return_value=[]),
+                    depth_loader=depth_loader,
+                    trade_loader=Mock(return_value=[]),
+                    now_ms=current_ms["value"],
+                )
+
+        self.assertEqual(publish.call_count, 2)
+        self.assertEqual(
+            state.order_book_last_published_status["BTCUSDT"],
+            "ready",
+        )
+
     def test_failed_reconciliation_does_not_advance_market_cursor(self):
         db = ActiveSymbolsDb(
             [{"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"}]

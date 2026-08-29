@@ -388,6 +388,83 @@ def evaluate_order_book(
     side: str,
     analysis_at: str,
 ) -> dict:
+    observation = live_context.get("order_book_observation")
+    if isinstance(observation, dict):
+        current = observation.get("current_snapshot") or {}
+        measures = current.get("measures") or {}
+        inputs = {
+            "captured_at_ms": observation.get("captured_at_ms"),
+            "captured_at": observation.get("captured_at"),
+            "age_seconds": observation.get("age_seconds"),
+            "sample_count": observation.get("sample_count"),
+            "window_observed_seconds": observation.get("window_observed_seconds"),
+            "summary_sha256": observation.get("summary_sha256"),
+        }
+        if (
+            not observation.get("available")
+            or not current.get("mid_price")
+            or not isinstance(measures, dict)
+        ):
+            reason = (
+                observation.get("state_reason")
+                or observation.get("reason")
+                or "fresh_worker_order_book_observation_unavailable"
+            )
+            return _trace(
+                rule_id="LIB-CAND-ORDERBOOK-IMBALANCE-001",
+                family_id="FAMILY-ORDER-BOOK",
+                role="standalone",
+                parent_rule_ids=[],
+                formula_ids=[
+                    "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-01",
+                    "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-02",
+                ],
+                inputs=inputs,
+                outputs={},
+                status="blocked",
+                reason_codes=[str(reason)],
+                source_data_sha256=observation.get("summary_sha256"),
+                executed_at=analysis_at,
+            )
+        side_sign = _side_sign(side)
+        side_adjusted = {
+            name: (
+                side_sign * float(value["imbalance"])
+                if isinstance(value, dict) and value.get("imbalance") is not None
+                else None
+            )
+            for name, value in measures.items()
+        }
+        return _trace(
+            rule_id="LIB-CAND-ORDERBOOK-IMBALANCE-001",
+            family_id="FAMILY-ORDER-BOOK",
+            role="standalone",
+            parent_rule_ids=[],
+            formula_ids=[
+                "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-01",
+                "LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-02",
+            ],
+            inputs=inputs,
+            outputs={
+                "mid_price": float(current["mid_price"]),
+                "spread_fraction": current.get("spread_fraction"),
+                "measures": measures,
+                "side_adjusted_imbalances": side_adjusted,
+            },
+            status=(
+                "evaluated_shadow"
+                if observation.get("status") == "ready"
+                else "partially_evaluated_shadow"
+            ),
+            reason_codes=(
+                []
+                if observation.get("status") == "ready"
+                else [str(observation.get("reason") or "insufficient_dynamic_samples")]
+            ),
+            source_data_sha256=observation.get("summary_sha256"),
+            executed_at=analysis_at,
+        )
+
     depth = live_context.get("depth") or {}
     bids = _normalize_book_side(
         depth.get("bids", []),
@@ -476,6 +553,147 @@ def evaluate_order_book(
         status="evaluated_shadow",
         reason_codes=[],
         source_data_sha256=canonical_sha256(source_payload),
+        executed_at=analysis_at,
+    )
+
+
+def evaluate_order_book_dynamics(
+    observation: dict | None,
+    *,
+    side: str,
+    analysis_at: str,
+) -> dict:
+    context = observation if isinstance(observation, dict) else {}
+    inputs = {
+        "contract_version": context.get("contract_version"),
+        "captured_at_ms": context.get("captured_at_ms"),
+        "captured_at": context.get("captured_at"),
+        "age_seconds": context.get("age_seconds"),
+        "sample_count": context.get("sample_count"),
+        "minimum_samples": context.get("minimum_samples"),
+        "window_target_seconds": context.get("window_target_seconds"),
+        "window_observed_seconds": context.get("window_observed_seconds"),
+        "summary_sha256": context.get("summary_sha256"),
+    }
+    if not context.get("available"):
+        reason = (
+            context.get("state_reason")
+            or context.get("reason")
+            or "fresh_worker_order_book_dynamics_unavailable"
+        )
+        return _trace(
+            rule_id="LIB-CAND-ORDERBOOK-IMBALANCE-001",
+            family_id="FAMILY-ORDER-BOOK",
+            role="standalone",
+            parent_rule_ids=[],
+            formula_ids=[
+                f"LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-{index:02d}"
+                for index in range(1, 9)
+            ],
+            inputs=inputs,
+            outputs={},
+            status="blocked",
+            reason_codes=[str(reason)],
+            source_data_sha256=context.get("summary_sha256"),
+            executed_at=analysis_at,
+        )
+
+    direction = _side_sign(side)
+    current = context.get("current_snapshot") or {}
+    current_measures = current.get("measures") or {}
+    current_side_adjusted = {
+        name: (
+            direction * float(value["imbalance"])
+            if isinstance(value, dict) and value.get("imbalance") is not None
+            else None
+        )
+        for name, value in current_measures.items()
+    }
+    persistence = {}
+    for name, raw in (context.get("persistence") or {}).items():
+        if not isinstance(raw, dict):
+            continue
+        persistence[name] = {
+            **raw,
+            "side_adjusted_current": (
+                direction * float(raw["current"])
+                if raw.get("current") is not None
+                else None
+            ),
+            "side_adjusted_mean": (
+                direction * float(raw["mean"])
+                if raw.get("mean") is not None
+                else None
+            ),
+            "side_adjusted_slope_per_minute": (
+                direction * float(raw["slope_per_minute"])
+                if raw.get("slope_per_minute") is not None
+                else None
+            ),
+        }
+    walls = context.get("walls") or {}
+    wall_candidates = []
+    for raw in walls.get("current_candidates", []):
+        if not isinstance(raw, dict):
+            continue
+        wall_side = str(raw.get("side") or "")
+        favorable = (
+            (str(side).lower() == "long" and wall_side == "bid")
+            or (str(side).lower() == "short" and wall_side == "ask")
+        )
+        wall_candidates.append({**raw, "relationship_to_trade": "favorable" if favorable else "adverse"})
+    flow = context.get("executed_flow") or {}
+    absorption = context.get("absorption") or {}
+    outputs = {
+        "current_snapshot": {
+            **current,
+            "side_adjusted_imbalances": current_side_adjusted,
+        },
+        "persistence": persistence,
+        "walls": {
+            **walls,
+            "current_candidates": wall_candidates,
+        },
+        "change_activity": context.get("change_activity") or {},
+        "executed_flow": {
+            **flow,
+            "side_adjusted_executed_flow_imbalance": (
+                direction * float(flow["executed_flow_imbalance"])
+                if flow.get("executed_flow_imbalance") is not None
+                else None
+            ),
+        },
+        "absorption": {
+            **absorption,
+            "favorable_absorption_score": (
+                absorption.get("bid_absorption_score")
+                if str(side).lower() == "long"
+                else absorption.get("ask_absorption_score")
+            ),
+            "adverse_absorption_score": (
+                absorption.get("ask_absorption_score")
+                if str(side).lower() == "long"
+                else absorption.get("bid_absorption_score")
+            ),
+        },
+        "raw_depth_persisted": bool(context.get("raw_depth_persisted")),
+        "raw_trades_persisted": bool(context.get("raw_trades_persisted")),
+    }
+    ready = context.get("status") == "ready"
+    return _trace(
+        rule_id="LIB-CAND-ORDERBOOK-IMBALANCE-001",
+        family_id="FAMILY-ORDER-BOOK",
+        role="standalone",
+        parent_rule_ids=[],
+        formula_ids=[
+            f"LIB-CAND-ORDERBOOK-IMBALANCE-001-FORMULA-{index:02d}"
+            for index in range(1, 9)
+        ],
+        inputs=inputs,
+        outputs=outputs,
+        status="evaluated_shadow" if ready else "partially_evaluated_shadow",
+        reason_codes=[] if ready else [str(context.get("reason") or "insufficient_dynamic_samples")],
+        source_data_sha256=context.get("summary_sha256"),
         executed_at=analysis_at,
     )
 

@@ -9,6 +9,9 @@ from liquidation_rule_runtime import (
     RULE_ID as LIQUIDATION_RULE_ID,
     evaluate_liquidation_rule_family,
 )
+from microstructure_rule_runtime import (
+    evaluate_order_book_dynamics,
+)
 from multiscale_feature_runtime import STAGE_ORDER, STAGE_PROFILES
 from sequential_production_runtime import build_production_probability_run
 from empirical_temporal_engine import (
@@ -181,6 +184,91 @@ def attach_liquidation_observation(
     return live_context, summary
 
 
+def attach_order_book_observation(
+    run: dict,
+    proposal: Any,
+    *,
+    observation_loader: Callable[[str], dict | None] | None,
+    analysis_at: str,
+) -> tuple[dict, dict]:
+    """Replace the placeholder book trace with one prospective worker snapshot."""
+    provider_requested = observation_loader is not None
+    if observation_loader is None:
+        observation = {
+            "available": False,
+            "status": "not_configured",
+            "reason": "order_book_observation_loader_not_configured",
+        }
+    else:
+        try:
+            loaded = observation_loader(str(proposal.symbol).upper())
+            observation = loaded if isinstance(loaded, dict) else {
+                "available": False,
+                "status": "unavailable",
+                "reason": "worker_order_book_observation_missing",
+            }
+        except Exception as exc:
+            observation = {
+                "available": False,
+                "status": "unavailable",
+                "reason": "worker_order_book_observation_request_failed",
+                "error_type": type(exc).__name__,
+            }
+
+    stage_contexts = run.get("stage_contexts") or {}
+    stage_order = list((run.get("details") or {}).get("stage_order") or stage_contexts)
+    traces_by_stage = run.setdefault("stage_rule_traces", {})
+    statuses: dict[str, dict[str, str | None]] = {}
+    for horizon in stage_order:
+        dynamic_trace = evaluate_order_book_dynamics(
+            observation,
+            side=str(proposal.side).lower(),
+            analysis_at=analysis_at,
+        )
+        stage_traces = traces_by_stage.setdefault(horizon, [])
+        stage_traces[:] = [
+            trace
+            for trace in stage_traces
+            if str(trace.get("rule_id") or "")
+            not in {
+                "LIB-CAND-ORDERBOOK-IMBALANCE-001",
+            }
+        ]
+        dynamic_trace["time_horizon_relevance"] = (
+            "primary_microstructure"
+            if horizon == "intraday_short"
+            else "prospective_context_only"
+        )
+        stage_traces.append(dynamic_trace)
+        statuses[horizon] = {
+            "order_book": dynamic_trace.get("status"),
+        }
+
+    available = any(
+        values.get("order_book") in {"evaluated_shadow", "partially_evaluated_shadow"}
+        for values in statuses.values()
+    )
+    summary = {
+        "contract_version": "order-book-observation-attachment-v0.1",
+        "rule_ids": ["LIB-CAND-ORDERBOOK-IMBALANCE-001"],
+        "status": "evaluated_observation" if available else "unavailable_observation",
+        "available": available,
+        "provider": observation.get("source"),
+        "provider_status": observation.get("status"),
+        "provider_reason": observation.get("state_reason") or observation.get("reason"),
+        "captured_at": observation.get("captured_at"),
+        "age_seconds": observation.get("age_seconds"),
+        "sample_count": observation.get("sample_count"),
+        "window_observed_seconds": observation.get("window_observed_seconds"),
+        "provider_query_count": 1 if provider_requested else 0,
+        "queried_once": provider_requested,
+        "stored_payload": "compact_dynamics_without_raw_depth_or_trades",
+        "stage_statuses": statuses,
+        "probability_effect": "none_observation_only",
+    }
+    return {"order_book_observation": observation}, summary
+
+
 def _temporal_profile(time_horizon: str, artifact: dict, stages: list[str]) -> dict:
     return {
         "version": ENGINE_VERSION,
@@ -263,6 +351,7 @@ def analyze_trade(
     loader: Callable[..., list[list]] = market_data.get_klines,
     context_loader: Callable[..., dict] | None = None,
     context_market_price: float | None = None,
+    order_book_observation_loader: Callable[[str], dict | None] | None = None,
     include_internal_runtime: bool = False,
     effective_analysis_at: datetime | None = None,
 ) -> dict:
@@ -310,13 +399,20 @@ def analyze_trade(
         "executed_analysis_engines"
     ) != [ENGINE_VERSION]:
         raise NewEngineAnalysisError("single_engine_runtime_contract_violated")
-    live_context, liquidation_observation = attach_liquidation_observation(
+    liquidation_live_context, liquidation_observation = attach_liquidation_observation(
         run,
         proposal,
         context_loader=context_loader,
         context_market_price=context_market_price,
         analysis_at=snapshot["analysis_at"],
     )
+    order_book_live_context, order_book_observation = attach_order_book_observation(
+        run,
+        proposal,
+        observation_loader=order_book_observation_loader,
+        analysis_at=snapshot["analysis_at"],
+    )
+    live_context = {**liquidation_live_context, **order_book_live_context}
     probability_result = run["probability_result"]
     classes = probability_result["probabilities"]
     probabilities = {
@@ -343,6 +439,7 @@ def analyze_trade(
                 "fibonacci": False,
                 "structural_levels": False,
                 "liquidation_heatmap": liquidation_observation["available"],
+                "order_book_dynamics": order_book_observation["available"],
             },
             "source": {
                 "probability_market_data": (
@@ -354,6 +451,11 @@ def analyze_trade(
                     or liquidation_observation.get("provider_reason")
                     or "unavailable"
                 ),
+                "order_book_observation": (
+                    order_book_observation.get("provider")
+                    or order_book_observation.get("provider_reason")
+                    or "unavailable"
+                ),
             },
             "new_engine_only": True,
             "legacy_engine_executed": False,
@@ -362,6 +464,7 @@ def analyze_trade(
             "stage_contexts": run["stage_contexts"],
             "stage_rule_traces": run["stage_rule_traces"],
             "liquidation_observation": liquidation_observation,
+            "order_book_observation": order_book_observation,
             "probability_trace": probability_result,
             "temporal_profile": temporal_profile,
             "decision_probabilities": decision_probabilities,
@@ -411,7 +514,7 @@ def analyze_trade(
         "alerts": [
             "La estimación expresa frecuencia histórica condicionada, no certeza futura.",
             HORIZON_VALIDATION_NOTES[time_horizon],
-            "El mapa de liquidaciones se registra como observación y no altera las probabilidades v0.9; Fibonacci y niveles estructurales tampoco puntúan.",
+            "Mapas de liquidaciones y dinámica del libro se registran como observación y no alteran las probabilidades v0.9; Fibonacci y niveles estructurales tampoco puntúan.",
             "La probabilidad no incorpora costes ni garantiza rentabilidad.",
         ],
         "plain_summary": (
@@ -455,5 +558,6 @@ __all__ = (
     "HORIZON_LABELS",
     "NewEngineAnalysisError",
     "attach_liquidation_observation",
+    "attach_order_book_observation",
     "analyze_trade",
 )

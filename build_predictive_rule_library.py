@@ -922,15 +922,24 @@ def candidate_rules() -> list[dict]:
             formulas=[
                 "obi_D=(bid_notional_D-ask_notional_D)/(bid_notional_D+ask_notional_D)",
                 "D in {top5,top20,10bps,20bps,50bps}",
+                "persistence_D=stats(obi_D over the bounded rolling window)",
+                "sign_flips_D=count(non_neutral_sign_t != non_neutral_sign_t-1)",
+                "modification_velocity=(added_notional+removed_notional)/(visible_notional*delta_t)",
+                "wall=level_notional>=3*median_side_level_notional within 50bps",
+                "unmatched_removal=max(visible_removal-opposite_aggressor_execution,0)",
+                "absorption=executed_opposing_flow*confirmed_visible_removal*missing_price_follow_through",
             ],
             inputs=["timestamped_depth_snapshot"],
             source_ids=["BINANCE_USDM_API", "CONT_KUKANOV_STOIKOV_2014"],
             hypothesis=(
-                "Visible depth imbalance at declared depth D may condition "
-                "short-horizon first-barrier behavior."
+                "Persistent visible-depth imbalance, wall survival and "
+                "executed-flow-confirmed changes at declared depth D may "
+                "condition short-horizon first-barrier behavior."
             ),
             status="implemented_shadow",
-            provider="binance_usdm_depth_snapshot_100_levels",
+            provider=(
+                "operation_worker_rolling_binance_usdm_depth_and_aggtrades"
+            ),
         ),
         candidate(
             rule_id="LIB-CAND-CVD-SLOPE-001",

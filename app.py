@@ -61,6 +61,11 @@ from market_price_state import (
     request_market_price_watch,
     summarize_market_price,
 )
+from order_book_observation_state import (
+    ensure_order_book_observation_state_table,
+    get_order_book_observation_row,
+    summarize_order_book_observation,
+)
 from sequential_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
@@ -544,6 +549,8 @@ def set_session_cookie(response: Response, user_id: int) -> None:
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    with connect() as db:
+        ensure_order_book_observation_state_table(db)
     ensure_analysis_attempt_storage()
     ensure_pending_entry_columns()
     migrate_file_avatars_to_database()
@@ -859,6 +866,14 @@ def require_fresh_worker_market_price(symbol: str) -> dict:
 def worker_market_price_loader(symbol: str, *, force_refresh: bool = False) -> float:
     del force_refresh
     return float(require_fresh_worker_market_price(symbol)["price"])
+
+
+def worker_order_book_observation_snapshot(symbol: str) -> dict | None:
+    normalized = symbol.upper()
+    with connect() as db:
+        request_market_price_watch(db, normalized)
+        row = get_order_book_observation_row(db, normalized)
+    return summarize_order_book_observation(row)
 
 
 def ensure_analysis_attempt_storage() -> None:
@@ -1211,6 +1226,21 @@ def refresh_contest_active_operations(db, season_id: int) -> dict[str, list[dict
         "activated_operations": list(activated.values()),
         "closed_operations": list(closed.values()),
     }
+
+
+@app.get("/api/diagnostics/order-book-observation")
+def order_book_observation_diagnostics(symbol: str = "ETHUSDT") -> dict:
+    normalized = symbol.upper()
+    observation = worker_order_book_observation_snapshot(normalized)
+    if observation is None:
+        return {
+            "symbol": normalized,
+            "available": False,
+            "status": "pending",
+            "reason": "worker_order_book_observation_missing",
+            "storage_strategy": "single_row_upsert_per_symbol_no_raw_depth",
+        }
+    return observation
 
 
 def contest_active_refresh(db, season_id: int) -> dict[str, list[dict]]:
@@ -5553,12 +5583,14 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 proposal,
                 price_loader=worker_market_price_loader,
                 context_loader=liquidation_data.get_liquidation_context,
+                order_book_observation_loader=worker_order_book_observation_snapshot,
             )
             if entry_type == "pending"
             else analyze_trade(
                 proposal,
                 context_loader=liquidation_data.get_liquidation_context,
                 context_market_price=float(proposal.entry),
+                order_book_observation_loader=worker_order_book_observation_snapshot,
             )
         )
     except LimitProductionAnalysisError as exc:

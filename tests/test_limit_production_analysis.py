@@ -97,6 +97,7 @@ class LimitProductionAnalysisTests(unittest.TestCase):
     def test_two_stage_result_keeps_activation_separate_from_conditional_tp(self):
         analyzer_calls = []
         liquidation_loader = object()
+        order_book_loader = object()
 
         def analyzer(proposal, **kwargs):
             analyzer_calls.append((proposal, kwargs))
@@ -107,6 +108,7 @@ class LimitProductionAnalysisTests(unittest.TestCase):
             price_loader=lambda *_args, **_kwargs: 100.0,
             conditional_analyzer=analyzer,
             context_loader=liquidation_loader,
+            order_book_observation_loader=order_book_loader,
         )
 
         self.assertEqual(
@@ -131,6 +133,10 @@ class LimitProductionAnalysisTests(unittest.TestCase):
         self.assertEqual(analyzed_proposal.entry_type, "market")
         self.assertEqual(analyzed_proposal.entry, 98.0)
         self.assertIs(kwargs["context_loader"], liquidation_loader)
+        self.assertIs(
+            kwargs["order_book_observation_loader"],
+            order_book_loader,
+        )
         self.assertEqual(kwargs["context_market_price"], 100.0)
         self.assertTrue(kwargs["include_internal_runtime"])
 

@@ -34,7 +34,8 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.1"
+POLICY_VERSION = "autonomous-contest-policy-v0.2"
+SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 SYMBOLS = (
     "BTCUSDT",
@@ -52,6 +53,13 @@ NON_PANEL_STORAGE_CAP_PER_UTC_DAY = 12
 OBSERVATIONAL_JSON_BYTE_BUDGET = 12_000
 MAX_EXECUTION_DRIFT_SIGMA_FRACTION = 0.10
 MAX_EXECUTION_DRIFT_FLOOR = 0.0002
+MAX_AUTONOMOUS_LEVERAGE = 10
+MIN_TARGET_PROFIT_USDT = 2.0
+MIN_TARGET_MARGIN_FRACTION = 0.20
+BASE_TARGET_SL_RISK_FRACTION = 0.02
+MAX_TARGET_SL_RISK_FRACTION = 0.05
+EDGE_TO_MARGIN_MULTIPLIER = 2.0
+EDGE_TO_RISK_MULTIPLIER = 0.10
 
 
 @dataclass(frozen=True)
@@ -64,8 +72,10 @@ class ParticipantPolicy:
     daily_operation_limit: int
     max_open_positions: int
     edge_threshold: float
-    margin: float = 100.0
-    leverage: float = 1.0
+    # Neutral reference values used only while the analysis engine estimates
+    # TP/SL probabilities. Real capital is assigned after candidate selection.
+    analysis_reference_margin: float = 100.0
+    analysis_reference_leverage: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
 
 
@@ -143,6 +153,190 @@ class Candidate:
 
     def eligible_for(self, policy: ParticipantPolicy) -> bool:
         return self.eligible_base and float(self.edge) >= policy.edge_threshold
+
+
+@dataclass(frozen=True)
+class PositionSizing:
+    margin: float
+    leverage: int
+    available_cash: float
+    margin_fraction: float
+    notional: float
+    reward_price_fraction: float
+    risk_price_fraction: float
+    reward_risk_ratio: float
+    conditional_win_probability: float
+    resolved_probability: float
+    normalized_advantage: float
+    target_margin_fraction: float
+    target_sl_risk_fraction: float
+    estimated_tp_pnl: float
+    estimated_sl_pnl: float
+    expected_pnl: float
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "policy_version": SIZING_POLICY_VERSION,
+            "probability_effect": "none_post_selection_only",
+            "margin": self.margin,
+            "leverage": self.leverage,
+            "available_cash": self.available_cash,
+            "margin_fraction": self.margin_fraction,
+            "notional": self.notional,
+            "reward_price_fraction": self.reward_price_fraction,
+            "risk_price_fraction": self.risk_price_fraction,
+            "reward_risk_ratio": self.reward_risk_ratio,
+            "conditional_win_probability": self.conditional_win_probability,
+            "resolved_probability": self.resolved_probability,
+            "normalized_advantage": self.normalized_advantage,
+            "target_margin_fraction": self.target_margin_fraction,
+            "target_sl_risk_fraction": self.target_sl_risk_fraction,
+            "estimated_tp_pnl": self.estimated_tp_pnl,
+            "estimated_sl_pnl": self.estimated_sl_pnl,
+            "expected_pnl": self.expected_pnl,
+            "minimum_target_profit_usdt": MIN_TARGET_PROFIT_USDT,
+            "max_leverage": MAX_AUTONOMOUS_LEVERAGE,
+        }
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return min(upper, max(lower, value))
+
+
+def determine_position_sizing(
+    candidate: Candidate,
+    available_cash: float,
+) -> PositionSizing:
+    """Assign capital after analysis without feeding execution into probability.
+
+    The normalized advantage is the expected TP/SL payoff measured in units of
+    initial price risk. With symmetric TP/SL geometry this is exactly
+    ``tp_probability - sl_probability``. Unresolved probability therefore
+    reduces the allocation naturally instead of being redistributed as a win.
+    """
+    cash = float(available_cash)
+    if not math.isfinite(cash) or cash <= 0:
+        raise ValueError("autonomous_contest_cash_insufficient")
+    required = (
+        candidate.entry,
+        candidate.take_profit,
+        candidate.stop_loss,
+        candidate.tp_probability,
+        candidate.sl_probability,
+        candidate.unresolved_probability,
+    )
+    if any(value is None or not math.isfinite(float(value)) for value in required):
+        raise ValueError("autonomous_sizing_inputs_missing")
+
+    entry = float(candidate.entry)
+    take_profit = float(candidate.take_profit)
+    stop_loss = float(candidate.stop_loss)
+    tp_probability = float(candidate.tp_probability)
+    sl_probability = float(candidate.sl_probability)
+    unresolved_probability = float(candidate.unresolved_probability)
+    if entry <= 0 or not all(
+        0.0 <= value <= 1.0
+        for value in (tp_probability, sl_probability, unresolved_probability)
+    ):
+        raise ValueError("autonomous_sizing_inputs_invalid")
+
+    reward_price_fraction = abs(take_profit - entry) / entry
+    risk_price_fraction = abs(entry - stop_loss) / entry
+    if reward_price_fraction <= 0 or risk_price_fraction <= 0:
+        raise ValueError("autonomous_sizing_geometry_invalid")
+    resolved_probability = tp_probability + sl_probability
+    if resolved_probability <= 0:
+        raise ValueError("autonomous_sizing_probability_invalid")
+
+    reward_risk_ratio = reward_price_fraction / risk_price_fraction
+    conditional_win_probability = tp_probability / resolved_probability
+    normalized_advantage = (
+        tp_probability * reward_price_fraction
+        - sl_probability * risk_price_fraction
+    ) / risk_price_fraction
+    if normalized_advantage <= 0:
+        raise ValueError("autonomous_sizing_non_positive_advantage")
+    sizing_strength = _clamp(normalized_advantage, 0.0, 1.0)
+
+    # There is no fixed USDT stake ceiling: the fraction scales with the edge
+    # and may reach the entire available balance for an exceptionally strong
+    # setup. The separate SL budget prevents leverage from magnifying a normal
+    # stop beyond the evidence-supported risk allocation.
+    target_margin_fraction = _clamp(
+        MIN_TARGET_MARGIN_FRACTION
+        + EDGE_TO_MARGIN_MULTIPLIER * sizing_strength,
+        MIN_TARGET_MARGIN_FRACTION,
+        1.0,
+    )
+    target_sl_risk_fraction = _clamp(
+        BASE_TARGET_SL_RISK_FRACTION
+        + EDGE_TO_RISK_MULTIPLIER * sizing_strength,
+        BASE_TARGET_SL_RISK_FRACTION,
+        MAX_TARGET_SL_RISK_FRACTION,
+    )
+    target_margin = cash * target_margin_fraction
+    leverage_budget = target_sl_risk_fraction / (
+        target_margin_fraction * risk_price_fraction
+    )
+    if leverage_budget >= 1.0:
+        leverage = min(
+            MAX_AUTONOMOUS_LEVERAGE,
+            max(1, int(math.floor(leverage_budget))),
+        )
+        margin = target_margin
+    else:
+        leverage = 1
+        margin = min(
+            target_margin,
+            cash * target_sl_risk_fraction / risk_price_fraction,
+        )
+
+    maximum_tp_pnl = cash * MAX_AUTONOMOUS_LEVERAGE * reward_price_fraction
+    if maximum_tp_pnl + 1e-9 < MIN_TARGET_PROFIT_USDT:
+        raise ValueError("autonomous_minimum_tp_profit_unreachable")
+    current_tp_pnl = margin * leverage * reward_price_fraction
+    if current_tp_pnl + 1e-9 < MIN_TARGET_PROFIT_USDT:
+        required_leverage = math.ceil(
+            MIN_TARGET_PROFIT_USDT / (margin * reward_price_fraction)
+        )
+        if required_leverage <= MAX_AUTONOMOUS_LEVERAGE:
+            leverage = max(leverage, required_leverage)
+        else:
+            leverage = MAX_AUTONOMOUS_LEVERAGE
+            margin = max(
+                margin,
+                MIN_TARGET_PROFIT_USDT
+                / (MAX_AUTONOMOUS_LEVERAGE * reward_price_fraction),
+            )
+
+    margin = min(cash, math.ceil(margin * 10_000) / 10_000)
+    notional = margin * leverage
+    estimated_tp_pnl = notional * reward_price_fraction
+    estimated_sl_pnl = -notional * risk_price_fraction
+    if estimated_tp_pnl + 1e-9 < MIN_TARGET_PROFIT_USDT:
+        raise ValueError("autonomous_minimum_tp_profit_unreachable")
+    expected_pnl = notional * (
+        tp_probability * reward_price_fraction
+        - sl_probability * risk_price_fraction
+    )
+    return PositionSizing(
+        margin=round(margin, 4),
+        leverage=int(leverage),
+        available_cash=round(cash, 4),
+        margin_fraction=round(margin / cash, 8),
+        notional=round(notional, 4),
+        reward_price_fraction=round(reward_price_fraction, 10),
+        risk_price_fraction=round(risk_price_fraction, 10),
+        reward_risk_ratio=round(reward_risk_ratio, 8),
+        conditional_win_probability=round(conditional_win_probability, 8),
+        resolved_probability=round(resolved_probability, 8),
+        normalized_advantage=round(normalized_advantage, 8),
+        target_margin_fraction=round(target_margin_fraction, 8),
+        target_sl_risk_fraction=round(target_sl_risk_fraction, 8),
+        estimated_tp_pnl=round(estimated_tp_pnl, 4),
+        estimated_sl_pnl=round(estimated_sl_pnl, 4),
+        expected_pnl=round(expected_pnl, 4),
+    )
 
 
 AnalysisRunner = Callable[..., dict]
@@ -442,8 +636,8 @@ def ensure_participants(db) -> list[dict]:
                 MIN_TP_PROBABILITY,
                 MAX_UNRESOLVED_PROBABILITY,
                 MIN_ANALOGS_PER_STAGE,
-                policy.margin,
-                policy.leverage,
+                policy.analysis_reference_margin,
+                policy.analysis_reference_leverage,
                 _json(policy.symbols),
             ),
         )
@@ -678,8 +872,8 @@ def analyze_candidates(
                 side=side,
                 time_horizon=policy.time_horizon,
                 entry=float(entry),
-                margin=policy.margin,
-                leverage=policy.leverage,
+                margin=policy.analysis_reference_margin,
+                leverage=policy.analysis_reference_leverage,
                 stop_loss=stop_loss,
                 take_profit=take_profit,
                 entry_type="market",
@@ -1079,6 +1273,7 @@ def _prepare_selected_analysis(
     result["training_decision"] = "seleccion_autonoma"
     version_contract = current_version_contract()
     version_contract["autonomous_policy_version"] = POLICY_VERSION
+    version_contract["autonomous_sizing_policy_version"] = SIZING_POLICY_VERSION
     result["version_contract"] = version_contract
     snapshot["version_contract"] = version_contract
     result["data_contract"] = build_data_contract(
@@ -1117,8 +1312,7 @@ def _open_selected_operation(
     ) >= policy.max_open_positions:
         raise ValueError("autonomous_open_capacity_reached")
     cash = _available_contest_cash(db, user_id, season_id)
-    if cash < policy.margin:
-        raise ValueError("autonomous_contest_cash_insufficient")
+    sizing = determine_position_sizing(candidate, cash)
     execution_take_profit, execution_stop_loss = symmetric_geometry(
         execution_entry,
         float(candidate.sigma),
@@ -1131,6 +1325,9 @@ def _open_selected_operation(
         execution_stop_loss=execution_stop_loss,
         executed_at=executed_at,
     )
+    # Stored in the existing recommendation JSON, outside the immutable
+    # pre-trade feature contract: auditable, but unable to change probabilities.
+    result["position_sizing"] = sizing.as_dict()
     operation_cursor = db.execute(
         """
         INSERT INTO operations (
@@ -1146,8 +1343,8 @@ def _open_selected_operation(
             candidate.side,
             policy.time_horizon,
             execution_entry,
-            policy.margin,
-            policy.leverage,
+            sizing.margin,
+            sizing.leverage,
             execution_stop_loss,
             execution_take_profit,
             executed_at.isoformat(),
@@ -1208,7 +1405,7 @@ def _open_selected_operation(
             executed_at.isoformat(),
         ),
     )
-    balance_after = cash - policy.margin
+    balance_after = cash - sizing.margin
     db.execute(
         """
         INSERT INTO wallet_events (
@@ -1218,11 +1415,11 @@ def _open_selected_operation(
         """,
         (
             user_id,
-            -policy.margin,
+            -sizing.margin,
             balance_after,
             operation_id,
             season_id,
-            f"Operacion elegida por {POLICY_VERSION}.",
+            f"Operacion elegida por {POLICY_VERSION}; capital por {SIZING_POLICY_VERSION}.",
         ),
     )
     db.execute(
@@ -1485,21 +1682,27 @@ def run_due_scans(
                         elif live_open_count >= policy.max_open_positions:
                             status = "capacity_reached"
                             reason = "capacity_reached_during_analysis"
-                        elif live_cash < policy.margin:
+                        elif live_cash <= 0:
                             status = "no_cash"
                             reason = "insufficient_contest_cash_during_analysis"
                         else:
-                            operation_id, recommendation_id = _open_selected_operation(
-                                db,
-                                participant=participant,
-                                season_id=season_id,
-                                candidate=selected,
-                                policy=policy,
-                                execution_entry=execution_entry,
-                                executed_at=execution_at,
-                            )
-                            status = "opened"
-                            reason = "best_eligible_candidate_opened"
+                            try:
+                                determine_position_sizing(selected, live_cash)
+                            except ValueError as exc:
+                                status = "no_cash"
+                                reason = str(exc)
+                            else:
+                                operation_id, recommendation_id = _open_selected_operation(
+                                    db,
+                                    participant=participant,
+                                    season_id=season_id,
+                                    candidate=selected,
+                                    policy=policy,
+                                    execution_entry=execution_entry,
+                                    executed_at=execution_at,
+                                )
+                                status = "opened"
+                                reason = "best_eligible_candidate_opened"
                 _persist_candidate_observations(
                     db,
                     scan_run_id=scan_run_id,
@@ -1738,12 +1941,17 @@ def scanner_enabled_from_env() -> bool:
 
 
 __all__ = (
+    "MAX_AUTONOMOUS_LEVERAGE",
+    "MIN_TARGET_PROFIT_USDT",
     "NON_PANEL_STORAGE_CAP_PER_UTC_DAY",
     "PARTICIPANT_POLICIES",
     "POLICY_VERSION",
+    "SIZING_POLICY_VERSION",
     "ParticipantPolicy",
+    "PositionSizing",
     "SYMBOLS",
     "analyze_candidates",
+    "determine_position_sizing",
     "ensure_autonomous_storage",
     "ensure_contest_entries",
     "ensure_participants",

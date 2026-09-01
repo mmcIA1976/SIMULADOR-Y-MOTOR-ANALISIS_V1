@@ -175,6 +175,79 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             viable_only_for_swing,
         )
 
+    def test_position_sizing_replaces_fixed_100_x1_with_probability_based_capital(self):
+        selected = candidate(
+            edge=0.495320077120577 - 0.317254342473678,
+            tp=0.495320077120577,
+            unresolved=0.187425580405745,
+        )
+        selected.entry = 686.87
+        selected.take_profit = 677.251276028439
+        selected.stop_loss = 696.488723971561
+        selected.side = "short"
+
+        sizing = autonomous_contest.determine_position_sizing(selected, 1000.0)
+
+        self.assertEqual(sizing.leverage, 4)
+        self.assertGreater(sizing.margin, 500.0)
+        self.assertGreater(sizing.estimated_tp_pnl, 2.0)
+        self.assertGreater(sizing.expected_pnl, 0.0)
+        self.assertEqual(
+            sizing.as_dict()["probability_effect"],
+            "none_post_selection_only",
+        )
+
+    def test_stronger_advantage_allocates_more_capital_but_not_blind_leverage(self):
+        weak = candidate(edge=0.10, tp=0.40, unresolved=0.30)
+        strong = candidate(edge=0.25, tp=0.55, unresolved=0.15)
+
+        weak_sizing = autonomous_contest.determine_position_sizing(weak, 1000.0)
+        strong_sizing = autonomous_contest.determine_position_sizing(strong, 1000.0)
+
+        self.assertGreater(strong_sizing.margin, weak_sizing.margin)
+        self.assertGreater(
+            strong_sizing.estimated_tp_pnl,
+            weak_sizing.estimated_tp_pnl,
+        )
+        self.assertLessEqual(
+            strong_sizing.leverage,
+            autonomous_contest.MAX_AUTONOMOUS_LEVERAGE,
+        )
+
+    def test_wide_stop_reduces_margin_to_respect_the_sl_budget(self):
+        selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
+        selected.take_profit = 112.0
+        selected.stop_loss = 88.0
+
+        sizing = autonomous_contest.determine_position_sizing(selected, 1000.0)
+
+        self.assertEqual(sizing.leverage, 1)
+        self.assertAlmostEqual(sizing.margin, 250.0, places=4)
+        self.assertAlmostEqual(sizing.estimated_sl_pnl, -30.0, places=4)
+
+    def test_tight_stop_can_use_x10_and_still_guarantees_two_dollar_tp(self):
+        selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
+        selected.take_profit = 100.025
+        selected.stop_loss = 99.975
+
+        sizing = autonomous_contest.determine_position_sizing(selected, 1000.0)
+
+        self.assertEqual(sizing.leverage, 10)
+        self.assertAlmostEqual(sizing.margin, 800.0, places=4)
+        self.assertGreaterEqual(
+            sizing.estimated_tp_pnl,
+            autonomous_contest.MIN_TARGET_PROFIT_USDT,
+        )
+
+    def test_position_size_scales_with_balance_without_a_nominal_stake_cap(self):
+        selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
+
+        small = autonomous_contest.determine_position_sizing(selected, 1000.0)
+        large = autonomous_contest.determine_position_sizing(selected, 10_000.0)
+
+        self.assertAlmostEqual(large.margin, small.margin * 10, places=4)
+        self.assertEqual(large.leverage, small.leverage)
+
     def test_gates_reject_low_tp_high_unresolved_and_low_support(self):
         policy = autonomous_contest.PARTICIPANT_POLICIES[0]
         low_tp = candidate(edge=0.15, tp=0.29, unresolved=0.20)
@@ -283,10 +356,16 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             params for query, params in db.calls if "INSERT INTO price_ticks" in query
         )
         self.assertEqual(operation_params[4], 100.05)
+        self.assertEqual(operation_params[5], 500.0)
+        self.assertEqual(operation_params[6], 7)
         self.assertEqual(operation_params[9], executed_at.isoformat())
         self.assertEqual(operation_params[11], 100.05)
         self.assertEqual(recommendation_params[0], 501)
         self.assertEqual(tick_params[2], 100.05)
+        stored_analysis = json.loads(recommendation_params[17])
+        self.assertEqual(stored_analysis["position_sizing"]["margin"], 500.0)
+        self.assertEqual(stored_analysis["position_sizing"]["leverage"], 7)
+        self.assertNotIn("position_sizing", stored_analysis["snapshot"])
 
     def test_observational_payload_is_bounded_and_contains_no_raw_market_data(self):
         result = {

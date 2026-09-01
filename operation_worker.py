@@ -14,12 +14,18 @@ from typing import Callable
 import market_data
 from app import (
     ONE_MINUTE_MS,
+    ensure_current_contest_season,
     expire_due_pending_limit_operations,
     finalize_due_observations,
     get_operation_klines_1m,
     refresh_learning_conclusions,
     refresh_learning_evaluations,
     refresh_symbol_active_operations,
+)
+from autonomous_contest import (
+    SYMBOLS as AUTONOMOUS_CONTEST_SYMBOLS,
+    evaluate_due_candidates,
+    run_due_scans,
 )
 from db import close_pool, connect
 from market_price_state import (
@@ -81,6 +87,9 @@ class WorkerSettings:
     order_book_observation_enabled: bool = False
     order_book_window_seconds: int = 60
     order_book_publish_seconds: int = 30
+    autonomous_contest_enabled: bool = False
+    autonomous_contest_dry_run: bool = True
+    autonomous_scan_poll_seconds: int = 30
 
     @classmethod
     def from_env(cls) -> "WorkerSettings":
@@ -107,6 +116,19 @@ class WorkerSettings:
                 "ORDER_BOOK_OBSERVATION_PUBLISH_SECONDS",
                 30,
                 10,
+            ),
+            autonomous_contest_enabled=env_bool(
+                "AUTONOMOUS_CONTEST_ENABLED",
+                False,
+            ),
+            autonomous_contest_dry_run=env_bool(
+                "AUTONOMOUS_CONTEST_DRY_RUN",
+                True,
+            ),
+            autonomous_scan_poll_seconds=env_int(
+                "AUTONOMOUS_CONTEST_SCAN_POLL_SECONDS",
+                30,
+                15,
             ),
         )
 
@@ -369,6 +391,8 @@ def run_worker_cycle(
     cycle_started_ms = now_ms if now_ms is not None else utc_now_ms()
     symbol_starts = load_active_symbol_starts(connect_factory)
     watched_symbols = load_watched_market_symbols(connect_factory)
+    if settings.autonomous_contest_enabled:
+        watched_symbols.update(AUTONOMOUS_CONTEST_SYMBOLS)
     market_inputs, reconcile_due, failures, price_snapshot = collect_market_inputs(
         symbol_starts,
         watched_symbols,
@@ -514,7 +538,54 @@ def run_worker_cycle(
         "order_book_storage_strategy": "single_row_upsert_per_symbol_no_raw_depth",
         "persist_exit_window": settings.persist_exit_window,
         "dry_run": settings.dry_run,
+        "autonomous_contest_enabled": settings.autonomous_contest_enabled,
     }
+
+
+def run_autonomous_scanner_loop(
+    stop_event: threading.Event,
+    settings: WorkerSettings,
+    *,
+    connect_factory: ConnectFactory = connect,
+) -> None:
+    bootstrap = True
+    last_scanner_state: str | None = None
+    while not stop_event.is_set():
+        cycle_started = time.monotonic()
+        try:
+            scan_result = run_due_scans(
+                connect_factory,
+                ensure_current_contest_season,
+                dry_run=settings.autonomous_contest_dry_run,
+                bootstrap=bootstrap,
+            )
+            bootstrap = False
+            evaluation_result = evaluate_due_candidates(connect_factory)
+            scanner_state = str(scan_result.get("status") or "ready")
+            if (
+                scanner_state != last_scanner_state
+                or scan_result.get("scans")
+                or evaluation_result.get("evaluated_candidates")
+                or evaluation_result.get("failed_groups")
+            ):
+                log_event(
+                    "autonomous_contest_cycle",
+                    scan_result=scan_result,
+                    evaluation_result=evaluation_result,
+                )
+            last_scanner_state = scanner_state
+        except Exception as exc:
+            log_event(
+                "autonomous_contest_cycle_failed",
+                error=f"{type(exc).__name__}:{exc}",
+            )
+            logger.exception("autonomous contest scanner cycle failed")
+        wait_seconds = max(
+            0.0,
+            settings.autonomous_scan_poll_seconds
+            - (time.monotonic() - cycle_started),
+        )
+        stop_event.wait(wait_seconds)
 
 
 def run_forever(settings: WorkerSettings | None = None) -> None:
@@ -534,6 +605,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
     last_heartbeat = 0.0
     started_at = datetime.now(timezone.utc).isoformat()
     last_result: dict | None = None
+    autonomous_thread: threading.Thread | None = None
     try:
         with connect() as db:
             ensure_market_price_state_table(db)
@@ -551,7 +623,23 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
         order_book_observation_enabled=settings.order_book_observation_enabled,
         order_book_window_seconds=settings.order_book_window_seconds,
         order_book_publish_seconds=settings.order_book_publish_seconds,
+        autonomous_contest_enabled=settings.autonomous_contest_enabled,
+        autonomous_contest_dry_run=settings.autonomous_contest_dry_run,
+        autonomous_scan_poll_seconds=settings.autonomous_scan_poll_seconds,
     )
+    if settings.autonomous_contest_enabled and settings.dry_run:
+        log_event(
+            "autonomous_contest_not_started",
+            reason="operation_worker_dry_run_does_not_publish_worker_prices",
+        )
+    elif settings.autonomous_contest_enabled:
+        autonomous_thread = threading.Thread(
+            target=run_autonomous_scanner_loop,
+            args=(stop_event, settings),
+            name="autonomous-contest-scanner",
+            daemon=True,
+        )
+        autonomous_thread.start()
     try:
         while not stop_event.is_set():
             cycle_started = time.monotonic()
@@ -604,6 +692,9 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
             wait_seconds = max(0.0, settings.poll_seconds - (time.monotonic() - cycle_started))
             stop_event.wait(wait_seconds)
     finally:
+        stop_event.set()
+        if autonomous_thread is not None:
+            autonomous_thread.join(timeout=10.0)
         publish_runtime_status(
             settings,
             started_at,

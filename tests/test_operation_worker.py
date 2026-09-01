@@ -151,6 +151,30 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertEqual(result["active_symbols"], 2)
         self.assertTrue(result["reconciled"])
 
+    def test_autonomous_mode_keeps_all_candidate_symbols_in_worker_price_state(self):
+        db = ActiveSymbolsDb([])
+        settings = operation_worker.WorkerSettings(
+            dry_run=True,
+            autonomous_contest_enabled=True,
+        )
+        price_loader = Mock(return_value=100.0)
+
+        result = operation_worker.run_worker_cycle(
+            operation_worker.WorkerState(),
+            settings,
+            connect_factory=connect_factory_for(db),
+            price_loader=price_loader,
+            kline_loader=Mock(return_value=[]),
+            now_ms=1_775_383_200_000,
+        )
+
+        self.assertEqual(price_loader.call_count, 6)
+        self.assertEqual(result["requested_symbols"], 6)
+        self.assertEqual(result["market_symbols"], 6)
+        self.assertTrue(result["autonomous_contest_enabled"])
+        self.assertEqual(result["failures"], 0)
+        self.assertTrue(result["reconciled"])
+
     def test_ordinary_cycle_skips_historical_download(self):
         db = ActiveSymbolsDb(
             [{"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"}]

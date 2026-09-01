@@ -150,6 +150,59 @@ SigmaLoader = Callable[[str, str, datetime], float]
 KlineLoader = Callable[..., list[list]]
 
 
+class MemoizedKlineLoader:
+    """Reuse exact closed-candle pages inside one autonomous scanner cycle.
+
+    LONG and SHORT candidates, plus the nested horizons, request many of the
+    same pages. Reusing only byte-equivalent requests preserves the timestamp
+    and source contract while preventing a burst of duplicate Binance calls.
+    """
+
+    def __init__(self, loader: KlineLoader = market_data.get_klines):
+        self.loader = loader
+        self._cache: dict[tuple, tuple[tuple, ...]] = {}
+        self.requests = 0
+        self.hits = 0
+
+    def __call__(
+        self,
+        symbol: str,
+        interval: str = "5m",
+        limit: int = 80,
+        start_time_ms: int | None = None,
+        end_time_ms: int | None = None,
+    ) -> list[list]:
+        key = (
+            str(symbol).upper(),
+            str(interval),
+            int(limit),
+            int(start_time_ms) if start_time_ms is not None else None,
+            int(end_time_ms) if end_time_ms is not None else None,
+        )
+        cached = self._cache.get(key)
+        if cached is None:
+            rows = self.loader(
+                key[0],
+                key[1],
+                key[2],
+                start_time_ms=key[3],
+                end_time_ms=key[4],
+            )
+            cached = tuple(tuple(row) for row in rows)
+            self._cache[key] = cached
+            self.requests += 1
+        else:
+            self.hits += 1
+        return [list(row) for row in cached]
+
+    def stats(self) -> dict[str, int]:
+        return {
+            "provider_requests": self.requests,
+            "cache_hits": self.hits,
+            "cached_pages": len(self._cache),
+        }
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -566,12 +619,14 @@ def analyze_candidates(
     sigma_loader: SigmaLoader = load_horizon_sigma,
     liquidation_contexts: dict[str, dict] | None = None,
     order_book_contexts: dict[str, dict] | None = None,
+    kline_loader: KlineLoader | None = None,
     symbols: Iterable[str] | None = None,
     sides: Iterable[str] = ("long", "short"),
 ) -> list[Candidate]:
     analyzed_at = _as_utc(analysis_at)
     liquidation_contexts = liquidation_contexts or {}
     order_book_contexts = order_book_contexts or {}
+    shared_kline_loader = kline_loader or MemoizedKlineLoader()
     candidates: list[Candidate] = []
     requested_symbols = tuple(symbols) if symbols is not None else policy.symbols
     requested_sides = tuple(str(side).lower() for side in sides)
@@ -593,7 +648,15 @@ def analyze_candidates(
                 )
             continue
         try:
-            sigma = sigma_loader(symbol, policy.time_horizon, analyzed_at)
+            if sigma_loader is load_horizon_sigma:
+                sigma = load_horizon_sigma(
+                    symbol,
+                    policy.time_horizon,
+                    analyzed_at,
+                    loader=shared_kline_loader,
+                )
+            else:
+                sigma = sigma_loader(symbol, policy.time_horizon, analyzed_at)
         except Exception as exc:
             for side in requested_sides:
                 candidates.append(
@@ -622,21 +685,23 @@ def analyze_candidates(
                 entry_type="market",
             )
             try:
-                result = analysis_runner(
-                    proposal,
-                    context_loader=(
+                analysis_kwargs = {
+                    "context_loader": (
                         (lambda _symbol, _price, value=liquidation_contexts.get(symbol): value)
                         if symbol in liquidation_contexts
                         else None
                     ),
-                    context_market_price=float(entry),
-                    order_book_observation_loader=(
+                    "context_market_price": float(entry),
+                    "order_book_observation_loader": (
                         (lambda _symbol, value=order_book_contexts.get(symbol): value)
                         if symbol in order_book_contexts
                         else None
                     ),
-                    effective_analysis_at=analyzed_at,
-                )
+                    "effective_analysis_at": analyzed_at,
+                }
+                if analysis_runner is analyze_trade:
+                    analysis_kwargs["loader"] = shared_kline_loader
+                result = analysis_runner(proposal, **analysis_kwargs)
                 selected_analogs, distance_ratio, artifact_id = _support_from_result(result)
                 tp_probability = float(result["tp_probability"])
                 sl_probability = float(result["sl_probability"])
@@ -1207,10 +1272,12 @@ def run_due_scans(
     now: datetime | None = None,
     analysis_runner: AnalysisRunner = analyze_trade,
     sigma_loader: SigmaLoader = load_horizon_sigma,
+    kline_loader: KlineLoader = market_data.get_klines,
     bootstrap: bool = True,
 ) -> dict:
     current = _as_utc(now or utc_now())
     started = time.perf_counter()
+    shared_kline_loader = MemoizedKlineLoader(kline_loader)
     with connect_factory() as db:
         if bootstrap:
             ensure_autonomous_storage(db)
@@ -1236,6 +1303,7 @@ def run_due_scans(
             "status": "waiting_for_worker_prices",
             "missing_price_symbols": missing_prices,
             "fresh_price_symbols": len(prices),
+            "kline_cache": shared_kline_loader.stats(),
             "scans": [],
             "duration_ms": round((time.perf_counter() - started) * 1000),
         }
@@ -1268,7 +1336,9 @@ def run_due_scans(
                     (slot.isoformat(), int(participant["id"])),
                 )
                 continue
-        analysis_at = current if now is not None else utc_now()
+        # One immutable market panel per scanner cycle makes the three nested
+        # horizons comparable and lets them reuse identical closed-candle pages.
+        analysis_at = current
         with connect_factory() as db:
             prices = fresh_market_prices(db, SYMBOLS, now=analysis_at)
             order_books = _load_order_book_contexts(db, SYMBOLS, analysis_at)
@@ -1304,6 +1374,7 @@ def run_due_scans(
             sigma_loader=sigma_loader,
             liquidation_contexts=liquidations,
             order_book_contexts=order_books,
+            kline_loader=shared_kline_loader,
         )
         selected = select_candidate(candidates, policy)
         confirmation_reason = None
@@ -1336,6 +1407,7 @@ def run_due_scans(
                     sigma_loader=sigma_loader,
                     liquidation_contexts=confirmation_liquidations,
                     order_book_contexts=confirmation_order_books,
+                    kline_loader=shared_kline_loader,
                     symbols=(selected.symbol,),
                     sides=(selected.side,),
                 )[0]
@@ -1511,6 +1583,7 @@ def run_due_scans(
         "dry_run": dry_run,
         "season_id": int(season["id"]),
         "fresh_price_symbols": len(prices),
+        "kline_cache": shared_kline_loader.stats(),
         "scans": scans,
         "duration_ms": round((time.perf_counter() - started) * 1000),
     }

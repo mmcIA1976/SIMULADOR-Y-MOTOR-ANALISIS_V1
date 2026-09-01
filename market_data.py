@@ -276,6 +276,8 @@ def get_prices(
     symbols: list[str] | tuple[str, ...] | set[str],
     *,
     allow_stale: bool = True,
+    timeout_seconds: float = RANKING_PRICE_TIMEOUT_SECONDS,
+    max_host_attempts: int = RANKING_PRICE_MAX_HOST_ATTEMPTS,
 ) -> dict[str, float]:
     """Resolve several Futures prices with at most one Binance request.
 
@@ -303,8 +305,8 @@ def get_prices(
     try:
         payload = get_futures_json(
             BINANCE_USDM_ALL_PRICES_PATH,
-            timeout_seconds=RANKING_PRICE_TIMEOUT_SECONDS,
-            max_host_attempts=RANKING_PRICE_MAX_HOST_ATTEMPTS,
+            timeout_seconds=max(float(timeout_seconds), 0.5),
+            max_host_attempts=max(1, int(max_host_attempts)),
         )
     except Exception:
         payload = []

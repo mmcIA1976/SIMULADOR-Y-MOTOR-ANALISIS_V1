@@ -112,6 +112,8 @@ class MarketPriceStateTests(unittest.TestCase):
         batch.assert_called_once_with(
             ["BTCUSDT", "ETHUSDT"],
             allow_stale=False,
+            timeout_seconds=operation_worker.WORKER_PRICE_TIMEOUT_SECONDS,
+            max_host_attempts=operation_worker.WORKER_PRICE_MAX_HOST_ATTEMPTS,
         )
         self.assertFalse(reconciled)
         self.assertEqual(failures, 0)

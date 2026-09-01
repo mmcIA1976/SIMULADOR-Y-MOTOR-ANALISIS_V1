@@ -62,6 +62,25 @@ def candidate(*, edge, tp=0.45, unresolved=0.30, symbol="BTCUSDT"):
 
 
 class AutonomousContestPolicyTests(unittest.TestCase):
+    def test_scanner_kline_cache_reuses_exact_pages_without_shared_mutation(self):
+        calls = []
+
+        def loader(symbol, interval, limit, start_time_ms=None, end_time_ms=None):
+            calls.append((symbol, interval, limit, start_time_ms, end_time_ms))
+            return [[1000, "1", "2", "0.5", "1.5", "10", 1999]]
+
+        cached = autonomous_contest.MemoizedKlineLoader(loader)
+        first = cached("btcusdt", "5m", 1500, 1000, 2000)
+        first[0][1] = "mutated"
+        second = cached("BTCUSDT", "5m", 1500, 1000, 2000)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(second[0][1], "1")
+        self.assertEqual(
+            cached.stats(),
+            {"provider_requests": 1, "cache_hits": 1, "cached_pages": 1},
+        )
+
     def test_three_horizon_policies_have_the_agreed_cadence_and_quotas(self):
         policies = {
             policy.time_horizon: policy

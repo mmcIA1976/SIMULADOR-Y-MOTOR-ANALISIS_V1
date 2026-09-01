@@ -44,6 +44,8 @@ from versioning import APP_VERSION, ENGINE_VERSION
 
 
 logger = logging.getLogger("operation_worker")
+WORKER_PRICE_TIMEOUT_SECONDS = 6.0
+WORKER_PRICE_MAX_HOST_ATTEMPTS = 5
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -282,6 +284,8 @@ def collect_market_inputs(
         price_snapshot = market_data.get_prices(
             requested_symbols,
             allow_stale=False,
+            timeout_seconds=WORKER_PRICE_TIMEOUT_SECONDS,
+            max_host_attempts=WORKER_PRICE_MAX_HOST_ATTEMPTS,
         )
     else:
         price_snapshot = {}

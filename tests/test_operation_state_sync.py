@@ -1,6 +1,7 @@
 import sqlite3
 import unittest
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -66,6 +67,42 @@ def use_db(db):
 
 
 class OperationStateSnapshotTests(unittest.TestCase):
+    def test_contest_revision_keeps_timestamp_aggregates_nullable(self):
+        db = create_operations_db()
+
+        populated = app.contest_operation_revision(db, 4)
+        empty = app.contest_operation_revision(db, 404)
+
+        self.assertEqual(populated["last_created_at"], "2026-09-02T09:01:00+00:00")
+        self.assertEqual(empty["last_created_at"], "")
+        self.assertEqual(empty["last_triggered_at"], "")
+        self.assertEqual(empty["last_closed_at"], "")
+        db.close()
+
+    def test_contest_revision_serializes_postgres_datetimes(self):
+        class FakeResult:
+            def fetchone(self):
+                timestamp = datetime(2026, 9, 2, 9, 1, tzinfo=timezone.utc)
+                return {
+                    "operation_count": 1,
+                    "max_operation_id": 10,
+                    "open_count": 1,
+                    "pending_count": 0,
+                    "closed_count": 0,
+                    "last_created_at": timestamp,
+                    "last_triggered_at": None,
+                    "last_closed_at": None,
+                }
+
+        class FakePostgresDb:
+            def execute(self, _query, _params):
+                return FakeResult()
+
+        revision = app.contest_operation_revision(FakePostgresDb(), 4)
+
+        self.assertEqual(revision["last_created_at"], "2026-09-02T09:01:00+00:00")
+        self.assertEqual(revision["last_triggered_at"], "")
+
     def test_id_parser_deduplicates_and_rejects_invalid_values(self):
         self.assertEqual(app.parse_operation_status_snapshot_ids("2, 1,2"), [2, 1])
 

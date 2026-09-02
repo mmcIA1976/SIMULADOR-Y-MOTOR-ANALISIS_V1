@@ -5992,9 +5992,9 @@ def contest_operation_revision(db, season_id: int) -> dict:
             COALESCE(SUM(CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END), 0) AS open_count,
             COALESCE(SUM(CASE WHEN status = 'PENDING_ENTRY' THEN 1 ELSE 0 END), 0) AS pending_count,
             COALESCE(SUM(CASE WHEN status = 'CLOSED' THEN 1 ELSE 0 END), 0) AS closed_count,
-            COALESCE(MAX(created_at), '') AS last_created_at,
-            COALESCE(MAX(triggered_at), '') AS last_triggered_at,
-            COALESCE(MAX(closed_at), '') AS last_closed_at
+            MAX(created_at) AS last_created_at,
+            MAX(triggered_at) AS last_triggered_at,
+            MAX(closed_at) AS last_closed_at
         FROM operations
         WHERE mode = 'contest'
           AND contest_season_id = ?
@@ -6002,6 +6002,12 @@ def contest_operation_revision(db, season_id: int) -> dict:
         (int(season_id),),
     ).fetchone()
     revision = row_to_dict(row) or {}
+
+    def revision_timestamp(value) -> str:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return str(value or "")
+
     return {
         "season_id": int(season_id),
         "operation_count": int(revision.get("operation_count") or 0),
@@ -6009,9 +6015,9 @@ def contest_operation_revision(db, season_id: int) -> dict:
         "open_count": int(revision.get("open_count") or 0),
         "pending_count": int(revision.get("pending_count") or 0),
         "closed_count": int(revision.get("closed_count") or 0),
-        "last_created_at": revision.get("last_created_at") or "",
-        "last_triggered_at": revision.get("last_triggered_at") or "",
-        "last_closed_at": revision.get("last_closed_at") or "",
+        "last_created_at": revision_timestamp(revision.get("last_created_at")),
+        "last_triggered_at": revision_timestamp(revision.get("last_triggered_at")),
+        "last_closed_at": revision_timestamp(revision.get("last_closed_at")),
     }
 
 

@@ -53,6 +53,40 @@ class ContestRankingResilienceTests(unittest.TestCase):
 
         self.assertEqual(prices, {"BTCUSDT": 63950.0})
 
+    def test_batch_price_loader_falls_back_to_fresh_symbol_tickers(self):
+        def load(path, **_kwargs):
+            if path == market_data.BINANCE_USDM_ALL_PRICES_PATH:
+                raise RuntimeError("all tickers rejected by provider edge")
+            if "BTCUSDT" in path:
+                return {"symbol": "BTCUSDT", "price": "64010.5"}
+            if "ETHUSDT" in path:
+                return {"symbol": "ETHUSDT", "price": "3210.25"}
+            raise AssertionError(path)
+
+        with patch.object(market_data, "get_futures_json", side_effect=load) as loader:
+            prices = market_data.get_prices(
+                ["BTCUSDT", "ETHUSDT"],
+                allow_stale=False,
+            )
+
+        self.assertEqual(prices, {"BTCUSDT": 64010.5, "ETHUSDT": 3210.25})
+        self.assertEqual(loader.call_count, 3)
+
+    def test_partial_batch_price_loader_fills_only_missing_symbols(self):
+        payloads = [
+            [{"symbol": "BTCUSDT", "price": "64001.5"}],
+            {"symbol": "ETHUSDT", "price": "3201.75"},
+        ]
+
+        with patch.object(market_data, "get_futures_json", side_effect=payloads) as loader:
+            prices = market_data.get_prices(
+                ["BTCUSDT", "ETHUSDT"],
+                allow_stale=False,
+            )
+
+        self.assertEqual(prices, {"BTCUSDT": 64001.5, "ETHUSDT": 3201.75})
+        self.assertEqual(loader.call_count, 2)
+
     def test_execution_batch_never_republishes_stale_memory_as_fresh(self):
         market_data._remember_price("BTCUSDT", 63950.0)
 

@@ -279,12 +279,15 @@ def get_prices(
     timeout_seconds: float = RANKING_PRICE_TIMEOUT_SECONDS,
     max_host_attempts: int = RANKING_PRICE_MAX_HOST_ATTEMPTS,
 ) -> dict[str, float]:
-    """Resolve several Futures prices with at most one Binance request.
+    """Resolve several Futures prices, preferring one Binance batch request.
 
     Fresh in-process values are reused first. If any symbol is missing, the
     all-tickers endpoint is fetched once and only the requested symbols are
-    retained. Callers that make execution decisions set ``allow_stale=False``;
-    display-only legacy callers may still opt into the bounded stale cache.
+    retained. Some Binance edges intermittently reject that larger response
+    while continuing to serve symbol-specific tickers, so unresolved symbols
+    are retried individually before considering cached stale values. Callers
+    that make execution decisions set ``allow_stale=False``; display-only
+    legacy callers may still opt into the bounded stale cache.
     """
     normalized_symbols = sorted({str(symbol).upper() for symbol in symbols if str(symbol).strip()})
     if not normalized_symbols:
@@ -325,6 +328,32 @@ def get_prices(
                 continue
             prices[symbol] = price
             _remember_price(symbol, price, source="binance_usdm_futures_all_tickers")
+
+    # The all-tickers response is considerably larger than a symbol ticker.
+    # Railway/Binance edge combinations can return an HTML 202 response for
+    # the former while the latter remains healthy. Do not let that partial
+    # provider failure freeze every active operation and every UI price.
+    for symbol in missing:
+        if symbol in prices:
+            continue
+        safe_symbol = urllib.parse.quote(symbol)
+        try:
+            individual_payload = get_futures_json(
+                BINANCE_USDM_PRICE_PATH.format(symbol=safe_symbol),
+                timeout_seconds=max(float(timeout_seconds), 0.5),
+                max_host_attempts=max(1, int(max_host_attempts)),
+            )
+            if not isinstance(individual_payload, dict) or "price" not in individual_payload:
+                continue
+            price = float(individual_payload["price"])
+        except (KeyError, TypeError, ValueError, RuntimeError, HTTPError):
+            continue
+        prices[symbol] = price
+        _remember_price(
+            symbol,
+            price,
+            source="binance_usdm_futures_symbol_ticker_fallback",
+        )
 
     for symbol in missing:
         if symbol in prices:

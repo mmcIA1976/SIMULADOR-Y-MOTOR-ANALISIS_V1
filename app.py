@@ -737,7 +737,11 @@ def portfolio(session_token: str | None = Cookie(default=None, alias=SESSION_COO
 
 
 @app.get("/api/contest/current")
-def contest_current(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
+def contest_current(
+    response: Response,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    response.headers["Cache-Control"] = "no-store"
     user = current_user(session_token)
     with connect() as db:
         season = ensure_current_contest_season(db)
@@ -751,6 +755,7 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
         portfolio = calculate_portfolio_from_db(db, int(user["id"]))
         leaderboard = contest_leaderboard(db, season_id, live_prices=live_prices)
         history = contest_history(db)
+        operation_revision = contest_operation_revision(db, season_id)
         if entry:
             apply_contest_unrealized_to_portfolio(
                 db,
@@ -767,6 +772,7 @@ def contest_current(session_token: str | None = Cookie(default=None, alias=SESSI
         "leaderboard": leaderboard,
         "history": history,
         "active_refresh": active_refresh,
+        "operation_revision": operation_revision,
     }
 
 
@@ -5976,16 +5982,52 @@ def parse_operation_status_snapshot_ids(raw_ids: str | None) -> list[int]:
     return operation_ids
 
 
+def contest_operation_revision(db, season_id: int) -> dict:
+    """Return a compact fingerprint for operation changes in one contest."""
+    row = db.execute(
+        """
+        SELECT
+            COUNT(*) AS operation_count,
+            COALESCE(MAX(id), 0) AS max_operation_id,
+            COALESCE(SUM(CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END), 0) AS open_count,
+            COALESCE(SUM(CASE WHEN status = 'PENDING_ENTRY' THEN 1 ELSE 0 END), 0) AS pending_count,
+            COALESCE(SUM(CASE WHEN status = 'CLOSED' THEN 1 ELSE 0 END), 0) AS closed_count,
+            COALESCE(MAX(created_at), '') AS last_created_at,
+            COALESCE(MAX(triggered_at), '') AS last_triggered_at,
+            COALESCE(MAX(closed_at), '') AS last_closed_at
+        FROM operations
+        WHERE mode = 'contest'
+          AND contest_season_id = ?
+        """,
+        (int(season_id),),
+    ).fetchone()
+    revision = row_to_dict(row) or {}
+    return {
+        "season_id": int(season_id),
+        "operation_count": int(revision.get("operation_count") or 0),
+        "max_operation_id": int(revision.get("max_operation_id") or 0),
+        "open_count": int(revision.get("open_count") or 0),
+        "pending_count": int(revision.get("pending_count") or 0),
+        "closed_count": int(revision.get("closed_count") or 0),
+        "last_created_at": revision.get("last_created_at") or "",
+        "last_triggered_at": revision.get("last_triggered_at") or "",
+        "last_closed_at": revision.get("last_closed_at") or "",
+    }
+
+
 @app.get("/api/operations/status-snapshot")
 def operation_status_snapshot(
     response: Response,
     ids: str = "",
+    contest_season_id: int | None = None,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     """Return lifecycle fields only; this endpoint never advances operations."""
     response.headers["Cache-Control"] = "no-store"
     user = current_user(session_token)
     operation_ids = parse_operation_status_snapshot_ids(ids)
+    if contest_season_id is not None and contest_season_id <= 0:
+        raise HTTPException(status_code=400, detail="Concurso no valido")
     requested_clause = ""
     params: list[int] = [int(user["id"])]
     if operation_ids:
@@ -6015,7 +6057,15 @@ def operation_status_snapshot(
             """,
             tuple(params),
         ).fetchall()
-    return {"operations": [row_to_dict(row) for row in rows]}
+        contest_revision = (
+            contest_operation_revision(db, contest_season_id)
+            if contest_season_id is not None
+            else None
+        )
+    return {
+        "operations": [row_to_dict(row) for row in rows],
+        "contest_operation_revision": contest_revision,
+    }
 
 
 @app.get("/api/operations/{operation_id}/ticks")

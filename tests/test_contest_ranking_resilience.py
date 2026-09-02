@@ -4,6 +4,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
+from fastapi import Response
+
 import app
 import market_data
 
@@ -134,9 +136,15 @@ class ContestRankingResilienceTests(unittest.TestCase):
             patch.object(app, "calculate_portfolio_from_db", return_value=portfolio),
             patch.object(app, "contest_leaderboard", return_value=leaderboard) as build_leaderboard,
             patch.object(app, "contest_history", return_value=[]),
+            patch.object(
+                app,
+                "contest_operation_revision",
+                return_value={"season_id": 4, "operation_count": 2},
+            ),
             patch.object(app, "apply_contest_unrealized_to_portfolio") as apply_unrealized,
         ):
-            result = app.contest_current(session_token="token")
+            response = Response()
+            result = app.contest_current(response=response, session_token="token")
 
         refresh_operations.assert_not_called()
         load_prices.assert_called_once_with(["BTCUSDT", "ETHUSDT"])
@@ -150,6 +158,8 @@ class ContestRankingResilienceTests(unittest.TestCase):
         )
         self.assertEqual(result["leaderboard"], leaderboard)
         self.assertEqual(result["active_refresh"], {"activated_operations": [], "closed_operations": []})
+        self.assertEqual(result["operation_revision"]["operation_count"], 2)
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
 
     def test_frontend_preserves_last_ranking_on_transient_failure(self):
         source = Path(app.__file__).with_name("app.js").read_text(encoding="utf-8")
@@ -162,6 +172,14 @@ class ContestRankingResilienceTests(unittest.TestCase):
         self.assertNotIn("contestState = null", catch_source)
         self.assertIn("Se conserva el ultimo ranking valido", catch_source)
         self.assertIn("if (contestLoadInFlight)", load_contest_source)
+
+    def test_frontend_discovers_bot_operations_without_full_page_reload(self):
+        source = Path(app.__file__).with_name("app.js").read_text(encoding="utf-8")
+
+        self.assertIn('queryParams.set("contest_season_id", String(contestSeasonId))', source)
+        self.assertIn("contestOperationRevisionChanged(data.contest_operation_revision)", source)
+        self.assertIn("if (contestOperationsChanged)", source)
+        self.assertIn("await loadContest();", source)
 
     def test_leaderboard_does_not_download_full_analysis_json(self):
         source = inspect.getsource(app.contest_leaderboard)

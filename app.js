@@ -3137,7 +3137,7 @@ async function loadContest() {
   }
   const request = (async () => {
     try {
-      const nextContestState = await requestJson("/api/contest/current");
+      const nextContestState = await requestJson("/api/contest/current", { cacheBust: true });
       if (!currentUser || Number(currentUser.id) !== requestedUserId) {
         return false;
       }
@@ -3891,13 +3891,47 @@ function operationStateSnapshotChanged(remoteOperations, requestedIds) {
   });
 }
 
+function contestOperationRevisionKey(revision) {
+  if (!revision || typeof revision !== "object") {
+    return "";
+  }
+  return [
+    revision.season_id,
+    revision.operation_count,
+    revision.max_operation_id,
+    revision.open_count,
+    revision.pending_count,
+    revision.closed_count,
+    revision.last_created_at,
+    revision.last_triggered_at,
+    revision.last_closed_at,
+  ].map((value) => String(value ?? "")).join("|");
+}
+
+function contestOperationRevisionChanged(remoteRevision) {
+  if (operationMode !== "contest" || !contestState || !remoteRevision) {
+    return false;
+  }
+  return contestOperationRevisionKey(remoteRevision)
+    !== contestOperationRevisionKey(contestState.operation_revision);
+}
+
 async function syncOperationStates() {
   if (!currentUser || operationStateSyncInFlight) {
     return;
   }
   operationStateSyncInFlight = true;
   const requestedIds = operationStateSyncIds();
-  const query = requestedIds.length ? `?ids=${encodeURIComponent(requestedIds.join(","))}` : "";
+  const queryParams = new URLSearchParams();
+  if (requestedIds.length) {
+    queryParams.set("ids", requestedIds.join(","));
+  }
+  const contestSeasonId = Number(contestState?.season?.id);
+  if (operationMode === "contest" && Number.isFinite(contestSeasonId)) {
+    queryParams.set("contest_season_id", String(contestSeasonId));
+  }
+  const queryString = queryParams.toString();
+  const query = queryString ? `?${queryString}` : "";
   try {
     const data = await requestJson(`/api/operations/status-snapshot${query}`, {
       cacheBust: true,
@@ -3905,15 +3939,18 @@ async function syncOperationStates() {
       timeoutMessage: "La sincronizacion de operaciones ha tardado demasiado.",
     });
     const remoteOperations = Array.isArray(data.operations) ? data.operations : [];
-    if (!operationStateSnapshotChanged(remoteOperations, requestedIds)) {
+    const ownOperationsChanged = operationStateSnapshotChanged(remoteOperations, requestedIds);
+    const contestOperationsChanged = contestOperationRevisionChanged(data.contest_operation_revision);
+    if (!ownOperationsChanged && !contestOperationsChanged) {
       return;
     }
-    const loaded = await loadOperations({ preserveOnError: true, cacheBust: true });
-    if (!loaded) {
-      return;
+    if (ownOperationsChanged) {
+      const loaded = await loadOperations({ preserveOnError: true, cacheBust: true });
+      if (loaded) {
+        await loadPortfolio({ cacheBust: true });
+      }
     }
-    await loadPortfolio({ cacheBust: true });
-    if (operationMode === "contest") {
+    if (contestOperationsChanged) {
       await loadContest();
     }
   } catch {

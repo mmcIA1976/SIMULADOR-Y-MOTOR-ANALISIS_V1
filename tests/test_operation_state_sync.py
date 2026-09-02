@@ -17,8 +17,12 @@ def create_operations_db():
         CREATE TABLE operations (
             id INTEGER PRIMARY KEY,
             user_id INTEGER NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'training',
+            contest_season_id INTEGER,
             status TEXT NOT NULL,
             entry REAL,
+            created_at TEXT,
+            started_at TEXT,
             triggered_at TEXT,
             trigger_price REAL,
             closed_at TEXT,
@@ -45,6 +49,12 @@ def create_operations_db():
 
         INSERT INTO operations (id, user_id, status, entry)
         VALUES (4, 7, 'CLOSED', 103.0);
+
+        INSERT INTO operations (
+            id, user_id, mode, contest_season_id, status, entry, created_at
+        ) VALUES (
+            10, 99, 'contest', 4, 'OPEN', 104.0, '2026-09-02T09:01:00+00:00'
+        );
         """
     )
     return db
@@ -80,6 +90,7 @@ class OperationStateSnapshotTests(unittest.TestCase):
             result = app.operation_status_snapshot(
                 response=response,
                 ids="2,2",
+                contest_season_id=4,
                 session_token="session",
             )
 
@@ -87,6 +98,8 @@ class OperationStateSnapshotTests(unittest.TestCase):
         self.assertEqual(result["operations"][0]["status"], "CLOSED")
         self.assertEqual(result["operations"][0]["close_reason"], "stop_loss")
         self.assertEqual(response.headers.get("cache-control"), "no-store")
+        self.assertEqual(result["contest_operation_revision"]["operation_count"], 1)
+        self.assertEqual(result["contest_operation_revision"]["max_operation_id"], 10)
         self.assertEqual(db.total_changes, changes_before)
         db.close()
 
@@ -104,7 +117,7 @@ class OperationStateSnapshotTests(unittest.TestCase):
 
         self.assertEqual(response.headers.get("cache-control"), "no-store")
         index_html = (Path(__file__).resolve().parents[1] / "index.html").read_text(encoding="utf-8")
-        self.assertIn("/static/app.js?v=20260829-analysis-source-availability-v2", index_html)
+        self.assertIn("/static/app.js?v=20260902-contest-auto-sync-v1", index_html)
 
 
 if __name__ == "__main__":

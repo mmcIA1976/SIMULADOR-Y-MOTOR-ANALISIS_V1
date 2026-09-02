@@ -178,7 +178,8 @@ class ContestRankingResilienceTests(unittest.TestCase):
 
         self.assertIn('queryParams.set("contest_season_id", String(contestSeasonId))', source)
         self.assertIn("contestOperationRevisionChanged(data.contest_operation_revision)", source)
-        self.assertIn("if (contestOperationsChanged)", source)
+        self.assertIn('contestNeedsInitialRetry = operationMode === "contest" && !contestState', source)
+        self.assertIn("if (contestOperationsChanged || contestNeedsInitialRetry)", source)
         self.assertIn("await loadContest();", source)
 
     def test_leaderboard_does_not_download_full_analysis_json(self):

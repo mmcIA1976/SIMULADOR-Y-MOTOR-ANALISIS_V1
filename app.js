@@ -3941,7 +3941,8 @@ async function syncOperationStates() {
     const remoteOperations = Array.isArray(data.operations) ? data.operations : [];
     const ownOperationsChanged = operationStateSnapshotChanged(remoteOperations, requestedIds);
     const contestOperationsChanged = contestOperationRevisionChanged(data.contest_operation_revision);
-    if (!ownOperationsChanged && !contestOperationsChanged) {
+    const contestNeedsInitialRetry = operationMode === "contest" && !contestState;
+    if (!ownOperationsChanged && !contestOperationsChanged && !contestNeedsInitialRetry) {
       return;
     }
     if (ownOperationsChanged) {
@@ -3950,7 +3951,7 @@ async function syncOperationStates() {
         await loadPortfolio({ cacheBust: true });
       }
     }
-    if (contestOperationsChanged) {
+    if (contestOperationsChanged || contestNeedsInitialRetry) {
       await loadContest();
     }
   } catch {

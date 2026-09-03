@@ -34,7 +34,7 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.2"
+POLICY_VERSION = "autonomous-contest-policy-v0.3"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 SYMBOLS = (
@@ -70,6 +70,10 @@ class ParticipantPolicy:
     time_horizon: str
     cadence_minutes: int
     daily_operation_limit: int
+    # Legacy persistence field kept while the production table still has a
+    # NOT NULL column with this name.  It is deliberately not enforced: the
+    # daily operation target is independent of positions left open from prior
+    # scans or days.
     max_open_positions: int
     edge_threshold: float
     # Neutral reference values used only while the analysis engine estimates
@@ -1004,38 +1008,6 @@ def _daily_operation_count(
     return int(row["count"] or 0)
 
 
-def _open_position_count(
-    db, participant: dict, season_id: int, now: datetime, *, dry_run: bool
-) -> int:
-    if dry_run:
-        row = db.execute(
-            """
-            SELECT COUNT(*) AS count
-            FROM autonomous_candidate_observations c
-            JOIN autonomous_scan_runs s ON s.id = c.scan_run_id
-            WHERE c.participant_id = ?
-              AND c.contest_season_id = ?
-              AND c.selected = TRUE
-              AND s.status = 'would_open'
-              AND c.evaluation_due_at > ?
-            """,
-            (int(participant["id"]), season_id, now.isoformat()),
-        ).fetchone()
-    else:
-        row = db.execute(
-            """
-            SELECT COUNT(*) AS count
-            FROM operations
-            WHERE user_id = ?
-              AND mode = 'contest'
-              AND contest_season_id = ?
-              AND status IN ('OPEN', 'PENDING_ENTRY')
-            """,
-            (int(participant["user_id"]), season_id),
-        ).fetchone()
-    return int(row["count"] or 0)
-
-
 def _available_contest_cash(db, user_id: int, season_id: int) -> float:
     entry = db.execute(
         """
@@ -1303,14 +1275,6 @@ def _open_selected_operation(
         dry_run=False,
     ) >= policy.daily_operation_limit:
         raise ValueError("autonomous_daily_quota_reached")
-    if _open_position_count(
-        db,
-        participant,
-        season_id,
-        executed_at,
-        dry_run=False,
-    ) >= policy.max_open_positions:
-        raise ValueError("autonomous_open_capacity_reached")
     cash = _available_contest_cash(db, user_id, season_id)
     sizing = determine_position_sizing(candidate, cash)
     execution_take_profit, execution_stop_loss = symmetric_geometry(
@@ -1518,16 +1482,7 @@ def run_due_scans(
             daily_count = _daily_operation_count(
                 db, participant, int(season["id"]), current, dry_run=dry_run
             )
-            open_count = _open_position_count(
-                db, participant, int(season["id"]), current, dry_run=dry_run
-            )
             if daily_count >= policy.daily_operation_limit:
-                db.execute(
-                    "UPDATE autonomous_contest_participants SET last_scan_slot_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (slot.isoformat(), int(participant["id"])),
-                )
-                continue
-            if open_count >= policy.max_open_positions:
                 db.execute(
                     "UPDATE autonomous_contest_participants SET last_scan_slot_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                     (slot.isoformat(), int(participant["id"])),
@@ -1664,13 +1619,6 @@ def run_due_scans(
                             execution_at,
                             dry_run=False,
                         )
-                        live_open_count = _open_position_count(
-                            db,
-                            participant,
-                            season_id,
-                            execution_at,
-                            dry_run=False,
-                        )
                         live_cash = _available_contest_cash(
                             db,
                             int(participant["user_id"]),
@@ -1679,9 +1627,6 @@ def run_due_scans(
                         if live_daily_count >= policy.daily_operation_limit:
                             status = "quota_reached"
                             reason = "quota_reached_during_analysis"
-                        elif live_open_count >= policy.max_open_positions:
-                            status = "capacity_reached"
-                            reason = "capacity_reached_during_analysis"
                         elif live_cash <= 0:
                             status = "no_cash"
                             reason = "insufficient_contest_cash_during_analysis"

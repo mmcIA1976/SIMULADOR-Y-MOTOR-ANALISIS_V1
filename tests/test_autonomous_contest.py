@@ -362,6 +362,14 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertEqual(operation_params[11], 100.05)
         self.assertEqual(recommendation_params[0], 501)
         self.assertEqual(tick_params[2], 100.05)
+        self.assertFalse(
+            any(
+                "SELECT COUNT(*) AS count" in " ".join(query.split())
+                and "status IN ('OPEN', 'PENDING_ENTRY')" in " ".join(query.split())
+                for query, _params in db.calls
+            ),
+            "Existing open positions must never block today's operation target.",
+        )
         stored_analysis = json.loads(recommendation_params[17])
         self.assertEqual(stored_analysis["position_sizing"]["margin"], 500.0)
         self.assertEqual(stored_analysis["position_sizing"]["leverage"], 7)

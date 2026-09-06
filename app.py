@@ -66,6 +66,9 @@ from order_book_observation_state import (
     get_order_book_observation_row,
     summarize_order_book_observation,
 )
+from observational_shadow_evaluation import (
+    build_observational_shadow_report,
+)
 from sequential_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
@@ -2116,6 +2119,15 @@ def economic_audit(session_token: str | None = Cookie(default=None, alias=SESSIO
     user = current_user(session_token)
     with connect() as db:
         return build_economic_audit_report(db, int(user["id"]))
+
+
+@app.get("/api/learning/observational-shadow-evaluation")
+def observational_shadow_evaluation(
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    current_user(session_token)
+    with connect() as db:
+        return build_observational_shadow_report(db)
 
 
 def build_economic_audit_report(db, user_id: int) -> dict:

@@ -27,7 +27,12 @@ from autonomous_contest import (
     evaluate_due_candidates,
     run_due_scans,
 )
-from db import close_pool, connect
+from db import (
+    close_pool,
+    connect,
+    runtime_database_bootstrap_enabled,
+    verify_runtime_schema,
+)
 from market_price_state import (
     MARKET_PRICE_SOURCE,
     ensure_market_price_state_table,
@@ -614,9 +619,19 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
     autonomous_thread: threading.Thread | None = None
     try:
         with connect() as db:
-            ensure_market_price_state_table(db)
-            ensure_worker_status_table(db)
-            ensure_order_book_observation_state_table(db)
+            if runtime_database_bootstrap_enabled():
+                ensure_market_price_state_table(db)
+                ensure_worker_status_table(db)
+                ensure_order_book_observation_state_table(db)
+            else:
+                verify_runtime_schema(
+                    db,
+                    (
+                        "market_price_state",
+                        "operation_worker_state",
+                        "order_book_observation_state",
+                    ),
+                )
     except Exception as exc:
         log_event("worker_status_storage_failed", error=str(exc))
     publish_runtime_status(settings, started_at, "starting")

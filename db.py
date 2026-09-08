@@ -21,6 +21,24 @@ from versioning import APP_VERSION
 
 _PG_POOL: ConnectionPool | None = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+RUNTIME_SCHEMA_TABLES = (
+    "users",
+    "operations",
+    "recommendations",
+    "price_ticks",
+    "contest_seasons",
+    "contest_entries",
+    "wallet_events",
+    "learning_evaluations",
+    "analysis_attempts",
+    "market_price_state",
+    "operation_worker_state",
+    "order_book_observation_state",
+    "recommendation_counterfactual_evaluations",
+    "operation_observation_sessions",
+    "operation_observation_checkpoints",
+    "operation_exit_counterfactuals",
+)
 
 
 def load_local_env() -> None:
@@ -55,6 +73,38 @@ def database_url() -> str:
             "SUPABASE_DATABASE_URL debe empezar por postgresql:// o postgres://"
         )
     return url
+
+
+def runtime_database_bootstrap_enabled() -> bool:
+    """Run schema creation locally, but never as a Railway boot side effect.
+
+    Production migrations are applied before deployment.  This keeps the web
+    and worker processes from taking DDL locks while the previous deployment is
+    still serving traffic.  The explicit override remains available for a new
+    empty environment.
+    """
+    configured = os.environ.get("DB_BOOTSTRAP_ON_STARTUP")
+    if configured is not None:
+        return configured.strip().lower() in {"1", "true", "yes", "on"}
+    return not bool(os.environ.get("RAILWAY_ENVIRONMENT", "").strip())
+
+
+def verify_runtime_schema(db, required_tables=RUNTIME_SCHEMA_TABLES) -> None:
+    rows = db.execute(
+        """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = ANY(?)
+        """,
+        (list(required_tables),),
+    ).fetchall()
+    present = {str(row["table_name"]) for row in rows}
+    missing = sorted(set(required_tables) - present)
+    if missing:
+        raise RuntimeError(
+            "database_schema_migration_required:" + ",".join(missing)
+        )
 
 
 def _get_pg_pool() -> ConnectionPool:

@@ -19,7 +19,14 @@ import data_engine
 import liquidation_data
 from analysis_engine import TradeProposal, build_explained_metrics
 from analysis_engine import time_horizon_profile
-from db import close_pool, connect, init_db, row_to_dict
+from db import (
+    close_pool,
+    connect,
+    init_db,
+    row_to_dict,
+    runtime_database_bootstrap_enabled,
+    verify_runtime_schema,
+)
 from economic_metrics import (
     economic_case_fields,
     economic_metrics_case_fields,
@@ -561,12 +568,16 @@ def set_session_cookie(response: Response, user_id: int) -> None:
 
 @app.on_event("startup")
 def startup() -> None:
-    init_db()
-    with connect() as db:
-        ensure_order_book_observation_state_table(db)
-    ensure_analysis_attempt_storage()
-    ensure_pending_entry_columns()
-    migrate_file_avatars_to_database()
+    if runtime_database_bootstrap_enabled():
+        init_db()
+        with connect() as db:
+            ensure_order_book_observation_state_table(db)
+        ensure_analysis_attempt_storage()
+        ensure_pending_entry_columns()
+        migrate_file_avatars_to_database()
+    else:
+        with connect() as db:
+            verify_runtime_schema(db)
     finalize_due_observations()
     refresh_learning_conclusions()
     refresh_learning_evaluations()

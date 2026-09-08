@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from backfill_operation_404_observation import (
     CHECKPOINTS,
@@ -17,6 +19,7 @@ from operation_observation_learning import (
     checkpoint_code,
     payload_sha256,
 )
+from db import runtime_database_bootstrap_enabled
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -110,6 +113,24 @@ class OperationObservationLearningTests(unittest.TestCase):
         commit_position = source.index("db.commit()", update_position)
         index_position = source.index("create_indexes(db)", update_position)
         self.assertLess(commit_position, index_position)
+
+    def test_railway_runtime_verifies_schema_without_running_ddl(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"RAILWAY_ENVIRONMENT": "production"},
+            clear=False,
+        ):
+            os.environ.pop("DB_BOOTSTRAP_ON_STARTUP", None)
+            self.assertFalse(runtime_database_bootstrap_enabled())
+        with patch.dict(
+            os.environ,
+            {
+                "RAILWAY_ENVIRONMENT": "production",
+                "DB_BOOTSTRAP_ON_STARTUP": "true",
+            },
+            clear=False,
+        ):
+            self.assertTrue(runtime_database_bootstrap_enabled())
 
     def test_frontend_exposes_manual_observation_without_reusing_opening_state(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")

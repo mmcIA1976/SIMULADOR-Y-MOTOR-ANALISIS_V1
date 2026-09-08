@@ -932,6 +932,14 @@ def init_db() -> None:
         db.execute("UPDATE operations SET mode = 'training' WHERE mode IS NULL OR mode = ''")
         db.execute("UPDATE operations SET time_horizon = 'intraday_short' WHERE time_horizon IS NULL OR time_horizon = ''")
         db.execute("UPDATE recommendations SET time_horizon = 'intraday_short' WHERE time_horizon IS NULL OR time_horizon = ''")
+        # Do not carry bootstrap locks from every table into the index phase.
+        # Railway replaces the web service while the worker keeps reading and
+        # writing the same database; holding the market-state lock and then
+        # asking for a contest-table lock can deadlock with an in-flight worker
+        # transaction that acquired those relations in the opposite order.
+        # Everything above is idempotent, so this is a safe transaction
+        # boundary and leaves the following index/constraint phase retryable.
+        db.commit()
         create_indexes(db)
         ensure_market_price_precision(db)
         ensure_economic_metric_precision(db)

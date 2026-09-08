@@ -100,6 +100,17 @@ class OperationObservationLearningTests(unittest.TestCase):
             4,
         )
 
+    def test_database_bootstrap_releases_relation_locks_before_indexes(self) -> None:
+        source = (ROOT / "db.py").read_text(encoding="utf-8")
+        update = (
+            "UPDATE recommendations SET time_horizon = 'intraday_short' "
+            "WHERE time_horizon IS NULL OR time_horizon = ''"
+        )
+        update_position = source.index(update)
+        commit_position = source.index("db.commit()", update_position)
+        index_position = source.index("create_indexes(db)", update_position)
+        self.assertLess(commit_position, index_position)
+
     def test_frontend_exposes_manual_observation_without_reusing_opening_state(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         javascript = (ROOT / "app.js").read_text(encoding="utf-8")

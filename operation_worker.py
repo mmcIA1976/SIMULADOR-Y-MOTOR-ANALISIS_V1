@@ -18,6 +18,7 @@ from app import (
     expire_due_pending_limit_operations,
     finalize_due_observations,
     get_operation_klines_1m,
+    record_operation_observation_checkpoint,
     refresh_learning_conclusions,
     refresh_learning_evaluations,
     refresh_symbol_active_operations,
@@ -45,7 +46,10 @@ from order_book_observation_state import (
     publish_order_book_observations,
 )
 from operation_worker_status import ensure_worker_status_table, upsert_worker_status
-from operation_observation_learning import finalize_closed_observation_sessions
+from operation_observation_learning import (
+    due_observation_sessions,
+    finalize_closed_observation_sessions,
+)
 from versioning import APP_VERSION, ENGINE_VERSION
 
 
@@ -145,6 +149,10 @@ class WorkerSettings:
 class WorkerState:
     last_reconcile_ms: int | None = None
     cycles: int = 0
+    observation_scheduler_status: str = "pending"
+    observation_scheduler_last_run_at: str | None = None
+    observation_scheduler_last_error: str | None = None
+    observation_checkpoints_recorded: int = 0
     order_book_tracker: OrderBookObservationTracker = field(
         default_factory=OrderBookObservationTracker
     )
@@ -550,6 +558,16 @@ def run_worker_cycle(
         "persist_exit_window": settings.persist_exit_window,
         "dry_run": settings.dry_run,
         "autonomous_contest_enabled": settings.autonomous_contest_enabled,
+        "observation_scheduler_status": state.observation_scheduler_status,
+        "observation_scheduler_last_run_at": (
+            state.observation_scheduler_last_run_at
+        ),
+        "observation_scheduler_last_error": (
+            state.observation_scheduler_last_error
+        ),
+        "observation_checkpoints_recorded": (
+            state.observation_checkpoints_recorded
+        ),
     }
 
 
@@ -599,6 +617,95 @@ def run_autonomous_scanner_loop(
         stop_event.wait(wait_seconds)
 
 
+def run_observation_scheduler_loop(
+    stop_event: threading.Event,
+    settings: WorkerSettings,
+    state: WorkerState,
+    *,
+    connect_factory: ConnectFactory = connect,
+    checkpoint_runner: Callable[[int], dict] = (
+        record_operation_observation_checkpoint
+    ),
+) -> None:
+    """Generate due observation controls away from the price/exit loop."""
+    retry_after: dict[int, float] = {}
+    while not stop_event.is_set():
+        cycle_started = time.monotonic()
+        try:
+            with connect_factory() as db:
+                finalized = finalize_closed_observation_sessions(db)
+                due_sessions = due_observation_sessions(db)
+            if finalized:
+                log_event(
+                    "operation_observation_sessions_finalized",
+                    sessions=finalized,
+                )
+            active_session_ids = {int(row["id"]) for row in due_sessions}
+            retry_after = {
+                session_id: deadline
+                for session_id, deadline in retry_after.items()
+                if session_id in active_session_ids
+            }
+            for session in due_sessions:
+                session_id = int(session["id"])
+                if time.monotonic() < retry_after.get(session_id, 0.0):
+                    continue
+                operation_id = int(session["operation_id"])
+                try:
+                    result = checkpoint_runner(operation_id)
+                    retry_after.pop(session_id, None)
+                    state.observation_checkpoints_recorded += 1
+                    log_event(
+                        "operation_observation_checkpoint_recorded",
+                        operation_id=operation_id,
+                        checkpoint_code=(
+                            result.get("checkpoint", {}).get("checkpoint_code")
+                        ),
+                        interval_minutes=int(
+                            session["planned_interval_minutes"]
+                        ),
+                    )
+                except Exception as exc:
+                    state.observation_scheduler_last_error = (
+                        f"{type(exc).__name__}:{exc}"
+                    )[:500]
+                    retry_after[session_id] = time.monotonic() + max(
+                        int(session["planned_interval_minutes"]) * 60,
+                        60,
+                    )
+                    log_event(
+                        "operation_observation_checkpoint_failed",
+                        operation_id=operation_id,
+                        error=f"{type(exc).__name__}:{exc}",
+                        retry_minutes=int(
+                            session["planned_interval_minutes"]
+                        ),
+                    )
+            state.observation_scheduler_status = (
+                "degraded" if retry_after else "ready"
+            )
+            if not retry_after:
+                state.observation_scheduler_last_error = None
+        except Exception as exc:
+            state.observation_scheduler_status = "degraded"
+            state.observation_scheduler_last_error = (
+                f"{type(exc).__name__}:{exc}"
+            )[:500]
+            log_event(
+                "operation_observation_scheduler_failed",
+                error=f"{type(exc).__name__}:{exc}",
+            )
+            logger.exception("operation observation scheduler cycle failed")
+        state.observation_scheduler_last_run_at = datetime.now(
+            timezone.utc
+        ).isoformat()
+        wait_seconds = max(
+            0.0,
+            settings.poll_seconds - (time.monotonic() - cycle_started),
+        )
+        stop_event.wait(wait_seconds)
+
+
 def run_forever(settings: WorkerSettings | None = None) -> None:
     settings = settings or WorkerSettings.from_env()
     stop_event = threading.Event()
@@ -617,6 +724,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
     started_at = datetime.now(timezone.utc).isoformat()
     last_result: dict | None = None
     autonomous_thread: threading.Thread | None = None
+    observation_thread: threading.Thread | None = None
     try:
         with connect() as db:
             if runtime_database_bootstrap_enabled():
@@ -661,6 +769,14 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
             daemon=True,
         )
         autonomous_thread.start()
+    if not settings.dry_run:
+        observation_thread = threading.Thread(
+            target=run_observation_scheduler_loop,
+            args=(stop_event, settings, state),
+            name="operation-observation-scheduler",
+            daemon=True,
+        )
+        observation_thread.start()
     try:
         while not stop_event.is_set():
             cycle_started = time.monotonic()
@@ -696,7 +812,12 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                 or result["order_book_observation_failures"]
                 or now_monotonic - last_heartbeat >= settings.heartbeat_seconds
             ):
-                lifecycle_status = "degraded" if result["failures"] else "running"
+                lifecycle_status = (
+                    "degraded"
+                    if result["failures"]
+                    or result["observation_scheduler_status"] == "degraded"
+                    else "running"
+                )
                 publish_runtime_status(
                     settings,
                     started_at,
@@ -705,7 +826,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                     last_error=(
                         "Uno o mas simbolos fallaron en el ultimo ciclo; consultar logs."
                         if result["failures"]
-                        else None
+                        else result["observation_scheduler_last_error"]
                     ),
                 )
                 log_event("operation_worker_heartbeat", **result)
@@ -716,6 +837,8 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
         stop_event.set()
         if autonomous_thread is not None:
             autonomous_thread.join(timeout=10.0)
+        if observation_thread is not None:
+            observation_thread.join(timeout=10.0)
         publish_runtime_status(
             settings,
             started_at,

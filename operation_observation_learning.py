@@ -3,14 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
 OBSERVATION_ANALYSIS_TYPE = "operation_observation"
-OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.1"
+OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.2"
 EXIT_COUNTERFACTUAL_VERSION = "operation-exit-counterfactual-v0.1"
 OBSERVATION_PRODUCTION_EFFECT = "none"
+OBSERVATION_INTERVAL_CHOICES = (5, 10, 15, 20, 30, 40, 60)
 
 SESSION_STATUSES = {"active", "completed", "cancelled"}
 CAPTURE_MODES = {"live", "reconstructed"}
@@ -310,6 +311,63 @@ def utc_iso(value: datetime | str) -> str:
     return parsed.astimezone(timezone.utc).isoformat()
 
 
+def observation_interval_minutes(value: Any) -> int:
+    try:
+        interval = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("observation_interval_invalid") from exc
+    if interval not in OBSERVATION_INTERVAL_CHOICES:
+        raise ValueError("observation_interval_invalid")
+    return interval
+
+
+def observation_next_due_at(session: dict) -> datetime | None:
+    if str(session.get("status") or "") != "active":
+        return None
+    interval = observation_interval_minutes(
+        session.get("planned_interval_minutes") or 20
+    )
+    checkpoint_count = int(
+        session.get("checkpoint_count")
+        or session.get("stored_checkpoints")
+        or session.get("stored_checkpoint_count")
+        or 0
+    )
+    if checkpoint_count <= 0:
+        base_value = session.get("started_at")
+    else:
+        base_value = session.get("last_checkpoint_at") or session.get(
+            "started_at"
+        )
+    if base_value is None:
+        raise ValueError("observation_schedule_timestamp_missing")
+    base = datetime.fromisoformat(str(base_value).replace("Z", "+00:00"))
+    if base.tzinfo is None:
+        base = base.replace(tzinfo=timezone.utc)
+    base = base.astimezone(timezone.utc)
+    if checkpoint_count <= 0:
+        return base
+    return base + timedelta(minutes=interval)
+
+
+def observation_session_is_due(
+    session: dict,
+    *,
+    now: datetime | str | None = None,
+) -> bool:
+    if str(session.get("operation_status") or "OPEN").upper() != "OPEN":
+        return False
+    due_at = observation_next_due_at(session)
+    if due_at is None:
+        return False
+    current = datetime.fromisoformat(
+        str(now or datetime.now(timezone.utc)).replace("Z", "+00:00")
+    )
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return due_at <= current.astimezone(timezone.utc)
+
+
 def checkpoint_code(operation_id: int, checkpoint_number: int) -> str:
     operation_id = int(operation_id)
     checkpoint_number = int(checkpoint_number)
@@ -375,9 +433,14 @@ def create_or_get_observation_session(
     if (capture_mode == "live") != (evidence_quality == "exact"):
         raise ValueError("observation_capture_quality_mismatch")
     if planned_interval_minutes is not None:
-        planned_interval_minutes = int(planned_interval_minutes)
-        if not 1 <= planned_interval_minutes <= 1_440:
-            raise ValueError("observation_interval_invalid")
+        if capture_mode == "live":
+            planned_interval_minutes = observation_interval_minutes(
+                planned_interval_minutes
+            )
+        else:
+            planned_interval_minutes = int(planned_interval_minutes)
+            if not 1 <= planned_interval_minutes <= 1_440:
+                raise ValueError("observation_interval_invalid")
     started = utc_iso(started_at or datetime.now(timezone.utc))
     ended = utc_iso(ended_at) if ended_at is not None else None
     if status == "active" and ended is not None:
@@ -447,6 +510,81 @@ def create_or_get_observation_session(
     return existing
 
 
+def update_active_observation_interval(
+    db,
+    *,
+    operation_id: int,
+    user_id: int,
+    planned_interval_minutes: int,
+) -> dict:
+    interval = observation_interval_minutes(planned_interval_minutes)
+    updated = db.execute(
+        """
+        UPDATE operation_observation_sessions
+        SET planned_interval_minutes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE operation_id = ?
+          AND user_id = ?
+          AND status = 'active'
+          AND capture_mode = 'live'
+        RETURNING *
+        """,
+        (interval, int(operation_id), int(user_id)),
+    ).fetchone()
+    if not updated:
+        raise ValueError("active_observation_session_not_found")
+    return dict(updated)
+
+
+def due_observation_sessions(
+    db,
+    *,
+    now: datetime | str | None = None,
+    limit: int = 8,
+) -> list[dict]:
+    """Return active live sessions whose next automatic control is due."""
+    rows = db.execute(
+        """
+        SELECT
+            session.*,
+            operation.status AS operation_status,
+            COALESCE(checkpoints.checkpoint_count, 0) AS checkpoint_count,
+            checkpoints.last_checkpoint_at
+        FROM operation_observation_sessions AS session
+        JOIN operations AS operation
+          ON operation.id = session.operation_id
+        LEFT JOIN (
+            SELECT
+                session_id,
+                COUNT(*) AS checkpoint_count,
+                MAX(observed_at) AS last_checkpoint_at
+            FROM operation_observation_checkpoints
+            GROUP BY session_id
+        ) AS checkpoints
+          ON checkpoints.session_id = session.id
+        WHERE session.status = 'active'
+          AND session.capture_mode = 'live'
+          AND operation.status = 'OPEN'
+        ORDER BY COALESCE(
+            checkpoints.last_checkpoint_at,
+            session.started_at
+        ) ASC, session.id ASC
+        """
+    ).fetchall()
+    capped_limit = max(1, min(int(limit), 100))
+    due: list[dict] = []
+    for raw_row in rows:
+        session = dict(raw_row)
+        session["planned_interval_minutes"] = observation_interval_minutes(
+            session.get("planned_interval_minutes") or 20
+        )
+        if observation_session_is_due(session, now=now):
+            due.append(session)
+            if len(due) >= capped_limit:
+                break
+    return due
+
+
 def persist_observation_checkpoint(
     db,
     *,
@@ -497,6 +635,7 @@ def persist_observation_checkpoint(
         """
         SELECT session.id, session.operation_id, session.user_id,
                session.status, session.next_checkpoint_number,
+               session.capture_mode, session.planned_interval_minutes,
                operation.symbol, operation.side, operation.time_horizon
         FROM operation_observation_sessions session
         JOIN operations operation ON operation.id = session.operation_id
@@ -538,6 +677,36 @@ def persist_observation_checkpoint(
     if checkpoint_number is None:
         if session["status"] != "active":
             raise ValueError("observation_session_not_active")
+        if session["capture_mode"] == "live":
+            previous = db.execute(
+                """
+                SELECT MAX(observed_at) AS last_checkpoint_at
+                FROM operation_observation_checkpoints
+                WHERE session_id = ?
+                """,
+                (int(session_id),),
+            ).fetchone()
+            last_checkpoint_at = (
+                previous["last_checkpoint_at"] if previous else None
+            )
+            if last_checkpoint_at is not None:
+                last_observed = datetime.fromisoformat(
+                    str(last_checkpoint_at).replace("Z", "+00:00")
+                )
+                if last_observed.tzinfo is None:
+                    last_observed = last_observed.replace(tzinfo=timezone.utc)
+                current_observed = datetime.fromisoformat(
+                    utc_iso(observed_at).replace("Z", "+00:00")
+                )
+                next_allowed_at = last_observed.astimezone(
+                    timezone.utc
+                ) + timedelta(
+                    minutes=observation_interval_minutes(
+                        session["planned_interval_minutes"]
+                    )
+                )
+                if current_observed < next_allowed_at:
+                    raise ValueError("observation_checkpoint_not_due")
         checkpoint_number = int(session["next_checkpoint_number"])
     else:
         checkpoint_number = int(checkpoint_number)
@@ -783,7 +952,8 @@ def observation_session_report(db, operation_id: int) -> dict | None:
                 COUNT(rce.id) FILTER (
                     WHERE rce.evaluation_status = 'evaluated'
                 ) AS predictively_resolved,
-                COUNT(oec.id) AS exit_counterfactuals
+                COUNT(oec.id) AS exit_counterfactuals,
+                MAX(oc.observed_at) AS last_checkpoint_at
             FROM operation_observation_checkpoints oc
             LEFT JOIN recommendation_counterfactual_evaluations rce
                 ON rce.recommendation_id = oc.recommendation_id
@@ -796,6 +966,17 @@ def observation_session_report(db, operation_id: int) -> dict | None:
     )
     session["summary"] = json.loads(session.pop("summary_json"))
     session.update(counts)
+    if session["capture_mode"] == "live":
+        session["planned_interval_minutes"] = observation_interval_minutes(
+            session.get("planned_interval_minutes") or 20
+        )
+    last_checkpoint_at = session.get("last_checkpoint_at")
+    if last_checkpoint_at is not None:
+        session["last_checkpoint_at"] = utc_iso(last_checkpoint_at)
+    next_due_at = observation_next_due_at(session)
+    session["next_checkpoint_due_at"] = (
+        next_due_at.isoformat() if next_due_at is not None else None
+    )
     return session
 
 

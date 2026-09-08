@@ -33,7 +33,7 @@ class AnalysisErrorPresentationTests(unittest.TestCase):
         self.assertIn("Análisis no disponible con fiabilidad", javascript)
         self.assertIn("No se han generado porcentajes", javascript)
         self.assertIn(
-            "/static/app.js?v=20260908-operation-observation-v1",
+            "/static/app.js?v=20260908-automatic-observation-v2",
             html,
         )
 

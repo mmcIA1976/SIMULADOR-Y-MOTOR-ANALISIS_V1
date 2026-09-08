@@ -1635,24 +1635,21 @@ button:hover {
   color: var(--muted);
 }
 
-.observation-controls > div {
+.observation-controls label {
   display: grid;
   gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
-#startObservationButton,
-#recordObservationButton {
+#observationInterval,
+#startObservationButton {
   width: 100%;
 }
 
-#recordObservationButton {
-  border-color: var(--price);
-  background: var(--price);
-  color: #ffffff;
-}
-
 #startObservationButton.is-loading,
-#recordObservationButton.is-loading {
+#observationInterval.is-loading {
   cursor: progress;
   opacity: 0.72;
 }

@@ -50,8 +50,8 @@ const elements = {
   closeSimulationButton: document.querySelector("#closeSimulationButton"),
   observationControls: document.querySelector("#observationControls"),
   observationStatus: document.querySelector("#observationStatus"),
+  observationInterval: document.querySelector("#observationInterval"),
   startObservationButton: document.querySelector("#startObservationButton"),
-  recordObservationButton: document.querySelector("#recordObservationButton"),
   closeReason: document.querySelector("#closeReason"),
   closingNote: document.querySelector("#closingNote"),
   currentPrice: document.querySelector("#currentPrice"),
@@ -165,7 +165,6 @@ let floatingNoticeTimer = null;
 let contestHistoryOpen = false;
 const observationSessionsByOperation = new Map();
 const observationSessionLoads = new Set();
-const latestObservationAnalysisByOperation = new Map();
 
 function numberValue(input) {
   return Number.parseFloat(input.value);
@@ -970,7 +969,6 @@ function clearPrivateSessionView() {
   openOperations = [];
   observationSessionsByOperation.clear();
   observationSessionLoads.clear();
-  latestObservationAnalysisByOperation.clear();
   contestState = null;
   contestLoadInFlight = null;
   setContestRefreshStatus();
@@ -3082,8 +3080,14 @@ function observationSessionText(operation, session) {
   if (session.capture_mode === "reconstructed") {
     return `${session.session_code}: ${stored} controles reconstruidos de ${reported} reportados; ${exact} casos formales.`;
   }
-  const status = session.status === "active" ? "activa" : "completada";
-  return `${session.session_code}: sesion ${status}, ${stored} controles exactos registrados.`;
+  const interval = Number(session.planned_interval_minutes || 20);
+  if (session.status === "active") {
+    const nextDue = session.next_checkpoint_due_at
+      ? new Date(session.next_checkpoint_due_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+      : "en breve";
+    return `${session.session_code}: activa cada ${interval} min, ${stored} controles exactos. Proximo control ${nextDue}.`;
+  }
+  return `${session.session_code}: finalizada con la operacion; ${stored} controles exactos registrados.`;
 }
 
 function canManageOperationObservations() {
@@ -3112,13 +3116,9 @@ function renderObservationControls(operation) {
   const sessionIsActive = session?.status === "active";
   elements.startObservationButton.hidden = Boolean(session);
   elements.startObservationButton.disabled = !isOpen;
-  elements.recordObservationButton.hidden = !sessionIsActive;
-  elements.recordObservationButton.disabled = !isOpen || !sessionIsActive;
-  if (sessionIsActive) {
-    const nextNumber = Number(session.next_checkpoint_number || 1);
-    elements.recordObservationButton.textContent = `Registrar ${operation.id}o${nextNumber}`;
-  } else {
-    elements.recordObservationButton.textContent = "Registrar siguiente control";
+  elements.observationInterval.disabled = !isOpen || Boolean(session && !sessionIsActive);
+  if (session?.planned_interval_minutes) {
+    elements.observationInterval.value = String(session.planned_interval_minutes);
   }
 }
 
@@ -3158,13 +3158,16 @@ async function startObservationSession() {
   try {
     const session = await requestJson(`/api/operations/${operation.id}/observation-session`, {
       method: "POST",
+      body: {
+        planned_interval_minutes: Number(elements.observationInterval.value),
+      },
       timeout: 20000,
     });
     observationSessionsByOperation.set(Number(operation.id), session);
     renderObservationControls(operation);
     showFloatingNotice(
       `Observacion ${session.session_code} activada`,
-      "Los siguientes controles se guardaran como casos exactos del mismo motor sin alterar la operacion.",
+      `El primer control comienza ahora; despues el worker repetira el analisis cada ${session.planned_interval_minutes} minutos hasta que cierre la operacion.`,
       6000,
     );
   } catch (error) {
@@ -3176,43 +3179,35 @@ async function startObservationSession() {
   }
 }
 
-async function recordObservationCheckpoint() {
+async function changeObservationInterval() {
   if (!canManageOperationObservations()) return;
   const operation = getSelectedOperation();
   const session = operation
     ? observationSessionsByOperation.get(Number(operation.id))
     : null;
   if (!operation || session?.status !== "active") return;
-  const button = elements.recordObservationButton;
-  const expectedCode = `${operation.id}o${Number(session.next_checkpoint_number || 1)}`;
-  button.classList.add("is-loading");
-  button.disabled = true;
-  button.textContent = `Analizando ${expectedCode}...`;
-  showFloatingNotice("Control observacional en curso", `Calculando ${expectedCode} con el motor de produccion...`, 2500);
+  const interval = Number(elements.observationInterval.value);
+  elements.observationInterval.classList.add("is-loading");
+  elements.observationInterval.disabled = true;
   try {
-    const result = await requestJson(`/api/operations/${operation.id}/observation-checkpoints`, {
-      method: "POST",
-      timeout: 90000,
-      errorMessage: "No se pudo registrar el control observacional.",
-      timeoutMessage: "El analisis observacional ha tardado demasiado.",
+    const updatedSession = await requestJson(`/api/operations/${operation.id}/observation-session`, {
+      method: "PATCH",
+      body: { planned_interval_minutes: interval },
+      timeout: 20000,
+      errorMessage: "No se pudo cambiar el intervalo observacional.",
     });
-    observationSessionsByOperation.set(Number(operation.id), result.session);
-    latestObservationAnalysisByOperation.set(Number(operation.id), result);
+    observationSessionsByOperation.set(Number(operation.id), updatedSession);
     renderObservationControls(operation);
-    renderAnalysisPayload(
-      result,
-      `${result.checkpoint.checkpoint_code}: nuevo caso predictivo observacional; no modifica la operacion abierta.`,
-    );
-    scrollToAnalysisResult();
     showFloatingNotice(
-      `${result.checkpoint.checkpoint_code} registrado`,
-      "Prediccion completa guardada y vinculada a su episodio observacional.",
-      6000,
+      "Intervalo actualizado",
+      `El siguiente control automatico se calculara con una cadencia de ${interval} minutos.`,
+      4500,
     );
   } catch (error) {
-    showFloatingNotice("No se pudo registrar el control", error.message, 6000);
+    elements.observationInterval.value = String(session.planned_interval_minutes || 20);
+    showFloatingNotice("No se pudo cambiar el intervalo", error.message, 6000);
   } finally {
-    button.classList.remove("is-loading");
+    elements.observationInterval.classList.remove("is-loading");
     renderObservationControls(getSelectedOperation());
   }
 }
@@ -4402,7 +4397,12 @@ function renderSelectedOperationDetail(operation) {
   }
 
   renderObservationControls(operation);
-  void loadObservationSession(operation);
+  const cachedObservationSession = observationSessionsByOperation.get(
+    Number(operation.id),
+  );
+  void loadObservationSession(operation, {
+    force: cachedObservationSession?.status === "active",
+  });
   applyOperationToForm(operation);
   const config = operationToConfig(operation);
   const closePrice = Number(operation.close_price);
@@ -4527,12 +4527,9 @@ function renderSelectedOperationDetail(operation) {
     </details>
   `;
 
-  const latestObservation = latestObservationAnalysisByOperation.get(Number(operation.id));
   renderAnalysisPayload(
-    latestObservation || recommendation,
-    latestObservation
-      ? `${latestObservation.checkpoint?.checkpoint_code || "Control observacional"}: analisis realizado durante la operacion; no altera el plan ni su ejecucion.`
-      : `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
+    recommendation,
+    `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
   );
 }
 
@@ -5161,7 +5158,7 @@ elements.analyzeButton.addEventListener("click", analyzeOperation);
 elements.startSimulationButton.addEventListener("click", startSimulation);
 elements.closeSimulationButton.addEventListener("click", closeSimulation);
 elements.startObservationButton?.addEventListener("click", startObservationSession);
-elements.recordObservationButton?.addEventListener("click", recordObservationCheckpoint);
+elements.observationInterval?.addEventListener("change", changeObservationInterval);
 elements.analysisToggle.addEventListener("click", () => {
   fullAnalysisOpen = !fullAnalysisOpen;
   updateAnalysisFullVisibility();

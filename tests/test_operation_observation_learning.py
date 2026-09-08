@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,12 +16,17 @@ from backfill_operation_404_observation import (
 from operation_observation_learning import (
     OBSERVATION_ANALYSIS_TYPE,
     OBSERVATION_CONTRACT_VERSION,
+    OBSERVATION_INTERVAL_CHOICES,
     _probability_triplet,
     canonical_json,
     checkpoint_code,
+    observation_interval_minutes,
+    observation_next_due_at,
+    observation_session_is_due,
     payload_sha256,
 )
 from db import runtime_database_bootstrap_enabled
+from app import compact_observation_analysis_payload
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +51,82 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertAlmostEqual(sum(normalized), 1.0)
         with self.assertRaises(ValueError):
             _probability_triplet(0.5, None, 0.5)
+
+    def test_live_observation_interval_choices_are_exact(self) -> None:
+        self.assertEqual(
+            OBSERVATION_INTERVAL_CHOICES,
+            (5, 10, 15, 20, 30, 40, 60),
+        )
+        for interval in OBSERVATION_INTERVAL_CHOICES:
+            self.assertEqual(observation_interval_minutes(interval), interval)
+        for invalid in (0, 6, 90, None):
+            with self.assertRaises(ValueError):
+                observation_interval_minutes(invalid)
+
+    def test_first_control_is_immediate_then_respects_selected_interval(self) -> None:
+        started_at = datetime(2026, 9, 8, 10, 0, tzinfo=timezone.utc)
+        new_session = {
+            "status": "active",
+            "operation_status": "OPEN",
+            "planned_interval_minutes": 20,
+            "stored_checkpoint_count": 0,
+            "started_at": started_at.isoformat(),
+        }
+        self.assertEqual(observation_next_due_at(new_session), started_at)
+        self.assertTrue(
+            observation_session_is_due(new_session, now=started_at)
+        )
+
+        observed_session = {
+            **new_session,
+            "stored_checkpoint_count": 1,
+            "last_checkpoint_at": started_at.isoformat(),
+        }
+        self.assertFalse(
+            observation_session_is_due(
+                observed_session,
+                now=started_at + timedelta(minutes=19, seconds=59),
+            )
+        )
+        self.assertTrue(
+            observation_session_is_due(
+                observed_session,
+                now=started_at + timedelta(minutes=20),
+            )
+        )
+
+    def test_observation_stops_as_soon_as_operation_is_closed(self) -> None:
+        session = {
+            "status": "active",
+            "operation_status": "CLOSED",
+            "planned_interval_minutes": 5,
+            "stored_checkpoint_count": 0,
+            "started_at": "2026-09-08T10:00:00+00:00",
+        }
+        self.assertFalse(
+            observation_session_is_due(
+                session,
+                now="2026-09-08T12:00:00+00:00",
+            )
+        )
+
+    def test_observation_storage_does_not_duplicate_full_snapshot(self) -> None:
+        compact = compact_observation_analysis_payload(
+            {
+                "snapshot": {"large_rule_trace": "x" * 100_000},
+                "tp_probability": 0.4,
+                "sl_probability": 0.3,
+                "range_probability": 0.3,
+                "engine_version": "test-engine",
+                "observation_context": {"source_operation_id": 404},
+            }
+        )
+        self.assertNotIn("snapshot", compact)
+        self.assertEqual(
+            compact["snapshot_location"],
+            "recommendations.snapshot_json",
+        )
+        self.assertLess(len(json.dumps(compact).encode("utf-8")), 4_096)
 
     def test_operation_404_reconstruction_never_claims_missing_evidence(self) -> None:
         self.assertEqual(REPORTED_CHECKPOINTS, 47)
@@ -92,7 +175,7 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(OBSERVATION_ANALYSIS_TYPE, "operation_observation")
         self.assertEqual(
             OBSERVATION_CONTRACT_VERSION,
-            "operation-observation-contract-v0.1",
+            "operation-observation-contract-v0.2",
         )
         self.assertIn(
             'OBSERVATION_OPERATOR_USERNAME = "mauriciomc"',
@@ -132,23 +215,24 @@ class OperationObservationLearningTests(unittest.TestCase):
         ):
             self.assertTrue(runtime_database_bootstrap_enabled())
 
-    def test_frontend_exposes_manual_observation_without_reusing_opening_state(self) -> None:
+    def test_frontend_exposes_automatic_observation_schedule(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         javascript = (ROOT / "app.js").read_text(encoding="utf-8")
+        worker = (ROOT / "operation_worker.py").read_text(encoding="utf-8")
         self.assertIn('id="startObservationButton"', html)
-        self.assertIn('id="recordObservationButton"', html)
-        self.assertIn("latestObservationAnalysisByOperation", javascript)
-        self.assertIn("recordObservationCheckpoint", javascript)
+        self.assertIn('id="observationInterval"', html)
+        self.assertNotIn('id="recordObservationButton"', html)
+        for interval in OBSERVATION_INTERVAL_CHOICES:
+            self.assertIn(f'<option value="{interval}"', html)
+        self.assertIn("changeObservationInterval", javascript)
+        self.assertNotIn("recordObservationCheckpoint", javascript)
+        self.assertIn("run_observation_scheduler_loop", worker)
+        self.assertIn("record_operation_observation_checkpoint", worker)
         self.assertIn(
             'const OBSERVATION_OPERATOR_USERNAME = "mauriciomc";',
             javascript,
         )
         self.assertIn("canManageOperationObservations()", javascript)
-        observation_function = javascript.split(
-            "async function recordObservationCheckpoint()", 1
-        )[1].split("async function closeOperationById", 1)[0]
-        self.assertNotIn("lastAnalysis =", observation_function)
-        self.assertNotIn("lastAnalysisPayload =", observation_function)
 
 
 if __name__ == "__main__":

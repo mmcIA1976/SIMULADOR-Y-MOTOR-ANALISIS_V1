@@ -89,11 +89,14 @@ from operation_worker_status import (
 from operation_observation_learning import (
     OBSERVATION_ANALYSIS_TYPE,
     OBSERVATION_CONTRACT_VERSION,
+    OBSERVATION_INTERVAL_CHOICES,
     create_or_get_observation_session,
     finalize_closed_observation_sessions,
+    observation_interval_minutes,
     observation_session_report,
     persist_observation_checkpoint,
     unified_predictive_inventory,
+    update_active_observation_interval,
 )
 from predictive_rule_library import rule_metadata
 from security import create_token, hash_password, read_token, verify_password
@@ -202,6 +205,10 @@ class CloseOperationPayload(BaseModel):
     post_emotion: str | None = Field(default=None, max_length=40)
     plan_followed: str | None = Field(default=None, max_length=40)
     closing_note: str | None = Field(default=None, max_length=500)
+
+
+class ObservationSessionPayload(BaseModel):
+    planned_interval_minutes: int = Field(default=20, ge=1, le=1_440)
 
 
 def validate_trade_plan(side: str, entry: float, stop_loss: float, take_profit: float) -> None:
@@ -5801,13 +5808,48 @@ def _opening_recommendation_id(db, operation_id: int) -> int | None:
     return int(row["id"]) if row else None
 
 
+def compact_observation_analysis_payload(result: dict) -> dict:
+    """Keep the exact learning snapshot once, without duplicating UI payloads."""
+    return {
+        "analysis_type": OBSERVATION_ANALYSIS_TYPE,
+        "storage_profile": "observation-learning-compact-v0.1",
+        "snapshot_location": "recommendations.snapshot_json",
+        "tp_probability": result.get("tp_probability"),
+        "sl_probability": result.get("sl_probability"),
+        "range_probability": result.get("range_probability"),
+        "risk_level": result.get("risk_level"),
+        "setup_grade": result.get("setup_grade"),
+        "confidence": result.get("confidence"),
+        "training_decision": result.get("training_decision"),
+        "engine_version": result.get("engine_version", ENGINE_VERSION),
+        "observation_context": result.get("observation_context") or {},
+        "version_contract": result.get("version_contract") or {},
+    }
+
+
 @app.post("/api/operations/{operation_id}/observation-session")
 def start_operation_observation_session(
     operation_id: int,
+    payload: ObservationSessionPayload | None = None,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     user = current_user(session_token)
     require_observation_operator(user)
+    try:
+        interval = observation_interval_minutes(
+            payload.planned_interval_minutes if payload is not None else 20
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "observation_interval_invalid",
+                "message": (
+                    "El intervalo debe ser 5, 10, 15, 20, 30, 40 o 60 minutos."
+                ),
+                "allowed_minutes": list(OBSERVATION_INTERVAL_CHOICES),
+            },
+        ) from exc
     with connect() as db:
         operation = _observation_operation(db, operation_id, int(user["id"]))
         if operation["status"] != "OPEN":
@@ -5821,17 +5863,72 @@ def start_operation_observation_session(
             opening_recommendation_id=_opening_recommendation_id(db, operation_id),
             capture_mode="live",
             evidence_quality="exact",
-            planned_interval_minutes=20,
+            planned_interval_minutes=interval,
             status="active",
             evidence_source="application_live_observation",
             summary={
                 "purpose": "unified_predictive_and_exit_learning",
                 "predictive_contract": "same_production_analysis_engine",
-                "exit_decisions": "manual_review_only",
+                "checkpoint_schedule": "automatic_worker_cadence",
+                "terminal_conditions": [
+                    "take_profit",
+                    "stop_loss",
+                    "manual_close",
+                ],
                 "contract_version": OBSERVATION_CONTRACT_VERSION,
             },
         )
+        if int(session["planned_interval_minutes"]) != interval:
+            session = update_active_observation_interval(
+                db,
+                operation_id=operation_id,
+                user_id=int(user["id"]),
+                planned_interval_minutes=interval,
+            )
         return observation_session_report(db, int(session["operation_id"]))
+
+
+@app.patch("/api/operations/{operation_id}/observation-session")
+def change_operation_observation_interval(
+    operation_id: int,
+    payload: ObservationSessionPayload,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    try:
+        interval = observation_interval_minutes(payload.planned_interval_minutes)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "observation_interval_invalid",
+                "message": (
+                    "El intervalo debe ser 5, 10, 15, 20, 30, 40 o 60 minutos."
+                ),
+                "allowed_minutes": list(OBSERVATION_INTERVAL_CHOICES),
+            },
+        ) from exc
+    with connect() as db:
+        operation = _observation_operation(db, operation_id, int(user["id"]))
+        if operation["status"] != "OPEN":
+            raise HTTPException(
+                status_code=409,
+                detail="La observacion ya ha finalizado con la operacion",
+            )
+        try:
+            update_active_observation_interval(
+                db,
+                operation_id=operation_id,
+                user_id=int(user["id"]),
+                planned_interval_minutes=interval,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail="No existe una observacion activa para esta operacion",
+            ) from exc
+        return observation_session_report(db, operation_id)
 
 
 @app.get("/api/operations/{operation_id}/observation-session")
@@ -5848,20 +5945,15 @@ def get_operation_observation_session(
     return {"operation_id": operation_id, "session": report}
 
 
-@app.post("/api/operations/{operation_id}/observation-checkpoints")
-def analyze_operation_observation_checkpoint(
+def record_operation_observation_checkpoint(
     operation_id: int,
-    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    *,
+    expected_user_id: int | None = None,
+    trigger_source: str = "automatic_worker_schedule",
 ) -> dict:
-    user = current_user(session_token)
-    require_observation_operator(user)
+    if trigger_source not in {"automatic_worker_schedule", "manual_api"}:
+        raise ValueError("observation_trigger_source_invalid")
     with connect() as db:
-        operation = _observation_operation(db, operation_id, int(user["id"]))
-        if operation["status"] != "OPEN":
-            raise HTTPException(
-                status_code=409,
-                detail="La operacion debe seguir abierta para registrar un control exacto",
-            )
         session = row_to_dict(
             db.execute(
                 """
@@ -5877,6 +5969,15 @@ def analyze_operation_observation_checkpoint(
             raise HTTPException(
                 status_code=409,
                 detail="Activa primero la observacion de esta operacion",
+            )
+        session_user_id = int(session["user_id"])
+        if expected_user_id is not None and session_user_id != int(expected_user_id):
+            raise HTTPException(status_code=404, detail="Operacion no encontrada")
+        operation = _observation_operation(db, operation_id, session_user_id)
+        if operation["status"] != "OPEN":
+            raise HTTPException(
+                status_code=409,
+                detail="La operacion debe seguir abierta para registrar un control exacto",
             )
         original_expiry = operation_evaluation_expires_at(db, operation)
 
@@ -5919,7 +6020,7 @@ def analyze_operation_observation_checkpoint(
         )
     except NewEngineAnalysisError as exc:
         record_failed_analysis_attempt(
-            user_id=int(user["id"]),
+            user_id=session_user_id,
             proposal=proposal,
             entry_type="market",
             started_at=analysis_started_at,
@@ -5955,6 +6056,7 @@ def analyze_operation_observation_checkpoint(
     observation_context = {
         "contract_version": OBSERVATION_CONTRACT_VERSION,
         "analysis_origin": OBSERVATION_ANALYSIS_TYPE,
+        "checkpoint_trigger": trigger_source,
         "source_operation_id": int(operation_id),
         "source_session_id": int(session["id"]),
         "opening_recommendation_id": session.get("opening_recommendation_id"),
@@ -5989,7 +6091,7 @@ def analyze_operation_observation_checkpoint(
 
     with connect() as db:
         current_operation = _observation_operation(
-            db, operation_id, int(user["id"])
+            db, operation_id, session_user_id
         )
         if current_operation["status"] != "OPEN":
             raise HTTPException(
@@ -6026,7 +6128,7 @@ def analyze_operation_observation_checkpoint(
             """,
             (
                 None,
-                int(user["id"]),
+                session_user_id,
                 OBSERVATION_ANALYSIS_TYPE,
                 proposal.symbol,
                 proposal.side,
@@ -6042,7 +6144,7 @@ def analyze_operation_observation_checkpoint(
                 json.dumps(result["reasons"]),
                 json.dumps(result["alerts"]),
                 json.dumps(result["snapshot"]),
-                json.dumps(result),
+                json.dumps(compact_observation_analysis_payload(result)),
                 result.get("engine_version", ENGINE_VERSION),
                 APP_VERSION,
                 SCORING_VERSION,
@@ -6070,6 +6172,7 @@ def analyze_operation_observation_checkpoint(
             evidence_source="application_live_observation",
             context={
                 "analysis_origin": OBSERVATION_ANALYSIS_TYPE,
+                "checkpoint_trigger": trigger_source,
                 "opening_recommendation_id": current_session.get(
                     "opening_recommendation_id"
                 ),
@@ -6091,7 +6194,7 @@ def analyze_operation_observation_checkpoint(
         )
         insert_analysis_attempt(
             db,
-            user_id=int(user["id"]),
+            user_id=session_user_id,
             proposal=proposal,
             entry_type="market",
             outcome="completed",
@@ -6108,6 +6211,21 @@ def analyze_operation_observation_checkpoint(
         "recommendation_id": recommendation_id,
         **result,
     }
+
+
+@app.post("/api/operations/{operation_id}/observation-checkpoints")
+def analyze_operation_observation_checkpoint(
+    operation_id: int,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    """Run an immediate control; the UI uses the automatic worker schedule."""
+    user = current_user(session_token)
+    require_observation_operator(user)
+    return record_operation_observation_checkpoint(
+        operation_id,
+        expected_user_id=int(user["id"]),
+        trigger_source="manual_api",
+    )
 
 
 @app.get("/api/learning/predictive-inventory")

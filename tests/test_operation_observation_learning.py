@@ -21,7 +21,9 @@ from operation_observation_learning import (
     canonical_json,
     checkpoint_code,
     observation_interval_minutes,
+    observation_closure_advisory,
     observation_next_due_at,
+    observation_rule_signals,
     observation_session_is_due,
     payload_sha256,
 )
@@ -110,6 +112,81 @@ class OperationObservationLearningTests(unittest.TestCase):
             )
         )
 
+    def test_paused_observation_never_becomes_due(self) -> None:
+        self.assertFalse(
+            observation_session_is_due(
+                {
+                    "status": "paused",
+                    "operation_status": "OPEN",
+                    "planned_interval_minutes": 5,
+                    "stored_checkpoint_count": 4,
+                    "last_checkpoint_at": "2026-09-08T10:00:00+00:00",
+                },
+                now="2026-09-08T12:00:00+00:00",
+            )
+        )
+
+    def test_monitor_exposes_quantitative_observational_rule_without_weight(self) -> None:
+        signals = observation_rule_signals(
+            {
+                "side": "long",
+                "stage_rule_traces": {
+                    "intraday_short": [
+                        {
+                            "rule_id": "LIB-CAND-EMA-TREND-001",
+                            "status": "evaluated_shadow",
+                            "probability_effect": "none_observation_only",
+                            "outputs": {
+                                "side_adjusted_slope_atr": -0.35,
+                                "side_adjusted_close_vs_ema50_log": -0.01,
+                                "side_adjusted_ema50_vs_ema200_log": -0.006,
+                            },
+                        }
+                    ]
+                },
+            }
+        )
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0]["category"], "observational")
+        self.assertEqual(signals[0]["tone"], "adverse")
+        self.assertEqual(len(signals[0]["metrics"]), 3)
+
+    def test_close_candidate_requires_persistent_primary_risk_and_confirmation(self) -> None:
+        checkpoints = []
+        for number, tp, sl in (
+            (1, 0.42, 0.38),
+            (2, 0.32, 0.48),
+            (3, 0.25, 0.57),
+            (4, 0.20, 0.64),
+        ):
+            checkpoints.append(
+                {
+                    "checkpoint_code": f"500o{number}",
+                    "tp_probability": tp,
+                    "sl_probability": sl,
+                    "range_probability": 1 - tp - sl,
+                    "unrealized_pnl": -12.0,
+                    "remaining_seconds": 3600,
+                    "analysis_horizon_seconds": 14400,
+                    "rule_signals": [
+                        {
+                            "category": "observational",
+                            "tone": "adverse",
+                            "label": "Alineación con EMA",
+                        },
+                        {
+                            "category": "observational",
+                            "tone": "adverse",
+                            "label": "Persistencia del flujo ejecutado",
+                        },
+                    ],
+                }
+            )
+        advisory = observation_closure_advisory(checkpoints)
+        self.assertEqual(advisory["level"], "close_candidate")
+        self.assertEqual(advisory["production_effect"], "none")
+        self.assertGreaterEqual(len(advisory["reasons"]), 3)
+
     def test_observation_storage_does_not_duplicate_full_snapshot(self) -> None:
         compact = compact_observation_analysis_payload(
             {
@@ -156,6 +233,15 @@ class OperationObservationLearningTests(unittest.TestCase):
             self.assertIn("reconstructed_partial", sql)
             self.assertIn("operation_observation_fact_is_append_only", sql)
             self.assertIn("production_effect = 'none'", sql)
+        monitor_migration = (
+            ROOT
+            / "supabase"
+            / "migrations"
+            / "20260908_operation_observation_monitor.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("operation_observation_session_events", monitor_migration)
+        self.assertIn("status IN ('active', 'paused'", monitor_migration)
+        self.assertIn("ENABLE ROW LEVEL SECURITY", monitor_migration)
 
     def test_application_keeps_observations_out_of_trade_creation(self) -> None:
         source = (ROOT / "app.py").read_text(encoding="utf-8")
@@ -175,7 +261,7 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(OBSERVATION_ANALYSIS_TYPE, "operation_observation")
         self.assertEqual(
             OBSERVATION_CONTRACT_VERSION,
-            "operation-observation-contract-v0.2",
+            "operation-observation-contract-v0.3",
         )
         self.assertIn(
             'OBSERVATION_OPERATOR_USERNAME = "mauriciomc"',
@@ -221,10 +307,17 @@ class OperationObservationLearningTests(unittest.TestCase):
         worker = (ROOT / "operation_worker.py").read_text(encoding="utf-8")
         self.assertIn('id="startObservationButton"', html)
         self.assertIn('id="observationInterval"', html)
+        self.assertIn('id="observationMonitor"', html)
+        self.assertIn('id="pauseObservationButton"', html)
+        self.assertIn('id="resumeObservationButton"', html)
+        self.assertIn('id="stopObservationButton"', html)
+        self.assertGreater(html.index('id="observationMonitor"'), html.index('id="tradeChart"'))
         self.assertNotIn('id="recordObservationButton"', html)
         for interval in OBSERVATION_INTERVAL_CHOICES:
             self.assertIn(f'<option value="{interval}"', html)
         self.assertIn("changeObservationInterval", javascript)
+        self.assertIn("renderObservationMonitor", javascript)
+        self.assertIn("changeObservationState", javascript)
         self.assertNotIn("recordObservationCheckpoint", javascript)
         self.assertIn("run_observation_scheduler_loop", worker)
         self.assertIn("record_operation_observation_checkpoint", worker)

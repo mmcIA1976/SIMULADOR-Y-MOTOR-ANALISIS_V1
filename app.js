@@ -52,6 +52,37 @@ const elements = {
   observationStatus: document.querySelector("#observationStatus"),
   observationInterval: document.querySelector("#observationInterval"),
   startObservationButton: document.querySelector("#startObservationButton"),
+  pauseObservationButton: document.querySelector("#pauseObservationButton"),
+  resumeObservationButton: document.querySelector("#resumeObservationButton"),
+  stopObservationButton: document.querySelector("#stopObservationButton"),
+  observationMonitor: document.querySelector("#observationMonitor"),
+  observationStateBadge: document.querySelector("#observationStateBadge"),
+  observationMonitorCode: document.querySelector("#observationMonitorCode"),
+  observationMonitorEmpty: document.querySelector("#observationMonitorEmpty"),
+  observationMonitorDashboard: document.querySelector("#observationMonitorDashboard"),
+  observationKpiCount: document.querySelector("#observationKpiCount"),
+  observationKpiCountDetail: document.querySelector("#observationKpiCountDetail"),
+  observationKpiPrice: document.querySelector("#observationKpiPrice"),
+  observationKpiPnl: document.querySelector("#observationKpiPnl"),
+  observationKpiEdge: document.querySelector("#observationKpiEdge"),
+  observationKpiEdgeDelta: document.querySelector("#observationKpiEdgeDelta"),
+  observationKpiRemaining: document.querySelector("#observationKpiRemaining"),
+  observationKpiNext: document.querySelector("#observationKpiNext"),
+  observationEvolutionChart: document.querySelector("#observationEvolutionChart"),
+  observationAdvisory: document.querySelector("#observationAdvisory"),
+  observationAdvisoryLabel: document.querySelector("#observationAdvisoryLabel"),
+  observationAdvisoryHeadline: document.querySelector("#observationAdvisoryHeadline"),
+  observationAdvisoryReasons: document.querySelector("#observationAdvisoryReasons"),
+  observationCheckpointSelect: document.querySelector("#observationCheckpointSelect"),
+  observationRuleFavorable: document.querySelector("#observationRuleFavorable"),
+  observationRuleAdverse: document.querySelector("#observationRuleAdverse"),
+  observationRuleNeutral: document.querySelector("#observationRuleNeutral"),
+  observationRuleShadow: document.querySelector("#observationRuleShadow"),
+  observationRuleMatrix: document.querySelector("#observationRuleMatrix"),
+  observationTimelineRange: document.querySelector("#observationTimelineRange"),
+  observationTimeline: document.querySelector("#observationTimeline"),
+  loadOlderObservationsButton: document.querySelector("#loadOlderObservationsButton"),
+  observationEvents: document.querySelector("#observationEvents"),
   closeReason: document.querySelector("#closeReason"),
   closingNote: document.querySelector("#closingNote"),
   currentPrice: document.querySelector("#currentPrice"),
@@ -165,6 +196,9 @@ let floatingNoticeTimer = null;
 let contestHistoryOpen = false;
 const observationSessionsByOperation = new Map();
 const observationSessionLoads = new Set();
+const observationMonitorsByOperation = new Map();
+const observationMonitorLoads = new Set();
+const selectedObservationCheckpointByOperation = new Map();
 
 function numberValue(input) {
   return Number.parseFloat(input.value);
@@ -969,6 +1003,9 @@ function clearPrivateSessionView() {
   openOperations = [];
   observationSessionsByOperation.clear();
   observationSessionLoads.clear();
+  observationMonitorsByOperation.clear();
+  observationMonitorLoads.clear();
+  selectedObservationCheckpointByOperation.clear();
   contestState = null;
   contestLoadInFlight = null;
   setContestRefreshStatus();
@@ -3068,6 +3105,333 @@ async function closeSimulation() {
   await closeOperationById(activeOperation.id);
 }
 
+function observationStatusMeta(status) {
+  const normalized = String(status || "idle").toLowerCase();
+  return {
+    active: { label: "En curso", className: "is-active" },
+    paused: { label: "En pausa", className: "is-paused" },
+    completed: { label: "Completada", className: "is-completed" },
+    cancelled: { label: "Finalizada", className: "is-cancelled" },
+    idle: { label: "Sin activar", className: "is-idle" },
+  }[normalized] || { label: normalized, className: "is-idle" };
+}
+
+function observationLocalTime(value, withDate = false) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleString("es-ES", withDate
+    ? { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }
+    : { hour: "2-digit", minute: "2-digit" });
+}
+
+function observationDuration(totalSeconds) {
+  const seconds = Number(totalSeconds);
+  if (!Number.isFinite(seconds)) return "—";
+  if (seconds <= 0) return "Agotado";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days) return `${days} d ${hours} h`;
+  if (hours) return `${hours} h ${minutes} min`;
+  return `${Math.max(minutes, 1)} min`;
+}
+
+function observationProbability(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${(number * 100).toFixed(1)}%` : "—";
+}
+
+function observationSignedPoints(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return `${number >= 0 ? "+" : ""}${(number * 100).toFixed(1)} pt`;
+}
+
+function observationCompactNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  const abs = Math.abs(number);
+  if (abs >= 1_000_000_000) return `${(number / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `${(number / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${(number / 1_000).toFixed(2)}K`;
+  if (abs > 0 && abs < 0.001) return number.toExponential(2);
+  return number.toLocaleString("es-ES", { maximumFractionDigits: 4 });
+}
+
+function observationToneMeta(tone) {
+  return {
+    favorable: { label: "A favor", symbol: "↗" },
+    adverse: { label: "En contra", symbol: "↘" },
+    neutral: { label: "Neutra", symbol: "→" },
+    context: { label: "Contexto", symbol: "◇" },
+  }[tone] || { label: "Contexto", symbol: "◇" };
+}
+
+function observationPath(points, valueAccessor, xFor, yFor) {
+  return points
+    .map((point, index) => {
+      const value = Number(valueAccessor(point));
+      if (!Number.isFinite(value)) return null;
+      return `${index === 0 ? "M" : "L"}${xFor(index).toFixed(1)},${yFor(value).toFixed(1)}`;
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
+function renderObservationEvolution(checkpoints) {
+  if (!elements.observationEvolutionChart) return;
+  const points = Array.isArray(checkpoints) ? checkpoints : [];
+  if (!points.length) {
+    elements.observationEvolutionChart.innerHTML = '<div class="observation-chart-empty">El gráfico aparecerá con el primer control exacto.</div>';
+    return;
+  }
+  const width = 920;
+  const height = 270;
+  const pad = { left: 48, right: 22, top: 22, bottom: 40 };
+  const innerWidth = width - pad.left - pad.right;
+  const innerHeight = height - pad.top - pad.bottom;
+  const xFor = (index) => pad.left + (points.length === 1 ? innerWidth / 2 : (index / (points.length - 1)) * innerWidth);
+  const yPercent = (value) => pad.top + (1 - Math.max(0, Math.min(1, value))) * innerHeight;
+  const pnlValues = points.map((item) => Number(item.unrealized_pnl)).filter(Number.isFinite);
+  const pnlMin = pnlValues.length ? Math.min(...pnlValues) : 0;
+  const pnlMax = pnlValues.length ? Math.max(...pnlValues) : 0;
+  const pnlSpan = Math.max(pnlMax - pnlMin, Math.max(Math.abs(pnlMin), Math.abs(pnlMax)) * 0.2, 1);
+  const yPnl = (value) => pad.top + (1 - ((value - pnlMin) / pnlSpan)) * innerHeight;
+  const tpPath = observationPath(points, (item) => item.tp_probability, xFor, yPercent);
+  const slPath = observationPath(points, (item) => item.sl_probability, xFor, yPercent);
+  const pnlPath = observationPath(points, (item) => item.unrealized_pnl, xFor, yPnl);
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((value) => {
+    const y = yPercent(value);
+    return `<line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" class="obs-grid-line"/><text x="${pad.left - 9}" y="${y + 4}" text-anchor="end" class="obs-axis-label">${Math.round(value * 100)}%</text>`;
+  }).join("");
+  const markers = points.map((point, index) => {
+    const x = xFor(index);
+    const candidate = point.stored_decision_candidate;
+    return `<circle cx="${x}" cy="${yPercent(Number(point.tp_probability) || 0)}" r="${candidate ? 5.5 : 3.5}" class="obs-point is-tp${candidate ? " is-candidate" : ""}"><title>${escapeHtml(point.checkpoint_code)} · TP ${observationProbability(point.tp_probability)}</title></circle>`;
+  }).join("");
+  const first = points[0];
+  const last = points[points.length - 1];
+  elements.observationEvolutionChart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="obsTpFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1f9d68" stop-opacity=".18"/>
+          <stop offset="100%" stop-color="#1f9d68" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      ${grid}
+      <path d="${tpPath}" class="obs-line is-tp"/>
+      <path d="${slPath}" class="obs-line is-sl"/>
+      <path d="${pnlPath}" class="obs-line is-pnl"/>
+      ${markers}
+      <text x="${pad.left}" y="${height - 12}" class="obs-axis-label">${escapeHtml(first.checkpoint_code)}</text>
+      <text x="${width - pad.right}" y="${height - 12}" text-anchor="end" class="obs-axis-label">${escapeHtml(last.checkpoint_code)}</text>
+    </svg>`;
+}
+
+function selectedObservationCheckpoint(monitor) {
+  const checkpoints = monitor?.checkpoints || [];
+  if (!checkpoints.length) return null;
+  const operationId = Number(monitor.operation?.id);
+  const selectedNumber = Number(selectedObservationCheckpointByOperation.get(operationId));
+  return checkpoints.find((item) => Number(item.checkpoint_number) === selectedNumber) || checkpoints[checkpoints.length - 1];
+}
+
+function renderObservationRules(monitor) {
+  const checkpoints = monitor?.checkpoints || [];
+  const selected = selectedObservationCheckpoint(monitor);
+  if (!selected) {
+    elements.observationCheckpointSelect.innerHTML = "";
+    elements.observationRuleMatrix.innerHTML = '<p class="observation-no-rules">Aún no hay reglas que comparar.</p>';
+    [elements.observationRuleFavorable, elements.observationRuleAdverse, elements.observationRuleNeutral, elements.observationRuleShadow].forEach((element) => { if (element) element.textContent = "0"; });
+    return;
+  }
+  selectedObservationCheckpointByOperation.set(Number(monitor.operation.id), Number(selected.checkpoint_number));
+  elements.observationCheckpointSelect.innerHTML = [...checkpoints].reverse().map((checkpoint) => `
+    <option value="${checkpoint.checkpoint_number}"${checkpoint.checkpoint_number === selected.checkpoint_number ? " selected" : ""}>${escapeHtml(checkpoint.checkpoint_code)} · ${escapeHtml(observationLocalTime(checkpoint.observed_at))}</option>
+  `).join("");
+  const selectedIndex = checkpoints.findIndex((item) => item.checkpoint_number === selected.checkpoint_number);
+  const previous = selectedIndex > 0 ? checkpoints[selectedIndex - 1] : null;
+  const previousSignals = new Map((previous?.rule_signals || []).map((signal) => [signal.key, signal]));
+  const signals = selected.rule_signals || [];
+  const favorable = signals.filter((signal) => signal.tone === "favorable").length;
+  const adverse = signals.filter((signal) => signal.tone === "adverse").length;
+  const shadow = signals.filter((signal) => signal.category === "observational").length;
+  elements.observationRuleFavorable.textContent = String(favorable);
+  elements.observationRuleAdverse.textContent = String(adverse);
+  elements.observationRuleNeutral.textContent = String(Math.max(signals.length - favorable - adverse, 0));
+  elements.observationRuleShadow.textContent = String(shadow);
+  if (!signals.length) {
+    elements.observationRuleMatrix.innerHTML = '<p class="observation-no-rules">Este punto reconstruido no contiene la fotografía exacta de las reglas. Se conserva como evidencia parcial, sin inventar datos.</p>';
+    return;
+  }
+  elements.observationRuleMatrix.innerHTML = signals.map((signal) => {
+    const tone = observationToneMeta(signal.tone);
+    const previousSignal = previousSignals.get(signal.key);
+    const delta = Number(signal.score) - Number(previousSignal?.score);
+    const deltaText = Number.isFinite(delta)
+      ? `${delta >= 0 ? "+" : ""}${delta.toFixed(3)} desde ${escapeHtml(previous.checkpoint_code)}`
+      : "Primer valor comparable";
+    const metrics = (signal.metrics || []).map((metric) => `
+      <span><small>${escapeHtml(metric.label)}</small><strong>${escapeHtml(observationCompactNumber(metric.value))}</strong></span>
+    `).join("");
+    return `
+      <article class="observation-rule-card is-${escapeHtml(signal.tone)}">
+        <div class="observation-rule-topline">
+          <span class="observation-rule-tone">${tone.symbol} ${tone.label}</span>
+          <span class="observation-rule-category ${signal.category === "observational" ? "is-shadow" : "is-principal"}">${signal.category === "observational" ? "Observacional · peso 0%" : "Principal · integrada"}</span>
+        </div>
+        <h5>${escapeHtml(signal.label)}</h5>
+        <p>${escapeHtml(signal.explanation)}</p>
+        <div class="observation-rule-metrics">${metrics || "<span><small>Valor</small><strong>Contextual</strong></span>"}</div>
+        <footer><span>${escapeHtml(signal.stage.replaceAll("_", " "))}</span><strong>${escapeHtml(deltaText)}</strong></footer>
+      </article>`;
+  }).join("");
+}
+
+function observationDecisionMeta(checkpoint) {
+  if (checkpoint.stored_decision_candidate || checkpoint.stored_decision === "close") {
+    return { label: "Candidato de cierre", className: "is-close" };
+  }
+  if (checkpoint.stored_decision === "watch") return { label: "Vigilar", className: "is-watch" };
+  if (checkpoint.stored_decision === "hold") return { label: "Mantener", className: "is-hold" };
+  return { label: "Sin clasificar", className: "is-unreviewed" };
+}
+
+function renderObservationTimeline(monitor) {
+  const checkpoints = monitor?.checkpoints || [];
+  if (!checkpoints.length) {
+    elements.observationTimelineRange.textContent = "Sin controles";
+    elements.observationTimeline.innerHTML = '<p class="observation-no-rules">Esperando el primer punto de control.</p>';
+    elements.loadOlderObservationsButton.hidden = true;
+    return;
+  }
+  elements.observationTimelineRange.textContent = `${checkpoints[0].checkpoint_code} → ${checkpoints[checkpoints.length - 1].checkpoint_code}`;
+  elements.observationTimeline.innerHTML = [...checkpoints].reverse().map((checkpoint) => {
+    const decision = observationDecisionMeta(checkpoint);
+    const edge = Number(checkpoint.tp_probability) - Number(checkpoint.sl_probability);
+    return `
+      <button type="button" class="observation-timeline-item ${decision.className}" data-checkpoint-number="${checkpoint.checkpoint_number}">
+        <span class="observation-timeline-dot" aria-hidden="true"></span>
+        <span class="observation-timeline-identity"><strong>${escapeHtml(checkpoint.checkpoint_code)}</strong><small>${escapeHtml(observationLocalTime(checkpoint.observed_at, true))}</small></span>
+        <span><small>Precio</small><strong>${escapeHtml(priceText(Number(checkpoint.market_price)))}</strong></span>
+        <span><small>P&amp;L</small><strong class="${Number(checkpoint.unrealized_pnl) >= 0 ? "positive" : "negative"}">${escapeHtml(money(Number(checkpoint.unrealized_pnl)))}</strong></span>
+        <span><small>TP / SL</small><strong>${observationProbability(checkpoint.tp_probability)} / ${observationProbability(checkpoint.sl_probability)}</strong></span>
+        <span><small>Ventaja</small><strong>${observationSignedPoints(edge)}</strong></span>
+        <span class="observation-timeline-decision">${decision.label}</span>
+      </button>`;
+  }).join("");
+  elements.loadOlderObservationsButton.hidden = !monitor.pagination?.has_more;
+}
+
+function renderObservationEvents(monitor) {
+  let events = Array.isArray(monitor?.events) ? monitor.events : [];
+  if (!events.length && monitor?.session) {
+    events = [{ event_type: "started", occurred_at: monitor.session.started_at, interval_minutes: monitor.session.planned_interval_minutes }];
+    if (monitor.session.ended_at) {
+      events.push({ event_type: monitor.session.status === "cancelled" ? "stopped" : "operation_closed", occurred_at: monitor.session.ended_at });
+    }
+  }
+  const labels = {
+    started: "Observación iniciada",
+    interval_changed: "Intervalo modificado",
+    paused: "Observación pausada",
+    resumed: "Observación reanudada",
+    stopped: "Observación finalizada manualmente",
+    operation_closed: "Finalizada por cierre de la operación",
+  };
+  elements.observationEvents.innerHTML = events.length ? events.map((event) => `
+    <article>
+      <span class="observation-event-dot" aria-hidden="true"></span>
+      <div><strong>${escapeHtml(labels[event.event_type] || event.event_type)}</strong><small>${escapeHtml(observationLocalTime(event.occurred_at, true))}${event.interval_minutes ? ` · cada ${Number(event.interval_minutes)} min` : ""}</small></div>
+    </article>
+  `).join("") : '<p class="observation-no-rules">Sin cambios de estado registrados.</p>';
+}
+
+function renderObservationMonitor(operation) {
+  if (!elements.observationMonitor) return;
+  const allowed = canManageOperationObservations();
+  elements.observationMonitor.hidden = !allowed || !operation;
+  if (!allowed || !operation) return;
+  const monitor = observationMonitorsByOperation.get(Number(operation.id));
+  const session = monitor?.session || observationSessionsByOperation.get(Number(operation.id)) || null;
+  const status = observationStatusMeta(session?.status);
+  elements.observationStateBadge.className = `observation-state-badge ${status.className}`;
+  elements.observationStateBadge.textContent = status.label;
+  elements.observationMonitorCode.textContent = session?.session_code || `Operación #${operation.id}`;
+  elements.observationMonitorEmpty.hidden = Boolean(session);
+  elements.observationMonitorDashboard.hidden = !session;
+  if (!session) return;
+  const checkpoints = monitor?.checkpoints || [];
+  const latest = checkpoints[checkpoints.length - 1];
+  const advisory = monitor?.advisory || { level: "waiting", label: "Esperando controles", headline: "Aún no hay evidencia suficiente.", reasons: [] };
+  const storedCount = Number(session.stored_checkpoints ?? session.stored_checkpoint_count ?? checkpoints.length);
+  elements.observationKpiCount.textContent = String(storedCount);
+  elements.observationKpiCountDetail.textContent = `${Number(session.exact_cases || 0)} exactos · ${Number(session.decision_candidates || 0)} candidatos`;
+  elements.observationKpiPrice.textContent = latest ? priceText(Number(latest.market_price)) : "—";
+  elements.observationKpiPnl.textContent = latest ? `P&L ${money(Number(latest.unrealized_pnl))}` : "Esperando control";
+  const currentEdge = latest ? Number(latest.tp_probability) - Number(latest.sl_probability) : null;
+  elements.observationKpiEdge.textContent = observationSignedPoints(currentEdge);
+  elements.observationKpiEdge.className = Number(currentEdge) >= 0 ? "positive" : "negative";
+  elements.observationKpiEdgeDelta.textContent = Number.isFinite(Number(advisory.edge_change))
+    ? `${observationSignedPoints(advisory.edge_change)} desde el primero visible`
+    : "Sin evolución todavía";
+  elements.observationKpiRemaining.textContent = latest ? observationDuration(latest.remaining_seconds) : "—";
+  elements.observationKpiNext.textContent = session.status === "active"
+    ? `Próximo: ${observationLocalTime(session.next_checkpoint_due_at)}`
+    : session.status === "paused" ? "Sin nuevos controles durante la pausa" : "Seguimiento cerrado";
+  renderObservationEvolution(checkpoints);
+  elements.observationAdvisory.className = `observation-advisory is-${escapeHtml(advisory.level || "waiting")}`;
+  elements.observationAdvisoryLabel.textContent = advisory.label || "Esperando controles";
+  elements.observationAdvisoryHeadline.textContent = advisory.headline || "Aún no hay evidencia suficiente.";
+  elements.observationAdvisoryReasons.innerHTML = (advisory.reasons || []).map((reason) => `<li>${escapeHtml(reason)}</li>`).join("") || "<li>El worker añadirá evidencias automáticamente.</li>";
+  renderObservationRules(monitor);
+  renderObservationTimeline(monitor);
+  renderObservationEvents(monitor);
+}
+
+async function loadObservationMonitor(operation, { force = false, loadOlder = false } = {}) {
+  if (!canManageOperationObservations() || !operation) return;
+  const operationId = Number(operation.id);
+  if (observationMonitorLoads.has(operationId)) return;
+  if (!force && observationMonitorsByOperation.has(operationId)) {
+    renderObservationMonitor(operation);
+    return;
+  }
+  observationMonitorLoads.add(operationId);
+  try {
+    const existing = observationMonitorsByOperation.get(operationId);
+    const before = loadOlder ? existing?.pagination?.oldest_checkpoint_number : null;
+    const params = new URLSearchParams({ limit: "120" });
+    if (before) params.set("before_checkpoint_number", String(before));
+    const data = await requestJson(`/api/operations/${operationId}/observation-monitor?${params}`, {
+      cacheBust: true,
+      timeout: 15000,
+      errorMessage: "No se pudo cargar el monitor observacional.",
+    });
+    let monitor = data.monitor || null;
+    if (loadOlder && monitor && existing) {
+      const merged = [...(monitor.checkpoints || []), ...(existing.checkpoints || [])];
+      const unique = new Map(merged.map((checkpoint) => [Number(checkpoint.checkpoint_number), checkpoint]));
+      monitor = {
+        ...monitor,
+        checkpoints: [...unique.values()].sort((left, right) => left.checkpoint_number - right.checkpoint_number),
+        advisory: existing.advisory,
+      };
+    }
+    observationMonitorsByOperation.set(operationId, monitor);
+    observationSessionsByOperation.set(operationId, monitor?.session || null);
+  } catch (error) {
+    if (loadOlder) showFloatingNotice("No se pudieron cargar controles anteriores", error.message, 5000);
+  } finally {
+    observationMonitorLoads.delete(operationId);
+    if (Number(selectedOperationId) === operationId) {
+      renderObservationControls(getSelectedOperation());
+      renderObservationMonitor(getSelectedOperation());
+    }
+  }
+}
+
 function observationSessionText(operation, session) {
   if (!session) {
     return operation?.status === "OPEN"
@@ -3087,7 +3451,13 @@ function observationSessionText(operation, session) {
       : "en breve";
     return `${session.session_code}: activa cada ${interval} min, ${stored} controles exactos. Proximo control ${nextDue}.`;
   }
-  return `${session.session_code}: finalizada con la operacion; ${stored} controles exactos registrados.`;
+  if (session.status === "paused") {
+    return `${session.session_code}: en pausa tras ${stored} controles exactos. Puedes reanudarla sin perder la numeración.`;
+  }
+  if (session.status === "cancelled") {
+    return `${session.session_code}: seguimiento finalizado manualmente con ${stored} controles; la operación puede continuar abierta.`;
+  }
+  return `${session.session_code}: finalizada al cerrar la operación; ${stored} controles exactos registrados.`;
 }
 
 function canManageOperationObservations() {
@@ -3099,6 +3469,7 @@ function renderObservationControls(operation) {
   if (!elements.observationControls) return;
   if (!canManageOperationObservations()) {
     elements.observationControls.hidden = true;
+    if (elements.observationMonitor) elements.observationMonitor.hidden = true;
     return;
   }
   const hasCachedSession = operation
@@ -3110,13 +3481,18 @@ function renderObservationControls(operation) {
   const isOpen = String(operation?.status || "").toUpperCase() === "OPEN";
   const visible = Boolean(operation && (isOpen || session));
   elements.observationControls.hidden = !visible;
+  renderObservationMonitor(operation);
   if (!visible) return;
 
   elements.observationStatus.textContent = observationSessionText(operation, session);
   const sessionIsActive = session?.status === "active";
+  const sessionIsPaused = session?.status === "paused";
   elements.startObservationButton.hidden = Boolean(session);
   elements.startObservationButton.disabled = !isOpen;
-  elements.observationInterval.disabled = !isOpen || Boolean(session && !sessionIsActive);
+  elements.pauseObservationButton.hidden = !sessionIsActive || !isOpen;
+  elements.resumeObservationButton.hidden = !sessionIsPaused || !isOpen;
+  elements.stopObservationButton.hidden = !(isOpen && (sessionIsActive || sessionIsPaused));
+  elements.observationInterval.disabled = !isOpen || Boolean(session && !(sessionIsActive || sessionIsPaused));
   if (session?.planned_interval_minutes) {
     elements.observationInterval.value = String(session.planned_interval_minutes);
   }
@@ -3137,6 +3513,11 @@ async function loadObservationSession(operation, { force = false } = {}) {
       timeout: 12000,
     });
     observationSessionsByOperation.set(operationId, data.session || null);
+    if (data.session) {
+      void loadObservationMonitor(operation, { force: true });
+    } else {
+      observationMonitorsByOperation.set(operationId, null);
+    }
   } catch {
     // A transient lookup failure must not affect the operation or its controls.
   } finally {
@@ -3164,6 +3545,7 @@ async function startObservationSession() {
       timeout: 20000,
     });
     observationSessionsByOperation.set(Number(operation.id), session);
+    await loadObservationMonitor(operation, { force: true });
     renderObservationControls(operation);
     showFloatingNotice(
       `Observacion ${session.session_code} activada`,
@@ -3185,7 +3567,7 @@ async function changeObservationInterval() {
   const session = operation
     ? observationSessionsByOperation.get(Number(operation.id))
     : null;
-  if (!operation || session?.status !== "active") return;
+  if (!operation || !["active", "paused"].includes(session?.status)) return;
   const interval = Number(elements.observationInterval.value);
   elements.observationInterval.classList.add("is-loading");
   elements.observationInterval.disabled = true;
@@ -3197,6 +3579,7 @@ async function changeObservationInterval() {
       errorMessage: "No se pudo cambiar el intervalo observacional.",
     });
     observationSessionsByOperation.set(Number(operation.id), updatedSession);
+    await loadObservationMonitor(operation, { force: true });
     renderObservationControls(operation);
     showFloatingNotice(
       "Intervalo actualizado",
@@ -3208,6 +3591,53 @@ async function changeObservationInterval() {
     showFloatingNotice("No se pudo cambiar el intervalo", error.message, 6000);
   } finally {
     elements.observationInterval.classList.remove("is-loading");
+    renderObservationControls(getSelectedOperation());
+  }
+}
+
+async function changeObservationState(action) {
+  if (!canManageOperationObservations()) return;
+  const operation = getSelectedOperation();
+  const session = operation ? observationSessionsByOperation.get(Number(operation.id)) : null;
+  if (!operation || !session) return;
+  if (action === "stop" && !window.confirm("¿Finalizar definitivamente este seguimiento? La operación seguirá abierta, pero no se crearán más controles.")) {
+    return;
+  }
+  const button = {
+    pause: elements.pauseObservationButton,
+    resume: elements.resumeObservationButton,
+    stop: elements.stopObservationButton,
+  }[action];
+  const labels = { pause: "Pausando…", resume: "Reanudando…", stop: "Finalizando…" };
+  const original = button?.textContent;
+  if (button) {
+    button.disabled = true;
+    button.classList.add("is-loading");
+    button.textContent = labels[action];
+  }
+  try {
+    const updated = await requestJson(`/api/operations/${operation.id}/observation-session/action`, {
+      method: "POST",
+      body: { action },
+      timeout: 20000,
+      errorMessage: "No se pudo cambiar el estado de la observación.",
+    });
+    observationSessionsByOperation.set(Number(operation.id), updated);
+    await loadObservationMonitor(operation, { force: true });
+    const notices = {
+      pause: ["Observación pausada", "No se registrarán nuevos controles hasta que la reanudes."],
+      resume: ["Observación reanudada", "El worker retomará los controles manteniendo la numeración anterior."],
+      stop: ["Observación finalizada", "Los datos quedan conservados y la operación continúa sin seguimiento."],
+    };
+    showFloatingNotice(notices[action][0], notices[action][1], 5200);
+  } catch (error) {
+    showFloatingNotice("No se pudo actualizar la observación", error.message, 6000);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.classList.remove("is-loading");
+      button.textContent = original;
+    }
     renderObservationControls(getSelectedOperation());
   }
 }
@@ -4111,6 +4541,13 @@ async function syncOperationStates() {
     // A transient sync failure must not erase the operation currently visible.
   } finally {
     operationStateSyncInFlight = false;
+    const selected = getSelectedOperation();
+    const session = selected
+      ? observationSessionsByOperation.get(Number(selected.id))
+      : null;
+    if (selected && ["active", "paused"].includes(session?.status)) {
+      void loadObservationMonitor(selected, { force: true });
+    }
   }
 }
 
@@ -4401,8 +4838,13 @@ function renderSelectedOperationDetail(operation) {
     Number(operation.id),
   );
   void loadObservationSession(operation, {
-    force: cachedObservationSession?.status === "active",
+    force: ["active", "paused"].includes(cachedObservationSession?.status),
   });
+  if (cachedObservationSession) {
+    void loadObservationMonitor(operation, {
+      force: ["active", "paused"].includes(cachedObservationSession.status),
+    });
+  }
   applyOperationToForm(operation);
   const config = operationToConfig(operation);
   const closePrice = Number(operation.close_price);
@@ -5159,6 +5601,34 @@ elements.startSimulationButton.addEventListener("click", startSimulation);
 elements.closeSimulationButton.addEventListener("click", closeSimulation);
 elements.startObservationButton?.addEventListener("click", startObservationSession);
 elements.observationInterval?.addEventListener("change", changeObservationInterval);
+elements.pauseObservationButton?.addEventListener("click", () => changeObservationState("pause"));
+elements.resumeObservationButton?.addEventListener("click", () => changeObservationState("resume"));
+elements.stopObservationButton?.addEventListener("click", () => changeObservationState("stop"));
+elements.observationCheckpointSelect?.addEventListener("change", () => {
+  const operation = getSelectedOperation();
+  if (!operation) return;
+  selectedObservationCheckpointByOperation.set(
+    Number(operation.id),
+    Number(elements.observationCheckpointSelect.value),
+  );
+  renderObservationMonitor(operation);
+});
+elements.observationTimeline?.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-checkpoint-number]");
+  const operation = getSelectedOperation();
+  if (!item || !operation) return;
+  selectedObservationCheckpointByOperation.set(Number(operation.id), Number(item.dataset.checkpointNumber));
+  renderObservationMonitor(operation);
+  elements.observationCheckpointSelect?.focus({ preventScroll: true });
+  document.querySelector(".observation-rule-lab")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+elements.loadOlderObservationsButton?.addEventListener("click", async () => {
+  const operation = getSelectedOperation();
+  if (!operation) return;
+  elements.loadOlderObservationsButton.disabled = true;
+  await loadObservationMonitor(operation, { force: true, loadOlder: true });
+  elements.loadOlderObservationsButton.disabled = false;
+});
 elements.analysisToggle.addEventListener("click", () => {
   fullAnalysisOpen = !fullAnalysisOpen;
   updateAnalysisFullVisibility();

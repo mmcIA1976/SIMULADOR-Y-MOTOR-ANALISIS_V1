@@ -36,6 +36,7 @@ RUNTIME_SCHEMA_TABLES = (
     "order_book_observation_state",
     "recommendation_counterfactual_evaluations",
     "operation_observation_sessions",
+    "operation_observation_session_events",
     "operation_observation_checkpoints",
     "operation_exit_counterfactuals",
 )

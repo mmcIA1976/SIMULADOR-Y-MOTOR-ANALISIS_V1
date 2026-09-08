@@ -102,3 +102,11 @@ marcan `reconstructed_partial` y nunca entran en las metricas formales. Las
 decisiones hipoteticas de cierre se conservan aparte en
 `operation_exit_counterfactuals`; ninguna de estas tablas cambia reglas,
 probabilidades ni operaciones de produccion.
+
+El monitor de observacion consulta una vista compacta de esos controles para
+mostrar, debajo de la grafica de la operacion, la evolucion TP/SL, PnL, reglas
+principales y observacionales, y los candidatos de cierre. Pausar y reanudar
+conserva la sesion; finalizarla detiene definitivamente nuevos controles sin
+cerrar la operacion. Cada cambio queda registrado de forma append-only en
+`operation_observation_session_events`. El monitor es informativo: no cierra
+operaciones ni modifica la probabilidad calculada por el motor.

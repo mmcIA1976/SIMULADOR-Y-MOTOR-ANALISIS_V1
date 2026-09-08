@@ -553,7 +553,7 @@ CREATE TABLE IF NOT EXISTS operation_observation_sessions (
     opening_recommendation_id BIGINT
         REFERENCES recommendations(id) ON DELETE RESTRICT,
     session_code TEXT NOT NULL UNIQUE CHECK(session_code ~ '^[0-9]+o$'),
-    status TEXT NOT NULL CHECK(status IN ('active', 'completed', 'cancelled')),
+    status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'completed', 'cancelled')),
     capture_mode TEXT NOT NULL CHECK(capture_mode IN ('live', 'reconstructed')),
     contract_version TEXT NOT NULL,
     planned_interval_minutes INTEGER CHECK(
@@ -567,6 +567,7 @@ CREATE TABLE IF NOT EXISTS operation_observation_sessions (
     next_checkpoint_number INTEGER NOT NULL DEFAULT 1
         CHECK(next_checkpoint_number > 0),
     started_at TIMESTAMPTZ NOT NULL,
+    paused_at TIMESTAMPTZ,
     ended_at TIMESTAMPTZ,
     evidence_source TEXT NOT NULL,
     evidence_quality TEXT NOT NULL
@@ -582,14 +583,55 @@ CREATE TABLE IF NOT EXISTS operation_observation_sessions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(id, operation_id),
     CHECK(
-        (status = 'active' AND ended_at IS NULL)
-        OR (status <> 'active' AND ended_at IS NOT NULL)
+        (status IN ('active', 'paused') AND ended_at IS NULL)
+        OR (status IN ('completed', 'cancelled') AND ended_at IS NOT NULL)
+    ),
+    CHECK(
+        (status = 'paused' AND paused_at IS NOT NULL)
+        OR status <> 'paused'
     ),
     CHECK(
         (capture_mode = 'live' AND evidence_quality = 'exact')
         OR (capture_mode = 'reconstructed'
             AND evidence_quality = 'reconstructed_partial')
     )
+);
+
+CREATE TABLE IF NOT EXISTS operation_observation_session_events (
+    id BIGSERIAL PRIMARY KEY,
+    session_id BIGINT NOT NULL,
+    operation_id BIGINT NOT NULL,
+    event_type TEXT NOT NULL CHECK(
+        event_type IN (
+            'started', 'interval_changed', 'paused', 'resumed',
+            'stopped', 'operation_closed'
+        )
+    ),
+    occurred_at TIMESTAMPTZ NOT NULL,
+    from_status TEXT CHECK(
+        from_status IS NULL OR from_status IN (
+            'active', 'paused', 'completed', 'cancelled'
+        )
+    ),
+    to_status TEXT CHECK(
+        to_status IS NULL OR to_status IN (
+            'active', 'paused', 'completed', 'cancelled'
+        )
+    ),
+    interval_minutes INTEGER CHECK(
+        interval_minutes IS NULL OR interval_minutes BETWEEN 1 AND 1440
+    ),
+    details_json TEXT NOT NULL CHECK(jsonb_typeof(details_json::jsonb) = 'object'),
+    details_bytes INTEGER NOT NULL CHECK(
+        details_bytes > 0 AND details_bytes <= 4096
+        AND details_bytes = octet_length(convert_to(details_json, 'UTF8'))
+    ),
+    details_sha256 TEXT NOT NULL CHECK(details_sha256 ~ '^[0-9a-f]{64}$'),
+    production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(session_id, operation_id)
+        REFERENCES operation_observation_sessions(id, operation_id)
+        ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS operation_observation_checkpoints (
@@ -826,6 +868,8 @@ CREATE INDEX IF NOT EXISTS idx_counterfactual_episode_evaluation ON counterfactu
 CREATE INDEX IF NOT EXISTS idx_counterfactual_episode_market ON counterfactual_episode_memberships(run_id, market_episode_key);
 CREATE INDEX IF NOT EXISTS idx_counterfactual_episode_horizon ON counterfactual_episode_memberships(run_id, formal_metric_eligible, time_horizon, formal_horizon_episode_key);
 CREATE INDEX IF NOT EXISTS idx_observation_sessions_user_status ON operation_observation_sessions(user_id, status, started_at);
+CREATE INDEX IF NOT EXISTS idx_observation_session_events_timeline ON operation_observation_session_events(operation_id, occurred_at, id);
+CREATE INDEX IF NOT EXISTS idx_observation_session_events_session ON operation_observation_session_events(session_id, operation_id);
 CREATE INDEX IF NOT EXISTS idx_observation_checkpoints_episode_time ON operation_observation_checkpoints(operation_id, observed_at);
 CREATE INDEX IF NOT EXISTS idx_observation_checkpoints_learning ON operation_observation_checkpoints(formal_learning_eligible, contract_quality, observed_at);
 CREATE INDEX IF NOT EXISTS idx_exit_counterfactual_operation ON operation_exit_counterfactuals(operation_id, evaluated_at);
@@ -852,6 +896,7 @@ ALTER TABLE public.recommendation_counterfactual_evaluations ENABLE ROW LEVEL SE
 ALTER TABLE public.counterfactual_episode_grouping_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.counterfactual_episode_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operation_observation_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.operation_observation_session_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operation_observation_checkpoints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operation_exit_counterfactuals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.limit_learning_snapshots ENABLE ROW LEVEL SECURITY;
@@ -877,6 +922,7 @@ REVOKE ALL PRIVILEGES ON TABLE public.recommendation_counterfactual_evaluations 
 REVOKE ALL PRIVILEGES ON TABLE public.counterfactual_episode_grouping_runs FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.counterfactual_episode_memberships FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operation_observation_sessions FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.operation_observation_session_events FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operation_observation_checkpoints FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.operation_exit_counterfactuals FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.limit_learning_snapshots FROM anon, authenticated;
@@ -911,6 +957,8 @@ REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
 REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.operation_observation_sessions FROM service_role;
 REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+    ON TABLE public.operation_observation_session_events FROM service_role;
+REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.operation_observation_checkpoints FROM service_role;
 REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
     ON TABLE public.operation_exit_counterfactuals FROM service_role;
@@ -933,6 +981,8 @@ GRANT SELECT, INSERT
 GRANT SELECT, INSERT, UPDATE
     ON TABLE public.operation_observation_sessions TO service_role;
 GRANT SELECT, INSERT
+    ON TABLE public.operation_observation_session_events TO service_role;
+GRANT SELECT, INSERT
     ON TABLE public.operation_observation_checkpoints TO service_role;
 GRANT SELECT, INSERT
     ON TABLE public.operation_exit_counterfactuals TO service_role;
@@ -954,6 +1004,8 @@ GRANT USAGE, SELECT
     ON SEQUENCE public.counterfactual_episode_memberships_id_seq TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.operation_observation_sessions_id_seq TO service_role;
+GRANT USAGE, SELECT
+    ON SEQUENCE public.operation_observation_session_events_id_seq TO service_role;
 GRANT USAGE, SELECT
     ON SEQUENCE public.operation_observation_checkpoints_id_seq TO service_role;
 GRANT USAGE, SELECT
@@ -1087,6 +1139,20 @@ REVOKE ALL
 
 DO $$
 BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger
+        WHERE tgrelid =
+            'public.operation_observation_session_events'::regclass
+          AND tgname = 'operation_observation_session_events_append_only'
+          AND NOT tgisinternal
+    ) THEN
+        CREATE TRIGGER operation_observation_session_events_append_only
+        BEFORE UPDATE OR DELETE
+        ON public.operation_observation_session_events
+        FOR EACH ROW
+        EXECUTE FUNCTION public.prevent_operation_observation_fact_mutation();
+    END IF;
     IF NOT EXISTS (
         SELECT 1
         FROM pg_trigger

@@ -92,9 +92,14 @@ from operation_observation_learning import (
     OBSERVATION_INTERVAL_CHOICES,
     create_or_get_observation_session,
     finalize_closed_observation_sessions,
+    observation_checkpoint_view,
+    observation_closure_advisory,
     observation_interval_minutes,
+    observation_monitor_report,
+    observation_rule_signals,
     observation_session_report,
     persist_observation_checkpoint,
+    transition_observation_session,
     unified_predictive_inventory,
     update_active_observation_interval,
 )
@@ -209,6 +214,11 @@ class CloseOperationPayload(BaseModel):
 
 class ObservationSessionPayload(BaseModel):
     planned_interval_minutes: int = Field(default=20, ge=1, le=1_440)
+
+
+class ObservationSessionActionPayload(BaseModel):
+    action: str = Field(min_length=4, max_length=10)
+    note: str | None = Field(default=None, max_length=500)
 
 
 def validate_trade_plan(side: str, entry: float, stop_loss: float, take_profit: float) -> None:
@@ -5945,6 +5955,63 @@ def get_operation_observation_session(
     return {"operation_id": operation_id, "session": report}
 
 
+@app.post("/api/operations/{operation_id}/observation-session/action")
+def change_operation_observation_state(
+    operation_id: int,
+    payload: ObservationSessionActionPayload,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    action = str(payload.action or "").strip().lower()
+    if action not in {"pause", "resume", "stop"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Accion observacional no valida",
+        )
+    with connect() as db:
+        _observation_operation(db, operation_id, int(user["id"]))
+        finalize_closed_observation_sessions(db)
+        try:
+            transition_observation_session(
+                db,
+                operation_id=operation_id,
+                user_id=int(user["id"]),
+                action=action,
+                note=payload.note,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "El estado actual no permite esa accion observacional",
+                    "code": str(exc),
+                },
+            ) from exc
+        return observation_session_report(db, operation_id)
+
+
+@app.get("/api/operations/{operation_id}/observation-monitor")
+def get_operation_observation_monitor(
+    operation_id: int,
+    limit: int = 120,
+    before_checkpoint_number: int | None = None,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        _observation_operation(db, operation_id, int(user["id"]))
+        finalize_closed_observation_sessions(db)
+        report = observation_monitor_report(
+            db,
+            operation_id,
+            checkpoint_limit=limit,
+            before_checkpoint_number=before_checkpoint_number,
+        )
+    return {"operation_id": operation_id, "monitor": report}
+
+
 def record_operation_observation_checkpoint(
     operation_id: int,
     *,
@@ -6154,6 +6221,48 @@ def record_operation_observation_checkpoint(
             ),
         )
         recommendation_id = int(cursor.lastrowid)
+        prior_rows = db.execute(
+            """
+            SELECT checkpoint.*, recommendation.snapshot_json,
+                   recommendation.engine_version
+            FROM operation_observation_checkpoints AS checkpoint
+            LEFT JOIN recommendations AS recommendation
+              ON recommendation.id = checkpoint.recommendation_id
+            WHERE checkpoint.session_id = ?
+            ORDER BY checkpoint.checkpoint_number DESC
+            LIMIT 8
+            """,
+            (int(current_session["id"]),),
+        ).fetchall()
+        prior_views = [
+            observation_checkpoint_view(dict(row))
+            for row in reversed(prior_rows)
+        ]
+        current_checkpoint_number = int(
+            current_session.get("next_checkpoint_number") or 1
+        )
+        current_view = {
+            "checkpoint_code": f"{operation_id}o{current_checkpoint_number}",
+            "tp_probability": float(result["tp_probability"]),
+            "sl_probability": float(result["sl_probability"]),
+            "range_probability": float(result["range_probability"]),
+            "unrealized_pnl": unrealized_pnl,
+            "remaining_seconds": remaining_seconds,
+            "analysis_horizon_seconds": int(
+                result.get("snapshot", {}).get("evaluation_horizon_seconds")
+                or HORIZON_SECONDS[proposal.time_horizon]
+            ),
+            "rule_signals": observation_rule_signals(result.get("snapshot", {})),
+        }
+        closure_advisory = observation_closure_advisory(
+            [*prior_views, current_view]
+        )
+        checkpoint_decision = {
+            "close_candidate": "close",
+            "watch": "watch",
+            "hold": "hold",
+            "waiting": "unreviewed",
+        }.get(str(closure_advisory.get("level")), "unreviewed")
         checkpoint = persist_observation_checkpoint(
             db,
             session_id=int(current_session["id"]),
@@ -6166,8 +6275,10 @@ def record_operation_observation_checkpoint(
             tp_probability=float(result["tp_probability"]),
             sl_probability=float(result["sl_probability"]),
             range_probability=float(result["range_probability"]),
-            decision="unreviewed",
-            decision_candidate=False,
+            decision=checkpoint_decision,
+            decision_candidate=(
+                closure_advisory.get("level") == "close_candidate"
+            ),
             contract_quality="exact",
             evidence_source="application_live_observation",
             context={
@@ -6190,6 +6301,13 @@ def record_operation_observation_checkpoint(
                     "recommendation_counterfactual_evaluations"
                 ),
                 "exit_evaluation": "operation_exit_counterfactuals",
+                "closure_advisory": {
+                    "level": closure_advisory.get("level"),
+                    "label": closure_advisory.get("label"),
+                    "reason_count": len(closure_advisory.get("reasons") or []),
+                    "method": "persistent_multi_signal_observation_only",
+                    "production_effect": "none",
+                },
             },
         )
         insert_analysis_attempt(

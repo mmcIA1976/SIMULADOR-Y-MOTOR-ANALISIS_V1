@@ -216,6 +216,145 @@
           <div class="chart-wrap">
             <canvas id="tradeChart"></canvas>
           </div>
+
+          <section id="observationMonitor" class="observation-monitor" hidden aria-labelledby="observationMonitorTitle">
+            <header class="observation-monitor-header">
+              <div class="observation-monitor-heading">
+                <span class="observation-monitor-kicker">Laboratorio de seguimiento</span>
+                <h3 id="observationMonitorTitle">Monitor de observación</h3>
+                <p>Lectura cronológica de la operación, sus reglas y los posibles puntos de decisión. Nunca cierra ni modifica la operación automáticamente.</p>
+              </div>
+              <div class="observation-monitor-state">
+                <span id="observationStateBadge" class="observation-state-badge is-idle">Sin activar</span>
+                <strong id="observationMonitorCode">—</strong>
+              </div>
+            </header>
+
+            <section id="observationControls" class="observation-controls">
+              <div class="observation-control-copy">
+                <span>Seguimiento observacional</span>
+                <p id="observationStatus">Sin seguimiento activo.</p>
+              </div>
+              <label>
+                Intervalo
+                <select id="observationInterval">
+                  <option value="5">Cada 5 minutos</option>
+                  <option value="10">Cada 10 minutos</option>
+                  <option value="15">Cada 15 minutos</option>
+                  <option value="20" selected>Cada 20 minutos</option>
+                  <option value="30">Cada 30 minutos</option>
+                  <option value="40">Cada 40 minutos</option>
+                  <option value="60">Cada 60 minutos</option>
+                </select>
+              </label>
+              <div class="observation-control-actions">
+                <button id="startObservationButton" type="button">Activar observación</button>
+                <button id="pauseObservationButton" type="button" class="secondary-action" hidden>Pausar</button>
+                <button id="resumeObservationButton" type="button" class="secondary-action" hidden>Reanudar</button>
+                <button id="stopObservationButton" type="button" class="danger-outline" hidden>Finalizar observación</button>
+              </div>
+              <small>La pausa conserva todos los datos y permite continuar la numeración. Finalizar detiene definitivamente nuevos controles, aunque la operación siga abierta.</small>
+            </section>
+
+            <div id="observationMonitorEmpty" class="observation-monitor-empty">
+              <span class="observation-empty-icon" aria-hidden="true">◎</span>
+              <div>
+                <strong>Selecciona una operación y activa su observación</strong>
+                <p>El primer control aparecerá aquí y los siguientes se añadirán con el intervalo elegido.</p>
+              </div>
+            </div>
+
+            <div id="observationMonitorDashboard" class="observation-monitor-dashboard" hidden>
+              <div class="observation-kpi-grid">
+                <article>
+                  <span>Controles registrados</span>
+                  <strong id="observationKpiCount">0</strong>
+                  <small id="observationKpiCountDetail">Esperando el primero</small>
+                </article>
+                <article>
+                  <span>Último precio</span>
+                  <strong id="observationKpiPrice">—</strong>
+                  <small id="observationKpiPnl">P&amp;L —</small>
+                </article>
+                <article>
+                  <span>Ventaja TP − SL</span>
+                  <strong id="observationKpiEdge">—</strong>
+                  <small id="observationKpiEdgeDelta">Sin evolución</small>
+                </article>
+                <article>
+                  <span>Tiempo del plan</span>
+                  <strong id="observationKpiRemaining">—</strong>
+                  <small id="observationKpiNext">Próximo control —</small>
+                </article>
+              </div>
+
+              <div class="observation-visual-grid">
+                <article class="observation-visual-card observation-probability-card">
+                  <div class="observation-card-heading">
+                    <div>
+                      <span>Evolución</span>
+                      <strong>Probabilidades y resultado flotante</strong>
+                    </div>
+                    <div class="observation-mini-legend" aria-label="Leyenda">
+                      <span class="is-tp">TP</span><span class="is-sl">SL</span><span class="is-pnl">P&amp;L</span>
+                    </div>
+                  </div>
+                  <div id="observationEvolutionChart" class="observation-evolution-chart" role="img" aria-label="Evolución de TP, SL y resultado flotante"></div>
+                  <p class="observation-chart-note">TP y SL usan el eje porcentual. El P&amp;L se normaliza sólo para mostrar su tendencia; el valor exacto aparece en cada control.</p>
+                </article>
+
+                <article id="observationAdvisory" class="observation-advisory is-waiting">
+                  <div class="observation-advisory-topline">
+                    <span>Lectura de cierre</span>
+                    <strong id="observationAdvisoryLabel">Esperando controles</strong>
+                  </div>
+                  <h4 id="observationAdvisoryHeadline">Aún no hay evidencia suficiente.</h4>
+                  <ul id="observationAdvisoryReasons"></ul>
+                  <div class="observation-advisory-guardrail">
+                    <span aria-hidden="true">◇</span>
+                    <p>Es una señal de estudio basada en persistencia y coincidencia de evidencias. No altera el motor probabilístico ni ejecuta un cierre.</p>
+                  </div>
+                </article>
+              </div>
+
+              <section class="observation-rule-lab">
+                <div class="observation-card-heading">
+                  <div>
+                    <span>Radiografía del control</span>
+                    <strong>Qué dice cada regla y cómo cambia</strong>
+                  </div>
+                  <label>
+                    Punto de control
+                    <select id="observationCheckpointSelect"></select>
+                  </label>
+                </div>
+                <div class="observation-rule-summary">
+                  <article class="is-favorable"><span>A favor</span><strong id="observationRuleFavorable">0</strong></article>
+                  <article class="is-adverse"><span>En contra</span><strong id="observationRuleAdverse">0</strong></article>
+                  <article class="is-neutral"><span>Neutras/contexto</span><strong id="observationRuleNeutral">0</strong></article>
+                  <article class="is-shadow"><span>Observacionales</span><strong id="observationRuleShadow">0</strong></article>
+                </div>
+                <div id="observationRuleMatrix" class="observation-rule-matrix"></div>
+              </section>
+
+              <section class="observation-timeline-panel">
+                <div class="observation-card-heading">
+                  <div>
+                    <span>Cronología verificable</span>
+                    <strong>Puntos de control y decisiones</strong>
+                  </div>
+                  <span id="observationTimelineRange" class="observation-timeline-range">—</span>
+                </div>
+                <div id="observationTimeline" class="observation-timeline"></div>
+                <button id="loadOlderObservationsButton" type="button" class="secondary-action" hidden>Ver controles anteriores</button>
+              </section>
+
+              <details class="observation-event-log">
+                <summary>Historial de activación, pausas y cambios</summary>
+                <div id="observationEvents" class="observation-events"></div>
+              </details>
+            </div>
+          </section>
         </section>
 
         <aside class="control-panel" id="operationConfigPanel">
@@ -311,25 +450,6 @@
           <button id="startSimulationButton" type="button">Iniciar simulacion</button>
           <button id="closeSimulationButton" type="button">Cerrar manualmente</button>
 
-          <section id="observationControls" class="observation-controls" hidden>
-            <span>Seguimiento observacional</span>
-            <p id="observationStatus">Sin seguimiento activo.</p>
-            <label>
-              Intervalo entre observaciones
-              <select id="observationInterval">
-                <option value="5">Cada 5 minutos</option>
-                <option value="10">Cada 10 minutos</option>
-                <option value="15">Cada 15 minutos</option>
-                <option value="20" selected>Cada 20 minutos</option>
-                <option value="30">Cada 30 minutos</option>
-                <option value="40">Cada 40 minutos</option>
-                <option value="60">Cada 60 minutos</option>
-              </select>
-            </label>
-            <button id="startObservationButton" type="button">Activar observacion</button>
-            <small>Al activarla, el worker inicia el primer control y despues repite el analisis con el intervalo elegido. La toma periodica finaliza al llegar a TP, tocar SL o cerrar manualmente.</small>
-          </section>
-
           <label>
             Motivo de cierre
             <select id="closeReason">
@@ -409,6 +529,6 @@
       </div>
     </div>
 
-    <script src="/static/app.js?v=20260908-automatic-observation-v2"></script>
+    <script src="/static/app.js?v=20260908-observation-monitor-v1"></script>
   </body>
 </html>

@@ -79,6 +79,15 @@ from operation_worker_status import (
     get_worker_status_row,
     summarize_worker_status,
 )
+from operation_observation_learning import (
+    OBSERVATION_ANALYSIS_TYPE,
+    OBSERVATION_CONTRACT_VERSION,
+    create_or_get_observation_session,
+    finalize_closed_observation_sessions,
+    observation_session_report,
+    persist_observation_checkpoint,
+    unified_predictive_inventory,
+)
 from predictive_rule_library import rule_metadata
 from security import create_token, hash_password, read_token, verify_password
 from versioning import (
@@ -110,6 +119,7 @@ EXIT_WINDOW_BEFORE_MINUTES = 90
 EXIT_WINDOW_AFTER_MINUTES = 30
 OPERATION_STATUS_SNAPSHOT_MAX_IDS = 16
 UNSELECTED_ANALYSIS_FULL_PAYLOAD_TTL_HOURS = 24
+OBSERVATION_OPERATOR_USERNAME = "mauriciomc"
 WEB_OPERATION_REFRESH_ENABLED = os.environ.get(
     "WEB_OPERATION_REFRESH_ENABLED",
     "true",
@@ -925,6 +935,7 @@ def compact_expired_unselected_analyses(db) -> int:
             reasons_json = '[]',
             alerts_json = '[]'
         WHERE operation_id IS NULL
+          AND analysis_type <> 'operation_observation'
           AND app_version = ?
           AND analysis_json IS NOT NULL
           AND created_at < CURRENT_TIMESTAMP - INTERVAL '24 hours'
@@ -5744,6 +5755,360 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     return {"recommendation_id": recommendation_id, **result}
 
 
+def _observation_operation(db, operation_id: int, user_id: int) -> dict:
+    operation = row_to_dict(
+        db.execute(
+            "SELECT * FROM operations WHERE id = ? AND user_id = ?",
+            (int(operation_id), int(user_id)),
+        ).fetchone()
+    )
+    if operation is None:
+        raise HTTPException(status_code=404, detail="Operacion no encontrada")
+    return operation
+
+
+def require_observation_operator(user: dict) -> None:
+    username = str(user.get("username") or "").strip().lower()
+    if username != OBSERVATION_OPERATOR_USERNAME:
+        raise HTTPException(
+            status_code=403,
+            detail="Seguimiento observacional reservado a MauricioMC",
+        )
+
+
+def _opening_recommendation_id(db, operation_id: int) -> int | None:
+    row = db.execute(
+        """
+        SELECT id
+        FROM recommendations
+        WHERE operation_id = ? AND analysis_type = 'pre_trade'
+        ORDER BY created_at ASC, id ASC
+        LIMIT 1
+        """,
+        (int(operation_id),),
+    ).fetchone()
+    return int(row["id"]) if row else None
+
+
+@app.post("/api/operations/{operation_id}/observation-session")
+def start_operation_observation_session(
+    operation_id: int,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        operation = _observation_operation(db, operation_id, int(user["id"]))
+        if operation["status"] != "OPEN":
+            raise HTTPException(
+                status_code=409,
+                detail="Solo se puede iniciar la observacion sobre una operacion abierta",
+            )
+        session = create_or_get_observation_session(
+            db,
+            operation=operation,
+            opening_recommendation_id=_opening_recommendation_id(db, operation_id),
+            capture_mode="live",
+            evidence_quality="exact",
+            planned_interval_minutes=20,
+            status="active",
+            evidence_source="application_live_observation",
+            summary={
+                "purpose": "unified_predictive_and_exit_learning",
+                "predictive_contract": "same_production_analysis_engine",
+                "exit_decisions": "manual_review_only",
+                "contract_version": OBSERVATION_CONTRACT_VERSION,
+            },
+        )
+        return observation_session_report(db, int(session["operation_id"]))
+
+
+@app.get("/api/operations/{operation_id}/observation-session")
+def get_operation_observation_session(
+    operation_id: int,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        _observation_operation(db, operation_id, int(user["id"]))
+        finalize_closed_observation_sessions(db)
+        report = observation_session_report(db, operation_id)
+    return {"operation_id": operation_id, "session": report}
+
+
+@app.post("/api/operations/{operation_id}/observation-checkpoints")
+def analyze_operation_observation_checkpoint(
+    operation_id: int,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        operation = _observation_operation(db, operation_id, int(user["id"]))
+        if operation["status"] != "OPEN":
+            raise HTTPException(
+                status_code=409,
+                detail="La operacion debe seguir abierta para registrar un control exacto",
+            )
+        session = row_to_dict(
+            db.execute(
+                """
+                SELECT *
+                FROM operation_observation_sessions
+                WHERE operation_id = ? AND status = 'active'
+                LIMIT 1
+                """,
+                (operation_id,),
+            ).fetchone()
+        )
+        if session is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Activa primero la observacion de esta operacion",
+            )
+        original_expiry = operation_evaluation_expires_at(db, operation)
+
+    quote = require_fresh_worker_market_price(str(operation["symbol"]))
+    market_price = float(quote["price"])
+    if triggered_exit_reason(operation, market_price):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "El precio ya ha alcanzado una barrera del plan; espera a que "
+                "el worker sincronice el cierre"
+            ),
+        )
+    proposal = TradeProposal(
+        symbol=str(operation["symbol"]).upper(),
+        side=str(operation["side"]).lower(),
+        time_horizon=str(operation["time_horizon"]),
+        entry=market_price,
+        margin=float(operation["margin"]),
+        leverage=float(operation["leverage"]),
+        stop_loss=float(operation["stop_loss"]),
+        take_profit=float(operation["take_profit"]),
+        entry_type="market",
+        trigger_condition=None,
+        entry_order_type=None,
+    )
+    validate_trade_plan(
+        proposal.side,
+        proposal.entry,
+        proposal.stop_loss,
+        proposal.take_profit,
+    )
+    analysis_started_at = time.perf_counter()
+    try:
+        result = analyze_trade(
+            proposal,
+            context_loader=liquidation_data.get_liquidation_context,
+            context_market_price=market_price,
+            order_book_observation_loader=worker_order_book_observation_snapshot,
+        )
+    except NewEngineAnalysisError as exc:
+        record_failed_analysis_attempt(
+            user_id=int(user["id"]),
+            proposal=proposal,
+            entry_type="market",
+            started_at=analysis_started_at,
+            outcome="blocked",
+            error_code=str(exc.code or "observation_analysis_blocked"),
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=new_engine_error_detail(exc, proposal.symbol),
+        ) from exc
+
+    observed_at = str(
+        result.get("snapshot", {}).get("analysis_at")
+        or datetime.now(timezone.utc).isoformat()
+    )
+    remaining_seconds = max(
+        int(
+            (
+                original_expiry
+                - datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            ).total_seconds()
+        ),
+        0,
+    )
+    unrealized_pnl = approximate_pnl(operation, market_price)
+    entry_context = {
+        "entry_type": "market",
+        "trigger_condition": None,
+        "entry_order_type": None,
+        "requested_entry": market_price,
+        "activation_rule": "observation_counterfactual_entry_at_current_price",
+    }
+    observation_context = {
+        "contract_version": OBSERVATION_CONTRACT_VERSION,
+        "analysis_origin": OBSERVATION_ANALYSIS_TYPE,
+        "source_operation_id": int(operation_id),
+        "source_session_id": int(session["id"]),
+        "opening_recommendation_id": session.get("opening_recommendation_id"),
+        "real_operation_entry": float(operation["entry"]),
+        "real_operation_started_at": operation.get("started_at"),
+        "real_operation_expiry_at": original_expiry.isoformat(),
+        "real_operation_remaining_seconds": remaining_seconds,
+        "real_operation_unrealized_pnl": unrealized_pnl,
+        "predictive_case_contract": (
+            "fresh_entry_same_side_same_tp_sl_full_selected_horizon"
+        ),
+        "exit_learning_contract": "separate_manual_review",
+        "production_effect": "none",
+    }
+    result["analysis_type"] = OBSERVATION_ANALYSIS_TYPE
+    result["entry_order_context"] = entry_context
+    result["observation_context"] = observation_context
+    result.setdefault("snapshot", {})["entry_order_context"] = entry_context
+    result["snapshot"]["observation_context"] = observation_context
+    version_contract = current_version_contract()
+    version_contract["served_engine_family"] = result.get(
+        "engine_family", "tp_sl_competing_risks"
+    )
+    version_contract["served_engine_version"] = result.get(
+        "engine_version", ENGINE_VERSION
+    )
+    result["version_contract"] = version_contract
+    result["snapshot"]["version_contract"] = version_contract
+    result["data_contract"] = build_data_contract(
+        pre_trade_features=result["snapshot"]
+    )
+
+    with connect() as db:
+        current_operation = _observation_operation(
+            db, operation_id, int(user["id"])
+        )
+        if current_operation["status"] != "OPEN":
+            raise HTTPException(
+                status_code=409,
+                detail="La operacion se cerro mientras se realizaba el control",
+            )
+        current_session = row_to_dict(
+            db.execute(
+                """
+                SELECT * FROM operation_observation_sessions
+                WHERE id = ? AND operation_id = ? AND status = 'active'
+                LIMIT 1
+                """,
+                (int(session["id"]), operation_id),
+            ).fetchone()
+        )
+        if current_session is None:
+            raise HTTPException(
+                status_code=409,
+                detail="La sesion de observacion ya no esta activa",
+            )
+        cursor = db.execute(
+            """
+            INSERT INTO recommendations (
+                operation_id, user_id, analysis_type, symbol, side,
+                tp_probability, sl_probability, range_probability, risk_level,
+                setup_grade, confidence, training_decision, time_horizon,
+                parameter_advice_json, reasons_json, alerts_json, snapshot_json,
+                analysis_json, engine_version, app_version, scoring_version,
+                learning_schema_version, data_source_version, data_contract_version
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+            """,
+            (
+                None,
+                int(user["id"]),
+                OBSERVATION_ANALYSIS_TYPE,
+                proposal.symbol,
+                proposal.side,
+                result["tp_probability"],
+                result["sl_probability"],
+                result["range_probability"],
+                result["risk_level"],
+                result["setup_grade"],
+                result["confidence"],
+                result["training_decision"],
+                proposal.time_horizon,
+                json.dumps(result["parameter_advice"]),
+                json.dumps(result["reasons"]),
+                json.dumps(result["alerts"]),
+                json.dumps(result["snapshot"]),
+                json.dumps(result),
+                result.get("engine_version", ENGINE_VERSION),
+                APP_VERSION,
+                SCORING_VERSION,
+                LEARNING_SCHEMA_VERSION,
+                DATA_SOURCE_VERSION,
+                DATA_CONTRACT_VERSION,
+            ),
+        )
+        recommendation_id = int(cursor.lastrowid)
+        checkpoint = persist_observation_checkpoint(
+            db,
+            session_id=int(current_session["id"]),
+            operation_id=operation_id,
+            recommendation_id=recommendation_id,
+            observed_at=observed_at,
+            market_price=market_price,
+            unrealized_pnl=unrealized_pnl,
+            remaining_seconds=remaining_seconds,
+            tp_probability=float(result["tp_probability"]),
+            sl_probability=float(result["sl_probability"]),
+            range_probability=float(result["range_probability"]),
+            decision="unreviewed",
+            decision_candidate=False,
+            contract_quality="exact",
+            evidence_source="application_live_observation",
+            context={
+                "analysis_origin": OBSERVATION_ANALYSIS_TYPE,
+                "opening_recommendation_id": current_session.get(
+                    "opening_recommendation_id"
+                ),
+                "engine_version": result.get("engine_version", ENGINE_VERSION),
+                "scoring_version": SCORING_VERSION,
+                "market_price_source": quote.get("source"),
+                "market_price_captured_at": quote.get("captured_at"),
+                "original_plan": {
+                    "entry": float(current_operation["entry"]),
+                    "take_profit": float(current_operation["take_profit"]),
+                    "stop_loss": float(current_operation["stop_loss"]),
+                    "time_horizon": current_operation["time_horizon"],
+                },
+                "prediction_evaluation": (
+                    "recommendation_counterfactual_evaluations"
+                ),
+                "exit_evaluation": "operation_exit_counterfactuals",
+            },
+        )
+        insert_analysis_attempt(
+            db,
+            user_id=int(user["id"]),
+            proposal=proposal,
+            entry_type="market",
+            outcome="completed",
+            duration_ms=round(
+                (time.perf_counter() - analysis_started_at) * 1000
+            ),
+            engine_version=result.get("engine_version", ENGINE_VERSION),
+            recommendation_id=recommendation_id,
+        )
+        report = observation_session_report(db, operation_id)
+    return {
+        "checkpoint": checkpoint,
+        "session": report,
+        "recommendation_id": recommendation_id,
+        **result,
+    }
+
+
+@app.get("/api/learning/predictive-inventory")
+def predictive_learning_inventory(
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        return unified_predictive_inventory(db)
+
+
 @app.post("/api/operations")
 def create_operation(payload: CreateOperationPayload, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)
@@ -5798,7 +6163,10 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 """
                 SELECT id, symbol, side, time_horizon, analysis_json
                 FROM recommendations
-                WHERE id = ? AND user_id = ? AND operation_id IS NULL
+                WHERE id = ?
+                  AND user_id = ?
+                  AND operation_id IS NULL
+                  AND analysis_type = 'pre_trade'
                 """,
                 (payload.recommendation_id, user["id"]),
             ).fetchone())
@@ -6311,6 +6679,7 @@ def close_operation(
             contest_season_id=operation.get("contest_season_id"),
             note=payload.close_reason,
         )
+        finalize_closed_observation_sessions(db)
     return {
         "id": operation_id,
         "status": "CLOSED",

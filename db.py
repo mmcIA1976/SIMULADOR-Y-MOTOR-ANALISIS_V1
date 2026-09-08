@@ -11,6 +11,7 @@ from psycopg_pool import ConnectionPool
 
 from market_price_state import ensure_market_price_state_table
 from operation_worker_status import ensure_worker_status_table
+from operation_observation_learning import ensure_operation_observation_tables
 from limit_order_contract import (
     LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY,
     LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS,
@@ -181,6 +182,10 @@ def init_db() -> None:
     text_timestamp = "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
 
     with connect() as db:
+        # Web and worker boot from the same code and may initialize together.
+        # Serialize DDL so concurrent Railway starts cannot deadlock while
+        # creating tables and indexes.
+        db.execute("SELECT pg_advisory_xact_lock(812937451)")
         db.executescript(
             f"""
             CREATE TABLE IF NOT EXISTS users (
@@ -550,6 +555,247 @@ def init_db() -> None:
                     REFERENCES recommendations(id) ON DELETE RESTRICT
             );
 
+            CREATE TABLE IF NOT EXISTS recommendation_counterfactual_evaluations (
+                id {id_type},
+                run_key TEXT NOT NULL UNIQUE,
+                recommendation_id {fk_type} NOT NULL,
+                user_id {fk_type} NOT NULL,
+                evaluator_version TEXT NOT NULL,
+                schema_version TEXT NOT NULL,
+                contract_quality TEXT NOT NULL DEFAULT 'exact'
+                    CHECK(contract_quality IN (
+                        'exact', 'legacy_upper_bound_proxy'
+                    )),
+                formal_learning_eligible BOOLEAN NOT NULL DEFAULT TRUE,
+                analysis_at_source TEXT NOT NULL DEFAULT 'snapshot.analysis_at',
+                data_cutoff_source TEXT NOT NULL
+                    DEFAULT 'snapshot.data_cutoff_at',
+                plan_source TEXT NOT NULL DEFAULT 'snapshot.explicit_levels',
+                horizon_source TEXT NOT NULL
+                    DEFAULT 'snapshot.evaluation_horizon_seconds',
+                source_engine_version TEXT NOT NULL,
+                source_scoring_version TEXT,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL CHECK(side IN ('long', 'short')),
+                time_horizon TEXT NOT NULL,
+                analysis_at TIMESTAMPTZ NOT NULL,
+                data_cutoff_at TIMESTAMPTZ NOT NULL,
+                evaluation_expires_at TIMESTAMPTZ NOT NULL,
+                horizon_seconds INTEGER NOT NULL CHECK(horizon_seconds > 0),
+                entry DOUBLE PRECISION NOT NULL CHECK(entry > 0),
+                take_profit DOUBLE PRECISION NOT NULL CHECK(take_profit > 0),
+                stop_loss DOUBLE PRECISION NOT NULL CHECK(stop_loss > 0),
+                tp_probability DOUBLE PRECISION NOT NULL
+                    CHECK(tp_probability BETWEEN 0 AND 1),
+                sl_probability DOUBLE PRECISION NOT NULL
+                    CHECK(sl_probability BETWEEN 0 AND 1),
+                range_probability DOUBLE PRECISION NOT NULL
+                    CHECK(range_probability BETWEEN 0 AND 1),
+                evaluation_status TEXT NOT NULL
+                    CHECK(evaluation_status IN ('evaluated', 'excluded')),
+                exclusion_code TEXT,
+                pretrade_status TEXT NOT NULL,
+                pretrade_interval TEXT,
+                feature_values_json TEXT NOT NULL
+                    CHECK(jsonb_typeof(feature_values_json::jsonb) = 'object'),
+                feature_payload_bytes INTEGER NOT NULL
+                    CHECK(feature_payload_bytes > 0 AND feature_payload_bytes <= 4096),
+                outcome_status TEXT NOT NULL,
+                outcome_label TEXT CHECK(
+                    outcome_label IS NULL OR outcome_label IN (
+                        'tp_first_within_horizon',
+                        'sl_first_within_horizon',
+                        'neither_barrier_before_expiry'
+                    )
+                ),
+                first_touch_at TIMESTAMPTZ,
+                coverage_ratio DOUBLE PRECISION,
+                candle_count INTEGER,
+                expected_candle_count INTEGER,
+                market_sha256 TEXT,
+                source_snapshot_sha256 TEXT NOT NULL
+                    CHECK(source_snapshot_sha256 ~ '^[0-9a-f]{{64}}$'),
+                result_sha256 TEXT NOT NULL
+                    CHECK(result_sha256 ~ '^[0-9a-f]{{64}}$'),
+                evidence_source TEXT NOT NULL,
+                production_effect TEXT NOT NULL CHECK(production_effect = 'none'),
+                created_at {text_timestamp},
+                UNIQUE(recommendation_id, evaluator_version),
+                CHECK(
+                    feature_payload_bytes = octet_length(
+                        convert_to(feature_values_json, 'UTF8')
+                    )
+                ),
+                CONSTRAINT counterfactual_probability_mass_valid CHECK(
+                    abs(tp_probability + sl_probability + range_probability - 1.0)
+                    <= 0.0000011
+                ),
+                CONSTRAINT counterfactual_contract_quality_valid CHECK(
+                    (contract_quality = 'exact'
+                        AND formal_learning_eligible = TRUE)
+                    OR
+                    (contract_quality = 'legacy_upper_bound_proxy'
+                        AND formal_learning_eligible = FALSE)
+                ),
+                CONSTRAINT counterfactual_data_cutoff_valid CHECK(
+                    data_cutoff_at <= analysis_at
+                ),
+                CONSTRAINT counterfactual_expiry_valid CHECK(
+                    evaluation_expires_at = analysis_at
+                        + make_interval(secs => horizon_seconds)
+                ),
+                CHECK(
+                    (evaluation_status = 'evaluated'
+                        AND exclusion_code IS NULL
+                        AND outcome_label IS NOT NULL)
+                    OR
+                    (evaluation_status = 'excluded'
+                        AND exclusion_code IS NOT NULL
+                        AND outcome_label IS NULL)
+                ),
+                FOREIGN KEY(recommendation_id)
+                    REFERENCES recommendations(id) ON DELETE RESTRICT,
+                FOREIGN KEY(user_id)
+                    REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS counterfactual_episode_grouping_runs (
+                id {id_type},
+                run_key TEXT NOT NULL UNIQUE
+                    CHECK(run_key ~ '^[0-9a-f]{{64}}$'),
+                grouping_version TEXT NOT NULL,
+                source_dataset_sha256 TEXT NOT NULL
+                    CHECK(source_dataset_sha256 ~ '^[0-9a-f]{{64}}$'),
+                source_row_count INTEGER NOT NULL CHECK(source_row_count > 0),
+                evaluated_row_count INTEGER NOT NULL
+                    CHECK(evaluated_row_count BETWEEN 0 AND source_row_count),
+                formal_evaluated_row_count INTEGER NOT NULL CHECK(
+                    formal_evaluated_row_count BETWEEN 0 AND evaluated_row_count
+                ),
+                market_episode_count INTEGER NOT NULL
+                    CHECK(market_episode_count > 0),
+                horizon_episode_count INTEGER NOT NULL
+                    CHECK(horizon_episode_count > 0),
+                calendar_block_count INTEGER NOT NULL
+                    CHECK(calendar_block_count > 0),
+                summary_json TEXT NOT NULL
+                    CHECK(jsonb_typeof(summary_json::jsonb) = 'object'),
+                summary_bytes INTEGER NOT NULL CHECK(
+                    summary_bytes > 0 AND summary_bytes <= 16384
+                    AND summary_bytes = octet_length(
+                        convert_to(summary_json, 'UTF8')
+                    )
+                ),
+                result_sha256 TEXT NOT NULL
+                    CHECK(result_sha256 ~ '^[0-9a-f]{{64}}$'),
+                production_effect TEXT NOT NULL
+                    CHECK(production_effect = 'none'),
+                created_at {text_timestamp}
+            );
+
+            CREATE TABLE IF NOT EXISTS counterfactual_episode_memberships (
+                id {id_type},
+                run_id {fk_type} NOT NULL,
+                evaluation_id {fk_type} NOT NULL,
+                symbol TEXT NOT NULL,
+                time_horizon TEXT NOT NULL,
+                contract_quality TEXT NOT NULL CHECK(
+                    contract_quality IN ('exact', 'legacy_upper_bound_proxy')
+                ),
+                evaluation_status TEXT NOT NULL
+                    CHECK(evaluation_status IN ('evaluated', 'excluded')),
+                formal_learning_eligible BOOLEAN NOT NULL,
+                eligible_for_metrics BOOLEAN NOT NULL,
+                formal_metric_eligible BOOLEAN NOT NULL,
+                calendar_block_utc DATE NOT NULL,
+                market_episode_key TEXT NOT NULL
+                    CHECK(market_episode_key ~ '^[0-9a-f]{{64}}$'),
+                horizon_episode_key TEXT NOT NULL
+                    CHECK(horizon_episode_key ~ '^[0-9a-f]{{64}}$'),
+                formal_market_episode_key TEXT CHECK(
+                    formal_market_episode_key IS NULL
+                    OR formal_market_episode_key ~ '^[0-9a-f]{{64}}$'
+                ),
+                formal_horizon_episode_key TEXT CHECK(
+                    formal_horizon_episode_key IS NULL
+                    OR formal_horizon_episode_key ~ '^[0-9a-f]{{64}}$'
+                ),
+                market_episode_size INTEGER NOT NULL
+                    CHECK(market_episode_size > 0),
+                market_episode_evaluated_size INTEGER NOT NULL CHECK(
+                    market_episode_evaluated_size
+                        BETWEEN 0 AND market_episode_size
+                ),
+                market_episode_formal_size INTEGER NOT NULL CHECK(
+                    market_episode_formal_size
+                        BETWEEN 0 AND market_episode_evaluated_size
+                ),
+                horizon_episode_size INTEGER NOT NULL
+                    CHECK(horizon_episode_size > 0),
+                horizon_episode_evaluated_size INTEGER NOT NULL CHECK(
+                    horizon_episode_evaluated_size
+                        BETWEEN 0 AND horizon_episode_size
+                ),
+                horizon_episode_formal_size INTEGER NOT NULL CHECK(
+                    horizon_episode_formal_size
+                        BETWEEN 0 AND horizon_episode_evaluated_size
+                ),
+                market_weight DOUBLE PRECISION NOT NULL
+                    CHECK(market_weight BETWEEN 0 AND 1),
+                horizon_weight DOUBLE PRECISION NOT NULL
+                    CHECK(horizon_weight BETWEEN 0 AND 1),
+                formal_market_weight DOUBLE PRECISION NOT NULL
+                    CHECK(formal_market_weight BETWEEN 0 AND 1),
+                formal_horizon_weight DOUBLE PRECISION NOT NULL
+                    CHECK(formal_horizon_weight BETWEEN 0 AND 1),
+                membership_sha256 TEXT NOT NULL
+                    CHECK(membership_sha256 ~ '^[0-9a-f]{{64}}$'),
+                production_effect TEXT NOT NULL
+                    CHECK(production_effect = 'none'),
+                created_at {text_timestamp},
+                UNIQUE(run_id, evaluation_id),
+                CHECK(
+                    formal_learning_eligible = (contract_quality = 'exact')
+                ),
+                CHECK(eligible_for_metrics = (evaluation_status = 'evaluated')),
+                CHECK(
+                    formal_metric_eligible = (
+                        eligible_for_metrics AND formal_learning_eligible
+                    )
+                ),
+                CHECK(
+                    (formal_metric_eligible
+                        AND formal_market_episode_key IS NOT NULL
+                        AND formal_horizon_episode_key IS NOT NULL)
+                    OR
+                    (NOT formal_metric_eligible
+                        AND formal_market_episode_key IS NULL
+                        AND formal_horizon_episode_key IS NULL)
+                ),
+                CHECK(
+                    (eligible_for_metrics
+                        AND market_weight > 0 AND horizon_weight > 0)
+                    OR
+                    (NOT eligible_for_metrics
+                        AND market_weight = 0 AND horizon_weight = 0)
+                ),
+                CHECK(
+                    (formal_metric_eligible
+                        AND formal_market_weight > 0
+                        AND formal_horizon_weight > 0)
+                    OR
+                    (NOT formal_metric_eligible
+                        AND formal_market_weight = 0
+                        AND formal_horizon_weight = 0)
+                ),
+                FOREIGN KEY(run_id)
+                    REFERENCES counterfactual_episode_grouping_runs(id)
+                    ON DELETE RESTRICT,
+                FOREIGN KEY(evaluation_id)
+                    REFERENCES recommendation_counterfactual_evaluations(id)
+                    ON DELETE RESTRICT
+            );
+
             CREATE TABLE IF NOT EXISTS limit_learning_snapshots (
                 id {id_type},
                 operation_id {fk_type} NOT NULL,
@@ -611,6 +857,7 @@ def init_db() -> None:
         )
         ensure_market_price_state_table(db)
         ensure_worker_status_table(db)
+        ensure_operation_observation_tables(db)
         ensure_column(db, "operations", "observation_until", "TEXT")
         ensure_column(db, "operations", "observation_status", "TEXT")
         ensure_column(db, "operations", "observation_result", "TEXT")
@@ -691,6 +938,8 @@ def init_db() -> None:
         secure_internal_learning_tables(db)
         ensure_legacy_reevaluations_append_only(db)
         ensure_challenger_shadow_append_only(db)
+        ensure_counterfactual_append_only(db)
+        ensure_counterfactual_episode_append_only(db)
         ensure_challenger_shadow_baseline(db)
         backfill_recommendation_links(db)
 
@@ -738,6 +987,12 @@ def create_indexes(db: DbSession) -> None:
         CREATE INDEX IF NOT EXISTS idx_m6_prospective_recommendation ON m6_prospective_runs(recommendation_id);
         CREATE INDEX IF NOT EXISTS idx_m6_prospective_status ON m6_prospective_runs(run_status, block_code, created_at);
         CREATE INDEX IF NOT EXISTS idx_m6_prospective_expiry ON m6_prospective_runs(evaluation_expires_at, run_status);
+        CREATE INDEX IF NOT EXISTS idx_counterfactual_learning_slice ON recommendation_counterfactual_evaluations(evaluation_status, time_horizon, side, analysis_at);
+        CREATE INDEX IF NOT EXISTS idx_counterfactual_engine ON recommendation_counterfactual_evaluations(source_engine_version, evaluation_status);
+        CREATE INDEX IF NOT EXISTS idx_counterfactual_user ON recommendation_counterfactual_evaluations(user_id);
+        CREATE INDEX IF NOT EXISTS idx_counterfactual_episode_evaluation ON counterfactual_episode_memberships(evaluation_id);
+        CREATE INDEX IF NOT EXISTS idx_counterfactual_episode_market ON counterfactual_episode_memberships(run_id, market_episode_key);
+        CREATE INDEX IF NOT EXISTS idx_counterfactual_episode_horizon ON counterfactual_episode_memberships(run_id, formal_metric_eligible, time_horizon, formal_horizon_episode_key);
         CREATE INDEX IF NOT EXISTS idx_limit_learning_study ON limit_learning_snapshots(snapshot_type, symbol, side, time_horizon, event_at);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_limit_learning_daily_slot ON limit_learning_snapshots(selected_case_day, daily_slot) WHERE snapshot_type = 'placement';
         CREATE INDEX IF NOT EXISTS idx_limit_learning_recommendation ON limit_learning_snapshots(recommendation_id) WHERE recommendation_id IS NOT NULL;
@@ -755,6 +1010,9 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         ALTER TABLE challenger_shadow_config_events ENABLE ROW LEVEL SECURITY;
         ALTER TABLE challenger_shadow_runs ENABLE ROW LEVEL SECURITY;
         ALTER TABLE m6_prospective_runs ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE recommendation_counterfactual_evaluations ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE counterfactual_episode_grouping_runs ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE counterfactual_episode_memberships ENABLE ROW LEVEL SECURITY;
         ALTER TABLE limit_learning_snapshots ENABLE ROW LEVEL SECURITY;
         REVOKE ALL PRIVILEGES ON TABLE learning_evidence_reconstructions FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE learning_economic_normalizations FROM anon, authenticated;
@@ -763,6 +1021,9 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_config_events FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE challenger_shadow_runs FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE m6_prospective_runs FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE recommendation_counterfactual_evaluations FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE counterfactual_episode_grouping_runs FROM anon, authenticated;
+        REVOKE ALL PRIVILEGES ON TABLE counterfactual_episode_memberships FROM anon, authenticated;
         REVOKE ALL PRIVILEGES ON TABLE limit_learning_snapshots FROM anon, authenticated;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE learning_legacy_reevaluations FROM service_role;
@@ -775,12 +1036,21 @@ def secure_internal_learning_tables(db: DbSession) -> None:
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE m6_prospective_runs FROM service_role;
         REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE recommendation_counterfactual_evaluations FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE counterfactual_episode_grouping_runs FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+            ON TABLE counterfactual_episode_memberships FROM service_role;
+        REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
             ON TABLE limit_learning_snapshots FROM service_role;
         GRANT SELECT, INSERT ON TABLE learning_legacy_reevaluations TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_model_artifacts TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_shadow_config_events TO service_role;
         GRANT SELECT, INSERT ON TABLE challenger_shadow_runs TO service_role;
         GRANT SELECT, INSERT ON TABLE m6_prospective_runs TO service_role;
+        GRANT SELECT, INSERT ON TABLE recommendation_counterfactual_evaluations TO service_role;
+        GRANT SELECT, INSERT ON TABLE counterfactual_episode_grouping_runs TO service_role;
+        GRANT SELECT, INSERT ON TABLE counterfactual_episode_memberships TO service_role;
         GRANT SELECT, INSERT ON TABLE limit_learning_snapshots TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE learning_legacy_reevaluations_id_seq TO service_role;
@@ -792,6 +1062,12 @@ def secure_internal_learning_tables(db: DbSession) -> None:
             ON SEQUENCE challenger_shadow_runs_id_seq TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE m6_prospective_runs_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE recommendation_counterfactual_evaluations_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE counterfactual_episode_grouping_runs_id_seq TO service_role;
+        GRANT USAGE, SELECT
+            ON SEQUENCE counterfactual_episode_memberships_id_seq TO service_role;
         GRANT USAGE, SELECT
             ON SEQUENCE limit_learning_snapshots_id_seq TO service_role;
         """
@@ -859,6 +1135,105 @@ def ensure_challenger_shadow_append_only(db: DbSession) -> None:
                 DO INSTEAD NOTHING
                 """
             )
+
+
+def ensure_counterfactual_append_only(db: DbSession) -> None:
+    """Protect counterfactual rows without blocking idempotent ON CONFLICT."""
+    db.execute(
+        "DROP RULE IF EXISTS recommendation_counterfactual_evaluations_no_update "
+        "ON recommendation_counterfactual_evaluations"
+    )
+    db.execute(
+        "DROP RULE IF EXISTS recommendation_counterfactual_evaluations_no_delete "
+        "ON recommendation_counterfactual_evaluations"
+    )
+    db.execute(
+        """
+        CREATE OR REPLACE FUNCTION prevent_counterfactual_evaluation_mutation()
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        SET search_path = ''
+        AS $$
+        BEGIN
+            RETURN NULL;
+        END;
+        $$
+        """
+    )
+    db.execute(
+        """
+        REVOKE ALL ON FUNCTION prevent_counterfactual_evaluation_mutation()
+        FROM PUBLIC, anon, authenticated, service_role
+        """
+    )
+    trigger_exists = db.execute(
+        """
+        SELECT 1
+        FROM pg_trigger
+        WHERE tgrelid = 'recommendation_counterfactual_evaluations'::regclass
+          AND tgname = 'recommendation_counterfactual_evaluations_append_only'
+          AND NOT tgisinternal
+        """
+    ).fetchone()
+    if not trigger_exists:
+        db.execute(
+            """
+            CREATE TRIGGER recommendation_counterfactual_evaluations_append_only
+            BEFORE UPDATE OR DELETE
+            ON recommendation_counterfactual_evaluations
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_counterfactual_evaluation_mutation()
+            """
+        )
+
+
+def ensure_counterfactual_episode_append_only(db: DbSession) -> None:
+    """Freeze each explicit dependency snapshot after it is inserted."""
+    db.execute(
+        """
+        CREATE OR REPLACE FUNCTION prevent_counterfactual_episode_mutation()
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        SET search_path = ''
+        AS $$
+        BEGIN
+            RETURN NULL;
+        END;
+        $$
+        """
+    )
+    db.execute(
+        """
+        REVOKE ALL ON FUNCTION prevent_counterfactual_episode_mutation()
+        FROM PUBLIC, anon, authenticated, service_role
+        """
+    )
+    for table in (
+        "counterfactual_episode_grouping_runs",
+        "counterfactual_episode_memberships",
+    ):
+        trigger_name = f"{table}_append_only"
+        exists = db.execute(
+            """
+            SELECT 1
+            FROM pg_trigger
+            WHERE tgrelid = to_regclass(?)
+              AND tgname = ?
+              AND NOT tgisinternal
+            """,
+            (table, trigger_name),
+        ).fetchone()
+        if exists:
+            continue
+        db.execute(
+            f"""
+            CREATE TRIGGER {trigger_name}
+            BEFORE UPDATE OR DELETE
+            ON {table}
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_counterfactual_episode_mutation()
+            """
+        )
 
 
 def ensure_challenger_shadow_baseline(db: DbSession) -> None:
@@ -963,6 +1338,7 @@ def backfill_recommendation_links(db: DbSession) -> None:
               AND symbol = ?
               AND side = ?
               AND operation_id IS NULL
+              AND analysis_type = 'pre_trade'
               AND created_at <= ?
             ORDER BY created_at DESC
             LIMIT 1

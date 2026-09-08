@@ -1598,6 +1598,65 @@ button:hover {
   border-left-color: var(--price);
 }
 
+.observation-controls {
+  display: grid;
+  gap: 9px;
+  border: 1px solid rgba(31, 122, 140, 0.28);
+  border-left: 5px solid var(--price);
+  border-radius: 8px;
+  background: rgba(31, 122, 140, 0.07);
+  padding: 12px;
+}
+
+.observation-controls[hidden] {
+  display: none;
+}
+
+.observation-controls > span {
+  color: var(--price);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.observation-controls p,
+.observation-controls small {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.observation-controls p {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.observation-controls small {
+  color: var(--muted);
+}
+
+.observation-controls > div {
+  display: grid;
+  gap: 8px;
+}
+
+#startObservationButton,
+#recordObservationButton {
+  width: 100%;
+}
+
+#recordObservationButton {
+  border-color: var(--price);
+  background: var(--price);
+  color: #ffffff;
+}
+
+#startObservationButton.is-loading,
+#recordObservationButton.is-loading {
+  cursor: progress;
+  opacity: 0.72;
+}
+
 .empirical-probability-card p {
   min-height: 2.5em;
 }

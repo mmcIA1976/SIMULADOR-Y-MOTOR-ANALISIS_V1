@@ -24,6 +24,12 @@ SQLite queda solo como origen temporal para migrar datos locales existentes.
   una transaccion que siempre se revierte.
 - `../limit_learning_persistence.py`: compacta y deduplica los tres eventos de
   una operacion LIMIT seleccionada antes de cualquier escritura.
+- `../run_counterfactual_learning.py`: reconstruye TP/SL/expiracion para
+  analisis a mercado sin operacion y persiste solo evidencia compacta.
+- `../run_counterfactual_episode_grouping.py`: crea una foto de auditoria que
+  agrupa intervalos de mercado solapados y reparte su peso estadistico.
+- `../audit_counterfactual_rule_evidence.py`: cruza esa foto con las ablaciones
+  y trazas de reglas, siempre separadas por horizonte y contrato de motor.
 
 ## Flujo
 
@@ -53,3 +59,46 @@ backend o CLI, nunca desde el navegador.
 `limit_learning_snapshots` conserva como maximo tres filas compactas por
 operacion LIMIT seleccionada. El esquema limita la colocacion a 50 casos por dia
 UTC y rechaza payloads que excedan el presupuesto del evento.
+
+`recommendation_counterfactual_evaluations` conserva resultados historicos
+append-only sin crear operaciones ficticias ni almacenar velas completas. El
+payload de variables reconstruidas tiene un limite de 4 KiB por analisis.
+Los casos exactos y los proxies legacy quedan separados mediante
+`contract_quality` y `formal_learning_eligible`; los proxies nunca obtienen
+peso formal ni alteran produccion. Se revisan con:
+
+```powershell
+python run_counterfactual_learning.py --contract-mode legacy_proxy
+```
+
+`counterfactual_episode_grouping_runs` y
+`counterfactual_episode_memberships` conservan fotos append-only solicitadas
+de forma manual, no un proceso continuo. Cada analisis sigue presente, pero
+los que comparten un intervalo futuro solapado reparten un peso total de 1 por
+episodio. El bloque UTC se conserva para el bootstrap definido en M8 y el peso
+formal solo incluye contratos exactos evaluados:
+
+```powershell
+python run_counterfactual_episode_grouping.py --persist
+```
+
+La auditoria posterior de reglas es solo lectura para Supabase y escribe sus
+artefactos versionados en `auditorias_motor/`. Exige 50 episodios efectivos y
+10 unidades efectivas por clase antes de ejecutar inferencia formal:
+
+```powershell
+python audit_counterfactual_rule_evidence.py
+```
+
+`operation_observation_sessions` agrupa todos los controles de una misma
+operacion (`404o`). Cada control futuro (`404o1`, `404o2`, etc.) guarda su
+recomendacion completa en `recommendations` con
+`analysis_type = 'operation_observation'` y una referencia compacta e inmutable
+en `operation_observation_checkpoints`. Asi se puede comparar con los analisis
+de apertura sin contarlo como una nueva operacion independiente.
+
+Las reconstrucciones historicas incompletas, como la de la operacion 404, se
+marcan `reconstructed_partial` y nunca entran en las metricas formales. Las
+decisiones hipoteticas de cierre se conservan aparte en
+`operation_exit_counterfactuals`; ninguna de estas tablas cambia reglas,
+probabilidades ni operaciones de produccion.

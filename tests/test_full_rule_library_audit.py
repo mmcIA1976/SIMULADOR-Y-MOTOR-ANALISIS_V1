@@ -35,6 +35,25 @@ class FullRuleLibraryAuditTests(unittest.TestCase):
         self.assertTrue(eligible)
         self.assertEqual(reason, "dimensionless_relative_volume_signal")
 
+    def test_dimensionless_breadth_signal_inside_window_is_eligible(self):
+        eligible, reason = audit.variable_eligibility(
+            "windows.1h.side_adjusted_centered_advancer_fraction",
+            {"lifecycle_status": "implemented_shadow"},
+        )
+        self.assertTrue(eligible)
+        self.assertEqual(reason, "dimensionless_or_rule_signal")
+
+    def test_operational_breadth_fields_inside_window_stay_excluded(self):
+        rule = {"lifecycle_status": "implemented_shadow"}
+        for variable in (
+            "windows.1h.valid_count",
+            "windows.1h.coverage_fraction",
+            "windows.1h.interval_seconds",
+        ):
+            eligible, reason = audit.variable_eligibility(variable, rule)
+            self.assertFalse(eligible, variable)
+            self.assertEqual(reason, "raw_scale_or_operational_ingredient")
+
     def test_legacy_proxy_is_not_promoted_to_exact_synthetic_signal(self):
         case = {
             "side": "long",

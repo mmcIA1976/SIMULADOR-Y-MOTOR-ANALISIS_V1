@@ -40,6 +40,7 @@ from order_book_observation_state import (
     publish_order_book_observations,
 )
 from operation_worker_status import ensure_worker_status_table, upsert_worker_status
+from operation_observation_learning import finalize_closed_observation_sessions
 from versioning import APP_VERSION, ENGINE_VERSION
 
 
@@ -511,6 +512,7 @@ def run_worker_cycle(
 
         if closed:
             with connect_factory() as db:
+                finalize_closed_observation_sessions(db)
                 refresh_learning_conclusions(db)
                 refresh_learning_evaluations(db)
         if reconcile_due:

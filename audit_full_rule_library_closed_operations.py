@@ -100,8 +100,11 @@ SELECT
     r.side,
     r.time_horizon,
     r.engine_version,
-    r.snapshot_json,
-    r.analysis_json,
+    CASE
+        WHEN r.engine_version = 'TP-SL-PROBABILITY-ENGINE-v0.6-stable-global'
+        THEN r.snapshot_json
+        ELSE '{}'
+    END AS snapshot_json,
     r.tp_probability,
     r.sl_probability,
     r.range_probability
@@ -800,6 +803,7 @@ def variable_eligibility(path: str, rule: dict) -> tuple[bool, str]:
     if rule["lifecycle_status"] in NON_PREDICTIVE_STATUSES:
         return False, "rule_contract_is_not_predictive"
     lowered = path.lower()
+    leaf = lowered.rsplit(".", 1)[-1]
     if any(
         token in lowered
         for token in (
@@ -818,14 +822,14 @@ def variable_eligibility(path: str, rule: dict) -> tuple[bool, str]:
         "volume",
         "notional",
         "quantity",
-        "window",
-        "interval",
         "coverage",
         "age_ms",
         "limit_ms",
         "return_series",
     )
     if any(token in lowered for token in forbidden):
+        return False, "raw_scale_or_operational_ingredient"
+    if any(token in leaf for token in ("window", "interval")):
         return False, "raw_scale_or_operational_ingredient"
     eligible_tokens = (
         "signal",

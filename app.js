@@ -48,6 +48,10 @@ const elements = {
   analyzeFeedback: document.querySelector("#analyzeFeedback"),
   startSimulationButton: document.querySelector("#startSimulationButton"),
   closeSimulationButton: document.querySelector("#closeSimulationButton"),
+  observationControls: document.querySelector("#observationControls"),
+  observationStatus: document.querySelector("#observationStatus"),
+  startObservationButton: document.querySelector("#startObservationButton"),
+  recordObservationButton: document.querySelector("#recordObservationButton"),
   closeReason: document.querySelector("#closeReason"),
   closingNote: document.querySelector("#closingNote"),
   currentPrice: document.querySelector("#currentPrice"),
@@ -159,6 +163,9 @@ let proposalDraft = null;
 let newOperationViewActive = false;
 let floatingNoticeTimer = null;
 let contestHistoryOpen = false;
+const observationSessionsByOperation = new Map();
+const observationSessionLoads = new Set();
+const latestObservationAnalysisByOperation = new Map();
 
 function numberValue(input) {
   return Number.parseFloat(input.value);
@@ -961,6 +968,9 @@ function chooseDefaultOperationId(operations) {
 function clearPrivateSessionView() {
   allOperations = [];
   openOperations = [];
+  observationSessionsByOperation.clear();
+  observationSessionLoads.clear();
+  latestObservationAnalysisByOperation.clear();
   contestState = null;
   contestLoadInFlight = null;
   setContestRefreshStatus();
@@ -1836,6 +1846,7 @@ const OBSERVATIONAL_RULE_TITLES = {
   "LIB-CAND-LIQUIDATION-ZONE-001": "Mapa de liquidaciones observado",
   "LIB-CAND-ORDERBOOK-IMBALANCE-001": "Dinámica del libro de órdenes",
 };
+const OBSERVATION_OPERATOR_USERNAME = "mauriciomc";
 
 const OBSERVATIONAL_TECHNICAL_LABELS = {
   ATI_H: "Desequilibrio agresor",
@@ -3059,6 +3070,153 @@ async function closeSimulation() {
   await closeOperationById(activeOperation.id);
 }
 
+function observationSessionText(operation, session) {
+  if (!session) {
+    return operation?.status === "OPEN"
+      ? `Operacion #${operation.id} disponible para observacion exacta.`
+      : "Esta operacion no tiene una sesion observacional registrada.";
+  }
+  const stored = Number(session.stored_checkpoints || 0);
+  const reported = Number(session.reported_checkpoint_count || stored);
+  const exact = Number(session.exact_cases || 0);
+  if (session.capture_mode === "reconstructed") {
+    return `${session.session_code}: ${stored} controles reconstruidos de ${reported} reportados; ${exact} casos formales.`;
+  }
+  const status = session.status === "active" ? "activa" : "completada";
+  return `${session.session_code}: sesion ${status}, ${stored} controles exactos registrados.`;
+}
+
+function canManageOperationObservations() {
+  return String(currentUser?.username || "").trim().toLowerCase()
+    === OBSERVATION_OPERATOR_USERNAME;
+}
+
+function renderObservationControls(operation) {
+  if (!elements.observationControls) return;
+  if (!canManageOperationObservations()) {
+    elements.observationControls.hidden = true;
+    return;
+  }
+  const hasCachedSession = operation
+    ? observationSessionsByOperation.has(Number(operation.id))
+    : false;
+  const session = hasCachedSession
+    ? observationSessionsByOperation.get(Number(operation.id))
+    : null;
+  const isOpen = String(operation?.status || "").toUpperCase() === "OPEN";
+  const visible = Boolean(operation && (isOpen || session));
+  elements.observationControls.hidden = !visible;
+  if (!visible) return;
+
+  elements.observationStatus.textContent = observationSessionText(operation, session);
+  const sessionIsActive = session?.status === "active";
+  elements.startObservationButton.hidden = Boolean(session);
+  elements.startObservationButton.disabled = !isOpen;
+  elements.recordObservationButton.hidden = !sessionIsActive;
+  elements.recordObservationButton.disabled = !isOpen || !sessionIsActive;
+  if (sessionIsActive) {
+    const nextNumber = Number(session.next_checkpoint_number || 1);
+    elements.recordObservationButton.textContent = `Registrar ${operation.id}o${nextNumber}`;
+  } else {
+    elements.recordObservationButton.textContent = "Registrar siguiente control";
+  }
+}
+
+async function loadObservationSession(operation, { force = false } = {}) {
+  if (!canManageOperationObservations() || !operation) return;
+  const operationId = Number(operation.id);
+  if (!force && observationSessionsByOperation.has(operationId)) {
+    renderObservationControls(operation);
+    return;
+  }
+  if (observationSessionLoads.has(operationId)) return;
+  observationSessionLoads.add(operationId);
+  try {
+    const data = await requestJson(`/api/operations/${operationId}/observation-session`, {
+      cacheBust: true,
+      timeout: 12000,
+    });
+    observationSessionsByOperation.set(operationId, data.session || null);
+  } catch {
+    // A transient lookup failure must not affect the operation or its controls.
+  } finally {
+    observationSessionLoads.delete(operationId);
+    if (Number(selectedOperationId) === operationId) {
+      renderObservationControls(getSelectedOperation());
+    }
+  }
+}
+
+async function startObservationSession() {
+  if (!canManageOperationObservations()) return;
+  const operation = getSelectedOperation();
+  if (!operation || String(operation.status).toUpperCase() !== "OPEN") return;
+  const button = elements.startObservationButton;
+  button.classList.add("is-loading");
+  button.disabled = true;
+  button.textContent = "Activando...";
+  try {
+    const session = await requestJson(`/api/operations/${operation.id}/observation-session`, {
+      method: "POST",
+      timeout: 20000,
+    });
+    observationSessionsByOperation.set(Number(operation.id), session);
+    renderObservationControls(operation);
+    showFloatingNotice(
+      `Observacion ${session.session_code} activada`,
+      "Los siguientes controles se guardaran como casos exactos del mismo motor sin alterar la operacion.",
+      6000,
+    );
+  } catch (error) {
+    showFloatingNotice("No se pudo activar la observacion", error.message, 5000);
+  } finally {
+    button.classList.remove("is-loading");
+    button.textContent = "Activar observacion";
+    renderObservationControls(getSelectedOperation());
+  }
+}
+
+async function recordObservationCheckpoint() {
+  if (!canManageOperationObservations()) return;
+  const operation = getSelectedOperation();
+  const session = operation
+    ? observationSessionsByOperation.get(Number(operation.id))
+    : null;
+  if (!operation || session?.status !== "active") return;
+  const button = elements.recordObservationButton;
+  const expectedCode = `${operation.id}o${Number(session.next_checkpoint_number || 1)}`;
+  button.classList.add("is-loading");
+  button.disabled = true;
+  button.textContent = `Analizando ${expectedCode}...`;
+  showFloatingNotice("Control observacional en curso", `Calculando ${expectedCode} con el motor de produccion...`, 2500);
+  try {
+    const result = await requestJson(`/api/operations/${operation.id}/observation-checkpoints`, {
+      method: "POST",
+      timeout: 90000,
+      errorMessage: "No se pudo registrar el control observacional.",
+      timeoutMessage: "El analisis observacional ha tardado demasiado.",
+    });
+    observationSessionsByOperation.set(Number(operation.id), result.session);
+    latestObservationAnalysisByOperation.set(Number(operation.id), result);
+    renderObservationControls(operation);
+    renderAnalysisPayload(
+      result,
+      `${result.checkpoint.checkpoint_code}: nuevo caso predictivo observacional; no modifica la operacion abierta.`,
+    );
+    scrollToAnalysisResult();
+    showFloatingNotice(
+      `${result.checkpoint.checkpoint_code} registrado`,
+      "Prediccion completa guardada y vinculada a su episodio observacional.",
+      6000,
+    );
+  } catch (error) {
+    showFloatingNotice("No se pudo registrar el control", error.message, 6000);
+  } finally {
+    button.classList.remove("is-loading");
+    renderObservationControls(getSelectedOperation());
+  }
+}
+
 async function closeOperationById(operationId) {
   const operation = allOperations.find((item) => Number(item.id) === Number(operationId));
   const closeSymbol = operation?.symbol || elements.symbol.value;
@@ -4224,6 +4382,7 @@ function renderOperationSelectorMobile(selectedValue) {
 
 function renderSelectedOperationDetail(operation) {
   if (!operation) {
+    renderObservationControls(null);
     setTradeFormLocked(false);
     elements.selectedOperationDetail.innerHTML = `
       <div class="detail-grid compact">
@@ -4242,6 +4401,8 @@ function renderSelectedOperationDetail(operation) {
     return;
   }
 
+  renderObservationControls(operation);
+  void loadObservationSession(operation);
   applyOperationToForm(operation);
   const config = operationToConfig(operation);
   const closePrice = Number(operation.close_price);
@@ -4366,9 +4527,12 @@ function renderSelectedOperationDetail(operation) {
     </details>
   `;
 
+  const latestObservation = latestObservationAnalysisByOperation.get(Number(operation.id));
   renderAnalysisPayload(
-    recommendation,
-    `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
+    latestObservation || recommendation,
+    latestObservation
+      ? `${latestObservation.checkpoint?.checkpoint_code || "Control observacional"}: analisis realizado durante la operacion; no altera el plan ni su ejecucion.`
+      : `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
   );
 }
 
@@ -4996,6 +5160,8 @@ elements.logoutButton.addEventListener("click", logout);
 elements.analyzeButton.addEventListener("click", analyzeOperation);
 elements.startSimulationButton.addEventListener("click", startSimulation);
 elements.closeSimulationButton.addEventListener("click", closeSimulation);
+elements.startObservationButton?.addEventListener("click", startObservationSession);
+elements.recordObservationButton?.addEventListener("click", recordObservationCheckpoint);
 elements.analysisToggle.addEventListener("click", () => {
   fullAnalysisOpen = !fullAnalysisOpen;
   updateAnalysisFullVisibility();

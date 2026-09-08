@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulador Trading BTC</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260829-analysis-source-availability-v2">
+    <link rel="stylesheet" href="/static/styles.css?v=20260908-operation-observation-v1">
   </head>
   <body>
     <main class="app-shell">
@@ -311,6 +311,16 @@
           <button id="startSimulationButton" type="button">Iniciar simulacion</button>
           <button id="closeSimulationButton" type="button">Cerrar manualmente</button>
 
+          <section id="observationControls" class="observation-controls" hidden>
+            <span>Seguimiento observacional</span>
+            <p id="observationStatus">Sin seguimiento activo.</p>
+            <div>
+              <button id="startObservationButton" type="button">Activar observacion</button>
+              <button id="recordObservationButton" type="button">Registrar siguiente control</button>
+            </div>
+            <small>Cada control usa el mismo motor de produccion, queda marcado como observacional y no modifica probabilidades ni cierra la operacion.</small>
+          </section>
+
           <label>
             Motivo de cierre
             <select id="closeReason">
@@ -390,6 +400,6 @@
       </div>
     </div>
 
-    <script src="/static/app.js?v=20260902-contest-auto-sync-v2"></script>
+    <script src="/static/app.js?v=20260908-operation-observation-v1"></script>
   </body>
 </html>

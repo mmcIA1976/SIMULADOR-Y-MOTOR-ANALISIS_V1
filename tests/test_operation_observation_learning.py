@@ -17,7 +17,10 @@ from operation_observation_learning import (
     OBSERVATION_ANALYSIS_TYPE,
     OBSERVATION_CONTRACT_VERSION,
     OBSERVATION_INTERVAL_CHOICES,
+    OBSERVATION_STORAGE_PROFILE,
     _probability_triplet,
+    build_observation_terminal_counterfactual_payload,
+    compact_observation_snapshot,
     canonical_json,
     checkpoint_code,
     observation_interval_minutes,
@@ -151,6 +154,153 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(signals[0]["tone"], "adverse")
         self.assertEqual(len(signals[0]["metrics"]), 3)
 
+    def test_side_adjusted_primary_path_is_not_inverted_twice_for_short(self) -> None:
+        signals = observation_rule_signals(
+            {
+                "side": "short",
+                "stage_rule_traces": {
+                    "intraday_short": [
+                        {
+                            "rule_id": "M4-RULE-PATH-STRUCTURE-001",
+                            "status": "evaluated",
+                            "probability_effect": "analog_distance_input",
+                            "outputs": {"directional_path_efficiency_h": 0.25},
+                        }
+                    ]
+                },
+            }
+        )
+        self.assertEqual(signals[0]["category"], "principal")
+        self.assertEqual(signals[0]["tone"], "favorable")
+        self.assertEqual(signals[0]["score"], 0.25)
+
+    def test_absorption_displacement_alone_is_context_not_fake_absorption(self) -> None:
+        signals = observation_rule_signals(
+            {
+                "side": "long",
+                "stage_rule_traces": {
+                    "intraday_short": [
+                        {
+                            "rule_id": "LIB-CAND-ABSORPTION-001",
+                            "status": "evaluated_shadow",
+                            "probability_effect": "none_observation_only",
+                            "outputs": {
+                                "side_adjusted_horizon_displacement_atr": 1.8,
+                            },
+                        }
+                    ]
+                },
+            }
+        )
+        self.assertEqual(signals[0]["tone"], "context")
+        self.assertIsNone(signals[0]["score"])
+
+    def test_compact_snapshot_keeps_evaluable_outputs_and_drops_raw_arrays(self) -> None:
+        snapshot = {
+            "analysis_at": "2026-09-08T10:00:00+00:00",
+            "data_cutoff_at": "2026-09-08T09:59:59+00:00",
+            "evaluation_horizon_seconds": 14400,
+            "symbol": "BTCUSDT",
+            "side": "long",
+            "time_horizon": "intraday_short",
+            "entry": 100.0,
+            "take_profit": 102.0,
+            "stop_loss": 99.0,
+            "probability_trace": {
+                "stage_traces": [
+                    {
+                        "stage_id": "stage_0_4h",
+                        "time_horizon": "intraday_short",
+                        "interval": "5m",
+                        "current_feature_values": {"path": 0.4},
+                        "ranked_candidates": [{"x": index} for index in range(500)],
+                    }
+                ]
+            },
+            "stage_rule_traces": {
+                "intraday_short": [
+                    {
+                        "rule_id": "LIB-CAND-EMA-TREND-001",
+                        "status": "evaluated_shadow",
+                        "probability_effect": "none_observation_only",
+                        "inputs": {"candles": list(range(1000))},
+                        "outputs": {
+                            "side_adjusted_slope_atr": 0.4,
+                            "walls": [{"price": index} for index in range(1000)],
+                        },
+                    }
+                ]
+            },
+        }
+        compact = compact_observation_snapshot(snapshot)
+        encoded = json.dumps(compact)
+        self.assertEqual(compact["storage_profile"], OBSERVATION_STORAGE_PROFILE)
+        self.assertNotIn("ranked_candidates", encoded)
+        self.assertNotIn("walls", encoded)
+        self.assertNotIn("inputs", encoded)
+        self.assertEqual(
+            compact["stage_rule_traces"]["intraday_short"][0]["outputs"]
+            ["side_adjusted_slope_atr"],
+            0.4,
+        )
+        self.assertLess(len(encoded.encode("utf-8")), 10_000)
+
+    def test_terminal_event_resolves_observation_before_full_horizon_matures(self) -> None:
+        snapshot = compact_observation_snapshot(
+            {
+                "analysis_at": "2026-09-08T10:00:00+00:00",
+                "data_cutoff_at": "2026-09-08T09:59:59+00:00",
+                "evaluation_horizon_seconds": 86400,
+                "symbol": "BTCUSDT",
+                "side": "short",
+                "time_horizon": "intraday_wide",
+                "entry": 100.0,
+                "take_profit": 95.0,
+                "stop_loss": 103.0,
+                "probability_trace": {
+                    "stage_traces": [
+                        {
+                            "time_horizon": "intraday_wide",
+                            "interval": "1h",
+                            "current_feature_values": {"path": 0.2},
+                        }
+                    ]
+                },
+                "stage_rule_traces": {},
+            }
+        )
+        payload = build_observation_terminal_counterfactual_payload(
+            operation={
+                "id": 429,
+                "user_id": 2,
+                "symbol": "BTCUSDT",
+                "side": "short",
+                "time_horizon": "intraday_wide",
+                "take_profit": 95.0,
+                "stop_loss": 103.0,
+                "close_reason": "stop_loss",
+                "close_price": 103.0,
+                "closed_at": "2026-09-08T11:00:00+00:00",
+            },
+            checkpoint={
+                "recommendation_id": 1400,
+                "observed_at": "2026-09-08T10:00:00+00:00",
+                "market_price": 100.0,
+                "tp_probability": 0.70,
+                "sl_probability": 0.25,
+                "range_probability": 0.05,
+                "engine_version": "test",
+            },
+            snapshot=snapshot,
+        )
+        self.assertEqual(payload["evaluation_status"], "evaluated")
+        self.assertEqual(payload["outcome_label"], "sl_first_within_horizon")
+        self.assertEqual(
+            payload["evaluation_expires_at"],
+            "2026-09-09T10:00:00+00:00",
+        )
+        self.assertEqual(payload["evidence_source"], "operation_terminal_event")
+
     def test_close_candidate_requires_persistent_primary_risk_and_confirmation(self) -> None:
         checkpoints = []
         for number, tp, sl in (
@@ -186,6 +336,26 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(advisory["level"], "close_candidate")
         self.assertEqual(advisory["production_effect"], "none")
         self.assertGreaterEqual(len(advisory["reasons"]), 3)
+
+    def test_profit_protection_requires_three_positive_economic_confirmations(self) -> None:
+        checkpoints = [
+            {
+                "checkpoint_code": f"600o{number}",
+                "tp_probability": 0.35,
+                "sl_probability": 0.60,
+                "range_probability": 0.05,
+                "unrealized_pnl": pnl,
+                "rule_signals": [],
+            }
+            for number, pnl in ((1, 4.0), (2, 5.0), (3, 6.0))
+        ]
+        advisory = observation_closure_advisory(
+            checkpoints,
+            terminal_pnl={"tp": 12.0, "sl": -10.0},
+        )
+        self.assertEqual(advisory["level"], "protect_candidate")
+        self.assertEqual(advisory["economic_confirmation_count"], 3)
+        self.assertGreater(advisory["model_expected_close_advantage"], 0.0)
 
     def test_observation_storage_does_not_duplicate_full_snapshot(self) -> None:
         compact = compact_observation_analysis_payload(
@@ -261,7 +431,7 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(OBSERVATION_ANALYSIS_TYPE, "operation_observation")
         self.assertEqual(
             OBSERVATION_CONTRACT_VERSION,
-            "operation-observation-contract-v0.3",
+            "operation-observation-contract-v0.4",
         )
         self.assertIn(
             'OBSERVATION_OPERATOR_USERNAME = "mauriciomc"',

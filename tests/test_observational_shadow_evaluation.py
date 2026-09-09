@@ -162,6 +162,48 @@ class ObservationalShadowEvaluationTests(unittest.TestCase):
         )
         self.assertFalse(report["manual_governance"]["automatic_weight_selection"])
 
+    def test_v09_observation_snapshot_joins_the_same_rule_evaluator(self):
+        source = {
+            "operation_id": 429,
+            "plan_result": "plan_failure",
+            "time_horizon": "intraday_wide",
+            "side": "short",
+            "symbol": "BTCUSDT",
+            "analysis_at": PROSPECTIVE_COHORT_START_AT,
+            "tp_probability": 0.70,
+            "sl_probability": 0.25,
+            "range_probability": 0.05,
+            "structured_json": None,
+            "case_origin": "observation",
+            "snapshot_json": {
+                "stage_rule_traces": {
+                    "intraday_wide": [
+                        {
+                            "rule_id": EMA_RULE_ID,
+                            "status": "evaluated_shadow",
+                            "probability_effect": "none_observation_only",
+                            "trace_sha256": "observation-ema-trace",
+                            "outputs": {
+                                "side_adjusted_close_vs_ema50_log": -0.002,
+                                "side_adjusted_ema50_vs_ema200_log": -0.001,
+                                "side_adjusted_slope_atr": -0.5,
+                            },
+                        }
+                    ]
+                }
+            },
+        }
+
+        report = build_observational_shadow_report_from_rows([source])
+        prospective = report["experiments"][0]["cohorts"]["prospective"][
+            "report"
+        ]
+
+        self.assertEqual(prospective["cases"], 1)
+        self.assertEqual(prospective["distinct_episodes"], 1)
+        self.assertEqual(prospective["origins"], {"observation": 1})
+        self.assertEqual(prospective["outcomes"], {"sl": 1})
+
     def test_counterfactual_weight_can_be_compared_without_mutating_rows(self):
         rows = [
             row(

@@ -3290,6 +3290,9 @@ function renderObservationRules(monitor) {
 }
 
 function observationDecisionMeta(checkpoint) {
+  if (checkpoint.stored_decision === "protect") {
+    return { label: "Proteger beneficio", className: "is-protect" };
+  }
   if (checkpoint.stored_decision_candidate || checkpoint.stored_decision === "close") {
     return { label: "Candidato de cierre", className: "is-close" };
   }

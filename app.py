@@ -90,6 +90,8 @@ from operation_observation_learning import (
     OBSERVATION_ANALYSIS_TYPE,
     OBSERVATION_CONTRACT_VERSION,
     OBSERVATION_INTERVAL_CHOICES,
+    OBSERVATION_STORAGE_PROFILE,
+    compact_observation_snapshot,
     create_or_get_observation_session,
     finalize_closed_observation_sessions,
     observation_checkpoint_view,
@@ -5822,7 +5824,7 @@ def compact_observation_analysis_payload(result: dict) -> dict:
     """Keep the exact learning snapshot once, without duplicating UI payloads."""
     return {
         "analysis_type": OBSERVATION_ANALYSIS_TYPE,
-        "storage_profile": "observation-learning-compact-v0.1",
+        "storage_profile": OBSERVATION_STORAGE_PROFILE,
         "snapshot_location": "recommendations.snapshot_json",
         "tp_probability": result.get("tp_probability"),
         "sl_probability": result.get("sl_probability"),
@@ -6210,7 +6212,11 @@ def record_operation_observation_checkpoint(
                 json.dumps(result["parameter_advice"]),
                 json.dumps(result["reasons"]),
                 json.dumps(result["alerts"]),
-                json.dumps(result["snapshot"]),
+                json.dumps(
+                    compact_observation_snapshot(result["snapshot"]),
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
                 json.dumps(compact_observation_analysis_payload(result)),
                 result.get("engine_version", ENGINE_VERSION),
                 APP_VERSION,
@@ -6255,10 +6261,21 @@ def record_operation_observation_checkpoint(
             "rule_signals": observation_rule_signals(result.get("snapshot", {})),
         }
         closure_advisory = observation_closure_advisory(
-            [*prior_views, current_view]
+            [*prior_views, current_view],
+            terminal_pnl={
+                "tp": approximate_pnl(
+                    current_operation,
+                    float(current_operation["take_profit"]),
+                ),
+                "sl": approximate_pnl(
+                    current_operation,
+                    float(current_operation["stop_loss"]),
+                ),
+            },
         )
         checkpoint_decision = {
             "close_candidate": "close",
+            "protect_candidate": "protect",
             "watch": "watch",
             "hold": "hold",
             "waiting": "unreviewed",

@@ -6,6 +6,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from operation_observation_learning import (
+    OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+)
 from versioning import ENGINE_VERSION, LEARNING_EVALUATOR_VERSION
 
 
@@ -85,7 +88,30 @@ def _observational_rules(row: dict) -> dict:
     predictive = context.get("predictive_rules")
     predictive = predictive if isinstance(predictive, dict) else {}
     rules = predictive.get("observational_rules")
-    return rules if isinstance(rules, dict) else {}
+    if isinstance(rules, dict) and rules:
+        return rules
+    snapshot = _parse_json_object(row.get("snapshot_json"))
+    stages = snapshot.get("stage_rule_traces")
+    if not isinstance(stages, dict):
+        return {}
+    normalized: dict[str, dict] = {}
+    for horizon, traces in stages.items():
+        if not isinstance(traces, list):
+            continue
+        for trace in traces:
+            if not isinstance(trace, dict):
+                continue
+            probability_effect = str(trace.get("probability_effect") or "")
+            status = str(trace.get("status") or "")
+            if "none" not in probability_effect and "shadow" not in status:
+                continue
+            rule_id = str(trace.get("rule_id") or "")
+            if not rule_id:
+                continue
+            normalized.setdefault(rule_id, {"stage_traces": []})[
+                "stage_traces"
+            ].append({**trace, "time_horizon": str(horizon)})
+    return normalized
 
 
 def _selected_trace(rule: dict, time_horizon: str) -> dict | None:
@@ -415,6 +441,8 @@ def _cohort_report(cases: list[dict]) -> dict:
         ] += 1
     return {
         "cases": len(cases),
+        "distinct_episodes": len({case["operation_id"] for case in cases}),
+        "origins": dict(Counter(case["case_origin"] for case in cases)),
         "outcomes": dict(Counter(case["outcome"] for case in cases)),
         "signal_states": dict(state_counts),
         "signal_state_outcomes": {
@@ -535,6 +563,7 @@ def _normalized_cases(rows: list[dict]) -> list[dict]:
                 "outcome": outcome,
                 "probabilities": probabilities,
                 "signal": signal,
+                "case_origin": str(row.get("case_origin") or "opening"),
             }
         )
     return sorted(cases, key=lambda case: (case["analysis_at"], case["operation_id"]))
@@ -622,17 +651,52 @@ def build_observational_shadow_report(db) -> dict:
                 le.sl_probability,
                 le.range_probability,
                 le.structured_json,
+                NULL::text AS snapshot_json,
                 r.symbol,
-                r.created_at AS analysis_at
+                r.created_at AS analysis_at,
+                'opening' AS case_origin
             FROM learning_evaluations le
             JOIN recommendations r ON r.id = le.recommendation_id
             JOIN operations o ON o.id = le.operation_id
             WHERE o.status = 'CLOSED'
               AND r.engine_version = ?
               AND le.learning_evaluator_version = ?
-            ORDER BY r.created_at ASC, le.operation_id ASC
+            UNION ALL
+            SELECT
+                oc.operation_id,
+                CASE rce.outcome_label
+                    WHEN 'tp_first_within_horizon' THEN 'plan_success'
+                    WHEN 'sl_first_within_horizon' THEN 'plan_failure'
+                    WHEN 'neither_barrier_before_expiry' THEN 'plan_unresolved'
+                    ELSE NULL
+                END AS plan_result,
+                r.time_horizon,
+                r.side,
+                r.tp_probability,
+                r.sl_probability,
+                r.range_probability,
+                NULL::text AS structured_json,
+                r.snapshot_json,
+                r.symbol,
+                r.created_at AS analysis_at,
+                'observation' AS case_origin
+            FROM operation_observation_checkpoints oc
+            JOIN recommendations r ON r.id = oc.recommendation_id
+            JOIN recommendation_counterfactual_evaluations rce
+              ON rce.recommendation_id = r.id
+             AND rce.evaluator_version = ?
+             AND rce.evaluation_status = 'evaluated'
+            JOIN operations o ON o.id = oc.operation_id
+            WHERE o.status = 'CLOSED'
+              AND r.engine_version = ?
+            ORDER BY analysis_at ASC, operation_id ASC
             """,
-            (ENGINE_VERSION, LEARNING_EVALUATOR_VERSION),
+            (
+                ENGINE_VERSION,
+                LEARNING_EVALUATOR_VERSION,
+                OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+                ENGINE_VERSION,
+            ),
         ).fetchall()
     ]
     return build_observational_shadow_report_from_rows(rows)

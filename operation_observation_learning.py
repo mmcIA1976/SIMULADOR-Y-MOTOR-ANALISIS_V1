@@ -3,12 +3,25 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from predictive_rule_library import load_rule_library, rule_registry
+
 
 OBSERVATION_ANALYSIS_TYPE = "operation_observation"
-OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.3"
+OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.4"
+OBSERVATION_STORAGE_PROFILE = "observation-learning-compact-v0.2"
+OBSERVATION_PREDICTIVE_EVALUATOR_VERSION = (
+    "recommendation-observation-terminal-evaluator-v0.1"
+)
+OBSERVATION_PREDICTIVE_SCHEMA_VERSION = (
+    "recommendation-observation-terminal-evaluation-v0.1"
+)
+OBSERVATION_EPISODE_EVALUATOR_VERSION = (
+    "operation-observation-episode-evaluator-v0.1"
+)
 EXIT_COUNTERFACTUAL_VERSION = "operation-exit-counterfactual-v0.1"
 OBSERVATION_PRODUCTION_EFFECT = "none"
 OBSERVATION_INTERVAL_CHOICES = (5, 10, 15, 20, 30, 40, 60)
@@ -36,6 +49,7 @@ MAX_SESSION_SUMMARY_BYTES = 16_384
 MAX_CHECKPOINT_CONTEXT_BYTES = 16_384
 MAX_EXIT_EVALUATION_BYTES = 8_192
 MAX_SESSION_EVENT_DETAILS_BYTES = 4_096
+MAX_COMPACT_SNAPSHOT_BYTES = 48_000
 PROBABILITY_TOLERANCE = 1.1e-6
 
 RULE_LABELS = {
@@ -399,6 +413,222 @@ def payload_sha256(payload: dict | list) -> str:
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
+def observation_rule_catalog_reference() -> dict:
+    """Return the single immutable catalog identity used by every checkpoint."""
+    catalog = load_rule_library()
+    return {
+        "library_version": catalog["library_version"],
+        "catalog_sha256": catalog["catalog_sha256"],
+    }
+
+
+def _compact_scalar_tree(value: Any) -> Any:
+    """Keep reproducible scalar evidence while discarding verbose raw arrays."""
+    if isinstance(value, dict):
+        compact = {
+            str(key): child
+            for key, raw_child in value.items()
+            if (child := _compact_scalar_tree(raw_child)) is not None
+        }
+        return compact or None
+    if isinstance(value, list):
+        if len(value) <= 16 and all(
+            isinstance(item, (str, int, float, bool)) or item is None
+            for item in value
+        ):
+            return value
+        return None
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return value if _finite_number(value) is not None else None
+    if isinstance(value, str):
+        return value[:160]
+    return None
+
+
+def _compact_probability_trace(trace: Any) -> dict:
+    if not isinstance(trace, dict):
+        return {}
+    result = {
+        key: trace.get(key)
+        for key in (
+            "artifact_id",
+            "artifact_sha256",
+            "engine_version",
+            "runtime_version",
+            "scoring_version",
+            "selected_horizon",
+            "executed_stage_count",
+            "executed_stages",
+            "single_engine",
+            "parallel_probability_engines_executed",
+            "decision_probabilities",
+            "probabilities",
+            "probability_ranges_95pct",
+            "result_sha256",
+            "production_effect",
+        )
+        if trace.get(key) is not None
+    }
+    compact_stages = []
+    for stage in trace.get("stage_traces") or []:
+        if not isinstance(stage, dict):
+            continue
+        compact_stage = {
+            key: stage.get(key)
+            for key in (
+                "stage_id",
+                "label",
+                "time_horizon",
+                "interval",
+                "survival_entering_stage",
+                "conditional_probabilities",
+                "cumulative_probabilities",
+                "effective_sample_size",
+                "selected_analogs",
+                "same_symbol_analogs",
+                "nearest_context_distance",
+                "furthest_selected_distance",
+                "maximum_context_distance_allowed",
+                "conditional_sample_empty",
+                "conditional_sample_sparse",
+                "resolved_before_stage_excluded",
+                "ambiguous_excluded",
+                "bandwidth",
+                "probability_temperature",
+                "dirichlet_prior_per_class",
+                "weighted_outcome_counts",
+                "posterior_alpha",
+                "geometry_application",
+                "current_feature_values",
+                "uncertainty_policy",
+                "kernel",
+                "active_rule_groups",
+            )
+            if stage.get(key) is not None
+        }
+        compact_stages.append(_compact_scalar_tree(compact_stage) or {})
+    result["stage_traces"] = compact_stages
+    return _compact_scalar_tree(result) or {}
+
+
+def _compact_stage_contexts(contexts: Any) -> dict:
+    if not isinstance(contexts, dict):
+        return {}
+    result = {}
+    for stage_name, context in contexts.items():
+        if not isinstance(context, dict):
+            continue
+        selected = {
+            key: context.get(key)
+            for key in (
+                "stage_id",
+                "label",
+                "time_horizon",
+                "interval",
+                "interval_seconds",
+                "increment_seconds",
+                "horizon_seconds",
+                "required_candle_count",
+                "data_cutoff_at_ms",
+                "context_sigma",
+                "feature_values",
+                "data_quality",
+                "source_data_sha256",
+            )
+            if context.get(key) is not None
+        }
+        result[str(stage_name)] = _compact_scalar_tree(selected) or {}
+    return result
+
+
+def _compact_stage_rule_traces(stage_traces: Any) -> dict:
+    if not isinstance(stage_traces, dict):
+        return {}
+    known_rules = rule_registry()
+    result: dict[str, list[dict]] = {}
+    for stage_name, traces in stage_traces.items():
+        compact_traces = []
+        if not isinstance(traces, list):
+            continue
+        for trace in traces:
+            if not isinstance(trace, dict):
+                continue
+            rule_id = str(trace.get("rule_id") or "")
+            if not rule_id or rule_id not in known_rules:
+                continue
+            outputs = _compact_scalar_tree(trace.get("outputs"))
+            compact_trace = {
+                "rule_id": rule_id,
+                "rule_version": trace.get("rule_version"),
+                "status": trace.get("status"),
+                "probability_effect": trace.get("probability_effect"),
+                "source_data_sha256": trace.get("source_data_sha256"),
+                "trace_sha256": trace.get("trace_sha256"),
+                "outputs": outputs if isinstance(outputs, dict) else {},
+            }
+            compact_traces.append(
+                {
+                    key: value
+                    for key, value in compact_trace.items()
+                    if value is not None
+                }
+            )
+        result[str(stage_name)] = compact_traces
+    return result
+
+
+def compact_observation_snapshot(snapshot: dict) -> dict:
+    """Reduce an observation snapshot to evidence that is actually evaluated.
+
+    Formulas, labels, parameters and lifecycle metadata are referenced through
+    the immutable catalog instead of being repeated in every checkpoint.
+    """
+    if not isinstance(snapshot, dict):
+        raise ValueError("observation_snapshot_invalid")
+    if snapshot.get("storage_profile") == OBSERVATION_STORAGE_PROFILE:
+        return snapshot
+    compact = {
+        "storage_profile": OBSERVATION_STORAGE_PROFILE,
+        "contract_version": OBSERVATION_CONTRACT_VERSION,
+        "rule_catalog": observation_rule_catalog_reference(),
+        "analysis_at": snapshot.get("analysis_at"),
+        "data_cutoff_at": snapshot.get("data_cutoff_at"),
+        "evaluation_expires_at": snapshot.get("evaluation_expires_at"),
+        "evaluation_horizon_seconds": snapshot.get(
+            "evaluation_horizon_seconds"
+        ),
+        "symbol": snapshot.get("symbol"),
+        "side": snapshot.get("side"),
+        "time_horizon": snapshot.get("time_horizon"),
+        "entry": snapshot.get("entry"),
+        "take_profit": snapshot.get("take_profit"),
+        "stop_loss": snapshot.get("stop_loss"),
+        "decision_probabilities": snapshot.get("decision_probabilities"),
+        "entry_order_context": _compact_scalar_tree(
+            snapshot.get("entry_order_context")
+        ),
+        "observation_context": _compact_scalar_tree(
+            snapshot.get("observation_context")
+        ),
+        "version_contract": _compact_scalar_tree(snapshot.get("version_contract")),
+        "probability_trace": _compact_probability_trace(
+            snapshot.get("probability_trace")
+        ),
+        "stage_contexts": _compact_stage_contexts(snapshot.get("stage_contexts")),
+        "stage_rule_traces": _compact_stage_rule_traces(
+            snapshot.get("stage_rule_traces")
+        ),
+    }
+    compact = {key: value for key, value in compact.items() if value is not None}
+    compact["compact_sha256"] = payload_sha256(compact)
+    encoded = canonical_json(compact)
+    if len(encoded.encode("utf-8")) > MAX_COMPACT_SNAPSHOT_BYTES:
+        raise ValueError("observation_compact_snapshot_too_large")
+    return compact
+
+
 def utc_iso(value: datetime | str) -> str:
     if isinstance(value, datetime):
         parsed = value
@@ -675,6 +905,7 @@ def create_or_get_observation_session(
         raise RuntimeError("observation_session_evidence_quality_mismatch")
     if existing["contract_version"] not in {
         "operation-observation-contract-v0.2",
+        "operation-observation-contract-v0.3",
         OBSERVATION_CONTRACT_VERSION,
     }:
         raise RuntimeError("observation_session_contract_version_mismatch")
@@ -1111,44 +1342,861 @@ def update_reconstructed_session_summary(
     )
 
 
-def finalize_closed_observation_sessions(db) -> int:
-    rows = db.execute(
-        """
-        SELECT session.*, operation.closed_at AS operation_closed_at
-        FROM operation_observation_sessions AS session
-        JOIN operations AS operation ON operation.id = session.operation_id
-        WHERE session.operation_id = operation.id
-          AND session.status IN ('active', 'paused')
-          AND operation.status = 'CLOSED'
-        FOR UPDATE OF session
-        """
-    ).fetchall()
-    finalized = 0
-    for raw_session in rows:
-        session = dict(raw_session)
-        ended_at = session.get("operation_closed_at") or datetime.now(timezone.utc)
-        updated = db.execute(
+def _parse_utc(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _terminal_outcome(operation: dict) -> tuple[str | None, str | None]:
+    reason = str(operation.get("close_reason") or "").strip().lower()
+    if reason == "take_profit":
+        return "tp_first_within_horizon", None
+    if reason == "stop_loss":
+        return "sl_first_within_horizon", None
+    return None, "operation_terminal_without_tp_sl"
+
+
+def _pnl_at_price(operation: dict, price: float) -> float:
+    entry = float(operation["entry"])
+    variation = (float(price) - entry) / entry
+    if str(operation["side"]).lower() == "short":
+        variation *= -1.0
+    return float(operation["margin"]) * float(operation["leverage"]) * variation
+
+
+def _selected_probability_stage(snapshot: dict, time_horizon: str) -> dict:
+    probability_trace = snapshot.get("probability_trace")
+    if not isinstance(probability_trace, dict):
+        return {}
+    stages = probability_trace.get("stage_traces")
+    if not isinstance(stages, list):
+        return {}
+    exact = [
+        stage
+        for stage in stages
+        if isinstance(stage, dict)
+        and str(stage.get("time_horizon") or "") == time_horizon
+    ]
+    if exact:
+        return exact[-1]
+    usable = [stage for stage in stages if isinstance(stage, dict)]
+    return usable[-1] if usable else {}
+
+
+def build_observation_terminal_counterfactual_payload(
+    *,
+    operation: dict,
+    checkpoint: dict,
+    snapshot: dict,
+) -> dict:
+    """Resolve a checkpoint as soon as the real operation hits TP or SL."""
+    from counterfactual_learning import MAX_FEATURE_PAYLOAD_BYTES
+
+    analysis_at = _parse_utc(snapshot.get("analysis_at")) or _parse_utc(
+        checkpoint.get("observed_at")
+    )
+    if analysis_at is None:
+        raise ValueError("observation_analysis_at_missing")
+    data_cutoff_at = _parse_utc(snapshot.get("data_cutoff_at")) or analysis_at
+    if data_cutoff_at > analysis_at:
+        raise ValueError("observation_data_cutoff_after_analysis")
+    time_horizon = str(
+        snapshot.get("time_horizon") or operation.get("time_horizon") or ""
+    )
+    default_horizons = {
+        "intraday_short": 14_400,
+        "intraday_wide": 86_400,
+        "short_swing": 604_800,
+    }
+    try:
+        horizon_seconds = int(snapshot.get("evaluation_horizon_seconds"))
+    except (TypeError, ValueError):
+        horizon_seconds = int(default_horizons.get(time_horizon, 0))
+    if horizon_seconds <= 0:
+        raise ValueError("observation_horizon_missing")
+    evaluation_expires_at = analysis_at + timedelta(seconds=horizon_seconds)
+    selected_stage = _selected_probability_stage(snapshot, time_horizon)
+    feature_values = _compact_scalar_tree(
+        selected_stage.get("current_feature_values")
+    )
+    feature_values = feature_values if isinstance(feature_values, dict) else {}
+    feature_values_json = canonical_json(feature_values)
+    feature_payload_bytes = len(feature_values_json.encode("utf-8"))
+    if not 0 < feature_payload_bytes <= MAX_FEATURE_PAYLOAD_BYTES:
+        raise ValueError("observation_predictive_features_too_large")
+    outcome_label, exclusion_code = _terminal_outcome(operation)
+    evaluation_status = "evaluated" if outcome_label else "excluded"
+    terminal_at = _parse_utc(operation.get("closed_at"))
+    terminal_identity = {
+        "operation_id": int(operation["id"]),
+        "closed_at": utc_iso(terminal_at or datetime.now(timezone.utc)),
+        "close_reason": operation.get("close_reason"),
+        "close_price": _finite_number(operation.get("close_price")),
+        "exit_evidence": _json_object(operation.get("exit_evidence_json")),
+    }
+    source_snapshot_sha256 = payload_sha256(snapshot)
+    run_key = payload_sha256(
+        {
+            "recommendation_id": int(checkpoint["recommendation_id"]),
+            "evaluator_version": OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+            "source_snapshot_sha256": source_snapshot_sha256,
+        }
+    )
+    result_identity = {
+        "run_key": run_key,
+        "feature_values": feature_values,
+        "outcome_label": outcome_label,
+        "exclusion_code": exclusion_code,
+        "first_touch_at": terminal_identity["closed_at"] if outcome_label else None,
+        "market_sha256": payload_sha256(terminal_identity),
+    }
+    version_contract = snapshot.get("version_contract")
+    version_contract = version_contract if isinstance(version_contract, dict) else {}
+    return {
+        "run_key": run_key,
+        "recommendation_id": int(checkpoint["recommendation_id"]),
+        "user_id": int(operation["user_id"]),
+        "evaluator_version": OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+        "schema_version": OBSERVATION_PREDICTIVE_SCHEMA_VERSION,
+        "contract_quality": "exact",
+        "formal_learning_eligible": True,
+        "analysis_at_source": "snapshot.analysis_at",
+        "data_cutoff_source": "snapshot.data_cutoff_at",
+        "plan_source": "snapshot.explicit_levels",
+        "horizon_source": "snapshot.evaluation_horizon_seconds",
+        "source_engine_version": str(
+            checkpoint.get("engine_version")
+            or version_contract.get("engine_version")
+            or "unknown"
+        ),
+        "source_scoring_version": version_contract.get("scoring_version"),
+        "symbol": str(operation["symbol"]).upper(),
+        "side": str(operation["side"]).lower(),
+        "time_horizon": time_horizon,
+        "analysis_at": utc_iso(analysis_at),
+        "data_cutoff_at": utc_iso(data_cutoff_at),
+        "evaluation_expires_at": utc_iso(evaluation_expires_at),
+        "horizon_seconds": horizon_seconds,
+        "entry": float(snapshot.get("entry") or checkpoint["market_price"]),
+        "take_profit": float(operation["take_profit"]),
+        "stop_loss": float(operation["stop_loss"]),
+        "tp_probability": float(checkpoint["tp_probability"]),
+        "sl_probability": float(checkpoint["sl_probability"]),
+        "range_probability": float(checkpoint["range_probability"]),
+        "evaluation_status": evaluation_status,
+        "exclusion_code": exclusion_code,
+        "pretrade_status": "evaluated",
+        "pretrade_interval": selected_stage.get("interval"),
+        "feature_values_json": feature_values_json,
+        "feature_payload_bytes": feature_payload_bytes,
+        "outcome_status": (
+            "resolved_from_operation_terminal_event"
+            if outcome_label
+            else "operation_closed_without_predictive_terminal"
+        ),
+        "outcome_label": outcome_label,
+        "first_touch_at": terminal_identity["closed_at"] if outcome_label else None,
+        "coverage_ratio": 1.0 if outcome_label else None,
+        "candle_count": None,
+        "expected_candle_count": None,
+        "market_sha256": result_identity["market_sha256"],
+        "source_snapshot_sha256": source_snapshot_sha256,
+        "result_sha256": payload_sha256(result_identity),
+        "evidence_source": "operation_terminal_event",
+        "production_effect": OBSERVATION_PRODUCTION_EFFECT,
+    }
+
+
+def build_exit_counterfactual_evaluation(
+    *,
+    operation: dict,
+    checkpoint: dict,
+) -> dict:
+    final_pnl = float(operation.get("final_pnl") or 0.0)
+    close_pnl = float(checkpoint.get("unrealized_pnl") or 0.0)
+    pnl_advantage = close_pnl - final_pnl
+    stop_pnl = _pnl_at_price(operation, float(operation["stop_loss"]))
+    tp_pnl = _pnl_at_price(operation, float(operation["take_profit"]))
+    initial_risk = abs(stop_pnl)
+    tp_probability = float(checkpoint.get("tp_probability") or 0.0)
+    sl_probability = float(checkpoint.get("sl_probability") or 0.0)
+    range_probability = float(checkpoint.get("range_probability") or 0.0)
+    expected_hold_pnl = (
+        tp_probability * tp_pnl
+        + sl_probability * stop_pnl
+        + range_probability * close_pnl
+    )
+    expected_close_advantage = close_pnl - expected_hold_pnl
+    tolerance = max(initial_risk * 0.01, 0.01)
+    if pnl_advantage > tolerance:
+        absolute_verdict = "close_would_have_improved_final_pnl"
+    elif pnl_advantage < -tolerance:
+        absolute_verdict = "holding_was_better_than_closing_here"
+    else:
+        absolute_verdict = "economically_equivalent"
+    r_advantage = pnl_advantage / initial_risk if initial_risk > 0 else None
+    if r_advantage is not None and r_advantage >= 0.10:
+        risk_verdict = "close_protected_at_least_0_10r"
+    elif r_advantage is not None and r_advantage <= -0.10:
+        risk_verdict = "hold_added_at_least_0_10r"
+    else:
+        risk_verdict = "difference_below_0_10r"
+    observed_at = _parse_utc(checkpoint.get("observed_at"))
+    closed_at = _parse_utc(operation.get("closed_at"))
+    time_to_terminal = None
+    if observed_at is not None and closed_at is not None:
+        time_to_terminal = max(
+            (closed_at - observed_at).total_seconds() / 60.0,
+            0.0,
+        )
+    outcome_label, _ = _terminal_outcome(operation)
+    return {
+        "persist_args": {
+            "actual_final_pnl": final_pnl,
+            "pnl_if_closed": close_pnl,
+            "tp_reached_after": outcome_label == "tp_first_within_horizon",
+            "sl_reached_after": outcome_label == "sl_first_within_horizon",
+            "time_to_terminal_minutes": time_to_terminal,
+            "protected_drawdown": max(pnl_advantage, 0.0),
+            "absolute_profit_verdict": absolute_verdict,
+            "risk_adjusted_verdict": risk_verdict,
+            "contract_quality": str(
+                checkpoint.get("contract_quality") or "exact"
+            ),
+            "evaluated_at": operation.get("closed_at")
+            or datetime.now(timezone.utc),
+        },
+        "evaluation": {
+            "evaluator_version": EXIT_COUNTERFACTUAL_VERSION,
+            "checkpoint_code": checkpoint.get("checkpoint_code"),
+            "model_probabilities": {
+                "tp": tp_probability,
+                "sl": sl_probability,
+                "range": range_probability,
+            },
+            "economic_choices": {
+                "pnl_if_closed": close_pnl,
+                "actual_final_pnl": final_pnl,
+                "pnl_advantage_if_closed": pnl_advantage,
+                "initial_risk_amount": initial_risk,
+                "advantage_r": r_advantage,
+                "model_expected_hold_pnl": expected_hold_pnl,
+                "model_expected_close_advantage": expected_close_advantage,
+                "model_preferred_action": (
+                    "close" if expected_close_advantage > 0.0 else "hold"
+                ),
+                "range_assumption": "retain_current_unrealized_pnl",
+            },
+            "terminal_outcome": {
+                "close_reason": operation.get("close_reason"),
+                "time_to_terminal_minutes": time_to_terminal,
+            },
+            "production_effect": "none",
+        },
+    }
+
+
+def _pearson(left: list[float], right: list[float]) -> float | None:
+    if len(left) != len(right) or len(left) < 2:
+        return None
+    left_mean = math.fsum(left) / len(left)
+    right_mean = math.fsum(right) / len(right)
+    numerator = math.fsum(
+        (x - left_mean) * (y - right_mean) for x, y in zip(left, right)
+    )
+    left_variance = math.fsum((value - left_mean) ** 2 for value in left)
+    right_variance = math.fsum((value - right_mean) ** 2 for value in right)
+    denominator = math.sqrt(left_variance * right_variance)
+    return numerator / denominator if denominator > 0 else None
+
+
+def _rule_evolution(checkpoints: list[dict], outcome_class: str | None) -> list[dict]:
+    grouped: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
+    for checkpoint in checkpoints:
+        for signal in checkpoint.get("rule_signals") or []:
+            key = (str(signal.get("stage") or ""), str(signal.get("rule_id") or ""))
+            grouped.setdefault(key, []).append(
+                (
+                    str(checkpoint.get("checkpoint_code") or ""),
+                    str(signal.get("tone") or "context"),
+                    str(signal.get("category") or "observational"),
+                )
+            )
+    result = []
+    for (stage, rule_id), readings in sorted(grouped.items()):
+        tones = [tone for _, tone, _ in readings]
+        categories = Counter(category for _, _, category in readings)
+        counts = Counter(tones)
+        correct_tone = "favorable" if outcome_class == "tp" else "adverse"
+        directional = [tone for tone in tones if tone in {"favorable", "adverse"}]
+        longest_adverse = current_adverse = 0
+        for tone in tones:
+            current_adverse = current_adverse + 1 if tone == "adverse" else 0
+            longest_adverse = max(longest_adverse, current_adverse)
+        terminal_adverse = 0
+        for tone in reversed(tones):
+            if tone != "adverse":
+                break
+            terminal_adverse += 1
+        first_adverse = next(
+            (code for code, tone, _ in readings if tone == "adverse"),
+            None,
+        )
+        result.append(
+            {
+                "stage": stage,
+                "rule_id": rule_id,
+                "category": categories.most_common(1)[0][0],
+                "tones": dict(counts),
+                "directional": {
+                    "cases": len(directional),
+                    "hits": sum(tone == correct_tone for tone in directional),
+                },
+                "first_adverse_checkpoint": first_adverse,
+                "last_tone": tones[-1] if tones else None,
+                "longest_adverse_streak": longest_adverse,
+                "terminal_adverse_streak": terminal_adverse,
+            }
+        )
+    return result
+
+
+def build_observation_episode_summary(
+    *,
+    session: dict,
+    operation: dict,
+    checkpoints: list[dict],
+    storage: dict,
+    opening_learning: dict | None,
+) -> dict:
+    checkpoint_views = [observation_checkpoint_view(row) for row in checkpoints]
+    outcome_label, exclusion_code = _terminal_outcome(operation)
+    outcome_class = (
+        "tp" if outcome_label == "tp_first_within_horizon"
+        else "sl" if outcome_label == "sl_first_within_horizon"
+        else None
+    )
+    checkpoint_probabilities = [
+        (
+            row,
+            {
+                "tp": float(row["tp_probability"]),
+                "sl": float(row["sl_probability"]),
+                "range": float(row["range_probability"]),
+            },
+        )
+        for row in checkpoints
+        if row.get("tp_probability") is not None
+        and row.get("sl_probability") is not None
+        and row.get("range_probability") is not None
+    ]
+    probabilities = [probability for _, probability in checkpoint_probabilities]
+    prediction = {
+        "cases": len(probabilities),
+        "outcome": outcome_class or "excluded",
+        "exclusion_code": exclusion_code,
+        "mean_probabilities": {
+            name: (
+                math.fsum(row[name] for row in probabilities) / len(probabilities)
+                if probabilities else None
+            )
+            for name in ("tp", "sl", "range")
+        },
+        "tp_probability_at_least_70pct": sum(
+            row["tp"] >= 0.70 for row in probabilities
+        ),
+    }
+    if outcome_class and probabilities:
+        prediction.update(
+            {
+                "log_loss": -math.fsum(
+                    math.log(max(row[outcome_class], 1e-15))
+                    for row in probabilities
+                ) / len(probabilities),
+                "multiclass_brier": math.fsum(
+                    math.fsum(
+                        (
+                            row[name]
+                            - (1.0 if name == outcome_class else 0.0)
+                        ) ** 2
+                        for name in ("tp", "sl", "range")
+                    )
+                    for row in probabilities
+                ) / len(probabilities),
+                "top_class_accuracy": sum(
+                    max(row, key=row.get) == outcome_class
+                    for row in probabilities
+                ) / len(probabilities),
+            }
+        )
+    conditional_tp = []
+    geometry_tp = []
+    for checkpoint, probability in checkpoint_probabilities:
+        resolution = probability["tp"] + probability["sl"]
+        entry = float(checkpoint["market_price"])
+        take_profit = float(operation["take_profit"])
+        stop_loss = float(operation["stop_loss"])
+        if str(operation["side"]).lower() == "short":
+            target_distance = abs(math.log(entry / take_profit))
+            adverse_distance = abs(math.log(stop_loss / entry))
+        else:
+            target_distance = abs(math.log(take_profit / entry))
+            adverse_distance = abs(math.log(entry / stop_loss))
+        distance_sum = target_distance + adverse_distance
+        if resolution > 0 and distance_sum > 0:
+            conditional_tp.append(probability["tp"] / resolution)
+            geometry_tp.append(adverse_distance / distance_sum)
+    geometry_correlation = _pearson(conditional_tp, geometry_tp)
+    geometry_mae = (
+        math.fsum(abs(left - right) for left, right in zip(conditional_tp, geometry_tp))
+        / len(conditional_tp)
+        if conditional_tp else None
+    )
+    final_pnl = float(operation.get("final_pnl") or 0.0)
+    best_checkpoint = max(
+        checkpoints,
+        key=lambda row: float(row.get("unrealized_pnl") or 0.0),
+        default=None,
+    )
+    best_observed_pnl = (
+        float(best_checkpoint.get("unrealized_pnl") or 0.0)
+        if best_checkpoint else None
+    )
+    intervals = []
+    observed_times = [
+        _parse_utc(row.get("observed_at")) for row in checkpoints
+    ]
+    observed_times = [value for value in observed_times if value is not None]
+    for previous, current in zip(observed_times, observed_times[1:]):
+        intervals.append((current - previous).total_seconds() / 60.0)
+    initial_risk = abs(_pnl_at_price(operation, float(operation["stop_loss"])))
+    exit_candidates = []
+    for row in checkpoints:
+        evaluation = build_exit_counterfactual_evaluation(
+            operation=operation,
+            checkpoint=row,
+        )["evaluation"]["economic_choices"]
+        if (
+            float(evaluation["pnl_if_closed"]) > 0.0
+            and float(evaluation["model_expected_close_advantage"]) > 0.0
+        ):
+            exit_candidates.append(
+                {
+                    "checkpoint_code": row["checkpoint_code"],
+                    "pnl_if_closed": evaluation["pnl_if_closed"],
+                    "close_advantage_vs_model_hold": evaluation[
+                        "model_expected_close_advantage"
+                    ],
+                }
+            )
+    rules = _rule_evolution(checkpoint_views, outcome_class)
+    exit_candidate_count = len(exit_candidates)
+    exit_candidates = sorted(
+        exit_candidates,
+        key=lambda item: (
+            float(item["pnl_if_closed"]),
+            float(item["close_advantage_vs_model_hold"]),
+        ),
+        reverse=True,
+    )[:8]
+    conclusions = []
+    if outcome_class == "sl" and prediction["tp_probability_at_least_70pct"]:
+        conclusions.append(
+            {
+                "code": "high_tp_confidence_failed",
+                "evidence": prediction["tp_probability_at_least_70pct"],
+            }
+        )
+    if geometry_correlation is not None and abs(geometry_correlation) >= 0.90:
+        conclusions.append(
+            {
+                "code": "probability_strongly_geometry_correlated",
+                "evidence": geometry_correlation,
+            }
+        )
+    if best_observed_pnl is not None and best_observed_pnl > 0 and final_pnl < 0:
+        conclusions.append(
+            {
+                "code": "profitable_exit_opportunity_before_loss",
+                "evidence": {
+                    "checkpoint": best_checkpoint["checkpoint_code"],
+                    "observed_pnl": best_observed_pnl,
+                    "final_pnl": final_pnl,
+                },
+            }
+        )
+    actual_mfe = (
+        _finite_number(opening_learning.get("max_favorable_pnl"))
+        if opening_learning else None
+    )
+    if (
+        actual_mfe is not None
+        and best_observed_pnl is not None
+        and actual_mfe > best_observed_pnl + 0.01
+    ):
+        conclusions.append(
+            {
+                "code": "scheduled_checkpoints_missed_true_mfe",
+                "evidence": {
+                    "true_mfe": actual_mfe,
+                    "best_checkpoint_pnl": best_observed_pnl,
+                },
+            }
+        )
+    useful_observational = []
+    if outcome_class in {"tp", "sl"}:
+        for rule in rules:
+            directional = rule["directional"]
+            cases = int(directional["cases"])
+            hits = int(directional["hits"])
+            if (
+                rule["stage"] == str(operation["time_horizon"])
+                and rule["category"] == "observational"
+                and cases >= 3
+                and hits / cases >= 0.60
+            ):
+                useful_observational.append(
+                    {
+                        "rule_id": rule["rule_id"],
+                        "directional_cases": cases,
+                        "directional_hits": hits,
+                        "first_adverse_checkpoint": rule[
+                            "first_adverse_checkpoint"
+                        ],
+                        "terminal_adverse_streak": rule[
+                            "terminal_adverse_streak"
+                        ],
+                    }
+                )
+    if useful_observational:
+        conclusions.append(
+            {
+                "code": "observational_rules_directionally_consistent_in_episode",
+                "evidence": useful_observational[:6],
+                "scope_limit": "single_dependent_episode_not_global_weight_evidence",
+            }
+        )
+    return {
+        "learning_status": "complete",
+        "episode_evaluator_version": OBSERVATION_EPISODE_EVALUATOR_VERSION,
+        "contract_version": OBSERVATION_CONTRACT_VERSION,
+        "rule_catalog": observation_rule_catalog_reference(),
+        "operation": {
+            "id": int(operation["id"]),
+            "symbol": operation["symbol"],
+            "side": operation["side"],
+            "time_horizon": operation["time_horizon"],
+            "close_reason": operation.get("close_reason"),
+            "final_pnl": final_pnl,
+            "initial_risk_amount": initial_risk,
+            "final_r_multiple": final_pnl / initial_risk if initial_risk else None,
+        },
+        "counts": {
+            "checkpoints": len(checkpoints),
+            "predictive_evaluations": len(
+                [row for row in checkpoints if row.get("recommendation_id")]
+            ),
+            "exit_evaluations": len(checkpoints),
+            "rule_series": len(rules),
+        },
+        "prediction_evaluation": prediction,
+        "geometry_diagnostic": {
+            "comparison": "conditional_tp_vs_barrier_distance_baseline",
+            "correlation": geometry_correlation,
+            "mean_absolute_error": geometry_mae,
+            "interpretation": (
+                "strong_geometry_dependence"
+                if geometry_correlation is not None
+                and abs(geometry_correlation) >= 0.90
+                else "no_strong_geometry_dependence_detected"
+            ),
+        },
+        "exit_evaluation": {
+            "best_observed_checkpoint": (
+                best_checkpoint.get("checkpoint_code") if best_checkpoint else None
+            ),
+            "best_observed_pnl": best_observed_pnl,
+            "actual_max_favorable_pnl": actual_mfe,
+            "actual_max_adverse_pnl": (
+                _finite_number(opening_learning.get("max_adverse_pnl"))
+                if opening_learning else None
+            ),
+            "profitable_model_close_candidate_count": exit_candidate_count,
+            "profitable_model_close_candidates": exit_candidates,
+            "maximum_gap_minutes": max(intervals) if intervals else None,
+        },
+        "rule_evolution": rules,
+        "conclusions": conclusions,
+        "storage": storage,
+        "governance": {
+            "production_effect": "none",
+            "automatic_rule_weight_change": False,
+            "episode_weighting_required_for_global_inference": True,
+        },
+    }
+
+
+def _finalize_observation_session_learning(
+    db,
+    *,
+    session: dict,
+    operation: dict,
+) -> None:
+    from counterfactual_learning import persist_counterfactual_payload
+
+    checkpoint_rows = [
+        dict(row)
+        for row in db.execute(
             """
-            UPDATE operation_observation_sessions
-            SET status = 'completed', paused_at = NULL,
-                ended_at = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND status IN ('active', 'paused')
-            RETURNING id
+            SELECT checkpoint.*, recommendation.snapshot_json,
+                   recommendation.engine_version
+            FROM operation_observation_checkpoints AS checkpoint
+            LEFT JOIN recommendations AS recommendation
+              ON recommendation.id = checkpoint.recommendation_id
+            WHERE checkpoint.session_id = ?
+            ORDER BY checkpoint.checkpoint_number ASC
             """,
-            (utc_iso(ended_at), int(session["id"])),
-        ).fetchone()
-        if not updated:
+            (int(session["id"]),),
+        ).fetchall()
+    ]
+    bytes_before = 0
+    bytes_after = 0
+    compacted = 0
+    compact_exact = 0
+    for checkpoint in checkpoint_rows:
+        if not checkpoint.get("recommendation_id"):
             continue
+        snapshot = _json_object(checkpoint.get("snapshot_json"))
+        if not snapshot:
+            raise ValueError("observation_snapshot_missing")
+        original_json = canonical_json(snapshot)
+        bytes_before += len(original_json.encode("utf-8"))
+        compact = compact_observation_snapshot(snapshot)
+        compact_json = canonical_json(compact)
+        bytes_after += len(compact_json.encode("utf-8"))
+        existing_evaluation = db.execute(
+            """
+            SELECT 1
+            FROM recommendation_counterfactual_evaluations
+            WHERE recommendation_id = ?
+            LIMIT 1
+            """,
+            (int(checkpoint["recommendation_id"]),),
+        ).fetchone()
+        if snapshot.get("storage_profile") != OBSERVATION_STORAGE_PROFILE:
+            if existing_evaluation:
+                raise RuntimeError(
+                    "observation_snapshot_cannot_compact_after_evaluation"
+                )
+            db.execute(
+                "UPDATE recommendations SET snapshot_json = ? WHERE id = ?",
+                (compact_json, int(checkpoint["recommendation_id"])),
+            )
+            compacted += 1
+        checkpoint["snapshot_json"] = compact_json
+        compact_exact += 1
+
+    for checkpoint in checkpoint_rows:
+        if checkpoint.get("recommendation_id"):
+            snapshot = _json_object(checkpoint.get("snapshot_json"))
+            payload = build_observation_terminal_counterfactual_payload(
+                operation=operation,
+                checkpoint=checkpoint,
+                snapshot=snapshot,
+            )
+            persist_counterfactual_payload(db, payload)
+        exit_result = build_exit_counterfactual_evaluation(
+            operation=operation,
+            checkpoint=checkpoint,
+        )
+        existing_exit = db.execute(
+            """
+            SELECT 1
+            FROM operation_exit_counterfactuals
+            WHERE checkpoint_id = ? AND evaluator_version = ?
+            LIMIT 1
+            """,
+            (int(checkpoint["id"]), EXIT_COUNTERFACTUAL_VERSION),
+        ).fetchone()
+        if not existing_exit:
+            persist_exit_counterfactual(
+                db,
+                checkpoint=checkpoint,
+                evaluation=exit_result["evaluation"],
+                **exit_result["persist_args"],
+            )
+
+    counts = dict(
+        db.execute(
+            """
+            SELECT
+                COUNT(*) AS checkpoints,
+                COUNT(*) FILTER (
+                    WHERE checkpoint.recommendation_id IS NOT NULL
+                ) AS predictive_contracts,
+                COUNT(rce.id) AS predictive_evaluations,
+                COUNT(oec.id) AS exit_evaluations
+            FROM operation_observation_checkpoints AS checkpoint
+            LEFT JOIN recommendation_counterfactual_evaluations AS rce
+              ON rce.recommendation_id = checkpoint.recommendation_id
+             AND rce.evaluator_version = ?
+            LEFT JOIN operation_exit_counterfactuals AS oec
+              ON oec.checkpoint_id = checkpoint.id
+             AND oec.evaluator_version = ?
+            WHERE checkpoint.session_id = ?
+            """,
+            (
+                OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+                EXIT_COUNTERFACTUAL_VERSION,
+                int(session["id"]),
+            ),
+        ).fetchone()
+    )
+    if int(counts["predictive_evaluations"]) != int(counts["predictive_contracts"]):
+        raise RuntimeError("observation_predictive_evaluation_incomplete")
+    if int(counts["exit_evaluations"]) != int(counts["checkpoints"]):
+        raise RuntimeError("observation_exit_evaluation_incomplete")
+    if compact_exact != int(counts["predictive_contracts"]):
+        raise RuntimeError("observation_compact_contract_incomplete")
+
+    opening_learning_raw = db.execute(
+        """
+        SELECT max_favorable_pnl, max_adverse_pnl, evidence_coverage_ratio,
+               evidence_candle_count, evidence_expected_candles,
+               learning_evaluator_version
+        FROM learning_evaluations
+        WHERE operation_id = ?
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        (int(operation["id"]),),
+    ).fetchone()
+    opening_learning = dict(opening_learning_raw) if opening_learning_raw else None
+    summary = build_observation_episode_summary(
+        session=session,
+        operation=operation,
+        checkpoints=checkpoint_rows,
+        storage={
+            "profile": OBSERVATION_STORAGE_PROFILE,
+            "compacted_snapshots": compacted,
+            "snapshot_bytes_before": bytes_before,
+            "snapshot_bytes_after": bytes_after,
+            "bytes_saved": bytes_before - bytes_after,
+            "reduction_ratio": (
+                1.0 - bytes_after / bytes_before if bytes_before else 0.0
+            ),
+        },
+        opening_learning=opening_learning,
+    )
+    summary["counts"]["predictive_evaluations"] = int(
+        counts["predictive_evaluations"]
+    )
+    summary["counts"]["exit_evaluations"] = int(counts["exit_evaluations"])
+    summary_json, summary_bytes, summary_hash = _encoded_json(
+        summary,
+        limit=MAX_SESSION_SUMMARY_BYTES,
+        error_code="observation_episode_summary_too_large",
+    )
+    current_status = str(session["status"])
+    target_status = "cancelled" if current_status == "cancelled" else "completed"
+    ended_at = (
+        session.get("ended_at")
+        if target_status == "cancelled" and session.get("ended_at")
+        else operation.get("closed_at") or datetime.now(timezone.utc)
+    )
+    existing_close_event = db.execute(
+        """
+        SELECT 1
+        FROM operation_observation_session_events
+        WHERE session_id = ? AND event_type = 'operation_closed'
+        LIMIT 1
+        """,
+        (int(session["id"]),),
+    ).fetchone()
+    if not existing_close_event:
         record_observation_session_event(
             db,
             session_id=int(session["id"]),
             operation_id=int(session["operation_id"]),
             event_type="operation_closed",
-            occurred_at=ended_at,
-            from_status=str(session["status"]),
-            to_status="completed",
+            occurred_at=operation.get("closed_at") or ended_at,
+            from_status=current_status,
+            to_status=target_status,
             interval_minutes=int(session.get("planned_interval_minutes") or 20),
-            details={"operation_status": "CLOSED"},
+            details={
+                "operation_status": "CLOSED",
+                "learning_status": "complete",
+                "episode_evaluator_version": OBSERVATION_EPISODE_EVALUATOR_VERSION,
+            },
+        )
+    updated = db.execute(
+        """
+        UPDATE operation_observation_sessions
+        SET status = ?, paused_at = NULL, ended_at = ?,
+            summary_json = ?, summary_bytes = ?, summary_sha256 = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING id
+        """,
+        (
+            target_status,
+            utc_iso(ended_at),
+            summary_json,
+            summary_bytes,
+            summary_hash,
+            int(session["id"]),
+        ),
+    ).fetchone()
+    if not updated:
+        raise RuntimeError("observation_session_learning_not_finalized")
+
+
+def finalize_closed_observation_sessions(
+    db,
+    *,
+    operation_id: int | None = None,
+) -> int:
+    """Finalize only after every checkpoint has evaluable conclusions."""
+    rows = db.execute(
+        """
+        SELECT to_jsonb(session) AS session_record,
+               to_jsonb(operation) AS operation_record
+        FROM operation_observation_sessions AS session
+        JOIN operations AS operation ON operation.id = session.operation_id
+        WHERE operation.status = 'CLOSED'
+          AND session.status IN ('active', 'paused', 'completed', 'cancelled')
+          AND COALESCE(
+                session.summary_json::jsonb->>'learning_status',
+                ''
+              ) <> 'complete'
+          AND (? IS NULL OR session.operation_id = ?)
+        ORDER BY session.id ASC
+        FOR UPDATE OF session
+        """,
+        (
+            int(operation_id) if operation_id is not None else None,
+            int(operation_id) if operation_id is not None else None,
+        ),
+    ).fetchall()
+    finalized = 0
+    for raw_row in rows:
+        records = dict(raw_row)
+        session = _json_object(records.get("session_record"))
+        operation = _json_object(records.get("operation_record"))
+        if not session or not operation:
+            raise RuntimeError("observation_finalization_record_invalid")
+        _finalize_observation_session_learning(
+            db,
+            session=session,
+            operation=operation,
         )
         finalized += 1
     return finalized
@@ -1268,11 +2316,17 @@ def observation_session_report(db, operation_id: int) -> dict | None:
             FROM operation_observation_checkpoints oc
             LEFT JOIN recommendation_counterfactual_evaluations rce
                 ON rce.recommendation_id = oc.recommendation_id
+               AND rce.evaluator_version = ?
             LEFT JOIN operation_exit_counterfactuals oec
                 ON oec.checkpoint_id = oc.id
+               AND oec.evaluator_version = ?
             WHERE oc.session_id = ?
             """,
-            (int(session["id"]),),
+            (
+                OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+                EXIT_COUNTERFACTUAL_VERSION,
+                int(session["id"]),
+            ),
         ).fetchone()
     )
     session["summary"] = json.loads(session.pop("summary_json"))
@@ -1347,16 +2401,17 @@ def _tone_from_score(score: float | None, threshold: float) -> str:
 
 def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
     rule_id = str(trace.get("rule_id") or "")
-    if rule_id not in RULE_LABELS:
+    metadata = rule_registry().get(rule_id)
+    if metadata is None:
         return None
     outputs = trace.get("outputs") if isinstance(trace.get("outputs"), dict) else {}
     values = _flatten_numeric_values(outputs)
     probability_effect = str(trace.get("probability_effect") or "")
-    category = (
-        "observational"
-        if "none" in probability_effect or "shadow" in str(trace.get("status") or "")
-        else "principal"
-    )
+    category = "principal" if (
+        probability_effect
+        and "none" not in probability_effect
+        and "shadow" not in str(trace.get("status") or "")
+    ) else "observational"
     side_sign = -1.0 if str(side).lower() == "short" else 1.0
     score: float | None = None
     threshold = 0.05
@@ -1372,7 +2427,7 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
 
     if rule_id == "M4-RULE-PATH-STRUCTURE-001":
         raw = add("directional_path_efficiency_h", "Eficiencia direccional")
-        score = side_sign * raw if raw is not None else None
+        score = raw
         threshold = 0.04
         explanation = "Mide si el recorrido reciente avanza de forma eficiente hacia la dirección de la operación."
     elif rule_id == "M4-RULE-MTF-HIERARCHY-001":
@@ -1380,7 +2435,7 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
             add("directional_path_efficiency_2h", "Eficiencia 2 h"),
             add("directional_path_efficiency_4h", "Eficiencia 4 h"),
         ]
-        usable = [side_sign * value for value in parts if value is not None]
+        usable = [value for value in parts if value is not None]
         score = math.fsum(usable) / len(usable) if usable else None
         threshold = 0.04
         explanation = "Comprueba si los tramos cortos mantienen una dirección compatible con el plan."
@@ -1436,10 +2491,11 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         )
         if favorable is not None or adverse is not None:
             score = float(favorable or 0.0) - float(adverse or 0.0)
-        elif displacement is not None:
-            score = displacement / 2.0
         threshold = 0.12
-        explanation = "Busca absorción real combinando volumen, desplazamiento, mechas y flujo ejecutado."
+        explanation = (
+            "Busca absorción real combinando volumen, desplazamiento, mechas y "
+            "flujo ejecutado; sin sus puntuaciones de absorción queda como contexto."
+        )
     elif rule_id == "LIB-CAND-COMPRESSION-001":
         add("compression_vector.atr_rank", "Rango ATR")
         add("compression_vector.bollinger_width_rank", "Anchura Bollinger")
@@ -1497,7 +2553,7 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         "key": f"{stage}:{rule_id}",
         "stage": stage,
         "rule_id": rule_id,
-        "label": RULE_LABELS[rule_id],
+        "label": RULE_LABELS.get(rule_id, str(metadata["name"])),
         "category": category,
         "status": str(trace.get("status") or "unknown"),
         "probability_effect": probability_effect or "unknown",
@@ -1569,7 +2625,11 @@ def observation_checkpoint_view(row: dict) -> dict:
     }
 
 
-def observation_closure_advisory(checkpoints: list[dict]) -> dict:
+def observation_closure_advisory(
+    checkpoints: list[dict],
+    *,
+    terminal_pnl: dict[str, float] | None = None,
+) -> dict:
     usable = [
         item
         for item in checkpoints
@@ -1617,12 +2677,53 @@ def observation_closure_advisory(checkpoints: list[dict]) -> dict:
         if signal.get("tone") == "favorable"
     ]
     pnl = _finite_number(latest.get("unrealized_pnl"))
+    economic_advantages: list[float] = []
+    if terminal_pnl is not None:
+        tp_pnl = _finite_number(terminal_pnl.get("tp"))
+        sl_pnl = _finite_number(terminal_pnl.get("sl"))
+        if tp_pnl is not None and sl_pnl is not None:
+            for item in recent:
+                item_pnl = _finite_number(item.get("unrealized_pnl"))
+                if item_pnl is None:
+                    continue
+                hold_value = (
+                    float(item["tp_probability"]) * tp_pnl
+                    + float(item["sl_probability"]) * sl_pnl
+                    + float(item.get("range_probability") or 0.0) * item_pnl
+                )
+                economic_advantages.append(item_pnl - hold_value)
+    persistent_profit_protection = (
+        pnl is not None
+        and pnl > 0.0
+        and len(economic_advantages) >= 3
+        and all(value > 0.0 for value in economic_advantages[-3:])
+    )
     reasons: list[str] = []
     level = "hold"
     label = "Mantener bajo observación"
     headline = "No hay evidencia conjunta suficiente para señalar un cierre."
 
-    if persistent_adverse and (deteriorating or len(set(adverse_rules)) >= 2):
+    if persistent_profit_protection:
+        level = "protect_candidate"
+        label = "Candidato para proteger beneficio"
+        headline = (
+            "Cerrar conserva más valor que mantener según tres evaluaciones "
+            "económicas consecutivas."
+        )
+        reasons.append(
+            f"La operación conserva {pnl:+.2f} USDT y la ventaja estimada de "
+            f"cerrar ahora es {economic_advantages[-1]:+.2f} USDT frente a mantener."
+        )
+        reasons.append(
+            "La señal económica se ha repetido en tres controles; no depende de un único tick."
+        )
+        if adverse_rules:
+            reasons.append(
+                "Acompañan la protección: "
+                + ", ".join(list(dict.fromkeys(adverse_rules))[:4])
+                + "."
+            )
+    elif persistent_adverse and (deteriorating or len(set(adverse_rules)) >= 2):
         level = "close_candidate"
         label = "Candidato de cierre"
         headline = "La ventaja se ha deteriorado de forma persistente y varias señales coinciden."
@@ -1694,6 +2795,12 @@ def observation_closure_advisory(checkpoints: list[dict]) -> dict:
         "recent_checkpoint_count": len(recent),
         "adverse_observational_count": len(set(adverse_rules)),
         "favorable_observational_count": len(set(favorable_rules)),
+        "model_expected_close_advantage": (
+            economic_advantages[-1] if economic_advantages else None
+        ),
+        "economic_confirmation_count": len(
+            [value for value in economic_advantages[-3:] if value > 0.0]
+        ),
         "production_effect": "none",
     }
 
@@ -1767,7 +2874,13 @@ def observation_monitor_report(
         "session": session,
         "checkpoints": checkpoints,
         "events": events,
-        "advisory": observation_closure_advisory(checkpoints),
+        "advisory": observation_closure_advisory(
+            checkpoints,
+            terminal_pnl={
+                "tp": _pnl_at_price(dict(operation), float(operation["take_profit"])),
+                "sl": _pnl_at_price(dict(operation), float(operation["stop_loss"])),
+            },
+        ),
         "pagination": {
             "has_more": has_more,
             "oldest_checkpoint_number": (
@@ -1778,7 +2891,9 @@ def observation_monitor_report(
         "semantics": {
             "probability": "fresh_entry_same_side_same_tp_sl_full_selected_horizon",
             "remaining_time": "original_operation_plan_time_remaining",
-            "closure_advisory": "persistent_multi_signal_observation_only",
+            "closure_advisory": (
+                "persistent_multi_signal_and_economic_value_observation_only"
+            ),
             "automatic_close": False,
             "production_effect": "none",
         },
@@ -1812,7 +2927,10 @@ def unified_predictive_inventory(db) -> dict:
             FROM operation_observation_checkpoints oc
             LEFT JOIN recommendation_counterfactual_evaluations rce
                 ON rce.recommendation_id = oc.recommendation_id
+               AND rce.evaluator_version = ?
             """
+            ,
+            (OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,),
         ).fetchone()
     )
     combined = dict(

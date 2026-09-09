@@ -1471,7 +1471,7 @@ def build_observation_terminal_counterfactual_payload(
     if horizon_seconds <= 0:
         raise ValueError("observation_horizon_missing")
     evaluation_expires_at = analysis_at + timedelta(seconds=horizon_seconds)
-    feature_values, pretrade_interval, feature_values_source = (
+    feature_values, pretrade_interval, _feature_values_source = (
         _selected_observation_feature_source(snapshot, time_horizon)
     )
     feature_values_json = canonical_json(feature_values)
@@ -1541,7 +1541,6 @@ def build_observation_terminal_counterfactual_payload(
         "exclusion_code": exclusion_code,
         "pretrade_status": "evaluated",
         "pretrade_interval": pretrade_interval,
-        "feature_values_source": feature_values_source,
         "feature_values_json": feature_values_json,
         "feature_payload_bytes": feature_payload_bytes,
         "outcome_status": (

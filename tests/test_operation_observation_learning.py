@@ -358,10 +358,7 @@ class OperationObservationLearningTests(unittest.TestCase):
             ],
             0.40,
         )
-        self.assertEqual(
-            payload["feature_values_source"],
-            "snapshot.stage_contexts.selected_horizon.feature_values",
-        )
+        self.assertNotIn("feature_values_source", payload)
 
     def test_close_candidate_requires_persistent_primary_risk_and_confirmation(self) -> None:
         checkpoints = []

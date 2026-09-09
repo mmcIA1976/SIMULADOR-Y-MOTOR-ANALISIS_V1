@@ -25,6 +25,7 @@ from operation_observation_learning import (
     checkpoint_code,
     observation_interval_minutes,
     observation_closure_advisory,
+    finalize_closed_observation_sessions,
     observation_next_due_at,
     observation_rule_signals,
     observation_session_is_due,
@@ -470,6 +471,28 @@ class OperationObservationLearningTests(unittest.TestCase):
             clear=False,
         ):
             self.assertTrue(runtime_database_bootstrap_enabled())
+
+    def test_global_finalizer_does_not_bind_an_untyped_null_parameter(self) -> None:
+        class EmptyCursor:
+            @staticmethod
+            def fetchall():
+                return []
+
+        class RecordingDb:
+            def __init__(self):
+                self.query = ""
+                self.params = None
+
+            def execute(self, query, params):
+                self.query = query
+                self.params = params
+                return EmptyCursor()
+
+        db = RecordingDb()
+
+        self.assertEqual(finalize_closed_observation_sessions(db), 0)
+        self.assertNotIn("? IS NULL", db.query)
+        self.assertEqual(db.params, ())
 
     def test_frontend_exposes_automatic_observation_schedule(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")

@@ -2165,8 +2165,13 @@ def finalize_closed_observation_sessions(
     operation_id: int | None = None,
 ) -> int:
     """Finalize only after every checkpoint has evaluable conclusions."""
+    operation_filter = ""
+    params: tuple[int, ...] = ()
+    if operation_id is not None:
+        operation_filter = "AND session.operation_id = ?"
+        params = (int(operation_id),)
     rows = db.execute(
-        """
+        f"""
         SELECT to_jsonb(session) AS session_record,
                to_jsonb(operation) AS operation_record
         FROM operation_observation_sessions AS session
@@ -2177,14 +2182,11 @@ def finalize_closed_observation_sessions(
                 session.summary_json::jsonb->>'learning_status',
                 ''
               ) <> 'complete'
-          AND (? IS NULL OR session.operation_id = ?)
+          {operation_filter}
         ORDER BY session.id ASC
         FOR UPDATE OF session
         """,
-        (
-            int(operation_id) if operation_id is not None else None,
-            int(operation_id) if operation_id is not None else None,
-        ),
+        params,
     ).fetchall()
     finalized = 0
     for raw_row in rows:

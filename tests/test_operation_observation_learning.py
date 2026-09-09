@@ -17,6 +17,7 @@ from operation_observation_learning import (
     OBSERVATION_ANALYSIS_TYPE,
     OBSERVATION_CONTRACT_VERSION,
     OBSERVATION_INTERVAL_CHOICES,
+    OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
     OBSERVATION_STORAGE_PROFILE,
     _probability_triplet,
     build_observation_terminal_counterfactual_payload,
@@ -302,6 +303,66 @@ class OperationObservationLearningTests(unittest.TestCase):
         )
         self.assertEqual(payload["evidence_source"], "operation_terminal_event")
 
+    def test_terminal_payload_recovers_features_from_compact_stage_context(self) -> None:
+        snapshot = {
+            "storage_profile": OBSERVATION_STORAGE_PROFILE,
+            "analysis_at": "2026-09-08T10:00:00+00:00",
+            "data_cutoff_at": "2026-09-08T09:59:59+00:00",
+            "evaluation_horizon_seconds": 86400,
+            "symbol": "BTCUSDT",
+            "side": "short",
+            "time_horizon": "intraday_wide",
+            "entry": 100.0,
+            "probability_trace": {"stage_traces": []},
+            "stage_contexts": {
+                "intraday_wide": {
+                    "time_horizon": "intraday_wide",
+                    "interval": "1h",
+                    "feature_values": {
+                        "M4-RULE-PATH-STRUCTURE-001::directional_path_efficiency_h": 0.25,
+                        "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank": 0.40,
+                    },
+                }
+            },
+        }
+
+        payload = build_observation_terminal_counterfactual_payload(
+            operation={
+                "id": 429,
+                "user_id": 2,
+                "symbol": "BTCUSDT",
+                "side": "short",
+                "time_horizon": "intraday_wide",
+                "take_profit": 95.0,
+                "stop_loss": 103.0,
+                "close_reason": "stop_loss",
+                "close_price": 103.0,
+                "closed_at": "2026-09-08T11:00:00+00:00",
+            },
+            checkpoint={
+                "recommendation_id": 1400,
+                "observed_at": "2026-09-08T10:00:00+00:00",
+                "market_price": 100.0,
+                "tp_probability": 0.70,
+                "sl_probability": 0.25,
+                "range_probability": 0.05,
+                "engine_version": "test",
+            },
+            snapshot=snapshot,
+        )
+
+        self.assertEqual(payload["pretrade_interval"], "1h")
+        self.assertEqual(
+            json.loads(payload["feature_values_json"])[
+                "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank"
+            ],
+            0.40,
+        )
+        self.assertEqual(
+            payload["feature_values_source"],
+            "snapshot.stage_contexts.selected_horizon.feature_values",
+        )
+
     def test_close_candidate_requires_persistent_primary_risk_and_confirmation(self) -> None:
         checkpoints = []
         for number, tp, sl in (
@@ -492,7 +553,10 @@ class OperationObservationLearningTests(unittest.TestCase):
 
         self.assertEqual(finalize_closed_observation_sessions(db), 0)
         self.assertNotIn("? IS NULL", db.query)
-        self.assertEqual(db.params, ())
+        self.assertEqual(
+            db.params,
+            (OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,),
+        )
 
     def test_frontend_exposes_automatic_observation_schedule(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")

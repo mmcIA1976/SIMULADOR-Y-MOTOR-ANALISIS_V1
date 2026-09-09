@@ -4,8 +4,12 @@ import hashlib
 import json
 from pathlib import Path
 
+from empirical_temporal_engine import (
+    ENGINE_VERSION as CURRENT_ENGINE_VERSION,
+    load_production_artifact,
+)
 from m6_predictive_rules import (
-    ACTIVE_PREDICTIVE_RULE_IDS,
+    ACTIVE_PREDICTIVE_RULE_IDS as LEGACY_M6_ACTIVE_RULE_IDS,
     FITTED_RULE_IDS,
     PROVISIONAL_RULE_WEIGHTS,
 )
@@ -151,6 +155,17 @@ BASELINE_RULE_IDS = (
 ACTIVE_ECONOMIC_RULE_IDS = (
     "M4-RULE-QUOTED-SPREAD-001",
     "M4-RULE-DEPTH-SWEEP-001",
+)
+
+# The single production engine is v0.9.  These are the rule families present
+# in its frozen nearest-analogue feature vector.  The older M6 list remains
+# importable for historical audit/replay, but it is not the production runtime
+# contract anymore.
+CURRENT_ACTIVE_PREDICTIVE_RULE_IDS = (
+    "M4-RULE-PATH-STRUCTURE-001",
+    "M4-RULE-MTF-HIERARCHY-001",
+    "M4-RULE-VOLATILITY-RANK-001",
+    "LIB-CAND-COMPRESSION-001",
 )
 
 
@@ -505,6 +520,90 @@ def runtime_rule(spec: dict, metadata: dict, coefficient_artifact: dict) -> dict
             "stable incremental value after family controls."
         ),
     }
+
+
+def empirical_analog_rule(
+    spec: dict,
+    metadata: dict,
+    coefficient_artifact: dict,
+) -> dict:
+    rule = runtime_rule(spec, metadata, coefficient_artifact)
+    rule.update(
+        {
+            "lifecycle_status": "active_provisional",
+            "origin": "current_probability_engine_v0.9",
+            "probability_integration_formula": (
+                "standardized feature in frozen historical-analogue distance; "
+                "no additive score or independent probability weight"
+            ),
+            "expected_probability_effect": {
+                "mode": "empirical_analog_distance_input",
+                "tp": "implicit_through_neighbor_selection",
+                "sl": "implicit_through_neighbor_selection",
+                "expiry": "implicit_through_neighbor_selection",
+            },
+            "parameters": [
+                {
+                    "name": "frozen_analog_feature_scaling",
+                    "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+                    "status": "active_frozen_production",
+                }
+            ],
+        }
+    )
+    return rule
+
+
+def demoted_m6_observational_rule(
+    spec: dict,
+    metadata: dict,
+    coefficient_artifact: dict,
+) -> dict:
+    rule = runtime_rule(spec, metadata, coefficient_artifact)
+    for parameter in rule["parameters"]:
+        parameter["status"] = "legacy_m6_not_active_in_v0.9"
+    rule.update(
+        {
+            "lifecycle_status": "implemented_shadow",
+            "origin": "legacy_m6_available_observational_in_v0.9",
+            "probability_integration_formula": "none_in_current_v0.9_engine",
+            "expected_probability_effect": {
+                "mode": "observation_only_no_production_effect",
+                "tp": "to_be_evaluated_counterfactually",
+                "sl": "to_be_evaluated_counterfactually",
+                "expiry": "to_be_evaluated_counterfactually",
+            },
+        }
+    )
+    return rule
+
+
+def promoted_compression_rule(rule: dict) -> dict:
+    promoted = dict(rule)
+    promoted.update(
+        {
+            "lifecycle_status": "active_provisional",
+            "origin": "current_probability_engine_v0.9",
+            "probability_integration_formula": (
+                "atr_rank and Bollinger-width rank are standardized features "
+                "in the frozen historical-analogue distance; no additive score"
+            ),
+            "expected_probability_effect": {
+                "mode": "empirical_analog_distance_input",
+                "tp": "implicit_through_neighbor_selection",
+                "sl": "implicit_through_neighbor_selection",
+                "expiry": "implicit_through_neighbor_selection",
+            },
+            "parameters": [
+                {
+                    "name": "frozen_analog_feature_scaling",
+                    "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+                    "status": "active_frozen_production",
+                }
+            ],
+        }
+    )
+    return promoted
 
 
 def baseline_rule(spec: dict, metadata: dict) -> dict:
@@ -1449,14 +1548,31 @@ def build_catalog() -> dict:
     m5 = load_json(M5_CONTRACT_PATH)
     candidate_payload = load_json(CANDIDATE_PATH)
     artifact = candidate_payload["coefficient_artifact"]
+    production_artifact = load_production_artifact()
+    artifact_rule_ids = {
+        parts[1]
+        for names in production_artifact["feature_names"].values()
+        for name in names
+        if len(parts := str(name).split("::", 2)) == 3
+    }
+    if artifact_rule_ids != set(CURRENT_ACTIVE_PREDICTIVE_RULE_IDS):
+        raise RuntimeError("catalog_active_rules_do_not_match_production_artifact")
     specs = {item["rule_id"]: item for item in m5["rules"]}
     rules = [
         baseline_rule(specs[rule_id], BASELINE_METADATA[rule_id])
         for rule_id in BASELINE_RULE_IDS
     ]
     rules.extend(
-        runtime_rule(specs[rule_id], ACTIVE_METADATA[rule_id], artifact)
-        for rule_id in ACTIVE_PREDICTIVE_RULE_IDS
+        (
+            empirical_analog_rule(
+                specs[rule_id], ACTIVE_METADATA[rule_id], artifact
+            )
+            if rule_id in CURRENT_ACTIVE_PREDICTIVE_RULE_IDS
+            else demoted_m6_observational_rule(
+                specs[rule_id], ACTIVE_METADATA[rule_id], artifact
+            )
+        )
+        for rule_id in LEGACY_M6_ACTIVE_RULE_IDS
     )
     rules.extend(
         [
@@ -1476,7 +1592,12 @@ def build_catalog() -> dict:
             ),
         ]
     )
-    rules.extend(candidate_rules())
+    rules.extend(
+        promoted_compression_rule(rule)
+        if rule["rule_id"] == "LIB-CAND-COMPRESSION-001"
+        else rule
+        for rule in candidate_rules()
+    )
     payload = {
         "library_version": LIBRARY_VERSION,
         "status": "master_contract_v0_1",
@@ -1484,12 +1605,19 @@ def build_catalog() -> dict:
             "Auditable rule library for Phase 1 TP/SL/expiry probability."
         ),
         "governance": {
-            "probability_production_changes": "none",
+            "probability_production_changes": (
+                "catalog_alignment_only_no_runtime_probability_change"
+            ),
             "new_candidate_weights_authorized": False,
             "learning_may_self_modify_production": False,
             "current_active_predictive_rule_ids": list(
-                ACTIVE_PREDICTIVE_RULE_IDS
+                CURRENT_ACTIVE_PREDICTIVE_RULE_IDS
             ),
+            "current_probability_engine_version": CURRENT_ENGINE_VERSION,
+            "current_probability_artifact_id": production_artifact["artifact_id"],
+            "current_probability_artifact_sha256": production_artifact[
+                "artifact_sha256"
+            ],
             "baseline_rule_ids": list(BASELINE_RULE_IDS),
             "active_economic_rule_ids": list(
                 ACTIVE_ECONOMIC_RULE_IDS
@@ -1504,7 +1632,7 @@ def build_catalog() -> dict:
         "summary": {
             "rules": len(rules),
             "active_baseline": len(BASELINE_RULE_IDS),
-            "active_predictive": len(ACTIVE_PREDICTIVE_RULE_IDS),
+            "active_predictive": len(CURRENT_ACTIVE_PREDICTIVE_RULE_IDS),
             "active_data_quality_gates": 2,
             "active_economic": len(ACTIVE_ECONOMIC_RULE_IDS),
             "implemented_observational": sum(

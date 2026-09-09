@@ -130,6 +130,41 @@ def validate_catalog(payload: dict) -> dict:
     summary = payload.get("summary", {})
     if summary.get("rules") != len(rules):
         raise ValueError("rule_library_summary_mismatch")
+    governed_active = set(
+        payload.get("governance", {}).get(
+            "current_active_predictive_rule_ids", []
+        )
+    )
+    catalog_active = {
+        rule["rule_id"]
+        for rule in rules
+        if rule["lifecycle_status"] == "active_provisional"
+    }
+    if governed_active != catalog_active:
+        raise ValueError("rule_library_active_runtime_contract_mismatch")
+
+    # Fail closed if the human-readable catalog drifts from the only
+    # production probability artifact.  This check reads the bundled frozen
+    # artifact; it never calls a market provider or changes model output.
+    from empirical_temporal_engine import ENGINE_VERSION, load_production_artifact
+
+    artifact = load_production_artifact()
+    artifact_active = {
+        parts[1]
+        for names in artifact["feature_names"].values()
+        for name in names
+        if len(parts := str(name).split("::", 2)) == 3
+    }
+    governance = payload.get("governance", {})
+    if governed_active != artifact_active:
+        raise ValueError("rule_library_production_artifact_rules_mismatch")
+    if governance.get("current_probability_engine_version") != ENGINE_VERSION:
+        raise ValueError("rule_library_production_engine_version_mismatch")
+    if (
+        governance.get("current_probability_artifact_sha256")
+        != artifact.get("artifact_sha256")
+    ):
+        raise ValueError("rule_library_production_artifact_hash_mismatch")
     return payload
 
 

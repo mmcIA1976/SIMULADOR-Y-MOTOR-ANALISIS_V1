@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from m6_predictive_rules import ACTIVE_PREDICTIVE_RULE_IDS
+from empirical_temporal_engine import load_production_artifact
 from predictive_rule_library import (
     EXPECTED_HORIZONS,
     load_rule_library,
@@ -31,7 +31,26 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
             for rule_id, rule in self.registry.items()
             if rule["lifecycle_status"] == "active_provisional"
         }
-        self.assertEqual(active, set(ACTIVE_PREDICTIVE_RULE_IDS))
+        governed = set(
+            self.catalog["governance"]["current_active_predictive_rule_ids"]
+        )
+        artifact_rule_ids = {
+            parts[1]
+            for names in load_production_artifact()["feature_names"].values()
+            for name in names
+            if len(parts := name.split("::", 2)) == 3
+        }
+        self.assertEqual(active, governed)
+        self.assertEqual(active, artifact_rule_ids)
+        self.assertEqual(
+            active,
+            {
+                "M4-RULE-PATH-STRUCTURE-001",
+                "M4-RULE-MTF-HIERARCHY-001",
+                "M4-RULE-VOLATILITY-RANK-001",
+                "LIB-CAND-COMPRESSION-001",
+            },
+        )
 
     def test_every_rule_uses_the_three_owner_approved_horizons(self) -> None:
         for rule in self.registry.values():
@@ -40,7 +59,7 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 EXPECTED_HORIZONS,
             )
 
-    def test_no_candidate_has_an_active_probability_formula(self) -> None:
+    def test_no_observational_candidate_has_an_active_probability_formula(self) -> None:
         for rule in self.registry.values():
             if rule["lifecycle_status"] in {
                 "proposed",
@@ -49,13 +68,15 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 "implemented_shadow",
                 "historical_evidence_available_data_limited",
             }:
-                self.assertEqual(
-                    rule["probability_integration_formula"],
-                    "none_until_implemented_and_approved",
+                self.assertTrue(
+                    rule["probability_integration_formula"].startswith("none")
                 )
-                self.assertEqual(
+                self.assertIn(
                     rule["expected_probability_effect"]["mode"],
-                    "hypothesis_not_active",
+                    {
+                        "hypothesis_not_active",
+                        "observation_only_no_production_effect",
+                    },
                 )
 
     def test_known_interactions_declare_parents(self) -> None:
@@ -69,15 +90,19 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 rule_metadata(rule_id)["interactions"]["parent_rule_ids"]
             )
 
-    def test_manual_current_weights_are_declared_unvalidated(self) -> None:
+    def test_current_engine_declares_analog_features_without_fake_weights(self) -> None:
         path = rule_metadata("M4-RULE-PATH-STRUCTURE-001")
         self.assertEqual(
             path["parameters"][0]["origin"],
-            "project_hypothesis",
+            "motor_v0_9_empirical_analog_frozen_artifact",
         )
         self.assertEqual(
             path["parameters"][0]["status"],
-            "unvalidated_provisional",
+            "active_frozen_production",
+        )
+        self.assertEqual(
+            path["expected_probability_effect"]["mode"],
+            "empirical_analog_distance_input",
         )
 
     def test_learning_cannot_modify_production(self) -> None:
@@ -101,7 +126,7 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
             evidence["reuse_policy"],
         )
 
-    def test_sixteen_observational_rules_are_implemented_in_shadow(self) -> None:
+    def test_observational_rules_match_the_current_single_engine(self) -> None:
         expected = {
             "LIB-CAND-EMA-TREND-001",
             "LIB-CAND-RSI-WILDER-001",
@@ -116,9 +141,16 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
             "LIB-CAND-BREADTH-001",
             "LIB-CAND-SENTIMENT-PERCENTILE-001",
             "LIB-CAND-LIQUIDATION-ZONE-001",
-            "LIB-CAND-COMPRESSION-001",
             "LIB-CAND-ABSORPTION-001",
             "LIB-CAND-PULLBACK-CONTEXT-001",
+            "M4-RULE-PRIOR-EXTREMA-001",
+            "M4-RULE-CONTINUOUS-REGIME-001",
+            "M4-RULE-AGGRESSOR-IMBALANCE-001",
+            "M4-RULE-OPEN-INTEREST-CHANGE-001",
+            "M4-RULE-PRICE-OI-STATE-001",
+            "M4-RULE-SPOT-FUTURES-BASIS-001",
+            "M4-RULE-MARK-INDEX-PREMIUM-001",
+            "M4-RULE-FUNDING-STATE-001",
         }
         actual = {
             rule_id

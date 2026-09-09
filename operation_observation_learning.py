@@ -14,10 +14,10 @@ OBSERVATION_ANALYSIS_TYPE = "operation_observation"
 OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.4"
 OBSERVATION_STORAGE_PROFILE = "observation-learning-compact-v0.2"
 OBSERVATION_PREDICTIVE_EVALUATOR_VERSION = (
-    "recommendation-observation-terminal-evaluator-v0.1"
+    "recommendation-observation-terminal-evaluator-v0.2-stage-context"
 )
 OBSERVATION_PREDICTIVE_SCHEMA_VERSION = (
-    "recommendation-observation-terminal-evaluation-v0.1"
+    "recommendation-observation-terminal-evaluation-v0.2"
 )
 OBSERVATION_EPISODE_EVALUATOR_VERSION = (
     "operation-observation-episode-evaluator-v0.1"
@@ -509,8 +509,12 @@ def _compact_probability_trace(trace: Any) -> dict:
             if stage.get(key) is not None
         }
         compact_stages.append(_compact_scalar_tree(compact_stage) or {})
-    result["stage_traces"] = compact_stages
-    return _compact_scalar_tree(result) or {}
+    compact_result = _compact_scalar_tree(result) or {}
+    # ``_compact_scalar_tree`` deliberately drops arrays of objects so raw
+    # market arrays cannot leak into storage.  These stage objects have already
+    # been reduced field-by-field above, therefore preserve them explicitly.
+    compact_result["stage_traces"] = compact_stages
+    return compact_result
 
 
 def _compact_stage_contexts(contexts: Any) -> dict:
@@ -1391,6 +1395,50 @@ def _selected_probability_stage(snapshot: dict, time_horizon: str) -> dict:
     return usable[-1] if usable else {}
 
 
+def _selected_observation_feature_source(
+    snapshot: dict,
+    time_horizon: str,
+) -> tuple[dict, str | None, str]:
+    """Read the selected stage from either full or compact v0.9 evidence.
+
+    Early compact observation rows retained ``stage_contexts`` but did not
+    always retain ``probability_trace.stage_traces``.  Both locations contain
+    the same pre-analysis feature vector; preferring the probability trace and
+    falling back to the stage context preserves old evidence without fetching
+    or reconstructing market data.
+    """
+    probability_stage = _selected_probability_stage(snapshot, time_horizon)
+    probability_features = _compact_scalar_tree(
+        probability_stage.get("current_feature_values")
+    )
+    if isinstance(probability_features, dict) and probability_features:
+        return (
+            probability_features,
+            probability_stage.get("interval"),
+            "snapshot.probability_trace.stage_traces.current_feature_values",
+        )
+
+    contexts = snapshot.get("stage_contexts")
+    contexts = contexts if isinstance(contexts, dict) else {}
+    context = contexts.get(time_horizon)
+    if not isinstance(context, dict):
+        matching = [
+            value
+            for value in contexts.values()
+            if isinstance(value, dict)
+            and str(value.get("time_horizon") or "") == time_horizon
+        ]
+        context = matching[-1] if matching else {}
+    context_features = _compact_scalar_tree(context.get("feature_values"))
+    if isinstance(context_features, dict) and context_features:
+        return (
+            context_features,
+            context.get("interval"),
+            "snapshot.stage_contexts.selected_horizon.feature_values",
+        )
+    raise ValueError("observation_predictive_features_missing")
+
+
 def build_observation_terminal_counterfactual_payload(
     *,
     operation: dict,
@@ -1423,11 +1471,9 @@ def build_observation_terminal_counterfactual_payload(
     if horizon_seconds <= 0:
         raise ValueError("observation_horizon_missing")
     evaluation_expires_at = analysis_at + timedelta(seconds=horizon_seconds)
-    selected_stage = _selected_probability_stage(snapshot, time_horizon)
-    feature_values = _compact_scalar_tree(
-        selected_stage.get("current_feature_values")
+    feature_values, pretrade_interval, feature_values_source = (
+        _selected_observation_feature_source(snapshot, time_horizon)
     )
-    feature_values = feature_values if isinstance(feature_values, dict) else {}
     feature_values_json = canonical_json(feature_values)
     feature_payload_bytes = len(feature_values_json.encode("utf-8"))
     if not 0 < feature_payload_bytes <= MAX_FEATURE_PAYLOAD_BYTES:
@@ -1494,7 +1540,8 @@ def build_observation_terminal_counterfactual_payload(
         "evaluation_status": evaluation_status,
         "exclusion_code": exclusion_code,
         "pretrade_status": "evaluated",
-        "pretrade_interval": selected_stage.get("interval"),
+        "pretrade_interval": pretrade_interval,
+        "feature_values_source": feature_values_source,
         "feature_values_json": feature_values_json,
         "feature_payload_bytes": feature_payload_bytes,
         "outcome_status": (
@@ -2178,15 +2225,29 @@ def finalize_closed_observation_sessions(
         JOIN operations AS operation ON operation.id = session.operation_id
         WHERE operation.status = 'CLOSED'
           AND session.status IN ('active', 'paused', 'completed', 'cancelled')
-          AND COALESCE(
-                session.summary_json::jsonb->>'learning_status',
-                ''
-              ) <> 'complete'
+          AND (
+                COALESCE(
+                    session.summary_json::jsonb->>'learning_status',
+                    ''
+                ) <> 'complete'
+                OR EXISTS (
+                    SELECT 1
+                    FROM operation_observation_checkpoints AS checkpoint
+                    WHERE checkpoint.session_id = session.id
+                      AND checkpoint.recommendation_id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM recommendation_counterfactual_evaluations AS rce
+                          WHERE rce.recommendation_id = checkpoint.recommendation_id
+                            AND rce.evaluator_version = ?
+                      )
+                )
+              )
           {operation_filter}
         ORDER BY session.id ASC
         FOR UPDATE OF session
         """,
-        params,
+        (OBSERVATION_PREDICTIVE_EVALUATOR_VERSION, *params),
     ).fetchall()
     finalized = 0
     for raw_row in rows:

@@ -3,22 +3,18 @@
   "status": "master_contract_v0_1",
   "purpose": "Auditable rule library for Phase 1 TP/SL/expiry probability.",
   "governance": {
-    "probability_production_changes": "none",
+    "probability_production_changes": "catalog_alignment_only_no_runtime_probability_change",
     "new_candidate_weights_authorized": false,
     "learning_may_self_modify_production": false,
     "current_active_predictive_rule_ids": [
       "M4-RULE-PATH-STRUCTURE-001",
-      "M4-RULE-PRIOR-EXTREMA-001",
-      "M4-RULE-VOLATILITY-RANK-001",
       "M4-RULE-MTF-HIERARCHY-001",
-      "M4-RULE-CONTINUOUS-REGIME-001",
-      "M4-RULE-AGGRESSOR-IMBALANCE-001",
-      "M4-RULE-OPEN-INTEREST-CHANGE-001",
-      "M4-RULE-PRICE-OI-STATE-001",
-      "M4-RULE-SPOT-FUTURES-BASIS-001",
-      "M4-RULE-MARK-INDEX-PREMIUM-001",
-      "M4-RULE-FUNDING-STATE-001"
+      "M4-RULE-VOLATILITY-RANK-001",
+      "LIB-CAND-COMPRESSION-001"
     ],
+    "current_probability_engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.9",
+    "current_probability_artifact_id": "TP-SL-EMPIRICAL-ANALOG-v0.9-frozen-001",
+    "current_probability_artifact_sha256": "21efda86717c691d4e2c69a837d0ab64b3128d16da0fe89d154aae20a8751d68",
     "baseline_rule_ids": [
       "M4-RULE-HORIZON-SAMPLING-001",
       "M4-RULE-PLAN-GEOMETRY-001",
@@ -784,7 +780,7 @@
       "family_id": "FAMILY-PRICE-PATH",
       "role": "standalone",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "origin": "current_probability_engine_v0.9",
       "objective": "Desplazamiento y eficiencia de trayectoria",
       "applicable_pairs": [
         "all_application_pairs"
@@ -836,7 +832,7 @@
         "if TV_W>0: E_W=abs(D_W)/TV_W; SE_W=D_W/TV_W",
         "if TV_W=0: E_W=0; SE_W=0; flat_path=true"
       ],
-      "probability_integration_formula": "signal=clip(side*SE_H,-1,1); log_w_tp+=0.12*signal; log_w_sl-=0.12*signal",
+      "probability_integration_formula": "standardized feature in frozen historical-analogue distance; no additive score or independent probability weight",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -875,10 +871,10 @@
         "project_hypothesis": "Side-aligned signed path efficiency may condition which barrier is reached first."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "empirical_analog_distance_input",
+        "tp": "implicit_through_neighbor_selection",
+        "sl": "implicit_through_neighbor_selection",
+        "expiry": "implicit_through_neighbor_selection"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -889,10 +885,9 @@
       },
       "parameters": [
         {
-          "name": "log_effect_weight",
-          "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
-          "value": 0.12
+          "name": "frozen_analog_feature_scaling",
+          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "status": "active_frozen_production"
         }
       ],
       "trace_contract": {
@@ -931,8 +926,8 @@
       "name": "Extremos observados del horizonte anterior",
       "family_id": "FAMILY-STRUCTURAL-LEVELS",
       "role": "standalone",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Extremos observados del horizonte anterior",
       "applicable_pairs": [
         "all_application_pairs"
@@ -983,7 +978,7 @@
         "long target extreme=X_high; short target extreme=X_low",
         "between=entry<X_high<TP long; TP<X_low<entry short"
       ],
-      "probability_integration_formula": "fitted competing-risk covariate",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -1021,10 +1016,10 @@
         "project_hypothesis": "A prior extreme between entry and TP may alter first-barrier probability."
       },
       "expected_probability_effect": {
-        "mode": "fitted_competing_risk_covariate",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -1035,7 +1030,7 @@
         {
           "name": "target_extreme_between_entry_and_tp",
           "origin": "historical_fit",
-          "status": "fitted_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "tp": 0.06992799118212334,
           "sl": 0.1670447895598004
         }
@@ -1077,7 +1072,7 @@
       "family_id": "FAMILY-VOLATILITY",
       "role": "standalone",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "origin": "current_probability_engine_v0.9",
       "objective": "Percentil continuo de volatilidad",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1125,7 +1120,7 @@
         "q=(count(RV_j<RV_t)+0.5*count(RV_j=RV_t))/60",
         "j are 60 strictly prior non-overlapping H windows"
       ],
-      "probability_integration_formula": "fitted competing-risk covariate",
+      "probability_integration_formula": "standardized feature in frozen historical-analogue distance; no additive score or independent probability weight",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -1163,10 +1158,10 @@
         "project_hypothesis": "Within-pair volatility rank may alter TP, SL and expiry hazards."
       },
       "expected_probability_effect": {
-        "mode": "fitted_competing_risk_covariate",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "empirical_analog_distance_input",
+        "tp": "implicit_through_neighbor_selection",
+        "sl": "implicit_through_neighbor_selection",
+        "expiry": "implicit_through_neighbor_selection"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -1177,11 +1172,9 @@
       },
       "parameters": [
         {
-          "name": "volatility_percentile_60",
-          "origin": "historical_fit",
-          "status": "fitted_provisional",
-          "tp": -0.5446818209064133,
-          "sl": -0.27055081722504065
+          "name": "frozen_analog_feature_scaling",
+          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "status": "active_frozen_production"
         }
       ],
       "trace_contract": {
@@ -1219,7 +1212,7 @@
       "family_id": "FAMILY-PRICE-PATH",
       "role": "group",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "origin": "current_probability_engine_v0.9",
       "objective": "Jerarquia multi-timeframe H, 2H y 4H",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1270,7 +1263,7 @@
         "sign_W=sign(SE_W)",
         "agreement in {all_positive,all_negative,mixed,flat_present}"
       ],
-      "probability_integration_formula": "two fitted competing-risk covariates",
+      "probability_integration_formula": "standardized feature in frozen historical-analogue distance; no additive score or independent probability weight",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -1309,10 +1302,10 @@
         "project_hypothesis": "Side-aligned path efficiencies at 2H and 4H may add information beyond the exact-horizon path."
       },
       "expected_probability_effect": {
-        "mode": "fitted_competing_risk_covariate",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "empirical_analog_distance_input",
+        "tp": "implicit_through_neighbor_selection",
+        "sl": "implicit_through_neighbor_selection",
+        "expiry": "implicit_through_neighbor_selection"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -1323,18 +1316,9 @@
       },
       "parameters": [
         {
-          "name": "directional_path_efficiency_2h",
-          "origin": "historical_fit",
-          "status": "fitted_provisional",
-          "tp": 0.04656228699988703,
-          "sl": -0.21100274047083908
-        },
-        {
-          "name": "directional_path_efficiency_4h",
-          "origin": "historical_fit",
-          "status": "fitted_provisional",
-          "tp": 0.1730886790956213,
-          "sl": -0.15500924011502018
+          "name": "frozen_analog_feature_scaling",
+          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "status": "active_frozen_production"
         }
       ],
       "trace_contract": {
@@ -1370,8 +1354,8 @@
       "name": "Vector continuo de regimen",
       "family_id": "FAMILY-PRICE-PATH-X-VOLATILITY",
       "role": "interaction",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Vector continuo de regimen",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1417,7 +1401,7 @@
       "deterministic_formulas": [
         "R_t=(q_RV,t, SE_H,t)"
       ],
-      "probability_integration_formula": "signal=clip(side*SE_H*(2*q_RV-1),-1,1); log_w_tp+=0.08*signal; log_w_sl-=0.08*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -1456,10 +1440,10 @@
         "project_hypothesis": "The effect of signed path efficiency may vary with volatility rank."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [
@@ -1476,7 +1460,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.08
         }
       ],
@@ -1511,8 +1495,8 @@
       "name": "Desequilibrio de operaciones agresoras ejecutadas",
       "family_id": "FAMILY-EXECUTED-FLOW",
       "role": "standalone",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Desequilibrio de operaciones agresoras ejecutadas",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1567,7 +1551,7 @@
         "ATI_H=(B_H-S_H)/(B_H+S_H)",
         "periodic alternative=(sum(buyVol)-sum(sellVol))/total"
       ],
-      "probability_integration_formula": "signal=clip(side*ATI_H,-1,1); log_w_tp+=0.12*signal; log_w_sl-=0.12*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -1608,10 +1592,10 @@
         "project_hypothesis": "Side-aligned executed taker imbalance may condition short-horizon first-barrier behavior."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -1622,7 +1606,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.12
         }
       ],
@@ -1668,8 +1652,8 @@
       "name": "Cambio logaritmico de open interest",
       "family_id": "FAMILY-OPEN-INTEREST",
       "role": "standalone",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Cambio logaritmico de open interest",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1719,7 +1703,7 @@
         "dOI_H=ln(OI_t/OI_(t-H))",
         "current_timestamp_ms-previous_timestamp_ms=H*1000"
       ],
-      "probability_integration_formula": "signal=tanh(50*abs(dOI_H)); log_w_tp+=0.06*signal; log_w_sl+=0.06*signal; log_w_expiry-=0.06*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -1760,10 +1744,10 @@
         "project_hypothesis": "Absolute open-interest change may indicate movement activity without identifying direction."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -1776,7 +1760,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.06
         }
       ],
@@ -1818,8 +1802,8 @@
       "name": "Estado conjunto precio y open interest",
       "family_id": "FAMILY-PRICE-X-OPEN-INTEREST",
       "role": "interaction",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Estado conjunto precio y open interest",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1868,7 +1852,7 @@
       "deterministic_formulas": [
         "POI_H=(D_H,dOI_H)"
       ],
-      "probability_integration_formula": "signal=clip(side*sign(D_H)*tanh(50*dOI_H),-1,1); log_w_tp+=0.10*signal; log_w_sl-=0.10*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -1909,10 +1893,10 @@
         "project_hypothesis": "The joint state of price displacement and open-interest change may condition barrier direction."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [
@@ -1927,7 +1911,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.1
         }
       ],
@@ -1965,8 +1949,8 @@
       "name": "Intervalo observable spot-Futures",
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "standalone",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Intervalo observable spot-Futures",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2022,7 +2006,7 @@
         "b_sellF_buyS=ln(F_bid/S_ask)",
         "b_buyF_sellS=ln(F_ask/S_bid)"
       ],
-      "probability_integration_formula": "signal=-side*tanh(100*b_mid); log_w_tp+=0.06*signal; log_w_sl-=0.06*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual",
@@ -2065,10 +2049,10 @@
         "project_hypothesis": "Synchronized spot-futures basis may condition first-barrier behavior."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -2082,7 +2066,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.06
         }
       ],
@@ -2126,8 +2110,8 @@
       "name": "Prima sincronizada mark-index",
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "standalone",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Prima sincronizada mark-index",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2174,7 +2158,7 @@
       "deterministic_formulas": [
         "b_mark_index=ln(markPrice/indexPrice)"
       ],
-      "probability_integration_formula": "signal=-side*tanh(200*mark_index_log_premium); log_w_tp+=0.06*signal; log_w_sl-=0.06*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -2215,10 +2199,10 @@
         "project_hypothesis": "Synchronized mark-index premium may condition first-barrier behavior."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -2232,7 +2216,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.06
         }
       ],
@@ -2270,8 +2254,8 @@
       "name": "Estado temporal y carga realizada de funding",
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "standalone",
-      "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine",
+      "lifecycle_status": "implemented_shadow",
+      "origin": "legacy_m6_available_observational_in_v0.9",
       "objective": "Estado temporal y carga realizada de funding",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2326,7 +2310,7 @@
         "L_prev_hour(H)=L_prev(H)/H_hours",
         "N_schedule=count configured event times within future H"
       ],
-      "probability_integration_formula": "signal=-side*tanh(last_funding_rate/0.0005); log_w_tp+=0.08*signal; log_w_sl-=0.08*signal",
+      "probability_integration_formula": "none_in_current_v0.9_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -2367,10 +2351,10 @@
         "project_hypothesis": "Funding state relative to the proposed side may condition first-barrier behavior."
       },
       "expected_probability_effect": {
-        "mode": "provisional_log_effect",
-        "tp": "recorded_per_analysis",
-        "sl": "recorded_per_analysis",
-        "expiry": "recorded_per_analysis"
+        "mode": "observation_only_no_production_effect",
+        "tp": "to_be_evaluated_counterfactually",
+        "sl": "to_be_evaluated_counterfactually",
+        "expiry": "to_be_evaluated_counterfactually"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -2384,7 +2368,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "unvalidated_provisional",
+          "status": "legacy_m6_not_active_in_v0.9",
           "value": 0.08
         }
       ],
@@ -3942,8 +3926,8 @@
       "name": "Volatility-volume compression state",
       "family_id": "FAMILY-VOLATILITY-X-VOLUME",
       "role": "interaction",
-      "lifecycle_status": "implemented_shadow",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine_v0.9",
       "objective": "Jointly low volatility, band width and relative volume may condition expiry and subsequent barrier hazards.",
       "applicable_pairs": [
         "all_application_pairs"
@@ -3972,7 +3956,7 @@
         "bb_width_20_2sigma=4*population_std(close_20)/SMA20",
         "compression_vector=(atr_rank_60,bb_width_midrank_60,relative_volume,volume_midrank_60)"
       ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
+      "probability_integration_formula": "atr_rank and Bollinger-width rank are standardized features in the frozen historical-analogue distance; no additive score",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
       "activation_conditions": [
         "all declared inputs complete, fresh and pre-trade",
@@ -3993,10 +3977,10 @@
         "project_hypothesis": "Jointly low volatility, band width and relative volume may condition expiry and subsequent barrier hazards."
       },
       "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
+        "mode": "empirical_analog_distance_input",
+        "tp": "implicit_through_neighbor_selection",
+        "sl": "implicit_through_neighbor_selection",
+        "expiry": "implicit_through_neighbor_selection"
       },
       "interactions": {
         "parent_rule_ids": [
@@ -4008,9 +3992,9 @@
       },
       "parameters": [
         {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
+          "name": "frozen_analog_feature_scaling",
+          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "status": "active_frozen_production"
         }
       ],
       "trace_contract": {
@@ -4773,11 +4757,11 @@
   "summary": {
     "rules": 38,
     "active_baseline": 5,
-    "active_predictive": 11,
+    "active_predictive": 4,
     "active_data_quality_gates": 2,
     "active_economic": 2,
-    "implemented_observational": 16,
+    "implemented_observational": 23,
     "data_blocked": 2
   },
-  "catalog_sha256": "425afe9be4e7a30635798dd7a475b33b19ce3c2d1981d33858600b27ed7a3c10"
+  "catalog_sha256": "35ffe40ef97ad798dee6d91d45bb9a1ce7b32a1e4667c41afafe480b94ef08d8"
 }

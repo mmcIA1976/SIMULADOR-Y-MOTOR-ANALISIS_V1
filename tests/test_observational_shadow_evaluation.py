@@ -8,6 +8,7 @@ from observational_shadow_evaluation import (
     EMA_CANDIDATE_LOG_ODDS_WEIGHTS,
     EMA_RULE_ID,
     PROSPECTIVE_COHORT_START_AT,
+    _validation_gate,
     apply_conditional_tp_sl_weight,
     build_observational_shadow_report,
     build_observational_shadow_report_from_rows,
@@ -204,6 +205,28 @@ class ObservationalShadowEvaluationTests(unittest.TestCase):
         self.assertEqual(prospective["origins"], {"observation": 1})
         self.assertEqual(prospective["outcomes"], {"sl": 1})
 
+    def test_episode_cannot_be_split_across_discovery_and_prospective(self):
+        rows = [
+            row(
+                429,
+                analysis_at="2026-09-06T11:00:00+00:00",
+                outcome="plan_failure",
+                aligned=False,
+            ),
+            row(
+                429,
+                analysis_at="2026-09-06T12:00:00+00:00",
+                outcome="plan_failure",
+                aligned=False,
+            ),
+        ]
+
+        report = build_observational_shadow_report_from_rows(rows)
+        cohorts = report["experiments"][0]["cohorts"]
+
+        self.assertEqual(cohorts["discovery"]["report"]["cases"], 2)
+        self.assertEqual(cohorts["prospective"]["report"]["cases"], 0)
+
     def test_counterfactual_weight_can_be_compared_without_mutating_rows(self):
         rows = [
             row(
@@ -257,6 +280,63 @@ class ObservationalShadowEvaluationTests(unittest.TestCase):
             original_probabilities,
         )
         self.assertEqual(baseline["log_odds_weight"], 0.0)
+
+    def test_repeated_checkpoints_share_one_episode_weight(self):
+        repeated = [
+            row(
+                429,
+                analysis_at=f"2026-09-07T10:{minute:02d}:00+00:00",
+                outcome="plan_failure",
+                aligned=True,
+            )
+            for minute in range(10)
+        ]
+        independent = row(
+            430,
+            analysis_at="2026-09-07T11:00:00+00:00",
+            outcome="plan_success",
+            aligned=True,
+        )
+
+        report = build_observational_shadow_report_from_rows(
+            [*repeated, independent]
+        )["experiments"][0]["cohorts"]["prospective"]["report"]
+        candidate = report["candidates"][0]
+
+        self.assertEqual(report["cases"], 11)
+        self.assertEqual(report["distinct_episodes"], 2)
+        self.assertAlmostEqual(candidate["baseline"]["total_weight"], 2.0)
+        self.assertAlmostEqual(
+            candidate["baseline"]["weighted_outcomes"]["tp"],
+            1.0,
+        )
+        self.assertAlmostEqual(
+            candidate["baseline"]["weighted_outcomes"]["sl"],
+            1.0,
+        )
+        self.assertEqual(
+            candidate["analysis_level_diagnostic"]["baseline"]["cases"],
+            11,
+        )
+
+    def test_validation_gate_counts_operations_not_checkpoints(self):
+        direct_gate = _validation_gate(
+            [
+                {
+                    "operation_id": 429,
+                    "outcome": "sl",
+                    "time_horizon": "intraday_short",
+                }
+                for _ in range(200)
+            ]
+        )
+
+        self.assertEqual(direct_gate["status"], "collecting")
+        self.assertEqual(
+            direct_gate["manual_weight_review"]["current_total_cases"],
+            1,
+        )
+        self.assertFalse(direct_gate["manual_weight_review"]["ready"])
 
     def test_database_adapter_performs_one_read_only_query(self):
         class Cursor:

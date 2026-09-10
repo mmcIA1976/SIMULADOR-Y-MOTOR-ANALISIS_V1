@@ -23,6 +23,7 @@ OBSERVATION_EPISODE_EVALUATOR_VERSION = (
     "operation-observation-episode-evaluator-v0.1"
 )
 EXIT_COUNTERFACTUAL_VERSION = "operation-exit-counterfactual-v0.1"
+OBSERVATION_CLOSURE_POLICY_VERSION = "observation-closure-advisory-v0.4"
 OBSERVATION_PRODUCTION_EFFECT = "none"
 OBSERVATION_INTERVAL_CHOICES = (5, 10, 15, 20, 30, 40, 60)
 
@@ -2703,6 +2704,7 @@ def observation_closure_advisory(
     ]
     if not usable:
         return {
+            "policy_version": OBSERVATION_CLOSURE_POLICY_VERSION,
             "level": "waiting",
             "label": "Esperando controles",
             "headline": "Aún no hay un análisis exacto para interpretar.",
@@ -2850,6 +2852,7 @@ def observation_closure_advisory(
             "La probabilidad mostrada reevalúa una entrada nueva en el horizonte completo; el tiempo restante del plan se muestra aparte y no se falsea con una interpolación."
         )
     return {
+        "policy_version": OBSERVATION_CLOSURE_POLICY_VERSION,
         "level": level,
         "label": label,
         "headline": headline,

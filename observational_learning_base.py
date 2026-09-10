@@ -6,6 +6,10 @@ import math
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
+from operation_observation_learning import (
+    OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
+)
+
 
 BASE_CONTRACT_VERSION = "observational-learning-base-v0.1"
 BASELINE_COHORT_KEY = "observational-rules-through-2026-09-09"
@@ -128,6 +132,53 @@ def prospective_episode_key(
             "bucket_number": bucket_number,
         }
     )
+
+
+def observation_checkpoint_partition(
+    *,
+    analysis_at: str | datetime,
+    operation_closed_at: str | datetime | None,
+    historical_cutoff_at: str | datetime,
+) -> str | None:
+    """Classify facts without leaking a terminal result across the cutoff.
+
+    A checkpoint observed before the historical cutoff is still prospective
+    when its operation closed after that cutoff: the label did not exist when
+    the historical cohort was sealed.  Older already-resolved facts remain in
+    the historical partition and are never appended a second time.
+    """
+    parsed_analysis = (
+        analysis_at
+        if isinstance(analysis_at, datetime)
+        else datetime.fromisoformat(str(analysis_at).replace("Z", "+00:00"))
+    )
+    parsed_cutoff = (
+        historical_cutoff_at
+        if isinstance(historical_cutoff_at, datetime)
+        else datetime.fromisoformat(
+            str(historical_cutoff_at).replace("Z", "+00:00")
+        )
+    )
+    parsed_closed = None
+    if operation_closed_at:
+        parsed_closed = (
+            operation_closed_at
+            if isinstance(operation_closed_at, datetime)
+            else datetime.fromisoformat(
+                str(operation_closed_at).replace("Z", "+00:00")
+            )
+        )
+    if parsed_analysis.tzinfo is None:
+        parsed_analysis = parsed_analysis.replace(tzinfo=timezone.utc)
+    if parsed_cutoff.tzinfo is None:
+        parsed_cutoff = parsed_cutoff.replace(tzinfo=timezone.utc)
+    if parsed_closed is not None and parsed_closed.tzinfo is None:
+        parsed_closed = parsed_closed.replace(tzinfo=timezone.utc)
+    if parsed_analysis > parsed_cutoff:
+        return "prospective"
+    if parsed_closed is not None and parsed_closed > parsed_cutoff:
+        return "prospective"
+    return None
 
 
 def parse_json_object(value: Any) -> dict:
@@ -829,7 +880,7 @@ def persist_closed_observational_case(db, operation_id: int) -> bool:
 
 
 def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
-    """Append exact finalized observation controls without re-reading history."""
+    """Append exact finalized controls, including cutoff-straddling sessions."""
     cohort = db.execute(
         """
         SELECT id, historical_cutoff_at
@@ -846,6 +897,7 @@ def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
         """
         SELECT checkpoint.checkpoint_code, checkpoint.operation_id,
                checkpoint.recommendation_id, operation.started_at,
+               operation.closed_at,
                recommendation.snapshot_json, recommendation.symbol,
                recommendation.side, recommendation.time_horizon,
                evaluation.evaluator_version, evaluation.analysis_at,
@@ -860,6 +912,7 @@ def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
             SELECT candidate.*
             FROM recommendation_counterfactual_evaluations candidate
             WHERE candidate.recommendation_id = checkpoint.recommendation_id
+              AND candidate.evaluator_version = ?
               AND candidate.contract_quality = 'exact'
               AND candidate.formal_learning_eligible
               AND candidate.evaluation_status = 'evaluated'
@@ -871,7 +924,7 @@ def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
           AND checkpoint.formal_learning_eligible
         ORDER BY checkpoint.checkpoint_number
         """,
-        (int(operation_id),),
+        (OBSERVATION_PREDICTIVE_EVALUATOR_VERSION, int(operation_id)),
     ).fetchall()
     cutoff = cohort["historical_cutoff_at"]
     if isinstance(cutoff, str):
@@ -891,7 +944,12 @@ def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
         )
         if parsed_analysis.tzinfo is None:
             parsed_analysis = parsed_analysis.replace(tzinfo=timezone.utc)
-        if parsed_analysis <= cutoff or row["outcome_label"] not in OUTCOME_CLASSES:
+        partition = observation_checkpoint_partition(
+            analysis_at=parsed_analysis,
+            operation_closed_at=row.get("closed_at"),
+            historical_cutoff_at=cutoff,
+        )
+        if partition is None or row["outcome_label"] not in OUTCOME_CLASSES:
             continue
         eligible += 1
         horizon = str(row["time_horizon"])
@@ -943,13 +1001,14 @@ def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
                 signal_count, missing_rule_ids_json, contract_version,
                 source_identity_sha256, payload_sha256
             )
-            VALUES (?, ?, 'prospective', 'operation_observation_checkpoint',
+            VALUES (?, ?, ?, 'operation_observation_checkpoint',
                     ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (case_key) DO NOTHING
             """,
             (
                 int(cohort["id"]),
                 source_identity_sha,
+                partition,
                 f"observation:{row['checkpoint_code']}",
                 str(row["symbol"]),
                 str(row["side"]),
@@ -969,6 +1028,42 @@ def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
         )
         inserted += int(cursor.rowcount == 1)
     return {"eligible_checkpoints": eligible, "inserted_cases": inserted}
+
+
+def backfill_finalized_observation_checkpoint_cases(db) -> dict:
+    """Repair compact facts for every exact observation completed after cutoff."""
+    rows = db.execute(
+        """
+        SELECT DISTINCT session.operation_id
+        FROM operation_observation_sessions session
+        JOIN operations operation ON operation.id = session.operation_id
+        WHERE session.evidence_quality = 'exact'
+          AND session.status IN ('completed', 'cancelled')
+          AND operation.status = 'CLOSED'
+          AND operation.closed_at IS NOT NULL
+        ORDER BY session.operation_id
+        """
+    ).fetchall()
+    eligible = 0
+    inserted = 0
+    operations = []
+    for row in rows:
+        operation_id = int(row["operation_id"])
+        result = persist_observation_checkpoint_cases(db, operation_id)
+        eligible += int(result["eligible_checkpoints"])
+        inserted += int(result["inserted_cases"])
+        operations.append(
+            {
+                "operation_id": operation_id,
+                **result,
+            }
+        )
+    return {
+        "operations_checked": len(rows),
+        "eligible_checkpoints": eligible,
+        "inserted_cases": inserted,
+        "operations": operations,
+    }
 
 
 def backfill_prospective_observational_cases(db) -> dict:
@@ -1010,6 +1105,7 @@ __all__ = (
     "PROSPECTIVE_EPISODE_CONTRACT",
     "RETAINED_RULE_HORIZONS",
     "active_baseline_specs",
+    "backfill_finalized_observation_checkpoint_cases",
     "backfill_prospective_observational_cases",
     "canonical_json",
     "current_snapshot_rule_values",
@@ -1019,4 +1115,5 @@ __all__ = (
     "persist_observation_checkpoint_cases",
     "prospective_episode_key",
     "observational_learning_progress",
+    "observation_checkpoint_partition",
 )

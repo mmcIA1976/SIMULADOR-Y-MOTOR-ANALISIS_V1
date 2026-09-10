@@ -8,6 +8,7 @@ from observational_learning_base import (
     RETAINED_RULE_HORIZONS,
     current_snapshot_rule_values,
     _compact_progress_metric,
+    observation_checkpoint_partition,
     payload_sha256,
     prospective_episode_key,
 )
@@ -118,6 +119,25 @@ class ObservationalLearningBaseTests(unittest.TestCase):
         )
         self.assertEqual(first, same_bucket)
         self.assertNotEqual(first, next_bucket)
+
+    def test_cutoff_straddling_observation_is_prospective(self):
+        self.assertEqual(
+            observation_checkpoint_partition(
+                analysis_at="2026-09-09T17:00:00+00:00",
+                operation_closed_at="2026-09-10T12:15:00+00:00",
+                historical_cutoff_at="2026-09-09T17:12:19+00:00",
+            ),
+            "prospective",
+        )
+
+    def test_resolved_pre_cutoff_observation_is_not_appended_again(self):
+        self.assertIsNone(
+            observation_checkpoint_partition(
+                analysis_at="2026-09-09T15:00:00+00:00",
+                operation_closed_at="2026-09-09T15:05:00+00:00",
+                historical_cutoff_at="2026-09-09T17:12:19+00:00",
+            )
+        )
 
     def test_compact_progress_counts_overlapping_cases_as_one_episode(self):
         metric = _compact_progress_metric(

@@ -182,6 +182,12 @@ class ObservationalLearningBaseTests(unittest.TestCase):
             "resolved_from_operation_terminal_event",
         )
 
+    def test_observation_finalizer_appends_compact_checkpoint_cases(self):
+        source = (ROOT / "operation_observation_learning.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("persist_observation_checkpoint_cases", source)
+
 
 if __name__ == "__main__":
     unittest.main()

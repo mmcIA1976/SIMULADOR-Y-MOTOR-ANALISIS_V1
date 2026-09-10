@@ -828,6 +828,149 @@ def persist_closed_observational_case(db, operation_id: int) -> bool:
     return cursor.rowcount == 1
 
 
+def persist_observation_checkpoint_cases(db, operation_id: int) -> dict:
+    """Append exact finalized observation controls without re-reading history."""
+    cohort = db.execute(
+        """
+        SELECT id, historical_cutoff_at
+        FROM observational_learning_cohorts
+        WHERE cohort_key = ? AND status = 'sealed'
+        LIMIT 1
+        """,
+        (BASELINE_COHORT_KEY,),
+    ).fetchone()
+    if cohort is None:
+        return {"eligible_checkpoints": 0, "inserted_cases": 0}
+    cohort = dict(cohort)
+    rows = db.execute(
+        """
+        SELECT checkpoint.checkpoint_code, checkpoint.operation_id,
+               checkpoint.recommendation_id, operation.started_at,
+               recommendation.snapshot_json, recommendation.symbol,
+               recommendation.side, recommendation.time_horizon,
+               evaluation.evaluator_version, evaluation.analysis_at,
+               evaluation.evaluation_expires_at, evaluation.outcome_label,
+               evaluation.tp_probability, evaluation.sl_probability,
+               evaluation.range_probability
+        FROM operation_observation_checkpoints checkpoint
+        JOIN operations operation ON operation.id = checkpoint.operation_id
+        JOIN recommendations recommendation
+          ON recommendation.id = checkpoint.recommendation_id
+        JOIN LATERAL (
+            SELECT candidate.*
+            FROM recommendation_counterfactual_evaluations candidate
+            WHERE candidate.recommendation_id = checkpoint.recommendation_id
+              AND candidate.contract_quality = 'exact'
+              AND candidate.formal_learning_eligible
+              AND candidate.evaluation_status = 'evaluated'
+            ORDER BY candidate.created_at DESC, candidate.id DESC
+            LIMIT 1
+        ) evaluation ON TRUE
+        WHERE checkpoint.operation_id = ?
+          AND checkpoint.contract_quality = 'exact'
+          AND checkpoint.formal_learning_eligible
+        ORDER BY checkpoint.checkpoint_number
+        """,
+        (int(operation_id),),
+    ).fetchall()
+    cutoff = cohort["historical_cutoff_at"]
+    if isinstance(cutoff, str):
+        cutoff = datetime.fromisoformat(cutoff.replace("Z", "+00:00"))
+    specs_by_horizon: dict[str, list[dict]] = {}
+    for spec in active_baseline_specs(db, int(cohort["id"])):
+        specs_by_horizon.setdefault(str(spec["time_horizon"]), []).append(spec)
+    inserted = 0
+    eligible = 0
+    for raw in rows:
+        row = dict(raw)
+        analysis_at = row["analysis_at"]
+        parsed_analysis = (
+            analysis_at
+            if isinstance(analysis_at, datetime)
+            else datetime.fromisoformat(str(analysis_at).replace("Z", "+00:00"))
+        )
+        if parsed_analysis.tzinfo is None:
+            parsed_analysis = parsed_analysis.replace(tzinfo=timezone.utc)
+        if parsed_analysis <= cutoff or row["outcome_label"] not in OUTCOME_CLASSES:
+            continue
+        eligible += 1
+        horizon = str(row["time_horizon"])
+        signals, missing = current_snapshot_rule_values(
+            parse_json_object(row["snapshot_json"]),
+            side=str(row["side"]),
+            time_horizon=horizon,
+            baseline_specs=specs_by_horizon.get(horizon, []),
+        )
+        episode_anchor = row.get("started_at") or parsed_analysis
+        episode_key = prospective_episode_key(
+            symbol=str(row["symbol"]),
+            time_horizon=horizon,
+            analysis_at=episode_anchor,
+        )
+        probabilities = {
+            "tp_first_within_horizon": float(row["tp_probability"]),
+            "sl_first_within_horizon": float(row["sl_probability"]),
+            "neither_barrier_before_expiry": float(row["range_probability"]),
+        }
+        identity = {
+            "source_kind": "operation_observation_checkpoint",
+            "checkpoint_code": str(row["checkpoint_code"]),
+            "recommendation_id": int(row["recommendation_id"]),
+            "contract_version": BASE_CONTRACT_VERSION,
+        }
+        source_identity_sha = payload_sha256(identity)
+        payload = {
+            **identity,
+            "operation_id": int(row["operation_id"]),
+            "symbol": str(row["symbol"]),
+            "side": str(row["side"]),
+            "time_horizon": horizon,
+            "analysis_at": parsed_analysis.isoformat(),
+            "evaluation_expires_at": str(row["evaluation_expires_at"]),
+            "outcome_label": str(row["outcome_label"]),
+            "probabilities": probabilities,
+            "signals": signals,
+            "missing_rule_ids": missing,
+            "episode_key": episode_key,
+        }
+        cursor = db.execute(
+            """
+            INSERT INTO observational_learning_cases (
+                cohort_id, case_key, cohort_partition, source_kind,
+                source_reference, symbol, side, time_horizon, analysis_at,
+                evaluation_expires_at, outcome_label, episode_key,
+                episode_weight, probabilities_json, signals_json,
+                signal_count, missing_rule_ids_json, contract_version,
+                source_identity_sha256, payload_sha256
+            )
+            VALUES (?, ?, 'prospective', 'operation_observation_checkpoint',
+                    ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (case_key) DO NOTHING
+            """,
+            (
+                int(cohort["id"]),
+                source_identity_sha,
+                f"observation:{row['checkpoint_code']}",
+                str(row["symbol"]),
+                str(row["side"]),
+                horizon,
+                parsed_analysis.isoformat(),
+                str(row["evaluation_expires_at"]),
+                str(row["outcome_label"]),
+                episode_key,
+                canonical_json(probabilities),
+                canonical_json(signals),
+                len(signals),
+                canonical_json(missing),
+                BASE_CONTRACT_VERSION,
+                source_identity_sha,
+                payload_sha256(payload),
+            ),
+        )
+        inserted += int(cursor.rowcount == 1)
+    return {"eligible_checkpoints": eligible, "inserted_cases": inserted}
+
+
 def backfill_prospective_observational_cases(db) -> dict:
     """Bridge closures after the frozen cutoff; idempotency prevents doubles."""
     rows = db.execute(
@@ -873,6 +1016,7 @@ __all__ = (
     "ensure_observational_learning_base_tables",
     "payload_sha256",
     "persist_closed_observational_case",
+    "persist_observation_checkpoint_cases",
     "prospective_episode_key",
     "observational_learning_progress",
 )

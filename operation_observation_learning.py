@@ -2203,6 +2203,9 @@ def _finalize_observation_session_learning(
     ).fetchone()
     if not updated:
         raise RuntimeError("observation_session_learning_not_finalized")
+    from observational_learning_base import persist_observation_checkpoint_cases
+
+    persist_observation_checkpoint_cases(db, int(operation["id"]))
 
 
 def finalize_closed_observation_sessions(

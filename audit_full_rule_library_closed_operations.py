@@ -113,6 +113,7 @@ JOIN LATERAL (
     SELECT candidate.*
     FROM recommendations candidate
     WHERE candidate.operation_id = o.id
+      AND candidate.analysis_type = 'pre_trade'
     ORDER BY candidate.created_at DESC, candidate.id DESC
     LIMIT 1
 ) r ON TRUE

@@ -63,6 +63,14 @@ MOVEMENT_RULE_IDS = {
 }
 
 SQL_STORED_EXACT = """
+WITH latest_exact AS (
+    SELECT DISTINCT ON (candidate.recommendation_id) candidate.*
+    FROM recommendation_counterfactual_evaluations candidate
+    WHERE candidate.contract_quality = 'exact'
+      AND candidate.formal_learning_eligible
+    ORDER BY candidate.recommendation_id, candidate.created_at DESC,
+             candidate.id DESC
+)
 SELECT
     e.id AS evaluation_id,
     e.recommendation_id,
@@ -97,11 +105,9 @@ SELECT
         ELSE '{}'
     END AS snapshot_json,
     r.created_at
-FROM recommendation_counterfactual_evaluations e
+FROM latest_exact e
 JOIN recommendations r ON r.id = e.recommendation_id
-WHERE e.contract_quality = 'exact'
-  AND e.formal_learning_eligible
-  AND r.operation_id IS NULL
+WHERE r.operation_id IS NULL
 ORDER BY e.analysis_at, e.id
 """
 
@@ -298,9 +304,14 @@ def normalize_counterfactual_source(raw: dict) -> dict:
 
 
 def stored_counterfactual_outcome(raw: dict) -> dict:
+    label = raw.get("outcome_label")
+    formally_resolved = (
+        raw.get("evaluation_status") == "evaluated" and label in CLASSES
+    )
     return {
-        "status": str(raw.get("outcome_status") or "missing"),
-        "label": raw.get("outcome_label"),
+        "status": "resolved" if formally_resolved else "missing",
+        "recorded_status": str(raw.get("outcome_status") or "missing"),
+        "label": label,
         "first_touch_at": raw.get("first_touch_at"),
         "coverage_ratio": raw.get("coverage_ratio"),
         "market_sha256": raw.get("market_sha256"),

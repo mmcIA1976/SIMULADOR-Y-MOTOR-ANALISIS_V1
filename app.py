@@ -76,6 +76,7 @@ from order_book_observation_state import (
 from observational_shadow_evaluation import (
     build_observational_shadow_report,
 )
+from observational_learning_base import persist_closed_observational_case
 from sequential_production_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
@@ -1845,6 +1846,7 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
             SELECT r2.id
             FROM recommendations r2
             WHERE r2.operation_id = o.id
+              AND r2.analysis_type = 'pre_trade'
             ORDER BY r2.created_at DESC, r2.id DESC
             LIMIT 1
         )
@@ -2095,6 +2097,11 @@ def refresh_learning_evaluations_with_db(db) -> list[dict]:
             historical_evidence=historical_evidence,
         )
         save_learning_evaluation(db, evaluation)
+        if evaluation.get("operation_id") is not None:
+            persist_closed_observational_case(
+                db,
+                int(evaluation["operation_id"]),
+            )
         save_learning_evidence_audit(
             db,
             int(operation["id"]),

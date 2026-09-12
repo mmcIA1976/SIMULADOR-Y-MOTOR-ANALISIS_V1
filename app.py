@@ -649,10 +649,25 @@ def startup() -> None:
     else:
         with connect() as db:
             verify_runtime_schema(db)
-    finalize_due_observations()
-    refresh_learning_conclusions()
-    refresh_learning_evaluations()
-    reconcile_all_user_cash_balances()
+    # Railway restarts must not replay the complete historical learning set or
+    # every user portfolio.  Those jobs read large JSON payloads, delay the
+    # healthcheck and consume Supabase egress even when nothing has changed.
+    # The operation worker already finalizes observations/evaluations when a
+    # close occurs; portfolio reconciliation is performed by the normal
+    # operation/portfolio write paths.  Keep the old maintenance hook only as
+    # an explicit local/administrative escape hatch.
+    if startup_runtime_maintenance_enabled():
+        finalize_due_observations()
+        refresh_learning_conclusions()
+        refresh_learning_evaluations()
+        reconcile_all_user_cash_balances()
+
+
+def startup_runtime_maintenance_enabled() -> bool:
+    configured = os.environ.get("RUN_STARTUP_MAINTENANCE")
+    if configured is not None:
+        return configured.strip().lower() in {"1", "true", "yes", "on"}
+    return not bool(os.environ.get("RAILWAY_ENVIRONMENT", "").strip())
 
 
 @app.on_event("shutdown")

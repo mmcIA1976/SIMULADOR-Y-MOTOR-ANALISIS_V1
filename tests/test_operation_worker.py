@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import unittest
 from contextlib import contextmanager
@@ -532,6 +533,22 @@ class OperationWorkerTests(unittest.TestCase):
             response.headers["cache-control"],
             "public, max-age=31536000, immutable",
         )
+
+    def test_startup_runtime_maintenance_is_disabled_on_railway(self):
+        with patch.dict(os.environ, {"RAILWAY_ENVIRONMENT": "production"}, clear=False):
+            os.environ.pop("RUN_STARTUP_MAINTENANCE", None)
+            self.assertFalse(app.startup_runtime_maintenance_enabled())
+
+    def test_startup_runtime_maintenance_requires_explicit_railway_override(self):
+        with patch.dict(
+            os.environ,
+            {
+                "RAILWAY_ENVIRONMENT": "production",
+                "RUN_STARTUP_MAINTENANCE": "true",
+            },
+            clear=False,
+        ):
+            self.assertTrue(app.startup_runtime_maintenance_enabled())
 
     def test_shared_symbol_klines_before_operation_start_are_ignored(self):
         operation = {

@@ -2651,10 +2651,18 @@ def observation_rule_signals(snapshot: dict) -> list[dict]:
 def observation_checkpoint_view(row: dict) -> dict:
     snapshot = _json_object(row.get("snapshot_json"))
     context = _json_object(row.get("context_json"))
-    rule_signals = observation_rule_signals(snapshot)
+    stored_rule_signals = context.get("monitor_rule_signals")
+    rule_signals = (
+        stored_rule_signals
+        if isinstance(stored_rule_signals, list)
+        else observation_rule_signals(snapshot)
+    )
     probability_trace = snapshot.get("probability_trace")
     stage_count = 0
-    horizon_seconds = _finite_number(snapshot.get("evaluation_horizon_seconds"))
+    horizon_seconds = _finite_number(
+        context.get("analysis_horizon_seconds")
+        or snapshot.get("evaluation_horizon_seconds")
+    )
     if isinstance(probability_trace, dict):
         traces = probability_trace.get("stage_traces")
         stage_count = len(traces) if isinstance(traces, list) else 0
@@ -2879,7 +2887,10 @@ def observation_monitor_report(
     *,
     checkpoint_limit: int = 120,
     before_checkpoint_number: int | None = None,
+    after_checkpoint_number: int | None = None,
 ) -> dict | None:
+    if before_checkpoint_number is not None and after_checkpoint_number is not None:
+        raise ValueError("observation_monitor_cursor_conflict")
     session = observation_session_report(db, operation_id)
     if session is None:
         return None
@@ -2898,30 +2909,49 @@ def observation_monitor_report(
         raise ValueError("observation_operation_not_found")
     limit = max(10, min(int(checkpoint_limit), 200))
     params: list[Any] = [int(session["id"])]
-    before_sql = ""
+    cursor_sql = ""
+    order_sql = "DESC"
     if before_checkpoint_number is not None:
-        before_sql = "AND checkpoint.checkpoint_number < ?"
+        cursor_sql = "AND checkpoint.checkpoint_number < ?"
         params.append(int(before_checkpoint_number))
+    elif after_checkpoint_number is not None:
+        cursor_sql = "AND checkpoint.checkpoint_number > ?"
+        order_sql = "ASC"
+        params.append(int(after_checkpoint_number))
     params.append(limit + 1)
     rows = db.execute(
         f"""
-        SELECT checkpoint.*, recommendation.snapshot_json,
+        SELECT checkpoint.*,
+               CASE
+                   WHEN jsonb_typeof(
+                       checkpoint.context_json::jsonb -> 'monitor_rule_signals'
+                   ) = 'array'
+                   THEN NULL
+                   ELSE jsonb_build_object(
+                       'side', recommendation.snapshot_json::jsonb -> 'side',
+                       'stage_rule_traces', recommendation.snapshot_json::jsonb -> 'stage_rule_traces',
+                       'probability_trace', jsonb_build_object(
+                           'stage_traces', recommendation.snapshot_json::jsonb #> '{{probability_trace,stage_traces}}'
+                       ),
+                       'evaluation_horizon_seconds', recommendation.snapshot_json::jsonb -> 'evaluation_horizon_seconds'
+                   )
+               END AS snapshot_json,
                recommendation.engine_version
         FROM operation_observation_checkpoints AS checkpoint
         LEFT JOIN recommendations AS recommendation
           ON recommendation.id = checkpoint.recommendation_id
         WHERE checkpoint.session_id = ?
-          {before_sql}
-        ORDER BY checkpoint.checkpoint_number DESC
+          {cursor_sql}
+        ORDER BY checkpoint.checkpoint_number {order_sql}
         LIMIT ?
         """,
         tuple(params),
     ).fetchall()
     has_more = len(rows) > limit
     selected_rows = list(rows[:limit])
-    checkpoints = [
-        observation_checkpoint_view(dict(row)) for row in reversed(selected_rows)
-    ]
+    checkpoints = [observation_checkpoint_view(dict(row)) for row in selected_rows]
+    if order_sql == "DESC":
+        checkpoints.reverse()
     events = []
     for raw_event in db.execute(
         """
@@ -2937,22 +2967,86 @@ def observation_monitor_report(
         event["occurred_at"] = utc_iso(event["occurred_at"])
         event["details"] = _json_object(event.pop("details_json"))
         events.append(event)
+    terminal_pnl = {
+        "tp": _pnl_at_price(dict(operation), float(operation["take_profit"])),
+        "sl": _pnl_at_price(dict(operation), float(operation["stop_loss"])),
+    }
+    advisory = None
+    if after_checkpoint_number is None:
+        advisory = observation_closure_advisory(
+            checkpoints,
+            terminal_pnl=terminal_pnl,
+        )
+    elif checkpoints:
+        # Incremental refreshes return no historical snapshots.  Only scalar
+        # values from the first and last three checkpoints are needed for the
+        # closure policy; the newest compact rule signals are already present.
+        recent_rows = db.execute(
+            """
+            SELECT id, checkpoint_number, checkpoint_code, observed_at,
+                   market_price, unrealized_pnl, remaining_seconds,
+                   tp_probability, sl_probability, range_probability,
+                   decision, decision_candidate, contract_quality,
+                   formal_learning_eligible, recommendation_id, context_json
+            FROM operation_observation_checkpoints
+            WHERE session_id = ?
+            ORDER BY checkpoint_number DESC
+            LIMIT 3
+            """,
+            (int(session["id"]),),
+        ).fetchall()
+        advisory_checkpoints = [
+            observation_checkpoint_view(dict(row))
+            for row in reversed(recent_rows)
+        ]
+        newest = checkpoints[-1]
+        advisory_checkpoints = [
+            newest
+            if int(item["checkpoint_number"]) == int(newest["checkpoint_number"])
+            else item
+            for item in advisory_checkpoints
+        ]
+        first_row = db.execute(
+            """
+            SELECT id, checkpoint_number, checkpoint_code, observed_at,
+                   market_price, unrealized_pnl, remaining_seconds,
+                   tp_probability, sl_probability, range_probability,
+                   decision, decision_candidate, contract_quality,
+                   formal_learning_eligible, recommendation_id, context_json
+            FROM operation_observation_checkpoints
+            WHERE session_id = ?
+            ORDER BY checkpoint_number ASC
+            LIMIT 1
+            """,
+            (int(session["id"]),),
+        ).fetchone()
+        if first_row:
+            first_view = observation_checkpoint_view(dict(first_row))
+            if not advisory_checkpoints or (
+                int(first_view["checkpoint_number"])
+                != int(advisory_checkpoints[0]["checkpoint_number"])
+            ):
+                advisory_checkpoints.insert(0, first_view)
+        advisory = observation_closure_advisory(
+            advisory_checkpoints,
+            terminal_pnl=terminal_pnl,
+        )
     return {
         "operation": dict(operation),
         "session": session,
         "checkpoints": checkpoints,
         "events": events,
-        "advisory": observation_closure_advisory(
-            checkpoints,
-            terminal_pnl={
-                "tp": _pnl_at_price(dict(operation), float(operation["take_profit"])),
-                "sl": _pnl_at_price(dict(operation), float(operation["stop_loss"])),
-            },
-        ),
+        "advisory": advisory,
+        "incremental": after_checkpoint_number is not None,
         "pagination": {
             "has_more": has_more,
             "oldest_checkpoint_number": (
                 checkpoints[0]["checkpoint_number"] if checkpoints else None
+            ),
+            "latest_checkpoint_number": (
+                checkpoints[-1]["checkpoint_number"]
+                if checkpoints
+                else after_checkpoint_number
             ),
             "limit": limit,
         },

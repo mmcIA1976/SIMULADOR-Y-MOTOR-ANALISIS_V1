@@ -149,12 +149,23 @@ class OperationStateSnapshotTests(unittest.TestCase):
         self.assertIn("_sync=${Date.now()}", app_js)
         self.assertIn('data.operation_processing === "web"', app_js)
 
+    def test_observation_monitor_refreshes_incrementally_and_skips_paused_sessions(self):
+        app_js = (Path(__file__).resolve().parents[1] / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('params.set("after_checkpoint_number"', app_js)
+        self.assertIn('new URLSearchParams({ limit: "30" })', app_js)
+        sync_start = app_js.index("async function syncOperationStates(")
+        sync_end = app_js.index("async function loadOperations(", sync_start)
+        sync_source = app_js[sync_start:sync_end]
+        self.assertIn('session?.status === "active"', sync_source)
+        self.assertNotIn('["active", "paused"].includes(session?.status)', sync_source)
+
     def test_index_disables_cache_and_versions_operation_sync_asset(self):
         response = app.index()
 
         self.assertEqual(response.headers.get("cache-control"), "no-store")
         index_html = (Path(__file__).resolve().parents[1] / "index.html").read_text(encoding="utf-8")
-        self.assertIn("/static/app.js?v=20260909-observation-learning-v3", index_html)
+        self.assertIn("/static/app.js?v=20260912-egress-hotfix-v1", index_html)
 
 
 if __name__ == "__main__":

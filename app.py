@@ -7,6 +7,7 @@ import math
 import os
 import re
 import time
+from functools import lru_cache
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -138,6 +139,37 @@ EXIT_WINDOW_AFTER_MINUTES = 30
 OPERATION_STATUS_SNAPSHOT_MAX_IDS = 16
 UNSELECTED_ANALYSIS_FULL_PAYLOAD_TTL_HOURS = 24
 OBSERVATION_OPERATOR_USERNAME = "mauriciomc"
+ACTIVE_OPERATION_COLUMNS = """
+    id, user_id, symbol, side, entry, margin, leverage, time_horizon,
+    stop_loss, take_profit, status, created_at, started_at, closed_at,
+    close_price, close_reason, final_pnl, observation_until,
+    observation_status, mode, contest_season_id, entry_type,
+    requested_entry, trigger_condition, entry_order_type, triggered_at,
+    trigger_price
+"""
+OPERATION_LIST_COLUMNS = """
+    id, user_id, symbol, side, entry, margin, leverage, time_horizon,
+    stop_loss, take_profit, status, created_at, started_at, closed_at,
+    close_price, close_reason, final_pnl, observation_until,
+    observation_status, post_emotion, plan_followed, closing_note,
+    observation_result, observation_result_at, observation_summary,
+    learning_outcome, learning_summary, exit_evidence_json, mode,
+    contest_season_id, entry_type, requested_entry, trigger_condition,
+    entry_order_type, triggered_at, trigger_price, activation_evidence_json
+"""
+RECOMMENDATION_SUMMARY_COLUMNS = """
+    id, operation_id, analysis_type, symbol, side, time_horizon,
+    tp_probability, sl_probability, range_probability, risk_level,
+    setup_grade, confidence, training_decision, engine_version, created_at
+"""
+RECOMMENDATION_DETAIL_COLUMNS = """
+    id, operation_id, analysis_type, symbol, side, time_horizon,
+    tp_probability, sl_probability, range_probability, risk_level,
+    setup_grade, confidence, training_decision, parameter_advice_json,
+    reasons_json, alerts_json,
+    CASE WHEN analysis_json IS NULL THEN snapshot_json ELSE NULL END AS snapshot_json,
+    analysis_json, engine_version, created_at
+"""
 WEB_OPERATION_REFRESH_ENABLED = os.environ.get(
     "WEB_OPERATION_REFRESH_ENABLED",
     "true",
@@ -381,21 +413,34 @@ def load_limit_operation_context(db, operation: dict) -> dict | None:
     """Load the immutable LIMIT contract linked to a selected operation."""
     if operation.get("entry_order_type") != "limit_pullback":
         return None
-    recommendation = row_to_dict(
-        db.execute(
-            """
+    if getattr(db, "engine", None) == "postgres":
+        query = """
+            SELECT id, analysis_json::jsonb -> 'limit_analysis' AS limit_analysis
+            FROM recommendations
+            WHERE operation_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """
+    else:
+        query = """
             SELECT id, analysis_json
             FROM recommendations
             WHERE operation_id = ?
             ORDER BY created_at DESC
             LIMIT 1
-            """,
-            (operation["id"],),
-        ).fetchone()
+        """
+    recommendation = row_to_dict(
+        db.execute(query, (operation["id"],)).fetchone()
     )
     if recommendation is None:
         return None
-    analysis_payload = parse_exit_evidence(recommendation.get("analysis_json"))
+    limit_analysis = recommendation.get("limit_analysis")
+    if limit_analysis is None and recommendation.get("analysis_json"):
+        full_payload = parse_exit_evidence(recommendation.get("analysis_json")) or {}
+        limit_analysis = full_payload.get("limit_analysis")
+    if isinstance(limit_analysis, str):
+        limit_analysis = parse_exit_evidence(limit_analysis)
+    analysis_payload = {"limit_analysis": limit_analysis}
     context = extract_limit_context(analysis_payload)
     if context is None:
         return None
@@ -416,22 +461,28 @@ def operation_evaluation_expires_at(
             limit_context["contract"],
             operation.get("triggered_at") or operation.get("started_at"),
         )
-    recommendation = row_to_dict(
-        db.execute(
-            """
+    if getattr(db, "engine", None) == "postgres":
+        query = """
+            SELECT snapshot_json::jsonb ->> 'evaluation_expires_at'
+                   AS evaluation_expires_at
+            FROM recommendations
+            WHERE operation_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+        """
+    else:
+        query = """
             SELECT snapshot_json
             FROM recommendations
             WHERE operation_id = ?
             ORDER BY created_at DESC, id DESC
             LIMIT 1
-            """,
-            (operation["id"],),
-        ).fetchone()
-    )
-    snapshot = parse_snapshot_json(
-        recommendation.get("snapshot_json") if recommendation else None
-    )
-    expiry_value = snapshot.get("evaluation_expires_at")
+        """
+    recommendation = row_to_dict(db.execute(query, (operation["id"],)).fetchone())
+    expiry_value = recommendation.get("evaluation_expires_at") if recommendation else None
+    if expiry_value is None and recommendation:
+        snapshot = parse_exit_evidence(recommendation.get("snapshot_json")) or {}
+        expiry_value = snapshot.get("evaluation_expires_at")
     if expiry_value:
         return parse_limit_utc(expiry_value)
     horizon_seconds = int(
@@ -673,8 +724,21 @@ def static_asset(asset_name: str) -> FileResponse:
     return FileResponse(APP_DIR / asset_name, headers={"Cache-Control": "no-store"})
 
 
+@lru_cache(maxsize=128)
+def cached_avatar_bytes(user_id: int, version: str) -> tuple[bytes, str] | None:
+    """Load each immutable avatar version from Supabase only once per web process."""
+    with connect() as db:
+        row = db.execute(
+            "SELECT avatar_mime_type, avatar_data FROM users WHERE id = ?",
+            (int(user_id),),
+        ).fetchone()
+    if row is None or row["avatar_data"] is None or row["avatar_mime_type"] is None:
+        return None
+    return bytes(row["avatar_data"]), str(row["avatar_mime_type"])
+
+
 @app.get("/avatars/{file_name}")
-def avatar_asset(file_name: str) -> FileResponse:
+def avatar_asset(file_name: str, v: str = "") -> Response:
     safe_name = Path(file_name).name
     if safe_name != file_name or not safe_name.startswith("user_"):
         raise HTTPException(status_code=404, detail="Avatar no encontrado")
@@ -682,11 +746,15 @@ def avatar_asset(file_name: str) -> FileResponse:
         user_id = int(safe_name.replace("user_", "", 1).split(".", 1)[0])
     except ValueError as exc:
         raise HTTPException(status_code=404, detail="Avatar no encontrado") from exc
-    with connect() as db:
-        row = db.execute("SELECT avatar_mime_type, avatar_data FROM users WHERE id = ?", (user_id,)).fetchone()
-    if row is None or row["avatar_data"] is None or row["avatar_mime_type"] is None:
+    cached = cached_avatar_bytes(user_id, str(v or ""))
+    if cached is None:
         raise HTTPException(status_code=404, detail="Avatar no encontrado")
-    return Response(content=row["avatar_data"], media_type=row["avatar_mime_type"])
+    content, mime_type = cached
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @app.post("/api/auth/register")
@@ -771,6 +839,7 @@ def update_avatar(payload: AvatarPayload, session_token: str | None = Cookie(def
                 (user["id"],),
             ).fetchone()
         )
+    cached_avatar_bytes.cache_clear()
     return public_user(updated or {**user, "avatar_path": avatar_name, "avatar_mime_type": mime_type})
 
 
@@ -1308,14 +1377,19 @@ def activate_triggered_pending_operations(
     user_id: int | None = None,
     market_klines: list[list] | None = None,
 ) -> dict[int, dict]:
+    operation_columns = (
+        ACTIVE_OPERATION_COLUMNS
+        if getattr(db, "engine", None) == "postgres"
+        else "*"
+    )
     if user_id is None:
         rows = db.execute(
-            "SELECT * FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY'",
+            f"SELECT {operation_columns} FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY'",
             (symbol,),
         ).fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY' AND user_id = ?",
+            f"SELECT {operation_columns} FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY' AND user_id = ?",
             (symbol, user_id),
         ).fetchall()
     activated: dict[int, dict] = {}
@@ -1445,8 +1519,13 @@ def expire_due_pending_limit_operations(
 ) -> dict[int, dict]:
     params: tuple = (symbol,) if user_id is None else (symbol, user_id)
     user_clause = "" if user_id is None else " AND user_id = ?"
+    operation_columns = (
+        ACTIVE_OPERATION_COLUMNS
+        if getattr(db, "engine", None) == "postgres"
+        else "*"
+    )
     rows = db.execute(
-        f"SELECT * FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY'{user_clause}",
+        f"SELECT {operation_columns} FROM operations WHERE symbol = ? AND status = 'PENDING_ENTRY'{user_clause}",
         params,
     ).fetchall()
     current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
@@ -1515,14 +1594,19 @@ def close_triggered_open_operations(
     market_klines: list[list] | None = None,
     persist_exit_window: bool = True,
 ) -> dict[int, dict]:
+    operation_columns = (
+        ACTIVE_OPERATION_COLUMNS
+        if getattr(db, "engine", None) == "postgres"
+        else "*"
+    )
     if user_id is None:
         rows = db.execute(
-            "SELECT * FROM operations WHERE symbol = ? AND status = 'OPEN'",
+            f"SELECT {operation_columns} FROM operations WHERE symbol = ? AND status = 'OPEN'",
             (symbol,),
         ).fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM operations WHERE symbol = ? AND status = 'OPEN' AND user_id = ?",
+            f"SELECT {operation_columns} FROM operations WHERE symbol = ? AND status = 'OPEN' AND user_id = ?",
             (symbol, user_id),
         ).fetchall()
     closed: dict[int, dict] = {}
@@ -6005,6 +6089,7 @@ def get_operation_observation_monitor(
     operation_id: int,
     limit: int = 120,
     before_checkpoint_number: int | None = None,
+    after_checkpoint_number: int | None = None,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> dict:
     user = current_user(session_token)
@@ -6017,6 +6102,7 @@ def get_operation_observation_monitor(
             operation_id,
             checkpoint_limit=limit,
             before_checkpoint_number=before_checkpoint_number,
+            after_checkpoint_number=after_checkpoint_number,
         )
     return {"operation_id": operation_id, "monitor": report}
 
@@ -6236,7 +6322,7 @@ def record_operation_observation_checkpoint(
         recommendation_id = int(cursor.lastrowid)
         prior_rows = db.execute(
             """
-            SELECT checkpoint.*, recommendation.snapshot_json,
+            SELECT checkpoint.*, NULL AS snapshot_json,
                    recommendation.engine_version
             FROM operation_observation_checkpoints AS checkpoint
             LEFT JOIN recommendations AS recommendation
@@ -6254,6 +6340,13 @@ def record_operation_observation_checkpoint(
         current_checkpoint_number = int(
             current_session.get("next_checkpoint_number") or 1
         )
+        monitor_rule_signals = observation_rule_signals(
+            result.get("snapshot", {})
+        )
+        analysis_horizon_seconds = int(
+            result.get("snapshot", {}).get("evaluation_horizon_seconds")
+            or HORIZON_SECONDS[proposal.time_horizon]
+        )
         current_view = {
             "checkpoint_code": f"{operation_id}o{current_checkpoint_number}",
             "tp_probability": float(result["tp_probability"]),
@@ -6261,11 +6354,8 @@ def record_operation_observation_checkpoint(
             "range_probability": float(result["range_probability"]),
             "unrealized_pnl": unrealized_pnl,
             "remaining_seconds": remaining_seconds,
-            "analysis_horizon_seconds": int(
-                result.get("snapshot", {}).get("evaluation_horizon_seconds")
-                or HORIZON_SECONDS[proposal.time_horizon]
-            ),
-            "rule_signals": observation_rule_signals(result.get("snapshot", {})),
+            "analysis_horizon_seconds": analysis_horizon_seconds,
+            "rule_signals": monitor_rule_signals,
         }
         closure_advisory = observation_closure_advisory(
             [*prior_views, current_view],
@@ -6550,17 +6640,25 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
 def list_operations(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)
     with connect() as db:
-        finalize_due_observations(db)
-        refresh_learning_conclusions(db)
         rows = db.execute(
-            "SELECT * FROM operations WHERE user_id = ? ORDER BY created_at DESC",
+            f"""
+            SELECT {OPERATION_LIST_COLUMNS}
+            FROM operations
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            """,
             (user["id"],),
         ).fetchall()
         operations = [row_to_dict(row) for row in rows]
         for operation in operations:
-            operation["exit_evidence"] = parse_exit_evidence(operation.get("exit_evidence_json"))
-            operation["activation_evidence"] = parse_exit_evidence(operation.get("activation_evidence_json"))
+            operation["exit_evidence"] = parse_exit_evidence(
+                operation.pop("exit_evidence_json", None)
+            )
+            operation["activation_evidence"] = parse_exit_evidence(
+                operation.pop("activation_evidence_json", None)
+            )
             operation["recommendation"] = None
+            operation["recommendation_detail_loaded"] = True
             operation["limit_lifecycle"] = {}
             operation["ticks"] = []
 
@@ -6571,10 +6669,10 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
             # Batch fetch latest recommendation per operation (1 query instead of N).
             rec_rows = db.execute(
                 f"""
-                SELECT DISTINCT ON (operation_id) *
+                SELECT DISTINCT ON (operation_id) {RECOMMENDATION_SUMMARY_COLUMNS}
                 FROM recommendations
                 WHERE user_id = ? AND operation_id IN ({placeholders})
-                ORDER BY operation_id, created_at DESC
+                ORDER BY operation_id, created_at DESC, id DESC
                 """,
                 (user["id"], *op_ids),
             ).fetchall()
@@ -6582,39 +6680,75 @@ def list_operations(session_token: str | None = Cookie(default=None, alias=SESSI
 
             for op in operations:
                 rec = rec_by_op.get(op["id"])
-                op["recommendation"] = format_recommendation(rec, op) if rec else None
-
-            limit_ids = [
-                int(op["id"])
-                for op in operations
-                if op.get("entry_order_type") == "limit_pullback"
-            ]
-            if limit_ids:
-                limit_placeholders = ",".join(["?"] * len(limit_ids))
-                lifecycle_rows = db.execute(
-                    f"""
-                    SELECT operation_id, snapshot_type, event_at,
-                           learning_label, payload_json
-                    FROM limit_learning_snapshots
-                    WHERE operation_id IN ({limit_placeholders})
-                      AND snapshot_type IN ('activation', 'closure')
-                    ORDER BY operation_id, event_at
-                    """,
-                    tuple(limit_ids),
-                ).fetchall()
-                op_by_id = {int(op["id"]): op for op in operations}
-                for lifecycle_row in lifecycle_rows:
-                    item = row_to_dict(lifecycle_row)
-                    payload = parse_exit_evidence(item.get("payload_json")) or {}
-                    payload["event_at"] = item.get("event_at")
-                    payload["learning_label"] = item.get("learning_label")
-                    operation = op_by_id.get(int(item["operation_id"]))
-                    if operation is None:
-                        continue
-                    operation["limit_lifecycle"][item["snapshot_type"]] = payload
-                    if item["snapshot_type"] == "activation" and operation.get("recommendation"):
-                        operation["recommendation"]["activation_reanalysis"] = payload
+                if rec:
+                    op["recommendation"] = format_recommendation_summary(rec)
+                    op["recommendation_detail_loaded"] = False
     return {"operations": operations}
+
+
+@app.get("/api/operations/{operation_id}/analysis")
+def operation_analysis_detail(
+    operation_id: int,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    """Load the one full analysis the user explicitly selected."""
+    user = current_user(session_token)
+    with connect() as db:
+        operation = row_to_dict(
+            db.execute(
+                f"""
+                SELECT {OPERATION_LIST_COLUMNS}
+                FROM operations
+                WHERE id = ? AND user_id = ?
+                LIMIT 1
+                """,
+                (operation_id, user["id"]),
+            ).fetchone()
+        )
+        if operation is None:
+            raise HTTPException(status_code=404, detail="Operacion no encontrada")
+        recommendation = row_to_dict(
+            db.execute(
+                f"""
+                SELECT {RECOMMENDATION_DETAIL_COLUMNS}
+                FROM recommendations
+                WHERE operation_id = ? AND user_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+                """,
+                (operation_id, user["id"]),
+            ).fetchone()
+        )
+        formatted = (
+            format_recommendation(recommendation, operation)
+            if recommendation
+            else None
+        )
+        lifecycle: dict[str, dict] = {}
+        if operation.get("entry_order_type") == "limit_pullback":
+            rows = db.execute(
+                """
+                SELECT snapshot_type, event_at, learning_label, payload_json
+                FROM limit_learning_snapshots
+                WHERE operation_id = ?
+                  AND snapshot_type IN ('activation', 'closure')
+                ORDER BY event_at
+                """,
+                (operation_id,),
+            ).fetchall()
+            for raw_row in rows:
+                item = row_to_dict(raw_row)
+                payload = parse_exit_evidence(item.get("payload_json")) or {}
+                payload["event_at"] = item.get("event_at")
+                payload["learning_label"] = item.get("learning_label")
+                lifecycle[str(item["snapshot_type"])] = payload
+            if formatted and "activation" in lifecycle:
+                formatted["activation_reanalysis"] = lifecycle["activation"]
+    return {
+        "operation_id": operation_id,
+        "recommendation": formatted,
+        "limit_lifecycle": lifecycle,
+    }
 
 
 def parse_operation_status_snapshot_ids(raw_ids: str | None) -> list[int]:
@@ -6768,14 +6902,39 @@ def operation_ticks(
     }
 
 
-def parse_exit_evidence(raw: str | None) -> dict | None:
+def parse_exit_evidence(raw: str | dict | None) -> dict | None:
+    if isinstance(raw, dict):
+        return raw
     if not raw:
         return None
     try:
         parsed = json.loads(raw)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return None
     return parsed if isinstance(parsed, dict) else None
+
+
+def format_recommendation_summary(recommendation: dict) -> dict:
+    """Return only the fields needed by operation lists and compact cards."""
+    return {
+        "id": recommendation["id"],
+        "recommendation_id": recommendation["id"],
+        "operation_id": recommendation["operation_id"],
+        "analysis_type": recommendation["analysis_type"],
+        "symbol": recommendation["symbol"],
+        "side": recommendation["side"],
+        "time_horizon": recommendation.get("time_horizon") or "intraday_short",
+        "tp_probability": recommendation["tp_probability"],
+        "sl_probability": recommendation["sl_probability"],
+        "range_probability": recommendation["range_probability"],
+        "risk_level": recommendation["risk_level"],
+        "setup_grade": recommendation["setup_grade"],
+        "confidence": recommendation["confidence"],
+        "training_decision": recommendation["training_decision"],
+        "engine_version": recommendation["engine_version"],
+        "created_at": recommendation["created_at"],
+        "summary_only": True,
+    }
 
 
 def format_recommendation(recommendation: dict | None, operation: dict | None = None) -> dict | None:
@@ -6783,14 +6942,16 @@ def format_recommendation(recommendation: dict | None, operation: dict | None = 
         return None
     analysis_json = recommendation.get("analysis_json")
     if analysis_json:
-        payload = json.loads(analysis_json)
+        payload = parse_exit_evidence(analysis_json)
+        if payload is None:
+            return None
         payload["id"] = recommendation["id"]
         payload["recommendation_id"] = recommendation["id"]
         payload["operation_id"] = recommendation["operation_id"]
         payload["time_horizon"] = recommendation.get("time_horizon") or payload.get("time_horizon") or payload.get("snapshot", {}).get("time_horizon", "intraday_short")
         payload["created_at"] = recommendation["created_at"]
         return payload
-    snapshot = json.loads(recommendation["snapshot_json"])
+    snapshot = parse_exit_evidence(recommendation["snapshot_json"]) or {}
     payload = {
         "id": recommendation["id"],
         "recommendation_id": recommendation["id"],

@@ -2,6 +2,7 @@ import sqlite3
 import unittest
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import app
@@ -60,7 +61,7 @@ class ListOperationsReadOnlyDb:
         self.operation = operation
 
     def execute(self, query, params=None):
-        if "SELECT * FROM operations WHERE user_id" in query:
+        if "FROM operations" in query and "WHERE user_id = ?" in query:
             return RowsCursor([self.operation])
         if "SELECT DISTINCT ON (operation_id)" in query:
             return RowsCursor([])
@@ -495,6 +496,42 @@ class OperationWorkerTests(unittest.TestCase):
 
         self.assertEqual(len(result["operations"]), 1)
         self.assertEqual(result["operations"][0]["ticks"], [])
+
+    def test_operations_list_never_loads_full_analysis_snapshots(self):
+        source = (Path(app.__file__).resolve()).read_text(encoding="utf-8")
+        start = source.index('def list_operations(')
+        end = source.index('def operation_analysis_detail(', start)
+        route_source = source[start:end]
+
+        self.assertIn("RECOMMENDATION_SUMMARY_COLUMNS", route_source)
+        self.assertNotIn("analysis_json", route_source)
+        self.assertNotIn("snapshot_json", route_source)
+        self.assertNotIn("limit_learning_snapshots", route_source)
+        self.assertNotIn("refresh_learning_conclusions", route_source)
+
+    def test_full_analysis_is_loaded_only_for_one_owned_operation(self):
+        source = (Path(app.__file__).resolve()).read_text(encoding="utf-8")
+        start = source.index('def operation_analysis_detail(')
+        end = source.index('def parse_operation_status_snapshot_ids(', start)
+        route_source = source[start:end]
+
+        self.assertIn("WHERE operation_id = ? AND user_id = ?", route_source)
+        self.assertIn("RECOMMENDATION_DETAIL_COLUMNS", route_source)
+        self.assertIn("LIMIT 1", route_source)
+
+    def test_avatar_response_is_immutable_and_uses_versioned_cache(self):
+        with patch.object(
+            app,
+            "cached_avatar_bytes",
+            return_value=(b"avatar", "image/png"),
+        ) as loader:
+            response = app.avatar_asset("user_7.png", v="2026-09-12")
+
+        loader.assert_called_once_with(7, "2026-09-12")
+        self.assertEqual(
+            response.headers["cache-control"],
+            "public, max-age=31536000, immutable",
+        )
 
     def test_shared_symbol_klines_before_operation_start_are_ignored(self):
         operation = {

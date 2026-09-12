@@ -581,6 +581,19 @@ class OperationObservationLearningTests(unittest.TestCase):
         )
         self.assertIn("canManageOperationObservations()", javascript)
 
+    def test_monitor_query_projects_only_rule_fields_from_legacy_snapshots(self) -> None:
+        source = (ROOT / "operation_observation_learning.py").read_text(
+            encoding="utf-8"
+        )
+        start = source.index("def observation_monitor_report(")
+        end = source.index("def unified_predictive_inventory(", start)
+        monitor_source = source[start:end]
+
+        self.assertIn("after_checkpoint_number", monitor_source)
+        self.assertIn("jsonb_build_object", monitor_source)
+        self.assertNotIn("recommendation.snapshot_json,", monitor_source)
+        self.assertIn('"incremental": after_checkpoint_number is not None', monitor_source)
+
 
 if __name__ == "__main__":
     unittest.main()

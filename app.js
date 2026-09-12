@@ -199,6 +199,7 @@ const observationSessionLoads = new Set();
 const observationMonitorsByOperation = new Map();
 const observationMonitorLoads = new Set();
 const selectedObservationCheckpointByOperation = new Map();
+const operationAnalysisLoads = new Set();
 
 function numberValue(input) {
   return Number.parseFloat(input.value);
@@ -3377,7 +3378,7 @@ function renderObservationMonitor(operation) {
   elements.observationKpiEdge.textContent = observationSignedPoints(currentEdge);
   elements.observationKpiEdge.className = Number(currentEdge) >= 0 ? "positive" : "negative";
   elements.observationKpiEdgeDelta.textContent = Number.isFinite(Number(advisory.edge_change))
-    ? `${observationSignedPoints(advisory.edge_change)} desde el primero visible`
+    ? `${observationSignedPoints(advisory.edge_change)} desde el primer control`
     : "Sin evolución todavía";
   elements.observationKpiRemaining.textContent = latest ? observationDuration(latest.remaining_seconds) : "—";
   elements.observationKpiNext.textContent = session.status === "active"
@@ -3405,21 +3406,45 @@ async function loadObservationMonitor(operation, { force = false, loadOlder = fa
   try {
     const existing = observationMonitorsByOperation.get(operationId);
     const before = loadOlder ? existing?.pagination?.oldest_checkpoint_number : null;
-    const params = new URLSearchParams({ limit: "120" });
+    const latestCheckpoint = existing?.pagination?.latest_checkpoint_number
+      ?? existing?.checkpoints?.[existing.checkpoints.length - 1]?.checkpoint_number;
+    const params = new URLSearchParams({ limit: "30" });
     if (before) params.set("before_checkpoint_number", String(before));
+    if (!loadOlder && existing && latestCheckpoint) {
+      params.set("after_checkpoint_number", String(latestCheckpoint));
+    }
     const data = await requestJson(`/api/operations/${operationId}/observation-monitor?${params}`, {
       cacheBust: true,
       timeout: 15000,
       errorMessage: "No se pudo cargar el monitor observacional.",
     });
     let monitor = data.monitor || null;
-    if (loadOlder && monitor && existing) {
-      const merged = [...(monitor.checkpoints || []), ...(existing.checkpoints || [])];
+    if (monitor && existing && (loadOlder || monitor.incremental)) {
+      const merged = [...(existing.checkpoints || []), ...(monitor.checkpoints || [])];
       const unique = new Map(merged.map((checkpoint) => [Number(checkpoint.checkpoint_number), checkpoint]));
+      const mergedEvents = [...(existing.events || []), ...(monitor.events || [])];
+      const uniqueEvents = new Map(
+        mergedEvents.map((event, index) => [
+          event.id ?? `${event.event_type}:${event.occurred_at}:${index}`,
+          event,
+        ]),
+      );
+      const sortedCheckpoints = [...unique.values()].sort((left, right) => left.checkpoint_number - right.checkpoint_number);
       monitor = {
+        ...existing,
         ...monitor,
-        checkpoints: [...unique.values()].sort((left, right) => left.checkpoint_number - right.checkpoint_number),
-        advisory: existing.advisory,
+        checkpoints: sortedCheckpoints,
+        events: [...uniqueEvents.values()].sort((left, right) => new Date(left.occurred_at) - new Date(right.occurred_at)),
+        advisory: monitor.advisory || existing.advisory,
+        pagination: {
+          ...(existing.pagination || {}),
+          ...(monitor.pagination || {}),
+          has_more: loadOlder
+            ? Boolean(monitor.pagination?.has_more)
+            : Boolean(existing.pagination?.has_more),
+          oldest_checkpoint_number: sortedCheckpoints[0]?.checkpoint_number ?? null,
+          latest_checkpoint_number: sortedCheckpoints[sortedCheckpoints.length - 1]?.checkpoint_number ?? null,
+        },
       };
     }
     observationMonitorsByOperation.set(operationId, monitor);
@@ -4548,7 +4573,7 @@ async function syncOperationStates() {
     const session = selected
       ? observationSessionsByOperation.get(Number(selected.id))
       : null;
-    if (selected && ["active", "paused"].includes(session?.status)) {
+    if (selected && session?.status === "active") {
       void loadObservationMonitor(selected, { force: true });
     }
   }
@@ -4572,6 +4597,37 @@ async function loadOperations({ preserveOnError = false, cacheBust = false } = {
       renderOperations([]);
     }
     return false;
+  }
+}
+
+async function loadOperationAnalysis(operation) {
+  if (!currentUser || !operation || operation.recommendation_detail_loaded) return;
+  const operationId = Number(operation.id);
+  if (operationAnalysisLoads.has(operationId)) return;
+  operationAnalysisLoads.add(operationId);
+  try {
+    const data = await requestJson(`/api/operations/${operationId}/analysis`, {
+      cacheBust: true,
+      timeout: 20000,
+      errorMessage: "No se pudo cargar el análisis de esta operación.",
+    });
+    const current = allOperations.find((item) => Number(item.id) === operationId);
+    if (!current) return;
+    current.recommendation = data.recommendation || null;
+    current.limit_lifecycle = data.limit_lifecycle || {};
+    current.recommendation_detail_loaded = true;
+    current.recommendation_load_error = null;
+  } catch (error) {
+    const current = allOperations.find((item) => Number(item.id) === operationId);
+    if (current) {
+      current.recommendation_detail_loaded = true;
+      current.recommendation_load_error = error.message;
+    }
+  } finally {
+    operationAnalysisLoads.delete(operationId);
+    if (Number(selectedOperationId) === operationId) {
+      renderSelectedOperationDetail(getSelectedOperation());
+    }
   }
 }
 
@@ -4670,6 +4726,12 @@ function renderOperations(operations) {
     }
     if (previous._ticksLoaded) {
       operation._ticksLoaded = true;
+    }
+    if (previous.recommendation_detail_loaded) {
+      operation.recommendation = previous.recommendation;
+      operation.limit_lifecycle = previous.limit_lifecycle || {};
+      operation.recommendation_detail_loaded = true;
+      operation.recommendation_load_error = previous.recommendation_load_error || null;
     }
   });
   allOperations = operations;
@@ -4836,6 +4898,9 @@ function renderSelectedOperationDetail(operation) {
     return;
   }
 
+  if (!operation.recommendation_detail_loaded) {
+    void loadOperationAnalysis(operation);
+  }
   renderObservationControls(operation);
   const cachedObservationSession = observationSessionsByOperation.get(
     Number(operation.id),
@@ -4972,9 +5037,16 @@ function renderSelectedOperationDetail(operation) {
     </details>
   `;
 
+  const analysisMessage = operation.recommendation_load_error
+    ? operation.recommendation_load_error
+    : operation.recommendation_detail_loaded
+      ? `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
+      : `Cargando el analisis completo de la operacion #${operation.id} solo cuando lo necesitas.`;
   renderAnalysisPayload(
-    recommendation,
-    `Operacion #${operation.id}: analisis y resultados separados del resto de operaciones.`
+    operation.recommendation_detail_loaded && !operation.recommendation_load_error
+      ? recommendation
+      : null,
+    analysisMessage,
   );
 }
 

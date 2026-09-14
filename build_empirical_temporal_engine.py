@@ -41,11 +41,22 @@ RECORD_CACHE = (
     / "phase1_controlled_replay"
     / "empirical_analog_records_v0_1.json.gz"
 )
-VALIDATION_PATH = ROOT / "auditorias_motor" / "empirical_analog_validation_v0_1.json"
-REPORT_PATH = ROOT / "auditorias_motor" / "2026-08-14_motor_empirico_analogos_v0_9.md"
+VALIDATION_PATH = ROOT / "auditorias_motor" / "empirical_analog_validation_v0_2.json"
+REPORT_PATH = ROOT / "auditorias_motor" / "2026-09-14_motor_empirico_analogos_v0_10.md"
+ACTIVE_RULE_AUDIT_PATH = (
+    ROOT / "auditorias_motor" / "empirical_active_rule_attribution_v0_2.json"
+)
 
-ARTIFACT_ID = "TP-SL-EMPIRICAL-ANALOG-v0.9-frozen-001"
-BUILD_VERSION = "empirical-analog-builder-v0.1"
+ARTIFACT_ID = "TP-SL-EMPIRICAL-ANALOG-v0.10-frozen-001"
+BUILD_VERSION = "empirical-analog-builder-v0.2"
+EXPECTED_ACTIVE_RULE_AUDIT_SHA256 = (
+    "79a8005d4cf1a4d1f78d7aa7917aeb9324637e8daf916865423456ab87c2c75d"
+)
+SELECTED_CANDIDATE = "v0_9_plus_confirmed_short_ema_cross"
+CONFIRMED_SHORT_EMA_CROSS = (
+    "intraday_short::LIB-CAND-EMA-TREND-001::"
+    "side_adjusted_ema50_vs_ema200_log"
+)
 RANDOM_SEED = 20260814
 MAX_FUTURE_STEPS = 7 * 24 * 12
 PARTITIONS = ("development", "calibration", "rule_test", "final_test")
@@ -268,6 +279,50 @@ def _feature_names(groups_by_horizon: dict[str, Iterable[str]]) -> dict[str, lis
     }
 
 
+def selected_feature_names_by_horizon() -> dict[str, list[str]]:
+    groups = {
+        horizon: ("price_path", "volatility_regime") for horizon in STAGE_ORDER
+    }
+    names = _feature_names(groups)
+    names["intraday_short"].append(CONFIRMED_SHORT_EMA_CROSS)
+    return names
+
+
+def _active_groups_for_names(names: dict[str, list[str]]) -> dict[str, tuple[str, ...]]:
+    result = {}
+    for horizon, expanded_names in names.items():
+        suffixes = {name.split("::", 1)[1] for name in expanded_names}
+        result[horizon] = tuple(
+            group
+            for group, features in RULE_GROUPS.items()
+            if any(feature in suffixes for feature in features)
+        )
+    return result
+
+
+def load_selected_candidate_evidence() -> dict:
+    payload = json.loads(ACTIVE_RULE_AUDIT_PATH.read_text(encoding="utf-8"))
+    expected_hash = str(payload.pop("canonical_payload_sha256", ""))
+    actual_hash = canonical_sha256(payload)
+    if expected_hash != actual_hash:
+        raise RuntimeError("active_rule_audit_hash_invalid")
+    if expected_hash != EXPECTED_ACTIVE_RULE_AUDIT_SHA256:
+        raise RuntimeError("active_rule_audit_not_frozen_for_v0_10")
+    selection = payload.get("integrated_candidate_vs_production", {}).get(
+        "stable_candidate_selection", {}
+    )
+    if selection.get("selected_candidate") != SELECTED_CANDIDATE:
+        raise RuntimeError("active_rule_audit_candidate_mismatch")
+    if selection.get("production_authorized") is not False:
+        raise RuntimeError("active_rule_audit_must_precede_runtime_authorization")
+    return {
+        "artifact": str(ACTIVE_RULE_AUDIT_PATH.relative_to(ROOT)),
+        "canonical_payload_sha256": expected_hash,
+        "selected_candidate": SELECTED_CANDIDATE,
+        "selection_policy": selection.get("policy"),
+    }
+
+
 def _raw_feature_map(record: dict, horizon: str, orientation: int) -> dict[str, float]:
     values = {}
     for stage in STAGE_ORDER[: STAGE_ORDER.index(horizon) + 1]:
@@ -359,13 +414,27 @@ def _build_model(
     groups: tuple[str, ...] | dict[str, tuple[str, ...]],
     *,
     authorized: bool,
+    feature_names_by_horizon: dict[str, list[str]] | None = None,
+    release_evidence: dict | None = None,
 ) -> dict:
-    groups_by_horizon = (
+    declared_groups_by_horizon = (
         {horizon: tuple(groups[horizon]) for horizon in STAGE_ORDER}
         if isinstance(groups, dict)
         else {horizon: tuple(groups) for horizon in STAGE_ORDER}
     )
-    names = _feature_names(groups_by_horizon)
+    names = (
+        {
+            horizon: list(feature_names_by_horizon[horizon])
+            for horizon in STAGE_ORDER
+        }
+        if feature_names_by_horizon is not None
+        else _feature_names(declared_groups_by_horizon)
+    )
+    groups_by_horizon = (
+        _active_groups_for_names(names)
+        if feature_names_by_horizon is not None
+        else declared_groups_by_horizon
+    )
     scaling = _robust_scaling(records, names)
     analogs = _model_analogs(records, names, scaling)
     dates = sorted(str(record["analysis_at"]) for record in records)
@@ -379,6 +448,7 @@ def _build_model(
         "single_engine": True,
         "parallel_probability_engines": 0,
         "automatic_weight_updates": False,
+        "release_evidence": release_evidence,
         "stage_order": list(STAGE_ORDER),
         "stage_profiles": {name: dict(STAGE_PROFILES[name]) for name in STAGE_ORDER},
         "active_rule_groups": sorted(
@@ -388,8 +458,18 @@ def _build_model(
             horizon: list(values) for horizon, values in groups_by_horizon.items()
         },
         "rule_group_features": {
-            name: list(RULE_GROUPS[name])
-            for name in sorted(
+            group: [
+                feature
+                for feature in RULE_GROUPS[group]
+                if any(
+                    feature in {
+                        name.split("::", 1)[1]
+                        for name in names[horizon]
+                    }
+                    for horizon in STAGE_ORDER
+                )
+            ]
+            for group in sorted(
                 {group for values in groups_by_horizon.values() for group in values}
             )
         },
@@ -750,60 +830,29 @@ def _evaluation_gate(evaluation: dict) -> dict:
 
 def build_and_validate(*, rebuild_records: bool = False) -> dict:
     records = load_or_build_records(rebuild=rebuild_records)
+    release_evidence = load_selected_candidate_evidence()
     partitions = {
         name: [record for record in records if record["partition"] == name]
         for name in PARTITIONS
     }
-    candidates = (
-        ("path_volatility", ("price_path", "volatility_regime")),
-        (
-            "path_volatility_trend",
-            ("price_path", "volatility_regime", "trend_momentum"),
-        ),
-        (
-            "path_volatility_flow",
-            ("price_path", "volatility_regime", "volume_flow"),
-        ),
-        (
-            "all_validated_context",
-            ("price_path", "volatility_regime", "trend_momentum", "volume_flow"),
-        ),
-    )
-    calibration_results = []
-    calibration_seed = RANDOM_SEED + 2
-    for name, groups in candidates:
-        model = _build_model(partitions["development"], groups, authorized=False)
-        evaluation = evaluate_model(
-            model,
-            partitions["calibration"],
-            per_symbol=10,
-            seed=calibration_seed,
-        )
-        calibration_results.append(
-            {
-                "candidate": name,
-                "groups": list(groups),
-                "score": _model_score(evaluation),
-                "evaluation": evaluation,
-            }
-        )
-        print(f"EMPIRICAL_CALIBRATION {name} score={_model_score(evaluation)}", flush=True)
-    selected_by_horizon = {
-        horizon: min(
-            calibration_results,
-            key=lambda item: (
-                item["evaluation"]["by_horizon"][horizon]["log_loss"],
-                item["evaluation"]["by_horizon"][horizon]["brier"],
-            ),
-        )
-        for horizon in STAGE_ORDER
-    }
-    selected_groups_by_horizon = {
-        horizon: tuple(item["groups"])
-        for horizon, item in selected_by_horizon.items()
-    }
+    selected_features = selected_feature_names_by_horizon()
+    selected_groups_by_horizon = _active_groups_for_names(selected_features)
+    calibration_results = [
+        {
+            "candidate": SELECTED_CANDIDATE,
+            "selection_source": release_evidence["artifact"],
+            "selection_source_sha256": release_evidence[
+                "canonical_payload_sha256"
+            ],
+            "selection_policy": release_evidence["selection_policy"],
+        }
+    ]
     support_model = _build_model(
-        partitions["development"], selected_groups_by_horizon, authorized=False
+        partitions["development"],
+        selected_groups_by_horizon,
+        authorized=False,
+        feature_names_by_horizon=selected_features,
+        release_evidence=release_evidence,
     )
     context_support_limits = _context_support_limits(
         support_model, partitions["calibration"]
@@ -817,6 +866,8 @@ def build_and_validate(*, rebuild_records: bool = False) -> dict:
         partitions["development"] + partitions["calibration"],
         selected_groups_by_horizon,
         authorized=False,
+        feature_names_by_horizon=selected_features,
+        release_evidence=release_evidence,
     )
     rule_test_evaluation = evaluate_model(
         rule_test_model,
@@ -825,7 +876,11 @@ def build_and_validate(*, rebuild_records: bool = False) -> dict:
         seed=RANDOM_SEED + 100,
     )
     final_test_model = _build_model(
-        prefinal_records, selected_groups_by_horizon, authorized=False
+        prefinal_records,
+        selected_groups_by_horizon,
+        authorized=False,
+        feature_names_by_horizon=selected_features,
+        release_evidence=release_evidence,
     )
     final_test_evaluation = evaluate_model(
         final_test_model,
@@ -843,10 +898,15 @@ def build_and_validate(*, rebuild_records: bool = False) -> dict:
             final_gate["macro_brier_improvement_vs_first_passage"] > 0.0,
             rule_gate["coverage_excluding_ambiguous"] >= 0.999,
             final_gate["coverage_excluding_ambiguous"] >= 0.999,
+            release_evidence["selected_candidate"] == SELECTED_CANDIDATE,
         )
     )
     production_model = _build_model(
-        records, selected_groups_by_horizon, authorized=production_authorized
+        records,
+        selected_groups_by_horizon,
+        authorized=production_authorized,
+        feature_names_by_horizon=selected_features,
+        release_evidence=release_evidence,
     )
     production_model["selection"][
         "maximum_nearest_context_distance_by_horizon"
@@ -859,20 +919,21 @@ def build_and_validate(*, rebuild_records: bool = False) -> dict:
         }
     )
     validation = {
-        "version": "empirical-analog-validation-v0.1",
+        "version": "empirical-analog-validation-v0.2",
         "engine_version": ENGINE_VERSION,
         "source_dataset_sha256": sha256_file(SOURCE_DATASET),
         "record_cache_sha256": sha256_file(RECORD_CACHE),
         "records_by_partition": {name: len(values) for name, values in partitions.items()},
         "calibration_candidates": calibration_results,
         "selected_candidate_by_horizon": {
-            horizon: item["candidate"]
-            for horizon, item in selected_by_horizon.items()
+            horizon: SELECTED_CANDIDATE for horizon in STAGE_ORDER
         },
         "selected_rule_groups_by_horizon": {
             horizon: list(groups)
             for horizon, groups in selected_groups_by_horizon.items()
         },
+        "selected_feature_names_by_horizon": selected_features,
+        "active_rule_audit": release_evidence,
         "rule_test": rule_test_evaluation,
         "sealed_final_test": final_test_evaluation,
         "validation_gates": {
@@ -914,7 +975,7 @@ def _write_report(validation: dict, artifact: dict) -> None:
     gates = validation["validation_gates"]
     final_gate = gates["sealed_final_test"]
     lines = [
-        "# Motor empírico de análogos v0.9",
+        "# Motor empírico de análogos v0.10",
         "",
         f"- Motor: `{ENGINE_VERSION}`.",
         "- Arquitectura: un único motor; sin fórmula browniana ni coeficientes de geometría.",
@@ -922,6 +983,10 @@ def _write_report(validation: dict, artifact: dict) -> None:
         f"- Registros históricos en artefacto: **{len(artifact['analogs'])}**.",
         "- Grupos activos seleccionados por horizonte: "
         f"`{json.dumps(validation['selected_rule_groups_by_horizon'], sort_keys=True)}`.",
+        "- Cambio frente a v0.9: se añade únicamente EMA50/EMA200 orientada al lado "
+        "en la selección de análogos del tramo 0-4 h.",
+        "- Evidencia de selección: "
+        f"`{validation['active_rule_audit']['canonical_payload_sha256']}`.",
         f"- Rule-test log-loss/Brier macro: `{rule_score[0]:.6f}` / `{rule_score[1]:.6f}`.",
         f"- Final sellado log-loss/Brier macro: `{final_score[0]:.6f}` / `{final_score[1]:.6f}`.",
         f"- Autorización de producción: **{gates['production_authorized']}**.",
@@ -942,9 +1007,9 @@ def _write_report(validation: dict, artifact: dict) -> None:
         "",
         "## Limitaciones observadas",
         "",
-        "- Intradía corto mejora log-loss final, pero su Brier queda ligeramente peor que la referencia.",
-        "- Intradía medio mejora ambas métricas en rule-test y periodo final.",
-        "- Intradía largo queda prácticamente empatado y ligeramente peor en el periodo final; no debe interpretarse sin su intervalo.",
+        "- Frente a v0.9, la candidata mejora log-loss y Brier en las seis combinaciones de horizonte y lado, pero los intervalos individuales todavía cruzan cero.",
+        "- El desglose por activo no contiene perjuicios consistentes ni confirmados; 19 celdas son favorables consistentes y 17 quedan mixtas.",
+        "- Frente a first-passage, el Brier final de 0-4 h queda ligeramente peor; la autorización exige mejora macro y se apoya además en la comparación directa contra v0.9.",
         "- La referencia first-passage sólo se usa para validar y no se ejecuta ni mezcla en producción.",
         "",
         "## Reglas excluidas",

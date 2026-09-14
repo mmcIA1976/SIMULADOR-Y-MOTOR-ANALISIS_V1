@@ -3,18 +3,19 @@
   "status": "master_contract_v0_1",
   "purpose": "Auditable rule library for Phase 1 TP/SL/expiry probability.",
   "governance": {
-    "probability_production_changes": "catalog_alignment_only_no_runtime_probability_change",
+    "probability_production_changes": "v0_10_single_validated_short_ema_context_promotion",
     "new_candidate_weights_authorized": false,
     "learning_may_self_modify_production": false,
     "current_active_predictive_rule_ids": [
       "M4-RULE-PATH-STRUCTURE-001",
       "M4-RULE-MTF-HIERARCHY-001",
       "M4-RULE-VOLATILITY-RANK-001",
-      "LIB-CAND-COMPRESSION-001"
+      "LIB-CAND-COMPRESSION-001",
+      "LIB-CAND-EMA-TREND-001"
     ],
-    "current_probability_engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.9",
-    "current_probability_artifact_id": "TP-SL-EMPIRICAL-ANALOG-v0.9-frozen-001",
-    "current_probability_artifact_sha256": "21efda86717c691d4e2c69a837d0ab64b3128d16da0fe89d154aae20a8751d68",
+    "current_probability_engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.10",
+    "current_probability_artifact_id": "TP-SL-EMPIRICAL-ANALOG-v0.10-frozen-001",
+    "current_probability_artifact_sha256": "423d68dc1f059ed5ba252f39df49421ff4ddcd267dae7a05f4f66469309e4405",
     "baseline_rule_ids": [
       "M4-RULE-HORIZON-SAMPLING-001",
       "M4-RULE-PLAN-GEOMETRY-001",
@@ -780,7 +781,7 @@
       "family_id": "FAMILY-PRICE-PATH",
       "role": "standalone",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine_v0.9",
+      "origin": "current_probability_engine:TP-SL-EMPIRICAL-ANALOG-v0.10",
       "objective": "Desplazamiento y eficiencia de trayectoria",
       "applicable_pairs": [
         "all_application_pairs"
@@ -886,7 +887,7 @@
       "parameters": [
         {
           "name": "frozen_analog_feature_scaling",
-          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "origin": "current_frozen_empirical_analog_artifact",
           "status": "active_frozen_production"
         }
       ],
@@ -927,7 +928,7 @@
       "family_id": "FAMILY-STRUCTURAL-LEVELS",
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Extremos observados del horizonte anterior",
       "applicable_pairs": [
         "all_application_pairs"
@@ -978,7 +979,7 @@
         "long target extreme=X_high; short target extreme=X_low",
         "between=entry<X_high<TP long; TP<X_low<entry short"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -1030,7 +1031,7 @@
         {
           "name": "target_extreme_between_entry_and_tp",
           "origin": "historical_fit",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "tp": 0.06992799118212334,
           "sl": 0.1670447895598004
         }
@@ -1072,7 +1073,7 @@
       "family_id": "FAMILY-VOLATILITY",
       "role": "standalone",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine_v0.9",
+      "origin": "current_probability_engine:TP-SL-EMPIRICAL-ANALOG-v0.10",
       "objective": "Percentil continuo de volatilidad",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1173,7 +1174,7 @@
       "parameters": [
         {
           "name": "frozen_analog_feature_scaling",
-          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "origin": "current_frozen_empirical_analog_artifact",
           "status": "active_frozen_production"
         }
       ],
@@ -1212,7 +1213,7 @@
       "family_id": "FAMILY-PRICE-PATH",
       "role": "group",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine_v0.9",
+      "origin": "current_probability_engine:TP-SL-EMPIRICAL-ANALOG-v0.10",
       "objective": "Jerarquia multi-timeframe H, 2H y 4H",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1317,7 +1318,7 @@
       "parameters": [
         {
           "name": "frozen_analog_feature_scaling",
-          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "origin": "current_frozen_empirical_analog_artifact",
           "status": "active_frozen_production"
         }
       ],
@@ -1355,7 +1356,7 @@
       "family_id": "FAMILY-PRICE-PATH-X-VOLATILITY",
       "role": "interaction",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Vector continuo de regimen",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1401,7 +1402,7 @@
       "deterministic_formulas": [
         "R_t=(q_RV,t, SE_H,t)"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "market": "Binance USD-M perpetual",
         "symbols": [
@@ -1460,7 +1461,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.08
         }
       ],
@@ -1496,7 +1497,7 @@
       "family_id": "FAMILY-EXECUTED-FLOW",
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Desequilibrio de operaciones agresoras ejecutadas",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1551,7 +1552,7 @@
         "ATI_H=(B_H-S_H)/(B_H+S_H)",
         "periodic alternative=(sum(buyVol)-sum(sellVol))/total"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -1606,7 +1607,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.12
         }
       ],
@@ -1653,7 +1654,7 @@
       "family_id": "FAMILY-OPEN-INTEREST",
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Cambio logaritmico de open interest",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1703,7 +1704,7 @@
         "dOI_H=ln(OI_t/OI_(t-H))",
         "current_timestamp_ms-previous_timestamp_ms=H*1000"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -1760,7 +1761,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.06
         }
       ],
@@ -1803,7 +1804,7 @@
       "family_id": "FAMILY-PRICE-X-OPEN-INTEREST",
       "role": "interaction",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Estado conjunto precio y open interest",
       "applicable_pairs": [
         "all_application_pairs"
@@ -1852,7 +1853,7 @@
       "deterministic_formulas": [
         "POI_H=(D_H,dOI_H)"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -1911,7 +1912,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.1
         }
       ],
@@ -1950,7 +1951,7 @@
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Intervalo observable spot-Futures",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2006,7 +2007,7 @@
         "b_sellF_buyS=ln(F_bid/S_ask)",
         "b_buyF_sellS=ln(F_ask/S_bid)"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual",
@@ -2066,7 +2067,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.06
         }
       ],
@@ -2111,7 +2112,7 @@
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Prima sincronizada mark-index",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2158,7 +2159,7 @@
       "deterministic_formulas": [
         "b_mark_index=ln(markPrice/indexPrice)"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -2216,7 +2217,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.06
         }
       ],
@@ -2255,7 +2256,7 @@
       "family_id": "FAMILY-PERPETUAL-DISLOCATION",
       "role": "standalone",
       "lifecycle_status": "implemented_shadow",
-      "origin": "legacy_m6_available_observational_in_v0.9",
+      "origin": "legacy_m6_available_observational_in_v0.10",
       "objective": "Estado temporal y carga realizada de funding",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2310,7 +2311,7 @@
         "L_prev_hour(H)=L_prev(H)/H_hours",
         "N_schedule=count configured event times within future H"
       ],
-      "probability_integration_formula": "none_in_current_v0.9_engine",
+      "probability_integration_formula": "none_in_current_v0.10_engine",
       "normalization": {
         "markets": [
           "Binance USD-M perpetual"
@@ -2368,7 +2369,7 @@
         {
           "name": "log_effect_weight",
           "origin": "project_hypothesis",
-          "status": "legacy_m6_not_active_in_v0.9",
+          "status": "legacy_m6_not_active_in_v0.10",
           "value": 0.08
         }
       ],
@@ -2639,8 +2640,8 @@
       "name": "EMA trend state and normalized slope",
       "family_id": "FAMILY-TREND",
       "role": "contextual",
-      "lifecycle_status": "implemented_shadow",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine:TP-SL-EMPIRICAL-ANALOG-v0.10",
       "objective": "Continuous EMA alignment and normalized slope may condition first-barrier behavior.",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2669,7 +2670,7 @@
         "slope_ema50=(EMA50_t-EMA50_(t-k))/ATR14",
         "state=(close>EMA50, EMA50>EMA200, slope_ema50)"
       ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
+      "probability_integration_formula": "only side_adjusted_ema50_vs_ema200_log is a standardized historical-analogue distance input, and only for the 0-4h conditional stage; no additive score or independent weight",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
       "activation_conditions": [
         "all declared inputs complete, fresh and pre-trade",
@@ -2689,10 +2690,10 @@
         "project_hypothesis": "Continuous EMA alignment and normalized slope may condition first-barrier behavior."
       },
       "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
+        "mode": "empirical_analog_distance_input",
+        "tp": "implicit_through_neighbor_selection",
+        "sl": "implicit_through_neighbor_selection",
+        "expiry": "implicit_through_neighbor_selection"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -2701,9 +2702,15 @@
       },
       "parameters": [
         {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
+          "name": "frozen_analog_feature_scaling",
+          "origin": "current_frozen_empirical_analog_artifact",
+          "status": "active_frozen_production"
+        },
+        {
+          "name": "active_stage",
+          "origin": "empirical_active_rule_attribution_v0_2",
+          "status": "validated_release_scope",
+          "value": "intraday_short"
         }
       ],
       "trace_contract": {
@@ -2734,7 +2741,17 @@
       "historical_evidence": {
         "status": "not_evaluated"
       },
-      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value.",
+      "active_formula_outputs": [
+        "side_adjusted_ema50_vs_ema200_log"
+      ],
+      "active_horizons": [
+        "intraday_short"
+      ],
+      "observational_formula_outputs": [
+        "side_adjusted_close_vs_ema50_log",
+        "side_adjusted_slope_atr"
+      ]
     },
     {
       "rule_id": "LIB-CAND-RSI-WILDER-001",
@@ -3927,7 +3944,7 @@
       "family_id": "FAMILY-VOLATILITY-X-VOLUME",
       "role": "interaction",
       "lifecycle_status": "active_provisional",
-      "origin": "current_probability_engine_v0.9",
+      "origin": "current_probability_engine:TP-SL-EMPIRICAL-ANALOG-v0.10",
       "objective": "Jointly low volatility, band width and relative volume may condition expiry and subsequent barrier hazards.",
       "applicable_pairs": [
         "all_application_pairs"
@@ -3993,7 +4010,7 @@
       "parameters": [
         {
           "name": "frozen_analog_feature_scaling",
-          "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+          "origin": "current_frozen_empirical_analog_artifact",
           "status": "active_frozen_production"
         }
       ],
@@ -4757,11 +4774,11 @@
   "summary": {
     "rules": 38,
     "active_baseline": 5,
-    "active_predictive": 4,
+    "active_predictive": 5,
     "active_data_quality_gates": 2,
     "active_economic": 2,
-    "implemented_observational": 23,
+    "implemented_observational": 22,
     "data_blocked": 2
   },
-  "catalog_sha256": "35ffe40ef97ad798dee6d91d45bb9a1ce7b32a1e4667c41afafe480b94ef08d8"
+  "catalog_sha256": "7c4e618334fdd851ce3d1da57123ea1f99f5277dce5a29e23d7234ce08b7b494"
 }

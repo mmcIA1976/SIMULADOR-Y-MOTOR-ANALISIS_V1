@@ -3,10 +3,10 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.39.2-supabase-egress-hotfix"
-APP_SEMVER = "0.39.2"
-ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
-SCORING_VERSION = "historical-analog-first-touch-v0.9"
+APP_VERSION = "app-v0.40.0-empirical-ema-context"
+APP_SEMVER = "0.40.0"
+ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.10"
+SCORING_VERSION = "historical-analog-first-touch-v0.10"
 LEARNING_EVALUATOR_VERSION = "learning-v0.15-v09-rule-traces"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.20-observational-base"
 DATA_SOURCE_VERSION = "data-sources-v0.28-worker-order-book-dynamics"
@@ -17,7 +17,7 @@ LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 # Retained only so historical offline audit modules remain readable. It is not
 # exported by current_version_contract and is not imported by the application.
 CHALLENGER_RUNTIME_VERSION = "retired-offline-only-v0.7"
-PROSPECTIVE_RUNTIME_VERSION = "empirical-analog-runtime-v0.9"
+PROSPECTIVE_RUNTIME_VERSION = "empirical-analog-runtime-v0.10"
 
 
 def current_version_contract() -> dict:

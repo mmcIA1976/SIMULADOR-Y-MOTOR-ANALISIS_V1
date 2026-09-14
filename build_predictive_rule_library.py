@@ -157,7 +157,7 @@ ACTIVE_ECONOMIC_RULE_IDS = (
     "M4-RULE-DEPTH-SWEEP-001",
 )
 
-# The single production engine is v0.9.  These are the rule families present
+# The single production engine is v0.10. These are the rule families present
 # in its frozen nearest-analogue feature vector.  The older M6 list remains
 # importable for historical audit/replay, but it is not the production runtime
 # contract anymore.
@@ -166,6 +166,7 @@ CURRENT_ACTIVE_PREDICTIVE_RULE_IDS = (
     "M4-RULE-MTF-HIERARCHY-001",
     "M4-RULE-VOLATILITY-RANK-001",
     "LIB-CAND-COMPRESSION-001",
+    "LIB-CAND-EMA-TREND-001",
 )
 
 
@@ -531,7 +532,7 @@ def empirical_analog_rule(
     rule.update(
         {
             "lifecycle_status": "active_provisional",
-            "origin": "current_probability_engine_v0.9",
+            "origin": f"current_probability_engine:{CURRENT_ENGINE_VERSION}",
             "probability_integration_formula": (
                 "standardized feature in frozen historical-analogue distance; "
                 "no additive score or independent probability weight"
@@ -545,7 +546,7 @@ def empirical_analog_rule(
             "parameters": [
                 {
                     "name": "frozen_analog_feature_scaling",
-                    "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+                    "origin": "current_frozen_empirical_analog_artifact",
                     "status": "active_frozen_production",
                 }
             ],
@@ -561,12 +562,12 @@ def demoted_m6_observational_rule(
 ) -> dict:
     rule = runtime_rule(spec, metadata, coefficient_artifact)
     for parameter in rule["parameters"]:
-        parameter["status"] = "legacy_m6_not_active_in_v0.9"
+        parameter["status"] = "legacy_m6_not_active_in_v0.10"
     rule.update(
         {
             "lifecycle_status": "implemented_shadow",
-            "origin": "legacy_m6_available_observational_in_v0.9",
-            "probability_integration_formula": "none_in_current_v0.9_engine",
+            "origin": "legacy_m6_available_observational_in_v0.10",
+            "probability_integration_formula": "none_in_current_v0.10_engine",
             "expected_probability_effect": {
                 "mode": "observation_only_no_production_effect",
                 "tp": "to_be_evaluated_counterfactually",
@@ -583,7 +584,7 @@ def promoted_compression_rule(rule: dict) -> dict:
     promoted.update(
         {
             "lifecycle_status": "active_provisional",
-            "origin": "current_probability_engine_v0.9",
+            "origin": f"current_probability_engine:{CURRENT_ENGINE_VERSION}",
             "probability_integration_formula": (
                 "atr_rank and Bollinger-width rank are standardized features "
                 "in the frozen historical-analogue distance; no additive score"
@@ -597,9 +598,52 @@ def promoted_compression_rule(rule: dict) -> dict:
             "parameters": [
                 {
                     "name": "frozen_analog_feature_scaling",
-                    "origin": "motor_v0_9_empirical_analog_frozen_artifact",
+                    "origin": "current_frozen_empirical_analog_artifact",
                     "status": "active_frozen_production",
                 }
+            ],
+        }
+    )
+    return promoted
+
+
+def promoted_ema_cross_rule(rule: dict) -> dict:
+    promoted = dict(rule)
+    promoted.update(
+        {
+            "lifecycle_status": "active_provisional",
+            "origin": f"current_probability_engine:{CURRENT_ENGINE_VERSION}",
+            "probability_integration_formula": (
+                "only side_adjusted_ema50_vs_ema200_log is a standardized "
+                "historical-analogue distance input, and only for the 0-4h "
+                "conditional stage; no additive score or independent weight"
+            ),
+            "expected_probability_effect": {
+                "mode": "empirical_analog_distance_input",
+                "tp": "implicit_through_neighbor_selection",
+                "sl": "implicit_through_neighbor_selection",
+                "expiry": "implicit_through_neighbor_selection",
+            },
+            "active_formula_outputs": [
+                "side_adjusted_ema50_vs_ema200_log"
+            ],
+            "active_horizons": ["intraday_short"],
+            "observational_formula_outputs": [
+                "side_adjusted_close_vs_ema50_log",
+                "side_adjusted_slope_atr",
+            ],
+            "parameters": [
+                {
+                    "name": "frozen_analog_feature_scaling",
+                    "origin": "current_frozen_empirical_analog_artifact",
+                    "status": "active_frozen_production",
+                },
+                {
+                    "name": "active_stage",
+                    "origin": "empirical_active_rule_attribution_v0_2",
+                    "status": "validated_release_scope",
+                    "value": "intraday_short",
+                },
             ],
         }
     )
@@ -1595,6 +1639,8 @@ def build_catalog() -> dict:
     rules.extend(
         promoted_compression_rule(rule)
         if rule["rule_id"] == "LIB-CAND-COMPRESSION-001"
+        else promoted_ema_cross_rule(rule)
+        if rule["rule_id"] == "LIB-CAND-EMA-TREND-001"
         else rule
         for rule in candidate_rules()
     )
@@ -1606,7 +1652,7 @@ def build_catalog() -> dict:
         ),
         "governance": {
             "probability_production_changes": (
-                "catalog_alignment_only_no_runtime_probability_change"
+                "v0_10_single_validated_short_ema_context_promotion"
             ),
             "new_candidate_weights_authorized": False,
             "learning_may_self_modify_production": False,

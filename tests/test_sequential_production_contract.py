@@ -118,6 +118,29 @@ class SequentialProductionContractTests(unittest.TestCase):
                     ],
                     "none_observation_only",
                 )
+                ema_trace = trace_by_id["LIB-CAND-EMA-TREND-001"]
+                if horizon == "intraday_short":
+                    self.assertEqual(
+                        ema_trace["probability_effect"],
+                        "analog_distance_input_partial_formula",
+                    )
+                    self.assertEqual(
+                        ema_trace["active_probability_outputs"],
+                        ["side_adjusted_ema50_vs_ema200_log"],
+                    )
+                    self.assertEqual(
+                        ema_trace["observational_outputs"],
+                        [
+                            "side_adjusted_close_vs_ema50_log",
+                            "side_adjusted_slope_atr",
+                        ],
+                    )
+                else:
+                    self.assertEqual(
+                        ema_trace["probability_effect"],
+                        "none_observation_only",
+                    )
+                    self.assertEqual(ema_trace["active_probability_outputs"], [])
 
     @patch("sequential_production_runtime.empirical_probabilities")
     @patch("sequential_production_runtime.build_stage_context")

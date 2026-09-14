@@ -3468,7 +3468,7 @@ def v09_predictive_rule_learning_snapshot(
             "feature_values": context_sigma_features,
         }
     return {
-        "trace_contract": "empirical_multiscale_v0.9",
+        "trace_contract": "empirical_multiscale_v0.10",
         "active_rule_groups": active_groups,
         "active_rule_ids": active_rule_ids,
         "active_rule_count": len(active_rule_ids),

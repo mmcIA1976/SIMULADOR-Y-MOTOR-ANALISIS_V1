@@ -49,6 +49,7 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 "M4-RULE-MTF-HIERARCHY-001",
                 "M4-RULE-VOLATILITY-RANK-001",
                 "LIB-CAND-COMPRESSION-001",
+                "LIB-CAND-EMA-TREND-001",
             },
         )
 
@@ -94,7 +95,7 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
         path = rule_metadata("M4-RULE-PATH-STRUCTURE-001")
         self.assertEqual(
             path["parameters"][0]["origin"],
-            "motor_v0_9_empirical_analog_frozen_artifact",
+            "current_frozen_empirical_analog_artifact",
         )
         self.assertEqual(
             path["parameters"][0]["status"],
@@ -112,6 +113,21 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 False,
             )
 
+    def test_only_confirmed_ema_cross_is_active_and_only_in_short_stage(self) -> None:
+        ema = rule_metadata("LIB-CAND-EMA-TREND-001")
+        self.assertEqual(
+            ema["active_formula_outputs"],
+            ["side_adjusted_ema50_vs_ema200_log"],
+        )
+        self.assertEqual(ema["active_horizons"], ["intraday_short"])
+        self.assertEqual(
+            set(ema["observational_formula_outputs"]),
+            {
+                "side_adjusted_close_vs_ema50_log",
+                "side_adjusted_slope_atr",
+            },
+        )
+
     def test_heatmap_historical_evidence_is_preserved(self) -> None:
         heatmap = rule_metadata("LIB-CAND-LIQUIDATION-ZONE-001")
         evidence = heatmap["historical_evidence"]
@@ -128,7 +144,6 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
 
     def test_observational_rules_match_the_current_single_engine(self) -> None:
         expected = {
-            "LIB-CAND-EMA-TREND-001",
             "LIB-CAND-RSI-WILDER-001",
             "LIB-CAND-ATR-EXTENSION-001",
             "LIB-CAND-RELATIVE-VOLUME-001",

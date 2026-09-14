@@ -519,29 +519,40 @@ def build_stage_context(plan: dict, candles: list[dict]) -> dict:
         "target_extreme_between_entry_and_tp": 1.0 if target_between else 0.0
     }
     features.update(_structural_features(plan, material))
-    # Keep a complete per-stage trace for every deterministic feature that is
-    # stored in the v0.9 snapshot.  The empirical model remains frozen: only
-    # the four audited analog-distance inputs below affect probabilities; the
-    # rest are explicitly observational and can be evaluated after closure.
+    # Keep a complete per-stage trace for every deterministic feature stored in
+    # the v0.10 snapshot.  Four rules contribute all their outputs to analog
+    # distance.  The audited EMA rule contributes only its EMA50/EMA200 cross
+    # and only in the short stage; its remaining outputs stay observational.
     active_analog_rules = {
         "M4-RULE-PATH-STRUCTURE-001",
         "M4-RULE-MTF-HIERARCHY-001",
         "M4-RULE-VOLATILITY-RANK-001",
         "LIB-CAND-COMPRESSION-001",
     }
+    partially_active_outputs = (
+        {
+            "LIB-CAND-EMA-TREND-001": {
+                "side_adjusted_ema50_vs_ema200_log",
+            }
+        }
+        if time_horizon == "intraday_short"
+        else {}
+    )
     trace_by_id = {
         str(trace.get("rule_id")): trace
         for trace in traces
         if isinstance(trace, dict) and trace.get("rule_id")
     }
     for rule_id, outputs in features.items():
+        active_outputs = partially_active_outputs.get(rule_id, set())
+        is_fully_active = rule_id in active_analog_rules
         trace = trace_by_id.get(rule_id)
         if trace is None:
             trace = {
                 "rule_id": rule_id,
                 "status": (
                     "evaluated"
-                    if rule_id in active_analog_rules
+                    if is_fully_active or active_outputs
                     else "evaluated_shadow"
                 ),
                 "outputs": outputs,
@@ -549,11 +560,25 @@ def build_stage_context(plan: dict, candles: list[dict]) -> dict:
             }
             traces.append(trace)
             trace_by_id[rule_id] = trace
-        trace["probability_effect"] = (
-            "analog_distance_input"
-            if rule_id in active_analog_rules
-            else "none_observation_only"
-        )
+        if is_fully_active:
+            trace["status"] = "evaluated"
+            trace["probability_effect"] = "analog_distance_input"
+            trace["active_probability_outputs"] = sorted(outputs)
+            trace["observational_outputs"] = []
+        elif active_outputs:
+            trace["status"] = "evaluated"
+            trace["probability_effect"] = "analog_distance_input_partial_formula"
+            trace["active_probability_outputs"] = sorted(active_outputs)
+            trace["observational_outputs"] = sorted(
+                output_name
+                for output_name in outputs
+                if output_name not in active_outputs
+            )
+        else:
+            trace["status"] = "evaluated_shadow"
+            trace["probability_effect"] = "none_observation_only"
+            trace["active_probability_outputs"] = []
+            trace["observational_outputs"] = sorted(outputs)
     flat = flatten_rule_features(features)
     sigma = math.sqrt(float(material["current_variance"]))
     return {

@@ -7,6 +7,7 @@ import unittest
 from empirical_temporal_engine import (
     CUMULATIVE_CLASSES,
     ENGINE_VERSION,
+    SCORING_VERSION,
     EmpiricalTemporalEngineError,
     canonical_sha256,
     empirical_probabilities,
@@ -55,7 +56,7 @@ def artifact() -> dict:
     payload = {
         "artifact_id": "synthetic-empirical-v0.9",
         "engine_version": ENGINE_VERSION,
-        "scoring_version": "historical-analog-first-touch-v0.9",
+        "scoring_version": SCORING_VERSION,
         "build_version": "test",
         "status": "frozen_production",
         "production_authorized": True,

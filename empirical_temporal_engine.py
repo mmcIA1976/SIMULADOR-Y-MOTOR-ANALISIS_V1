@@ -15,10 +15,10 @@ from multiscale_feature_runtime import STAGE_ORDER, STAGE_PROFILES
 
 
 ROOT = Path(__file__).resolve().parent
-ARTIFACT_PATH = ROOT / "auditorias_motor" / "motor_v0_9_empirical_analog.json.gz"
-ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.9"
-SCORING_VERSION = "historical-analog-first-touch-v0.9"
-RUNTIME_VERSION = "empirical-analog-runtime-v0.9"
+ARTIFACT_PATH = ROOT / "auditorias_motor" / "motor_v0_10_empirical_analog.json.gz"
+ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.10"
+SCORING_VERSION = "historical-analog-first-touch-v0.10"
+RUNTIME_VERSION = "empirical-analog-runtime-v0.10"
 
 CONDITIONAL_CLASSES = (
     "tp_first_in_stage",

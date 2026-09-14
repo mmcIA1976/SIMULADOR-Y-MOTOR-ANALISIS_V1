@@ -20,6 +20,7 @@ from versioning import (
     build_data_contract,
     current_version_contract,
     predictive_features_from_contract,
+    scoring_version_for_legacy_engine,
 )
 
 
@@ -283,6 +284,18 @@ class VersionedDataContractTests(unittest.TestCase):
         )
         self.assertEqual(attempt_query.count("?"), len(attempt_params))
         self.assertIn("completed", attempt_params)
+
+    def test_v09_empirical_rows_keep_their_real_scoring_identity(self):
+        self.assertEqual(
+            scoring_version_for_legacy_engine(
+                "TP-SL-EMPIRICAL-ANALOG-v0.9"
+            ),
+            "historical-analog-first-touch-v0.9",
+        )
+        self.assertEqual(
+            scoring_version_for_legacy_engine(ENGINE_VERSION),
+            SCORING_VERSION,
+        )
 
 
 if __name__ == "__main__":

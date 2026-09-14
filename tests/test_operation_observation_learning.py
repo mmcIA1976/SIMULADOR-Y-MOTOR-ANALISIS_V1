@@ -19,6 +19,7 @@ from operation_observation_learning import (
     OBSERVATION_INTERVAL_CHOICES,
     OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
     OBSERVATION_STORAGE_PROFILE,
+    _rule_evolution,
     _probability_triplet,
     build_observation_terminal_counterfactual_payload,
     compact_observation_snapshot,
@@ -156,6 +157,179 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(signals[0]["tone"], "adverse")
         self.assertEqual(len(signals[0]["metrics"]), 3)
 
+    def test_partial_ema_trace_splits_active_and_observational_formulas(self) -> None:
+        signals = observation_rule_signals(
+            {
+                "side": "long",
+                "stage_rule_traces": {
+                    "intraday_short": [
+                        {
+                            "rule_id": "LIB-CAND-EMA-TREND-001",
+                            "status": "evaluated",
+                            "probability_effect": (
+                                "analog_distance_input_partial_formula"
+                            ),
+                            "active_probability_outputs": [
+                                "side_adjusted_ema50_vs_ema200_log"
+                            ],
+                            "observational_outputs": [
+                                "side_adjusted_close_vs_ema50_log",
+                                "side_adjusted_slope_atr",
+                            ],
+                            "outputs": {
+                                "side_adjusted_slope_atr": -0.35,
+                                "side_adjusted_close_vs_ema50_log": -0.01,
+                                "side_adjusted_ema50_vs_ema200_log": 0.006,
+                            },
+                        }
+                    ]
+                },
+            }
+        )
+        self.assertEqual(len(signals), 2)
+        by_role = {signal["formula_role"]: signal for signal in signals}
+        active = by_role["active_probability_subset"]
+        observational = by_role["observation_only_subset"]
+        self.assertEqual(active["category"], "principal")
+        self.assertEqual(
+            [metric["key"] for metric in active["metrics"]],
+            ["side_adjusted_ema50_vs_ema200_log"],
+        )
+        self.assertEqual(observational["category"], "observational")
+        self.assertEqual(
+            {metric["key"] for metric in observational["metrics"]},
+            {
+                "side_adjusted_close_vs_ema50_log",
+                "side_adjusted_slope_atr",
+            },
+        )
+        self.assertNotEqual(active["key"], observational["key"])
+
+    def test_episode_evolution_keeps_partial_formula_roles_separate(self) -> None:
+        evolution = _rule_evolution(
+            [
+                {
+                    "checkpoint_code": "700o1",
+                    "rule_signals": [
+                        {
+                            "stage": "intraday_short",
+                            "rule_id": "LIB-CAND-EMA-TREND-001",
+                            "formula_role": "active_probability_subset",
+                            "formula_outputs": [
+                                "side_adjusted_ema50_vs_ema200_log"
+                            ],
+                            "category": "principal",
+                            "tone": "favorable",
+                        },
+                        {
+                            "stage": "intraday_short",
+                            "rule_id": "LIB-CAND-EMA-TREND-001",
+                            "formula_role": "observation_only_subset",
+                            "formula_outputs": [
+                                "side_adjusted_close_vs_ema50_log",
+                                "side_adjusted_slope_atr",
+                            ],
+                            "category": "observational",
+                            "tone": "adverse",
+                        },
+                    ],
+                }
+            ],
+            "tp",
+        )
+        self.assertEqual(len(evolution), 2)
+        by_role = {row["formula_role"]: row for row in evolution}
+        self.assertEqual(
+            by_role["active_probability_subset"]["category"],
+            "principal",
+        )
+        self.assertEqual(
+            by_role["observation_only_subset"]["category"],
+            "observational",
+        )
+
+    def test_terminal_payload_uses_only_active_ema_formula_as_predictor(self) -> None:
+        cross = "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log"
+        snapshot = compact_observation_snapshot(
+            {
+                "analysis_at": "2026-09-08T10:00:00+00:00",
+                "data_cutoff_at": "2026-09-08T09:59:59+00:00",
+                "evaluation_horizon_seconds": 14400,
+                "symbol": "ETHUSDT",
+                "side": "long",
+                "time_horizon": "intraday_short",
+                "entry": 100.0,
+                "take_profit": 102.0,
+                "stop_loss": 99.0,
+                "probability_trace": {
+                    "stage_traces": [
+                        {
+                            "time_horizon": "intraday_short",
+                            "interval": "5m",
+                            "current_feature_values": {cross: 0.008},
+                        }
+                    ]
+                },
+                "stage_rule_traces": {
+                    "intraday_short": [
+                        {
+                            "rule_id": "LIB-CAND-EMA-TREND-001",
+                            "status": "evaluated",
+                            "probability_effect": (
+                                "analog_distance_input_partial_formula"
+                            ),
+                            "active_probability_outputs": [
+                                "side_adjusted_ema50_vs_ema200_log"
+                            ],
+                            "observational_outputs": [
+                                "side_adjusted_close_vs_ema50_log",
+                                "side_adjusted_slope_atr",
+                            ],
+                            "outputs": {
+                                "side_adjusted_ema50_vs_ema200_log": 0.008,
+                                "side_adjusted_close_vs_ema50_log": 0.003,
+                                "side_adjusted_slope_atr": 0.2,
+                            },
+                        }
+                    ]
+                },
+                "version_contract": {
+                    "engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.10",
+                    "scoring_version": "historical-analog-first-touch-v0.10",
+                },
+            }
+        )
+        payload = build_observation_terminal_counterfactual_payload(
+            operation={
+                "id": 700,
+                "user_id": 2,
+                "symbol": "ETHUSDT",
+                "side": "long",
+                "time_horizon": "intraday_short",
+                "take_profit": 102.0,
+                "stop_loss": 99.0,
+                "close_reason": "take_profit",
+                "close_price": 102.0,
+                "closed_at": "2026-09-08T11:00:00+00:00",
+            },
+            checkpoint={
+                "recommendation_id": 1700,
+                "observed_at": "2026-09-08T10:00:00+00:00",
+                "market_price": 100.0,
+                "tp_probability": 0.55,
+                "sl_probability": 0.30,
+                "range_probability": 0.15,
+                "engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.10",
+            },
+            snapshot=snapshot,
+        )
+        features = json.loads(payload["feature_values_json"])
+        self.assertEqual(features, {cross: 0.008})
+        self.assertEqual(
+            payload["source_scoring_version"],
+            "historical-analog-first-touch-v0.10",
+        )
+
     def test_side_adjusted_primary_path_is_not_inverted_twice_for_short(self) -> None:
         signals = observation_rule_signals(
             {
@@ -225,6 +399,12 @@ class OperationObservationLearningTests(unittest.TestCase):
                         "rule_id": "LIB-CAND-EMA-TREND-001",
                         "status": "evaluated_shadow",
                         "probability_effect": "none_observation_only",
+                        "active_probability_outputs": [
+                            "side_adjusted_ema50_vs_ema200_log"
+                        ],
+                        "observational_outputs": [
+                            "side_adjusted_slope_atr"
+                        ],
                         "inputs": {"candles": list(range(1000))},
                         "outputs": {
                             "side_adjusted_slope_atr": 0.4,
@@ -244,6 +424,16 @@ class OperationObservationLearningTests(unittest.TestCase):
             compact["stage_rule_traces"]["intraday_short"][0]["outputs"]
             ["side_adjusted_slope_atr"],
             0.4,
+        )
+        self.assertEqual(
+            compact["stage_rule_traces"]["intraday_short"][0]
+            ["active_probability_outputs"],
+            ["side_adjusted_ema50_vs_ema200_log"],
+        )
+        self.assertEqual(
+            compact["stage_rule_traces"]["intraday_short"][0]
+            ["observational_outputs"],
+            ["side_adjusted_slope_atr"],
         )
         self.assertLess(len(encoded.encode("utf-8")), 10_000)
 
@@ -490,7 +680,7 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(OBSERVATION_ANALYSIS_TYPE, "operation_observation")
         self.assertEqual(
             OBSERVATION_CONTRACT_VERSION,
-            "operation-observation-contract-v0.4",
+            "operation-observation-contract-v0.5",
         )
         self.assertIn(
             'OBSERVATION_OPERATOR_USERNAME = "mauriciomc"',

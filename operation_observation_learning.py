@@ -11,19 +11,19 @@ from predictive_rule_library import load_rule_library, rule_registry
 
 
 OBSERVATION_ANALYSIS_TYPE = "operation_observation"
-OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.4"
-OBSERVATION_STORAGE_PROFILE = "observation-learning-compact-v0.2"
+OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.5"
+OBSERVATION_STORAGE_PROFILE = "observation-learning-compact-v0.3"
 OBSERVATION_PREDICTIVE_EVALUATOR_VERSION = (
-    "recommendation-observation-terminal-evaluator-v0.2-stage-context"
+    "recommendation-observation-terminal-evaluator-v0.3-formula-attribution"
 )
 OBSERVATION_PREDICTIVE_SCHEMA_VERSION = (
-    "recommendation-observation-terminal-evaluation-v0.2"
+    "recommendation-observation-terminal-evaluation-v0.3"
 )
 OBSERVATION_EPISODE_EVALUATOR_VERSION = (
-    "operation-observation-episode-evaluator-v0.1"
+    "operation-observation-episode-evaluator-v0.2-formula-attribution"
 )
 EXIT_COUNTERFACTUAL_VERSION = "operation-exit-counterfactual-v0.1"
-OBSERVATION_CLOSURE_POLICY_VERSION = "observation-closure-advisory-v0.4"
+OBSERVATION_CLOSURE_POLICY_VERSION = "observation-closure-advisory-v0.5"
 OBSERVATION_PRODUCTION_EFFECT = "none"
 OBSERVATION_INTERVAL_CHOICES = (5, 10, 15, 20, 30, 40, 60)
 
@@ -569,6 +569,10 @@ def _compact_stage_rule_traces(stage_traces: Any) -> dict:
                 "rule_version": trace.get("rule_version"),
                 "status": trace.get("status"),
                 "probability_effect": trace.get("probability_effect"),
+                "active_probability_outputs": trace.get(
+                    "active_probability_outputs"
+                ),
+                "observational_outputs": trace.get("observational_outputs"),
                 "source_data_sha256": trace.get("source_data_sha256"),
                 "trace_sha256": trace.get("trace_sha256"),
                 "outputs": outputs if isinstance(outputs, dict) else {},
@@ -1666,21 +1670,36 @@ def _pearson(left: list[float], right: list[float]) -> float | None:
 
 
 def _rule_evolution(checkpoints: list[dict], outcome_class: str | None) -> list[dict]:
-    grouped: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
+    grouped: dict[
+        tuple[str, str, str],
+        list[tuple[str, str, str, tuple[str, ...]]],
+    ] = {}
     for checkpoint in checkpoints:
         for signal in checkpoint.get("rule_signals") or []:
-            key = (str(signal.get("stage") or ""), str(signal.get("rule_id") or ""))
+            key = (
+                str(signal.get("stage") or ""),
+                str(signal.get("rule_id") or ""),
+                str(signal.get("formula_role") or "whole_rule"),
+            )
             grouped.setdefault(key, []).append(
                 (
                     str(checkpoint.get("checkpoint_code") or ""),
                     str(signal.get("tone") or "context"),
                     str(signal.get("category") or "observational"),
+                    tuple(str(value) for value in signal.get("formula_outputs") or ()),
                 )
             )
     result = []
-    for (stage, rule_id), readings in sorted(grouped.items()):
-        tones = [tone for _, tone, _ in readings]
-        categories = Counter(category for _, _, category in readings)
+    for (stage, rule_id, formula_role), readings in sorted(grouped.items()):
+        tones = [tone for _, tone, _, _ in readings]
+        categories = Counter(category for _, _, category, _ in readings)
+        formula_outputs = sorted(
+            {
+                output
+                for _, _, _, outputs in readings
+                for output in outputs
+            }
+        )
         counts = Counter(tones)
         correct_tone = "favorable" if outcome_class == "tp" else "adverse"
         directional = [tone for tone in tones if tone in {"favorable", "adverse"}]
@@ -1694,13 +1713,16 @@ def _rule_evolution(checkpoints: list[dict], outcome_class: str | None) -> list[
                 break
             terminal_adverse += 1
         first_adverse = next(
-            (code for code, tone, _ in readings if tone == "adverse"),
+            (code for code, tone, _, _ in readings if tone == "adverse"),
             None,
         )
         result.append(
             {
+                "signal_key": f"{stage}:{rule_id}:{formula_role}",
                 "stage": stage,
                 "rule_id": rule_id,
+                "formula_role": formula_role,
+                "formula_outputs": formula_outputs,
                 "category": categories.most_common(1)[0][0],
                 "tones": dict(counts),
                 "directional": {
@@ -2473,6 +2495,11 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
     outputs = trace.get("outputs") if isinstance(trace.get("outputs"), dict) else {}
     values = _flatten_numeric_values(outputs)
     probability_effect = str(trace.get("probability_effect") or "")
+    formula_role = str(trace.get("formula_role") or "whole_rule")
+    formula_outputs = [
+        str(value)
+        for value in trace.get("formula_outputs") or sorted(values)
+    ]
     category = "principal" if (
         probability_effect
         and "none" not in probability_effect
@@ -2526,7 +2553,18 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
             votes.append(max(-1.0, min(1.0, cross / 0.004)))
         score = math.fsum(votes) / len(votes) if votes else None
         threshold = 0.20
-        explanation = "Resume posición, cruce y pendiente de las medias, ya ajustados a LONG o SHORT."
+        if formula_role == "active_probability_subset":
+            explanation = (
+                "El cruce EMA50/EMA200 orientado a LONG o SHORT participa en "
+                "la selección de análogos del tramo corto."
+            )
+        elif formula_role == "observation_only_subset":
+            explanation = (
+                "La pendiente EMA50 y la posición del precio frente a EMA50 "
+                "se observan por separado y no alteran la probabilidad."
+            )
+        else:
+            explanation = "Resume posición, cruce y pendiente de las medias, ya ajustados a LONG o SHORT."
     elif rule_id == "LIB-CAND-RSI-WILDER-001":
         score = add("side_adjusted_centered_rsi", "RSI centrado y orientado")
         threshold = 0.12
@@ -2615,11 +2653,21 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         threshold = 0.10
         explanation = "Combina desequilibrio, persistencia y flujo ejecutado; una fotografía aislada no basta."
 
+    label = RULE_LABELS.get(rule_id, str(metadata["name"]))
+    if formula_role == "active_probability_subset":
+        label = f"{label} · cruce EMA50/EMA200"
+    elif formula_role == "observation_only_subset":
+        label = f"{label} · pendiente y posición"
+    signal_key = f"{stage}:{rule_id}"
+    if formula_role != "whole_rule":
+        signal_key = f"{signal_key}:{formula_role}"
     return {
-        "key": f"{stage}:{rule_id}",
+        "key": signal_key,
         "stage": stage,
         "rule_id": rule_id,
-        "label": RULE_LABELS.get(rule_id, str(metadata["name"])),
+        "label": label,
+        "formula_role": formula_role,
+        "formula_outputs": formula_outputs,
         "category": category,
         "status": str(trace.get("status") or "unknown"),
         "probability_effect": probability_effect or "unknown",
@@ -2628,6 +2676,48 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         "metrics": metrics[:3],
         "explanation": explanation,
     }
+
+
+def _formula_role_trace_views(trace: dict) -> list[dict]:
+    """Split a partially active rule without inventing a second rule identity."""
+    active = [str(value) for value in trace.get("active_probability_outputs") or ()]
+    observational = [str(value) for value in trace.get("observational_outputs") or ()]
+    if not active or not observational:
+        return [trace]
+    outputs = trace.get("outputs") if isinstance(trace.get("outputs"), dict) else {}
+    flattened = _flatten_numeric_values(outputs)
+    active_outputs = {
+        name: flattened[name] for name in active if name in flattened
+    }
+    observational_outputs = {
+        name: flattened[name] for name in observational if name in flattened
+    }
+    result = []
+    if active_outputs:
+        result.append(
+            {
+                **trace,
+                "status": "evaluated",
+                "probability_effect": "analog_distance_input",
+                "source_probability_effect": trace.get("probability_effect"),
+                "formula_role": "active_probability_subset",
+                "formula_outputs": sorted(active_outputs),
+                "outputs": active_outputs,
+            }
+        )
+    if observational_outputs:
+        result.append(
+            {
+                **trace,
+                "status": "evaluated_shadow",
+                "probability_effect": "none_observation_only",
+                "source_probability_effect": trace.get("probability_effect"),
+                "formula_role": "observation_only_subset",
+                "formula_outputs": sorted(observational_outputs),
+                "outputs": observational_outputs,
+            }
+        )
+    return result or [trace]
 
 
 def observation_rule_signals(snapshot: dict) -> list[dict]:
@@ -2642,9 +2732,10 @@ def observation_rule_signals(snapshot: dict) -> list[dict]:
         for trace in traces:
             if not isinstance(trace, dict):
                 continue
-            signal = _rule_signal(trace, stage=str(stage), side=side)
-            if signal is not None:
-                result.append(signal)
+            for role_trace in _formula_role_trace_views(trace):
+                signal = _rule_signal(role_trace, stage=str(stage), side=side)
+                if signal is not None:
+                    result.append(signal)
     return result
 
 

@@ -22,6 +22,9 @@
 5. Los casos ambiguos dentro de una vela de 5m se excluyen.
 6. Si el contexto queda fuera del soporte histórico, el análisis se bloquea.
 7. Una muestra condicional tardía escasa amplía el intervalo y queda trazada.
+8. La atribución se conserva a nivel de fórmula: sólo `side_adjusted_ema50_vs_ema200_log` es una entrada probabilística activa en 0-4 h.
+9. `side_adjusted_close_vs_ema50_log` y `side_adjusted_slope_atr` continúan observándose, pero no modifican la probabilidad ni se contabilizan como evidencia de la fórmula activa.
+10. El aprendizaje normal, los controles observacionales y la evaluación final de cada episodio mantienen esa separación sin duplicar la identidad de la regla EMA.
 
 ## Limitaciones observadas
 

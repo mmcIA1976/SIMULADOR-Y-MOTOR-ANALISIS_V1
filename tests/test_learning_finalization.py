@@ -133,6 +133,66 @@ class LearningFinalizationTests(unittest.TestCase):
             "tp_first_within_horizon",
         )
 
+    def test_v10_snapshot_preserves_partial_ema_formula_attribution(self):
+        cross = "side_adjusted_ema50_vs_ema200_log"
+        observational = [
+            "side_adjusted_close_vs_ema50_log",
+            "side_adjusted_slope_atr",
+        ]
+        snapshot = {
+            "probability_trace": {
+                "stage_traces": [
+                    {
+                        "time_horizon": "intraday_short",
+                        "active_rule_groups": ["trend_momentum"],
+                        "current_feature_values": {
+                            f"intraday_short::LIB-CAND-EMA-TREND-001::{cross}": 0.01,
+                        },
+                    }
+                ]
+            },
+            "stage_rule_traces": {
+                "intraday_short": [
+                    {
+                        "rule_id": "LIB-CAND-EMA-TREND-001",
+                        "status": "evaluated",
+                        "probability_effect": (
+                            "analog_distance_input_partial_formula"
+                        ),
+                        "active_probability_outputs": [cross],
+                        "observational_outputs": observational,
+                        "outputs": {
+                            cross: 0.01,
+                            observational[0]: 0.005,
+                            observational[1]: 0.30,
+                        },
+                    }
+                ]
+            },
+        }
+
+        result = predictive_rule_learning_snapshot(
+            snapshot,
+            plan_result="plan_success",
+        )
+
+        ema = result["rules"]["LIB-CAND-EMA-TREND-001"]
+        self.assertEqual(ema["active_probability_outputs"], [cross])
+        self.assertEqual(ema["observational_outputs"], observational)
+        self.assertEqual(
+            ema["stage_traces"][0]["probability_effect"],
+            "analog_distance_input_partial_formula",
+        )
+        self.assertEqual(
+            result["partially_observational_rule_ids"],
+            ["LIB-CAND-EMA-TREND-001"],
+        )
+        self.assertEqual(
+            result["partially_observational_rules"]
+            ["LIB-CAND-EMA-TREND-001"]["formula_outputs"],
+            observational,
+        )
+
     def test_predictive_rule_snapshot_joins_pretrade_effect_and_outcome(self):
         snapshot = {
             "feature_snapshot": {

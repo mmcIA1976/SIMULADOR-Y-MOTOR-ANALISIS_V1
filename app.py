@@ -3316,18 +3316,18 @@ def learning_rule_metadata(rule_id: str) -> dict:
         }
 
 
-def v09_predictive_rule_learning_snapshot(
+def empirical_predictive_rule_learning_snapshot(
     snapshot: dict,
     *,
     plan_result: str,
 ) -> dict | None:
-    """Join the real v0.9 multiscale traces to the observed outcome.
+    """Join empirical multiscale traces (v0.9+) to the observed outcome.
 
-    v0.9 does not expose the legacy ``m5_rule_effects`` contract.  Its active
+    The empirical engine does not expose the legacy ``m5_rule_effects`` contract. Its active
     inputs live in ``probability_trace.stage_traces.current_feature_values``
     and its candidate observations live in ``stage_rule_traces``.  Keeping
-    those two roles separate prevents observational rules from being reported
-    as if they had changed the served probability.
+    those roles separate at formula level prevents a partially promoted rule
+    from reporting its observational outputs as probability inputs.
     """
     stage_rule_payload = snapshot.get("stage_rule_traces")
     probability_trace = snapshot.get("probability_trace")
@@ -3372,15 +3372,24 @@ def v09_predictive_rule_learning_snapshot(
             if not isinstance(raw_trace, dict) or not raw_trace.get("rule_id"):
                 continue
             rule_id = str(raw_trace["rule_id"])
+            raw_probability_effect = str(
+                raw_trace.get("probability_effect") or ""
+            )
+            if rule_id in active_features:
+                probability_effect = (
+                    raw_probability_effect
+                    if raw_probability_effect
+                    and "none" not in raw_probability_effect
+                    else "analog_distance_input"
+                )
+            else:
+                probability_effect = (
+                    raw_probability_effect or "none_observation_only"
+                )
             trace = {
                 **raw_trace,
                 "time_horizon": str(horizon),
-                "probability_effect": (
-                    "analog_distance_input"
-                    if rule_id in active_features
-                    else raw_trace.get("probability_effect")
-                    or "none_observation_only"
-                ),
+                "probability_effect": probability_effect,
             }
             stage_traces_by_rule.setdefault(rule_id, []).append(trace)
             traced_stage_rules.add((str(horizon), rule_id))
@@ -3449,6 +3458,18 @@ def v09_predictive_rule_learning_snapshot(
         for rule_id in stage_traces_by_rule
         if rule_id not in active_features
     ]
+    partial_observational_outputs: dict[str, list[str]] = {}
+    for rule_id in active_rule_ids:
+        names = sorted(
+            {
+                str(output_name)
+                for trace in stage_traces_by_rule.get(rule_id, [])
+                for output_name in trace.get("observational_outputs") or ()
+            }
+        )
+        if names:
+            partial_observational_outputs[rule_id] = names
+    partially_observational_rule_ids = list(partial_observational_outputs)
     metadata = {
         rule_id: learning_rule_metadata(rule_id)
         for rule_id in {*active_rule_ids, *observational_rule_ids}
@@ -3488,6 +3509,20 @@ def v09_predictive_rule_learning_snapshot(
             }
             for rule_id in observational_rule_ids
         },
+        "partially_observational_rule_ids": partially_observational_rule_ids,
+        "partially_observational_rule_count": len(
+            partially_observational_rule_ids
+        ),
+        "partially_observational_rules": {
+            rule_id: {
+                "family_id": metadata[rule_id]["family_id"],
+                "role": metadata[rule_id]["role"],
+                "formula_outputs": partial_observational_outputs[rule_id],
+                "stage_traces": stage_traces_by_rule[rule_id],
+                "probability_effect": "none_observation_only_formula_subset",
+            }
+            for rule_id in partially_observational_rule_ids
+        },
         "observed_outcome": observed_outcome_from_plan_result(plan_result),
         "rules": {
             rule_id: {
@@ -3505,6 +3540,15 @@ def v09_predictive_rule_learning_snapshot(
                 ),
                 "features": list(active_features[rule_id]),
                 "feature_values": active_features[rule_id],
+                "active_probability_outputs": sorted(
+                    {
+                        feature_name.split("::", 2)[-1]
+                        for feature_name in active_features[rule_id]
+                    }
+                ),
+                "observational_outputs": partial_observational_outputs.get(
+                    rule_id, []
+                ),
                 "stage_traces": stage_traces_by_rule[rule_id],
                 "effect_mode": "empirical_analog_distance",
             }
@@ -3513,17 +3557,22 @@ def v09_predictive_rule_learning_snapshot(
     }
 
 
+# Historical tests and offline readers imported this name directly. Keep the
+# alias without retaining a v0.9-only implementation path.
+v09_predictive_rule_learning_snapshot = empirical_predictive_rule_learning_snapshot
+
+
 def predictive_rule_learning_snapshot(
     snapshot: dict,
     *,
     plan_result: str,
 ) -> dict:
-    v09_snapshot = v09_predictive_rule_learning_snapshot(
+    empirical_snapshot = empirical_predictive_rule_learning_snapshot(
         snapshot,
         plan_result=plan_result,
     )
-    if v09_snapshot is not None:
-        return v09_snapshot
+    if empirical_snapshot is not None:
+        return empirical_snapshot
     feature_snapshot = (
         snapshot.get("feature_snapshot")
         if isinstance(snapshot.get("feature_snapshot"), dict)

@@ -53,6 +53,14 @@ class EmpiricalAnalysisPresentationTests(unittest.TestCase):
         self.assertIn("versionAwareAnalysisText(\n    analysis.plain_summary", self.javascript)
         self.assertIn("versionAwareAnalysisText(reason, analysis)", self.javascript)
 
+    def test_probability_cards_use_point_estimates_not_interval_lower_bounds(self) -> None:
+        self.assertIn("const value = recommendation[fallbackKey]", self.javascript)
+        self.assertNotIn(
+            "recommendation?.probability_ranges?.[key]?.low",
+            self.javascript,
+        )
+        self.assertIn("Intervalo empirico 95%", self.javascript)
+
 
 if __name__ == "__main__":
     unittest.main()

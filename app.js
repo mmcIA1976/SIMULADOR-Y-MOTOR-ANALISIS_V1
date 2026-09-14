@@ -929,10 +929,9 @@ function probabilityLabel(recommendation, key, fallbackKey) {
       return percent(Number(activationValue));
     }
   }
-  const rangeValue = recommendation?.probability_ranges?.[key]?.low;
-  const value = rangeValue === null || rangeValue === undefined
-    ? recommendation[fallbackKey]
-    : rangeValue;
+  // The headline cards show the model's point estimate. Confidence interval
+  // bounds are rendered separately and must never masquerade as probability.
+  const value = recommendation[fallbackKey];
   return value === null || value === undefined ? "--" : percent(Number(value));
 }
 

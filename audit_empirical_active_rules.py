@@ -15,6 +15,7 @@ from build_empirical_temporal_engine import (
     GEOMETRY_GRID,
     PARTITIONS,
     RANDOM_SEED,
+    RULE_GROUPS,
     SELECTION,
     SIGNED_FEATURES,
     _raw_feature_map,
@@ -477,6 +478,171 @@ DERIVED_PATH_FEATURES = OrderedDict(
         ),
     )
 )
+
+
+CANDIDATE_CONTEXT_FEATURES = OrderedDict(
+    (
+        (
+            "LIB-CAND-EMA-TREND-001::side_adjusted_close_vs_ema50_log",
+            {
+                "formula": "trade_side * log(close / EMA50)",
+                "family": "trend_momentum",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log",
+            {
+                "formula": "trade_side * log(EMA50 / EMA200)",
+                "family": "trend_momentum",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-EMA-TREND-001::side_adjusted_slope_atr",
+            {
+                "formula": "trade_side * (EMA50_now - EMA50_6_bars_ago) / ATR14",
+                "family": "trend_momentum",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-RSI-WILDER-001::side_adjusted_centered_rsi",
+            {
+                "formula": "trade_side * (RSI14 - 50) / 50",
+                "family": "trend_momentum",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-ATR-EXTENSION-001::side_adjusted_extension_atr",
+            {
+                "formula": "trade_side * (close - EMA20) / ATR14",
+                "family": "trend_momentum",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-RELATIVE-VOLUME-001::log_relative_horizon_volume",
+            {
+                "formula": "log(current_horizon_volume / prior_horizon_volume)",
+                "family": "volume_flow",
+                "signed": False,
+            },
+        ),
+        (
+            "LIB-CAND-CVD-SLOPE-001::side_adjusted_normalized_cvd_slope",
+            {
+                "formula": "trade_side * normalized_CVD_slope",
+                "family": "volume_flow",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-ABSORPTION-001::side_adjusted_horizon_displacement_atr",
+            {
+                "formula": "trade_side * horizon_price_displacement / ATR14",
+                "family": "volume_flow",
+                "signed": True,
+            },
+        ),
+        (
+            "LIB-CAND-ABSORPTION-001::flow_opposing_wick_ratio",
+            {
+                "formula": "opposing_wick_flow / total_flow",
+                "family": "volume_flow",
+                "signed": False,
+            },
+        ),
+    )
+)
+
+
+def expanded_candidate_context_feature_names(horizon: str) -> list[str]:
+    return [
+        _stage_feature(stage, feature)
+        for stage in STAGE_ORDER[: STAGE_ORDER.index(horizon) + 1]
+        for feature in CANDIDATE_CONTEXT_FEATURES
+    ]
+
+
+def _candidate_context_feature_map(
+    record: dict,
+    horizon: str,
+    orientation: int,
+) -> dict[str, float]:
+    raw = _raw_feature_map(record, horizon, orientation)
+    names = expanded_candidate_context_feature_names(horizon)
+    return {name: float(raw[name]) for name in names}
+
+
+def candidate_context_coverage(records: list[dict]) -> dict:
+    result = {}
+    for horizon in STAGE_ORDER:
+        names = expanded_candidate_context_feature_names(horizon)
+        valid = Counter()
+        for record in records:
+            for orientation in DIRECTIONS:
+                values = _candidate_context_feature_map(record, horizon, orientation)
+                for name in names:
+                    if math.isfinite(values[name]):
+                        valid[name] += 1
+        expected = len(records) * len(DIRECTIONS)
+        result[horizon] = {
+            name: {
+                "available_orientations": valid[name],
+                "expected_orientations": expected,
+                "coverage_fraction": valid[name] / expected if expected else 0.0,
+            }
+            for name in names
+        }
+    return result
+
+
+CONFIRMED_SHORT_EMA_CROSS = _stage_feature(
+    "intraday_short",
+    "LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log",
+)
+
+
+def confirmed_short_ema_candidate_sets() -> OrderedDict[
+    str, dict[str, tuple[str, ...]]
+]:
+    baseline = candidate_feature_sets()["evidence_pruned"]
+    candidate = {horizon: tuple(names) for horizon, names in baseline.items()}
+    candidate["intraday_short"] = (
+        *candidate["intraday_short"],
+        CONFIRMED_SHORT_EMA_CROSS,
+    )
+    return OrderedDict(
+        (
+            ("evidence_pruned_active", baseline),
+            ("evidence_pruned_plus_confirmed_short_ema_cross", candidate),
+        )
+    )
+
+
+def production_baseline_ema_candidate_sets() -> OrderedDict[
+    str, dict[str, tuple[str, ...]]
+]:
+    production = candidate_feature_sets()["v0_9_full"]
+    production_plus = {
+        horizon: tuple(names) for horizon, names in production.items()
+    }
+    production_plus["intraday_short"] = (
+        *production_plus["intraday_short"],
+        CONFIRMED_SHORT_EMA_CROSS,
+    )
+    pruned_plus = confirmed_short_ema_candidate_sets()[
+        "evidence_pruned_plus_confirmed_short_ema_cross"
+    ]
+    return OrderedDict(
+        (
+            ("v0_9_production", production),
+            ("v0_9_plus_confirmed_short_ema_cross", production_plus),
+            ("evidence_pruned_plus_confirmed_short_ema_cross", pruned_plus),
+        )
+    )
 
 
 def expanded_derived_feature_names(horizon: str) -> list[str]:
@@ -2382,8 +2548,18 @@ def evaluate_candidate_feature_sets_partition(
         for horizon in STAGE_ORDER
     }
     unit_sums = defaultdict(lambda: [0.0, 0.0, 0])
+    unit_symbols = {}
     prediction_counts = defaultdict(int)
     directional_counts = defaultdict(
+        lambda: {
+            "eligible_pairs": 0,
+            "correct_score": 0.0,
+            "ties": 0,
+            "chosen_long": 0,
+            "actual_long": 0,
+        }
+    )
+    directional_counts_by_symbol = defaultdict(
         lambda: {
             "eligible_pairs": 0,
             "correct_score": 0.0,
@@ -2494,6 +2670,7 @@ def evaluate_candidate_feature_sets_partition(
                         continue
                     label_index = CUMULATIVE_CLASSES.index(true_label)
                     unit_key = f"{record['id']}::{direction}"
+                    unit_symbols[unit_key] = str(record["symbol"])
                     for candidate_name in candidates:
                         values = cumulative[candidate_name][geometry_index]
                         probabilities = values / float(values.sum())
@@ -2525,19 +2702,26 @@ def evaluate_candidate_feature_sets_partition(
                     short_label = int(short_item[1])
                     if {long_label, short_label} != {0, 1}:
                         continue
-                    counts = directional_counts[(candidate_name, horizon)]
-                    counts["eligible_pairs"] += 1
                     actual_long = long_label == 0
-                    counts["actual_long"] += int(actual_long)
                     long_score = float(long_item[0])
                     short_score = float(short_item[0])
-                    if abs(long_score - short_score) <= 1e-15:
-                        counts["ties"] += 1
-                        counts["correct_score"] += 0.5
-                    else:
-                        chosen_long = long_score > short_score
-                        counts["chosen_long"] += int(chosen_long)
-                        counts["correct_score"] += float(chosen_long == actual_long)
+                    for counts in (
+                        directional_counts[(candidate_name, horizon)],
+                        directional_counts_by_symbol[
+                            (candidate_name, horizon, str(record["symbol"]))
+                        ],
+                    ):
+                        counts["eligible_pairs"] += 1
+                        counts["actual_long"] += int(actual_long)
+                        if abs(long_score - short_score) <= 1e-15:
+                            counts["ties"] += 1
+                            counts["correct_score"] += 0.5
+                        else:
+                            chosen_long = long_score > short_score
+                            counts["chosen_long"] += int(chosen_long)
+                            counts["correct_score"] += float(
+                                chosen_long == actual_long
+                            )
 
     unit_metrics = defaultdict(dict)
     for (candidate_name, horizon, direction, unit_key), (
@@ -2552,14 +2736,18 @@ def evaluate_candidate_feature_sets_partition(
 
     summaries = {}
     comparisons = {}
+    symbol_comparisons = {}
+    symbols = sorted({str(record["symbol"]) for record in evaluation_records})
     for candidate_name in candidates:
         summaries[candidate_name] = {}
         if candidate_name != baseline_candidate:
             comparisons[candidate_name] = {}
+            symbol_comparisons[candidate_name] = {}
         for horizon in STAGE_ORDER:
             summaries[candidate_name][horizon] = {}
             if candidate_name != baseline_candidate:
                 comparisons[candidate_name][horizon] = {}
+                symbol_comparisons[candidate_name][horizon] = {}
             for direction in DIRECTIONS.values():
                 values = list(
                     unit_metrics[(candidate_name, horizon, direction)].values()
@@ -2599,6 +2787,32 @@ def evaluate_candidate_feature_sets_partition(
                         ]
                     ),
                 }
+                symbol_comparisons[candidate_name][horizon][direction] = {}
+                for symbol in symbols:
+                    symbol_shared = [
+                        key for key in shared if unit_symbols[key] == symbol
+                    ]
+                    baseline_direction = directional_counts_by_symbol[
+                        (baseline_candidate, horizon, symbol)
+                    ]
+                    candidate_direction = directional_counts_by_symbol[
+                        (candidate_name, horizon, symbol)
+                    ]
+                    baseline_eligible = baseline_direction["eligible_pairs"]
+                    candidate_eligible = candidate_direction["eligible_pairs"]
+                    directional_delta = None
+                    if baseline_eligible and candidate_eligible:
+                        directional_delta = (
+                            candidate_direction["correct_score"] / candidate_eligible
+                            - baseline_direction["correct_score"] / baseline_eligible
+                        )
+                    symbol_comparisons[candidate_name][horizon][direction][symbol] = {
+                        "candidate_vs_baseline": _paired_summary(
+                            [full_map[key] for key in symbol_shared],
+                            [candidate_map[key] for key in symbol_shared],
+                        ),
+                        "directional_accuracy_delta": directional_delta,
+                    }
     return {
         "partition": partition_name,
         "feature_space": feature_space,
@@ -2612,6 +2826,7 @@ def evaluate_candidate_feature_sets_partition(
         },
         "summaries": summaries,
         "comparisons": comparisons,
+        "symbol_comparisons": symbol_comparisons,
     }
 
 
@@ -2869,6 +3084,135 @@ def _candidate_replication_matrix(
             for partition_name, metrics in macro.items()
         }
     return result
+
+
+def _candidate_symbol_replication_matrix(
+    candidate_results: dict,
+    candidates: OrderedDict[str, dict[str, tuple[str, ...]]],
+    *,
+    baseline_candidate: str,
+) -> dict:
+    result = {}
+    for candidate_name in candidates:
+        if candidate_name == baseline_candidate:
+            continue
+        result[candidate_name] = {}
+        for horizon in STAGE_ORDER:
+            result[candidate_name][horizon] = {}
+            for direction in DIRECTIONS.values():
+                result[candidate_name][horizon][direction] = {}
+                symbols = sorted(
+                    candidate_results["rule_test"]["symbol_comparisons"][
+                        candidate_name
+                    ][horizon][direction]
+                )
+                for symbol in symbols:
+                    rule_delta = candidate_results["rule_test"][
+                        "symbol_comparisons"
+                    ][candidate_name][horizon][direction][symbol]
+                    final_delta = candidate_results["final_test"][
+                        "symbol_comparisons"
+                    ][candidate_name][horizon][direction][symbol]
+                    result[candidate_name][horizon][direction][symbol] = {
+                        "status": classify_replication(
+                            rule_delta["candidate_vs_baseline"],
+                            final_delta["candidate_vs_baseline"],
+                            minimum_units=150,
+                        ),
+                        "rule_test": rule_delta,
+                        "final_test": final_delta,
+                    }
+    return result
+
+
+def candidate_symbol_robustness_summary(symbol_matrix: dict) -> dict:
+    result = {}
+    for candidate_name, horizons in symbol_matrix.items():
+        cells = [
+            cell
+            for directions in horizons.values()
+            for symbols in directions.values()
+            for cell in symbols.values()
+        ]
+        positive_calibration = sum(
+            all(
+                cell[partition]["candidate_vs_baseline"][metric] > 0.0
+                for partition in ("rule_test", "final_test")
+                for metric in ("log_loss", "brier")
+            )
+            for cell in cells
+        )
+        positive_directional = sum(
+            all(
+                cell[partition]["directional_accuracy_delta"] is not None
+                and cell[partition]["directional_accuracy_delta"] > 0.0
+                for partition in ("rule_test", "final_test")
+            )
+            for cell in cells
+        )
+        result[candidate_name] = {
+            "cells": len(cells),
+            "status_counts": dict(
+                sorted(Counter(cell["status"] for cell in cells).items())
+            ),
+            "positive_calibration_in_both_partitions": positive_calibration,
+            "positive_directional_accuracy_in_both_partitions": positive_directional,
+            "harmful_confirmed_cells": sum(
+                cell["status"] == "harmful_confirmed" for cell in cells
+            ),
+        }
+    return result
+
+
+def select_stable_candidate(
+    *,
+    candidates: OrderedDict[str, dict[str, tuple[str, ...]]],
+    baseline_candidate: str,
+    release_decisions: dict,
+    symbol_robustness: dict,
+) -> dict:
+    baseline_coordinates = {
+        name for values in candidates[baseline_candidate].values() for name in values
+    }
+    ranking = []
+    for candidate_name, decision in release_decisions.items():
+        candidate_coordinates = {
+            name for values in candidates[candidate_name].values() for name in values
+        }
+        status_counts = symbol_robustness[candidate_name]["status_counts"]
+        item = {
+            "candidate": candidate_name,
+            "eligible": decision["decision"] == "eligible_for_production_review",
+            "harmful_confirmed_symbol_cells": int(
+                symbol_robustness[candidate_name]["harmful_confirmed_cells"]
+            ),
+            "harmful_consistent_symbol_cells": int(
+                status_counts.get("harmful_consistent_but_uncertain", 0)
+            ),
+            "unique_coordinate_changes": len(
+                baseline_coordinates.symmetric_difference(candidate_coordinates)
+            ),
+        }
+        item["stability_rank"] = [
+            0 if item["eligible"] else 1,
+            item["harmful_confirmed_symbol_cells"],
+            item["harmful_consistent_symbol_cells"],
+            item["unique_coordinate_changes"],
+            candidate_name,
+        ]
+        ranking.append(item)
+    ranking.sort(key=lambda item: item["stability_rank"])
+    selected = ranking[0] if ranking and ranking[0]["eligible"] else None
+    return {
+        "policy": (
+            "among globally eligible candidates, minimize confirmed then consistent "
+            "per-symbol harm and finally minimize the number of changed coordinates"
+        ),
+        "ranking": ranking,
+        "selected_candidate": selected["candidate"] if selected else None,
+        "production_authorized": False,
+        "authorization_state": "selected_for_candidate_build_and_runtime_verification",
+    }
 
 
 HELPFUL_REPLICATION_STATUSES = frozenset(
@@ -3445,6 +3789,245 @@ def run_finalize_decisions(*, output_path: Path = OUTPUT_PATH) -> dict:
     return payload
 
 
+def run_candidate_context_screen(*, output_path: Path = OUTPUT_PATH) -> dict:
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    expected_hash = payload.pop("canonical_payload_sha256")
+    if canonical_sha256(payload) != expected_hash:
+        raise RuntimeError("base_attribution_artifact_hash_invalid")
+    if "active_rule_decision_record" not in payload:
+        raise RuntimeError("active_rule_decision_record_required")
+
+    records = load_or_build_records()
+    partitions = {
+        name: [record for record in records if record["partition"] == name]
+        for name in PARTITIONS
+    }
+    direct_results = {}
+    for partition_name in ("rule_test", "final_test"):
+        fit_records = [
+            record
+            for fit_partition in FIT_PARTITIONS[partition_name]
+            for record in partitions[fit_partition]
+        ]
+        print(
+            f"CANDIDATE_CONTEXT_PROGRESS partition={partition_name} "
+            f"records={len(partitions[partition_name])}",
+            flush=True,
+        )
+        direct_results[partition_name] = evaluate_direct_feature_relationships(
+            partition_name=partition_name,
+            fit_records=fit_records,
+            evaluation_records=partitions[partition_name],
+            feature_names_factory=expanded_candidate_context_feature_names,
+            feature_map_factory=_candidate_context_feature_map,
+            feature_space="historically_complete_non_active_context_candidates",
+        )
+    payload["candidate_context_direct_screen"] = {
+        "purpose": (
+            "screen already-recorded trend, momentum, volume and flow formulas "
+            "independently by source stage, evaluated horizon and trade side"
+        ),
+        "status": "offline_direct_screen_not_active_rules",
+        "production_changed": False,
+        "feature_contracts": CANDIDATE_CONTEXT_FEATURES,
+        "coverage": candidate_context_coverage(records),
+        "partitions": direct_results,
+        "replication_matrix": _direct_replication_matrix(
+            direct_results,
+            feature_names_factory=expanded_candidate_context_feature_names,
+        ),
+        "next_gate": (
+            "only helpful replicated cells may enter a separately tested analog "
+            "candidate for that same horizon and side"
+        ),
+    }
+    payload["canonical_payload_sha256"] = canonical_sha256(payload)
+    output_path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return payload
+
+
+def run_confirmed_ema_candidate(*, output_path: Path = OUTPUT_PATH) -> dict:
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    expected_hash = payload.pop("canonical_payload_sha256")
+    if canonical_sha256(payload) != expected_hash:
+        raise RuntimeError("base_attribution_artifact_hash_invalid")
+    if "candidate_context_direct_screen" not in payload:
+        raise RuntimeError("candidate_context_direct_screen_required")
+
+    records = load_or_build_records()
+    partitions = {
+        name: [record for record in records if record["partition"] == name]
+        for name in PARTITIONS
+    }
+    candidates = confirmed_short_ema_candidate_sets()
+    candidate_results = {}
+    for partition_name in ("rule_test", "final_test"):
+        fit_records = [
+            record
+            for fit_partition in FIT_PARTITIONS[partition_name]
+            for record in partitions[fit_partition]
+        ]
+        candidate_results[partition_name] = evaluate_candidate_feature_sets_partition(
+            partition_name=partition_name,
+            fit_records=fit_records,
+            evaluation_records=partitions[partition_name],
+            candidates=candidates,
+            feature_map_factory=_raw_feature_map,
+            baseline_candidate="evidence_pruned_active",
+            feature_space="evidence_pruned_plus_confirmed_short_ema_cross",
+        )
+    replication_matrix = _candidate_replication_matrix(
+        candidate_results,
+        candidates=candidates,
+        baseline_candidate="evidence_pruned_active",
+    )
+    payload["confirmed_short_ema_analog_candidate"] = {
+        "purpose": (
+            "test whether the independently confirmed 0-4h EMA50/EMA200 signal "
+            "improves analog selection when added only to the 0-4h conditional stage"
+        ),
+        "status": "retrospective_diagnostic_not_production_authorization",
+        "production_changed": False,
+        "baseline_candidate": "evidence_pruned_active",
+        "candidate_feature": CONFIRMED_SHORT_EMA_CROSS,
+        "candidate_scope": (
+            "intraday_short conditional stage only; wider results inherit its "
+            "effect through sequential survival but do not reuse it in later-stage distance"
+        ),
+        "partitions": candidate_results,
+        "replication_matrix": replication_matrix,
+        "release_decisions": candidate_release_decisions(replication_matrix),
+    }
+    payload["canonical_payload_sha256"] = canonical_sha256(payload)
+    output_path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return payload
+
+
+def run_integrated_candidate_vs_production(*, output_path: Path = OUTPUT_PATH) -> dict:
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    expected_hash = payload.pop("canonical_payload_sha256")
+    if canonical_sha256(payload) != expected_hash:
+        raise RuntimeError("base_attribution_artifact_hash_invalid")
+    if "confirmed_short_ema_analog_candidate" not in payload:
+        raise RuntimeError("confirmed_short_ema_analog_candidate_required")
+
+    records = load_or_build_records()
+    partitions = {
+        name: [record for record in records if record["partition"] == name]
+        for name in PARTITIONS
+    }
+    candidates = production_baseline_ema_candidate_sets()
+    candidate_results = {}
+    for partition_name in ("rule_test", "final_test"):
+        fit_records = [
+            record
+            for fit_partition in FIT_PARTITIONS[partition_name]
+            for record in partitions[fit_partition]
+        ]
+        candidate_results[partition_name] = evaluate_candidate_feature_sets_partition(
+            partition_name=partition_name,
+            fit_records=fit_records,
+            evaluation_records=partitions[partition_name],
+            candidates=candidates,
+            feature_map_factory=_raw_feature_map,
+            baseline_candidate="v0_9_production",
+            feature_space="integrated_short_ema_candidates_vs_v0_9",
+        )
+    replication_matrix = _candidate_replication_matrix(
+        candidate_results,
+        candidates=candidates,
+        baseline_candidate="v0_9_production",
+    )
+    symbol_replication_matrix = _candidate_symbol_replication_matrix(
+        candidate_results,
+        candidates,
+        baseline_candidate="v0_9_production",
+    )
+    release_decisions = candidate_release_decisions(replication_matrix)
+    symbol_robustness = candidate_symbol_robustness_summary(
+        symbol_replication_matrix
+    )
+    payload["integrated_candidate_vs_production"] = {
+        "purpose": (
+            "compare the confirmed short-stage EMA signal alone and combined "
+            "with evidence-based pruning against the unchanged v0.9 production vector"
+        ),
+        "status": "retrospective_diagnostic_not_production_authorization",
+        "production_changed": False,
+        "baseline_candidate": "v0_9_production",
+        "partitions": candidate_results,
+        "replication_matrix": replication_matrix,
+        "release_decisions": release_decisions,
+        "symbol_replication_matrix": symbol_replication_matrix,
+        "symbol_robustness_summary": symbol_robustness,
+        "stable_candidate_selection": select_stable_candidate(
+            candidates=candidates,
+            baseline_candidate="v0_9_production",
+            release_decisions=release_decisions,
+            symbol_robustness=symbol_robustness,
+        ),
+    }
+    payload["canonical_payload_sha256"] = canonical_sha256(payload)
+    output_path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return payload
+
+
+def run_finalize_stable_candidate(*, output_path: Path = OUTPUT_PATH) -> dict:
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    expected_hash = payload.pop("canonical_payload_sha256")
+    if canonical_sha256(payload) != expected_hash:
+        raise RuntimeError("base_attribution_artifact_hash_invalid")
+    section = payload.get("integrated_candidate_vs_production")
+    if not isinstance(section, dict):
+        raise RuntimeError("integrated_candidate_vs_production_required")
+    candidates = production_baseline_ema_candidate_sets()
+    section["stable_candidate_selection"] = select_stable_candidate(
+        candidates=candidates,
+        baseline_candidate="v0_9_production",
+        release_decisions=section["release_decisions"],
+        symbol_robustness=section["symbol_robustness_summary"],
+    )
+    payload["canonical_payload_sha256"] = canonical_sha256(payload)
+    output_path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Audit individual and pairwise contribution of v0.9 active rules."
@@ -3480,6 +4063,26 @@ def main() -> int:
         action="store_true",
         help="append deterministic release decisions to the completed audit artifact",
     )
+    parser.add_argument(
+        "--candidate-context-screen",
+        action="store_true",
+        help="append direct tests of recorded trend, momentum, volume and flow candidates",
+    )
+    parser.add_argument(
+        "--confirmed-ema-candidate",
+        action="store_true",
+        help="append an analog test of the confirmed 0-4h EMA50/EMA200 signal",
+    )
+    parser.add_argument(
+        "--integrated-candidate-vs-production",
+        action="store_true",
+        help="compare EMA and pruned+EMA candidates directly with v0.9 production",
+    )
+    parser.add_argument(
+        "--finalize-stable-candidate",
+        action="store_true",
+        help="append the stability-first candidate selection without recomputing audits",
+    )
     args = parser.parse_args()
     append_modes = sum(
         int(value)
@@ -3490,6 +4093,10 @@ def main() -> int:
             args.derived_features,
             args.derived_context_candidates,
             args.finalize_decisions,
+            args.candidate_context_screen,
+            args.confirmed_ema_candidate,
+            args.integrated_candidate_vs_production,
+            args.finalize_stable_candidate,
         )
     )
     if append_modes > 1:
@@ -3506,6 +4113,14 @@ def main() -> int:
         payload = run_derived_context_comparison(output_path=args.output)
     elif args.finalize_decisions:
         payload = run_finalize_decisions(output_path=args.output)
+    elif args.candidate_context_screen:
+        payload = run_candidate_context_screen(output_path=args.output)
+    elif args.confirmed_ema_candidate:
+        payload = run_confirmed_ema_candidate(output_path=args.output)
+    elif args.integrated_candidate_vs_production:
+        payload = run_integrated_candidate_vs_production(output_path=args.output)
+    elif args.finalize_stable_candidate:
+        payload = run_finalize_stable_candidate(output_path=args.output)
     else:
         payload = run_audit(output_path=args.output)
     print(

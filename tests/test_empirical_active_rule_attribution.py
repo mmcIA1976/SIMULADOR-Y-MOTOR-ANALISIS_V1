@@ -112,6 +112,82 @@ class EmpiricalActiveRuleAttributionTests(unittest.TestCase):
                 self.assertTrue(previous.issubset(selected))
                 previous = selected
 
+    def test_candidate_context_schema_is_nested_and_uses_recorded_features(self):
+        available = {
+            item
+            for features in audit.RULE_GROUPS.values()
+            for item in features
+        }
+        self.assertTrue(set(audit.CANDIDATE_CONTEXT_FEATURES).issubset(available))
+        previous = set()
+        for horizon in audit.STAGE_ORDER:
+            names = audit.expanded_candidate_context_feature_names(horizon)
+            selected = set(names)
+            self.assertEqual(len(names), len(selected))
+            self.assertTrue(previous.issubset(selected))
+            previous = selected
+
+    def test_confirmed_short_ema_candidate_changes_only_first_stage_distance(self):
+        candidates = audit.confirmed_short_ema_candidate_sets()
+        baseline = candidates["evidence_pruned_active"]
+        candidate = candidates["evidence_pruned_plus_confirmed_short_ema_cross"]
+
+        self.assertEqual(
+            candidate["intraday_short"],
+            (*baseline["intraday_short"], audit.CONFIRMED_SHORT_EMA_CROSS),
+        )
+        self.assertEqual(candidate["intraday_wide"], baseline["intraday_wide"])
+        self.assertEqual(candidate["short_swing"], baseline["short_swing"])
+
+    def test_production_comparison_isolates_ema_and_combined_candidate(self):
+        candidates = audit.production_baseline_ema_candidate_sets()
+        production = candidates["v0_9_production"]
+        production_plus = candidates["v0_9_plus_confirmed_short_ema_cross"]
+        combined = candidates[
+            "evidence_pruned_plus_confirmed_short_ema_cross"
+        ]
+
+        self.assertEqual(
+            production_plus["intraday_short"],
+            (*production["intraday_short"], audit.CONFIRMED_SHORT_EMA_CROSS),
+        )
+        self.assertEqual(production_plus["intraday_wide"], production["intraday_wide"])
+        self.assertNotIn(
+            "LIB-CAND-COMPRESSION-001::compression_vector.atr_rank",
+            " ".join(combined["intraday_short"]),
+        )
+
+    def test_stability_selection_prefers_fewer_harmful_symbol_cells(self):
+        candidates = audit.production_baseline_ema_candidate_sets()
+        release = {
+            name: {"decision": "eligible_for_production_review"}
+            for name in candidates
+            if name != "v0_9_production"
+        }
+        robustness = {
+            "v0_9_plus_confirmed_short_ema_cross": {
+                "harmful_confirmed_cells": 0,
+                "status_counts": {},
+            },
+            "evidence_pruned_plus_confirmed_short_ema_cross": {
+                "harmful_confirmed_cells": 0,
+                "status_counts": {"harmful_consistent_but_uncertain": 2},
+            },
+        }
+
+        selection = audit.select_stable_candidate(
+            candidates=candidates,
+            baseline_candidate="v0_9_production",
+            release_decisions=release,
+            symbol_robustness=robustness,
+        )
+
+        self.assertEqual(
+            selection["selected_candidate"],
+            "v0_9_plus_confirmed_short_ema_cross",
+        )
+        self.assertFalse(selection["production_authorized"])
+
     def test_candidate_release_gate_rejects_directional_regression(self):
         helpful = {
             "status": "helpful_confirmed",

@@ -99,6 +99,7 @@ const elements = {
   stateCard: document.querySelector("#stateCard"),
   stateText: document.querySelector("#stateText"),
   lastUpdate: document.querySelector("#lastUpdate"),
+  runtimeEngineBadge: document.querySelector("#runtimeEngineBadge"),
   workerMonitor: document.querySelector("#workerMonitor"),
   workerStatusText: document.querySelector("#workerStatusText"),
   workerStatusDetail: document.querySelector("#workerStatusDetail"),
@@ -108,6 +109,7 @@ const elements = {
   autoStatus: document.querySelector("#autoStatus"),
   nextUpdate: document.querySelector("#nextUpdate"),
   analysisHeadline: document.querySelector("#analysisHeadline"),
+  analysisEngineVersion: document.querySelector("#analysisEngineVersion"),
   tpProbabilityLabel: document.querySelector("#tpProbabilityLabel"),
   tpProbability: document.querySelector("#tpProbability"),
   slProbabilityLabel: document.querySelector("#slProbabilityLabel"),
@@ -151,6 +153,7 @@ const UPDATE_INTERVAL_MS = 120000;
 const LIVE_PRICE_INTERVAL_MS = 30000;
 const WORKER_PRICE_DISCOVERY_RETRY_MS = 2000;
 const WORKER_STATUS_INTERVAL_MS = 60000;
+const RUNTIME_VERSION_INTERVAL_MS = 300000;
 const OPERATION_STATE_SYNC_INTERVAL_MS = 10000;
 const PRICE_FETCH_TIMEOUT_MS = 20000;
 const PRICE_RECORD_TIMEOUT_MS = 25000;
@@ -194,6 +197,7 @@ let proposalDraft = null;
 let newOperationViewActive = false;
 let floatingNoticeTimer = null;
 let contestHistoryOpen = false;
+let runtimeEngineVersion = null;
 const observationSessionsByOperation = new Map();
 const observationSessionLoads = new Set();
 const observationMonitorsByOperation = new Map();
@@ -267,6 +271,45 @@ function setEntryMode(nextMode) {
   }
   updateEntryOrderHelp();
   updateActionLabels();
+}
+
+function engineVersionLabel(value) {
+  const fullVersion = String(value || "").trim();
+  if (!fullVersion) return "--";
+  const version = fullVersion.match(/v\d+(?:\.\d+)+/i)?.[0];
+  return version || fullVersion;
+}
+
+function analysisEngineVersion(analysis) {
+  const snapshot = analysis?.snapshot || {};
+  return analysis?.version_contract?.served_engine_version
+    || analysis?.version_contract?.engine_version
+    || analysis?.engine_version
+    || snapshot?.version_contract?.served_engine_version
+    || snapshot?.version_contract?.engine_version
+    || snapshot?.source?.probability_model
+    || null;
+}
+
+function renderAnalysisEngineVersion(analysis) {
+  if (!elements.analysisEngineVersion) return;
+  const engineVersion = analysisEngineVersion(analysis);
+  elements.analysisEngineVersion.textContent = `Motor de este análisis · ${engineVersionLabel(engineVersion)}`;
+  elements.analysisEngineVersion.title = engineVersion || "Sin versión asociada";
+}
+
+async function loadRuntimeVersion() {
+  if (!elements.runtimeEngineBadge) return;
+  try {
+    const version = await requestJson("/api/version", { cacheBust: true });
+    runtimeEngineVersion = version.served_engine_version || version.engine_version || null;
+    elements.runtimeEngineBadge.textContent = `Motor activo · ${engineVersionLabel(runtimeEngineVersion)}`;
+    elements.runtimeEngineBadge.title = runtimeEngineVersion || "Versión no disponible";
+    elements.runtimeEngineBadge.classList.remove("is-unavailable");
+  } catch {
+    elements.runtimeEngineBadge.textContent = "Motor activo · no disponible";
+    elements.runtimeEngineBadge.classList.add("is-unavailable");
+  }
 }
 
 function syncLimitTriggerForSide() {
@@ -2424,6 +2467,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
     fullAnalysisOpen = false;
     updateAnalysisFullVisibility(false);
     elements.analysisHeadline.textContent = "Sin analisis asociado";
+    renderAnalysisEngineVersion(null);
     elements.tpProbability.textContent = "--";
     elements.slProbability.textContent = "--";
     elements.rangeProbability.textContent = "--";
@@ -2442,6 +2486,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   }
 
   updateAnalysisFullVisibility(true);
+  renderAnalysisEngineVersion(analysis);
   const isTpSlProbabilityEngine = [
     "tp_sl_competing_risks",
     "m6_calibrated_competing_risks",
@@ -2733,7 +2778,13 @@ function renderAnalysisHighlights(analysis) {
   const limitActivation = Number(limitTree?.activation?.activated_by_expiry);
   const limitNoActivation = Number(limitTree?.activation?.not_activated_by_expiry);
   const limitOverallTp = Number(limitTree?.overall?.activation_then_tp_first);
+  const engineVersion = analysisEngineVersion(analysis);
   const items = [
+    {
+      label: "Motor de este análisis",
+      value: engineVersionLabel(engineVersion),
+      tone: "neutral",
+    },
     ...(limitTree ? [
       {
         label: "Activacion LIMIT base",
@@ -5836,7 +5887,9 @@ setOperationMode("training");
 updateMetrics();
 fetchPrice({ resetTimer: true, record: true });
 loadWorkerStatus();
+loadRuntimeVersion();
 window.setInterval(loadWorkerStatus, WORKER_STATUS_INTERVAL_MS);
+window.setInterval(loadRuntimeVersion, RUNTIME_VERSION_INTERVAL_MS);
 window.setInterval(syncOperationStates, OPERATION_STATE_SYNC_INTERVAL_MS);
 window.setTimeout(loadSession, 50);
 window.setTimeout(() => loadRecentMarketHistory(), 250);

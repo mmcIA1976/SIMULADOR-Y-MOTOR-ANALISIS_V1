@@ -14,13 +14,16 @@ from backfill_operation_404_observation import (
     probability_values,
 )
 from operation_observation_learning import (
+    MAX_SESSION_SUMMARY_BYTES,
     OBSERVATION_ANALYSIS_TYPE,
     OBSERVATION_CONTRACT_VERSION,
     OBSERVATION_INTERVAL_CHOICES,
     OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
     OBSERVATION_STORAGE_PROFILE,
+    RULE_LABELS,
     _rule_evolution,
     _probability_triplet,
+    build_observation_episode_summary,
     build_observation_terminal_counterfactual_payload,
     compact_observation_snapshot,
     canonical_json,
@@ -285,6 +288,81 @@ class OperationObservationLearningTests(unittest.TestCase):
         self.assertEqual(
             by_role["observation_only_subset"]["category"],
             "observational",
+        )
+
+    def test_episode_summary_stays_bounded_with_three_stage_rule_library(self) -> None:
+        signals = [
+            {
+                "stage": stage,
+                "rule_id": rule_id,
+                "formula_role": "whole_rule",
+                "formula_outputs": [
+                    f"rolling_depth.samples[{index}].visible_notional"
+                    for index in range(124)
+                ],
+                "category": "observational",
+                "tone": "adverse",
+            }
+            for stage in ("intraday_short", "intraday_wide", "short_swing")
+            for rule_id in RULE_LABELS
+        ]
+        checkpoint = {
+            "id": 1,
+            "checkpoint_number": 1,
+            "checkpoint_code": "900o1",
+            "observed_at": "2026-09-14T10:00:00+00:00",
+            "market_price": 100.0,
+            "unrealized_pnl": -2.0,
+            "remaining_seconds": 86_400,
+            "tp_probability": 0.30,
+            "sl_probability": 0.60,
+            "range_probability": 0.10,
+            "decision": "watch",
+            "decision_candidate": False,
+            "contract_quality": "exact",
+            "formal_learning_eligible": True,
+            "recommendation_id": 10,
+            "engine_version": "v0.10",
+            "snapshot_json": "{}",
+            "context_json": json.dumps({"monitor_rule_signals": signals}),
+        }
+        summary = build_observation_episode_summary(
+            session={"id": 1},
+            operation={
+                "id": 900,
+                "user_id": 1,
+                "symbol": "ETHUSDT",
+                "side": "long",
+                "time_horizon": "short_swing",
+                "entry": 100.0,
+                "take_profit": 104.0,
+                "stop_loss": 98.0,
+                "margin": 100.0,
+                "leverage": 2.0,
+                "close_reason": "stop_loss",
+                "final_pnl": -4.0,
+                "closed_at": "2026-09-15T10:00:00+00:00",
+            },
+            checkpoints=[checkpoint],
+            storage={"profile": OBSERVATION_STORAGE_PROFILE},
+            opening_learning=None,
+        )
+
+        self.assertLessEqual(
+            len(canonical_json(summary).encode("utf-8")),
+            MAX_SESSION_SUMMARY_BYTES,
+        )
+        self.assertEqual(summary["counts"]["rule_series"], 48)
+        self.assertEqual(
+            set(summary["rule_evolution"]["stages"]),
+            {"intraday_short", "intraday_wide", "short_swing"},
+        )
+        self.assertTrue(
+            all(
+                "formula_outputs" not in item
+                for stage in summary["rule_evolution"]["stages"].values()
+                for item in stage
+            )
         )
 
     def test_terminal_payload_uses_only_active_ema_formula_as_predictor(self) -> None:

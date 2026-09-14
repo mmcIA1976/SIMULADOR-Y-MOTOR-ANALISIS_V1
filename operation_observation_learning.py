@@ -20,8 +20,9 @@ OBSERVATION_PREDICTIVE_SCHEMA_VERSION = (
     "recommendation-observation-terminal-evaluation-v0.3"
 )
 OBSERVATION_EPISODE_EVALUATOR_VERSION = (
-    "operation-observation-episode-evaluator-v0.2-formula-attribution"
+    "operation-observation-episode-evaluator-v0.3-compact-rule-index"
 )
+RULE_EVOLUTION_SUMMARY_SCHEMA_VERSION = "observation-rule-evolution-v0.2"
 EXIT_COUNTERFACTUAL_VERSION = "operation-exit-counterfactual-v0.1"
 OBSERVATION_CLOSURE_POLICY_VERSION = "observation-closure-advisory-v0.5"
 OBSERVATION_PRODUCTION_EFFECT = "none"
@@ -1758,6 +1759,64 @@ def _rule_evolution(checkpoints: list[dict], outcome_class: str | None) -> list[
     return result
 
 
+def _compact_rule_evolution_summary(rules: list[dict]) -> dict:
+    """Keep the episode aggregate small; checkpoint rows retain full evidence."""
+    stages: dict[str, list[dict]] = {}
+    tone_order = ("favorable", "adverse", "neutral", "context")
+    for rule in rules:
+        formula_role = str(rule.get("formula_role") or "whole_rule")
+        item = {
+            "rule_id": str(rule.get("rule_id") or ""),
+            "formula_role": formula_role,
+            "category": str(rule.get("category") or "observational"),
+            "tone_counts": [
+                int((rule.get("tones") or {}).get(tone, 0))
+                for tone in tone_order
+            ],
+            "directional": [
+                int((rule.get("directional") or {}).get("cases", 0)),
+                int((rule.get("directional") or {}).get("hits", 0)),
+            ],
+            "first_adverse_checkpoint": rule.get("first_adverse_checkpoint"),
+            "last_tone": rule.get("last_tone"),
+            "adverse_streak": [
+                int(rule.get("longest_adverse_streak") or 0),
+                int(rule.get("terminal_adverse_streak") or 0),
+            ],
+        }
+        # For a whole rule the versioned catalog is the formula contract.  Repeating
+        # every flattened output path (including rolling-book array indexes) made
+        # the aggregate larger than the complete session storage budget.  Partial
+        # roles still name their exact subset; unusually large subsets are linked
+        # by count and hash while their full values remain in checkpoint evidence.
+        if formula_role != "whole_rule":
+            formula_outputs = sorted(
+                {str(value) for value in rule.get("formula_outputs") or ()}
+            )
+            encoded_outputs = canonical_json(formula_outputs).encode("utf-8")
+            if len(formula_outputs) <= 8 and len(encoded_outputs) <= 512:
+                item["formula_outputs"] = formula_outputs
+            else:
+                item["formula_outputs_reference"] = {
+                    "count": len(formula_outputs),
+                    "sha256": payload_sha256(formula_outputs),
+                }
+        stages.setdefault(str(rule.get("stage") or "unknown"), []).append(item)
+    return {
+        "schema_version": RULE_EVOLUTION_SUMMARY_SCHEMA_VERSION,
+        "tone_count_order": list(tone_order),
+        "directional_order": ["cases", "hits"],
+        "adverse_streak_order": ["longest", "terminal"],
+        "formula_contract": (
+            "whole_rule_uses_rule_catalog; partial_roles_name_or_hash_outputs"
+        ),
+        "detail_source": (
+            "operation_observation_checkpoints plus recommendation snapshots"
+        ),
+        "stages": stages,
+    }
+
+
 def build_observation_episode_summary(
     *,
     session: dict,
@@ -2022,7 +2081,7 @@ def build_observation_episode_summary(
             "profitable_model_close_candidates": exit_candidates,
             "maximum_gap_minutes": max(intervals) if intervals else None,
         },
-        "rule_evolution": rules,
+        "rule_evolution": _compact_rule_evolution_summary(rules),
         "conclusions": conclusions,
         "storage": storage,
         "governance": {

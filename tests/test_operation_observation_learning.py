@@ -30,6 +30,7 @@ from operation_observation_learning import (
     finalize_closed_observation_sessions,
     observation_next_due_at,
     observation_rule_signals,
+    observation_snapshot_for_finalization,
     observation_session_is_due,
     payload_sha256,
 )
@@ -41,6 +42,44 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OperationObservationLearningTests(unittest.TestCase):
+    def test_evaluated_legacy_snapshot_remains_immutable_during_finalization(self) -> None:
+        legacy = {
+            "storage_profile": "observation-learning-compact-v0.2",
+            "contract_version": "operation-observation-contract-v0.4",
+            "symbol": "ETHUSDT",
+            "probability_trace": {"stage_traces": []},
+        }
+
+        prepared, should_persist, preserved = (
+            observation_snapshot_for_finalization(
+                legacy,
+                already_evaluated=True,
+            )
+        )
+
+        self.assertIs(prepared, legacy)
+        self.assertFalse(should_persist)
+        self.assertTrue(preserved)
+
+    def test_unevaluated_legacy_snapshot_upgrades_to_current_compact_contract(self) -> None:
+        legacy = {
+            "storage_profile": "observation-learning-compact-v0.2",
+            "contract_version": "operation-observation-contract-v0.4",
+            "symbol": "ETHUSDT",
+            "probability_trace": {"stage_traces": []},
+        }
+
+        prepared, should_persist, preserved = (
+            observation_snapshot_for_finalization(
+                legacy,
+                already_evaluated=False,
+            )
+        )
+
+        self.assertEqual(prepared["storage_profile"], OBSERVATION_STORAGE_PROFILE)
+        self.assertTrue(should_persist)
+        self.assertFalse(preserved)
+
     def test_checkpoint_identity_is_stable_and_unambiguous(self) -> None:
         self.assertEqual(checkpoint_code(404, 1), "404o1")
         self.assertEqual(checkpoint_code(450, 27), "450o27")

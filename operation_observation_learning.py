@@ -638,6 +638,26 @@ def compact_observation_snapshot(snapshot: dict) -> dict:
     return compact
 
 
+def observation_snapshot_for_finalization(
+    snapshot: dict,
+    *,
+    already_evaluated: bool,
+) -> tuple[dict, bool, bool]:
+    """Choose a finalization source without mutating evaluated evidence.
+
+    Old compact snapshots remain valid inputs for newer evaluators.  Once an
+    evaluation exists, rewriting its source row would break evidence
+    immutability; preserve that row and evaluate the new version directly from
+    the stored contract.  Unevaluated legacy snapshots can still be upgraded
+    safely to the current compact profile.
+    """
+    if snapshot.get("storage_profile") == OBSERVATION_STORAGE_PROFILE:
+        return snapshot, False, False
+    if already_evaluated:
+        return snapshot, False, True
+    return compact_observation_snapshot(snapshot), True, False
+
+
 def utc_iso(value: datetime | str) -> str:
     if isinstance(value, datetime):
         parsed = value
@@ -2039,6 +2059,7 @@ def _finalize_observation_session_learning(
     bytes_before = 0
     bytes_after = 0
     compacted = 0
+    immutable_snapshots_preserved = 0
     compact_exact = 0
     for checkpoint in checkpoint_rows:
         if not checkpoint.get("recommendation_id"):
@@ -2048,9 +2069,6 @@ def _finalize_observation_session_learning(
             raise ValueError("observation_snapshot_missing")
         original_json = canonical_json(snapshot)
         bytes_before += len(original_json.encode("utf-8"))
-        compact = compact_observation_snapshot(snapshot)
-        compact_json = canonical_json(compact)
-        bytes_after += len(compact_json.encode("utf-8"))
         existing_evaluation = db.execute(
             """
             SELECT 1
@@ -2060,17 +2078,23 @@ def _finalize_observation_session_learning(
             """,
             (int(checkpoint["recommendation_id"]),),
         ).fetchone()
-        if snapshot.get("storage_profile") != OBSERVATION_STORAGE_PROFILE:
-            if existing_evaluation:
-                raise RuntimeError(
-                    "observation_snapshot_cannot_compact_after_evaluation"
-                )
+        finalization_snapshot, should_persist, preserved_immutable = (
+            observation_snapshot_for_finalization(
+                snapshot,
+                already_evaluated=bool(existing_evaluation),
+            )
+        )
+        finalization_json = canonical_json(finalization_snapshot)
+        bytes_after += len(finalization_json.encode("utf-8"))
+        if should_persist:
             db.execute(
                 "UPDATE recommendations SET snapshot_json = ? WHERE id = ?",
-                (compact_json, int(checkpoint["recommendation_id"])),
+                (finalization_json, int(checkpoint["recommendation_id"])),
             )
             compacted += 1
-        checkpoint["snapshot_json"] = compact_json
+        if preserved_immutable:
+            immutable_snapshots_preserved += 1
+        checkpoint["snapshot_json"] = finalization_json
         compact_exact += 1
 
     for checkpoint in checkpoint_rows:
@@ -2156,6 +2180,9 @@ def _finalize_observation_session_learning(
         storage={
             "profile": OBSERVATION_STORAGE_PROFILE,
             "compacted_snapshots": compacted,
+            "immutable_evaluated_snapshots_preserved": (
+                immutable_snapshots_preserved
+            ),
             "snapshot_bytes_before": bytes_before,
             "snapshot_bytes_after": bytes_after,
             "bytes_saved": bytes_before - bytes_after,

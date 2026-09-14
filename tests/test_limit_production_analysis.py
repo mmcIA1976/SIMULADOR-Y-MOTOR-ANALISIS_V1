@@ -115,6 +115,7 @@ class LimitProductionAnalysisTests(unittest.TestCase):
             result["engine_version"],
             LIMIT_PRODUCTION_ENGINE_VERSION,
         )
+        self.assertIn("v0.10 empírico condicional", result["confidence"])
         self.assertEqual(result["engine_family"], "pending_limit_two_stage")
         self.assertEqual(result["tp_probability"], 0.55)
         tree = result["limit_analysis"]["probability_tree"]

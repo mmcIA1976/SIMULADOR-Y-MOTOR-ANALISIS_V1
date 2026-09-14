@@ -291,6 +291,15 @@ function analysisEngineVersion(analysis) {
     || null;
 }
 
+function versionAwareAnalysisText(value, analysis) {
+  const text = String(value || "");
+  const release = engineVersionLabel(analysisEngineVersion(analysis));
+  if (!text || release === "--") return text;
+  return text
+    .replace(/Motor empírico multiescala v\d+(?:\.\d+)+/gi, `Motor empírico multiescala ${release}`)
+    .replace(/probabilidades v\d+(?:\.\d+)+/gi, `probabilidades ${release}`);
+}
+
 function renderAnalysisEngineVersion(analysis) {
   if (!elements.analysisEngineVersion) return;
   const engineVersion = analysisEngineVersion(analysis);
@@ -2513,7 +2522,10 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
     : isTpSlProbabilityEngine
     ? `${analysis.horizon_calibration?.horizon_label || timeHorizonLabel(analysis.time_horizon)} · confianza ${analysis.confidence || "pendiente"} · decision del usuario`
     : `${analysis.training_decision} · confianza ${analysis.confidence}${evLabel}${regimeLabel}`;
-  elements.analysisSummary.textContent = analysis.plain_summary || fallbackSummary || "";
+  elements.analysisSummary.textContent = versionAwareAnalysisText(
+    analysis.plain_summary || fallbackSummary || "",
+    analysis,
+  );
   renderAnalysisHighlights(analysis);
   renderAnalysisKeypoints(analysis);
   renderParameterAdvice(analysis.parameter_advice || {});
@@ -2524,7 +2536,7 @@ function renderAnalysisPayload(analysis, fallbackSummary = "") {
   elements.analysisReasons.innerHTML = "";
   for (const reason of [...(analysis.reasons || []), ...(analysis.alerts || [])]) {
     const item = document.createElement("li");
-    item.textContent = reason;
+    item.textContent = versionAwareAnalysisText(reason, analysis);
     elements.analysisReasons.appendChild(item);
   }
   if (Array.isArray(analysis.invalidation_rules) && analysis.invalidation_rules.length) {
@@ -2747,7 +2759,9 @@ function renderAnalysisKeypoints(analysis) {
     ...(analysis.reasons || []),
     ...(analysis.invalidation_rules || []).map((rule) => `Invalidacion: ${rule}`),
   ].filter(Boolean);
-  const visible = combined.slice(0, 5);
+  const visible = combined
+    .slice(0, 5)
+    .map((item) => versionAwareAnalysisText(item, analysis));
   if (!visible.length) {
     elements.analysisKeypoints.innerHTML = "";
     return;

@@ -48,6 +48,11 @@ class EmpiricalAnalysisPresentationTests(unittest.TestCase):
         self.assertIn("function analysisEngineVersion(analysis)", self.javascript)
         self.assertIn('label: "Motor de este análisis"', self.javascript)
 
+    def test_persisted_copy_is_rendered_with_its_authoritative_engine_version(self) -> None:
+        self.assertIn("function versionAwareAnalysisText(value, analysis)", self.javascript)
+        self.assertIn("versionAwareAnalysisText(\n    analysis.plain_summary", self.javascript)
+        self.assertIn("versionAwareAnalysisText(reason, analysis)", self.javascript)
+
 
 if __name__ == "__main__":
     unittest.main()

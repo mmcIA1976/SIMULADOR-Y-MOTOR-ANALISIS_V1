@@ -22,7 +22,10 @@ from empirical_temporal_engine import (
 
 
 ENGINE_FAMILY = "empirical_multiscale_first_touch"
-OWNER_ACTIVATION = "owner_explicit_empirical_multiscale_v0.9_2026-08-14"
+ENGINE_RELEASE = ENGINE_VERSION.rsplit("-", 1)[-1]
+OWNER_ACTIVATION = (
+    f"owner_explicit_empirical_multiscale_{ENGINE_RELEASE}_2026-09-14"
+)
 STRUCTURAL_LEVEL_RULE_ID = "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"
 FIBONACCI_RULE_ID = "LIB-CAND-FIBONACCI-DISTANCE-001"
 AVAILABLE_TRACE_STATUSES = {
@@ -320,10 +323,14 @@ def _analysis_stamp(
         "request_received_at": request_received_at.isoformat(),
         "analysis_at": analysis_at.isoformat(),
         "data_cutoff_at": analysis_at.isoformat(),
-        "data_cutoff_policy": "closed_multiscale_market_data_at_analysis_time_v0.9",
+        "data_cutoff_policy": (
+            f"closed_multiscale_market_data_at_analysis_time_{ENGINE_RELEASE}"
+        ),
         "evaluation_horizon_seconds": horizon_seconds,
         "evaluation_expires_at": expires_at.isoformat(),
-        "evaluation_horizon_policy": "nested_conditional_stage_read_v0.9",
+        "evaluation_horizon_policy": (
+            f"nested_conditional_stage_read_{ENGINE_RELEASE}"
+        ),
     }
 
 
@@ -594,11 +601,11 @@ def analyze_trade(
         "alerts": [
             "La estimación expresa frecuencia histórica condicionada, no certeza futura.",
             HORIZON_VALIDATION_NOTES[time_horizon],
-            "Mapas de liquidaciones y dinámica del libro se registran como observación y no alteran las probabilidades v0.9; Fibonacci y niveles estructurales tampoco puntúan.",
+            "Mapas de liquidaciones y dinámica del libro se registran como observación y no alteran las probabilidades del motor; Fibonacci y niveles estructurales tampoco puntúan.",
             "La probabilidad no incorpora costes ni garantiza rentabilidad.",
         ],
         "plain_summary": (
-            "Motor empírico multiescala v0.9: probabilidad de TP antes "
+            f"Motor empírico multiescala {ENGINE_RELEASE}: probabilidad de TP antes "
             f"que SL en {HORIZON_LABELS[time_horizon]}: "
             f"{_probability_label(probabilities['tp'])}."
         ),

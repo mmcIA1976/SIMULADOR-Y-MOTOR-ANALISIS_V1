@@ -24,9 +24,10 @@ from sequential_production_analysis import NewEngineAnalysisError, analyze_trade
 from empirical_temporal_engine import ENGINE_VERSION
 
 
-# LIMIT is an entry lifecycle around the same v0.9 TP/SL engine, not a second
+# LIMIT is an entry lifecycle around the current TP/SL engine, not a second
 # probability engine or a separately versioned analysis result.
 LIMIT_PRODUCTION_ENGINE_VERSION = ENGINE_VERSION
+ENGINE_RELEASE = ENGINE_VERSION.rsplit("-", 1)[-1]
 
 
 class LimitProductionAnalysisError(RuntimeError):
@@ -224,7 +225,7 @@ def analyze_limit_trade(
             ),
             "setup_grade": "LIMIT en dos etapas",
             "confidence": (
-                "v0.9 empírico condicional; activación base no calibrada"
+                f"{ENGINE_RELEASE} empírico condicional; activación base no calibrada"
             ),
             "training_decision": "decision del usuario",
             "reasons": [

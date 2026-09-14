@@ -61,6 +61,15 @@ def synthetic_candles(horizon: str) -> tuple[list[dict], datetime]:
 
 
 class SequentialProductionContractTests(unittest.TestCase):
+    def test_public_copy_uses_current_engine_release_without_v09_literals(self):
+        source = (ROOT / "sequential_production_analysis.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('ENGINE_RELEASE = ENGINE_VERSION.rsplit("-", 1)[-1]', source)
+        self.assertIn('f"Motor empírico multiescala {ENGINE_RELEASE}', source)
+        self.assertNotIn('Motor empírico multiescala v0.9', source)
+        self.assertNotIn('probabilidades v0.9', source)
+
     def test_each_stage_builds_its_own_complete_closed_data_context(self):
         for horizon, profile in STAGE_PROFILES.items():
             with self.subTest(horizon=horizon):

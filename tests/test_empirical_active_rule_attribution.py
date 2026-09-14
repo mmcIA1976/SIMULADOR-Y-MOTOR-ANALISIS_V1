@@ -67,6 +67,95 @@ class EmpiricalActiveRuleAttributionTests(unittest.TestCase):
         self.assertAlmostEqual(sum(probabilities), 1.0)
         self.assertGreater(probabilities[2], 0.0)
 
+    def test_targeted_interactions_use_two_distinct_available_coordinates(self):
+        for horizon, interactions in audit.TARGETED_INTERACTIONS.items():
+            available = set(audit.expanded_feature_names(horizon))
+            self.assertTrue(interactions)
+            for features in interactions.values():
+                self.assertEqual(len(features), 2)
+                self.assertEqual(len(set(features)), 2)
+                self.assertTrue(set(features).issubset(available))
+
+    def test_candidate_feature_sets_are_nonempty_nested_production_subsets(self):
+        candidates = audit.candidate_feature_sets()
+        full = candidates["v0_9_full"]
+        for candidate_name, by_horizon in candidates.items():
+            previous = set()
+            for horizon in audit.STAGE_ORDER:
+                selected = set(by_horizon[horizon])
+                self.assertTrue(selected)
+                self.assertTrue(selected.issubset(set(full[horizon])))
+                self.assertTrue(previous.issubset(selected))
+                previous = selected
+            if candidate_name != "v0_9_full":
+                self.assertNotEqual(by_horizon, full)
+
+    def test_derived_feature_schema_expands_once_per_stage(self):
+        for horizon in audit.STAGE_ORDER:
+            names = audit.expanded_derived_feature_names(horizon)
+            self.assertEqual(len(names), len(set(names)))
+            self.assertEqual(
+                len(names),
+                len(audit.DERIVED_PATH_FEATURES)
+                * (audit.STAGE_ORDER.index(horizon) + 1),
+            )
+
+    def test_derived_context_candidates_have_unique_nested_coordinates(self):
+        candidates = audit.derived_context_candidate_sets()
+        for by_horizon in candidates.values():
+            previous = set()
+            for horizon in audit.STAGE_ORDER:
+                names = by_horizon[horizon]
+                selected = set(names)
+                self.assertEqual(len(names), len(selected))
+                self.assertTrue(names)
+                self.assertTrue(previous.issubset(selected))
+                previous = selected
+
+    def test_candidate_release_gate_rejects_directional_regression(self):
+        helpful = {
+            "status": "helpful_confirmed",
+            "rule_test": {},
+            "final_test": {},
+        }
+        candidate = {
+            horizon: {direction: dict(helpful) for direction in audit.DIRECTIONS.values()}
+            for horizon in audit.STAGE_ORDER
+        }
+        candidate["macro"] = {
+            "rule_test": {"log_loss": 0.01, "brier": 0.01, "directional": -0.01},
+            "final_test": {"log_loss": 0.01, "brier": 0.01, "directional": 0.01},
+        }
+
+        decision = audit.candidate_release_decisions({"candidate": candidate})[
+            "candidate"
+        ]
+
+        self.assertEqual(decision["decision"], "reject_as_global_replacement")
+        self.assertEqual(decision["failed_gates"], ["long_short_selection_accuracy"])
+
+    def test_candidate_release_gate_accepts_only_full_replication(self):
+        helpful = {
+            "status": "helpful_consistent_but_uncertain",
+            "rule_test": {},
+            "final_test": {},
+        }
+        candidate = {
+            horizon: {direction: dict(helpful) for direction in audit.DIRECTIONS.values()}
+            for horizon in audit.STAGE_ORDER
+        }
+        candidate["macro"] = {
+            partition: {"log_loss": 0.01, "brier": 0.01, "directional": 0.01}
+            for partition in ("rule_test", "final_test")
+        }
+
+        decision = audit.candidate_release_decisions({"candidate": candidate})[
+            "candidate"
+        ]
+
+        self.assertEqual(decision["decision"], "eligible_for_production_review")
+        self.assertFalse(decision["failed_gates"])
+
     def test_replication_requires_both_metrics_on_both_tests(self):
         positive = {
             "independent_units": 100,

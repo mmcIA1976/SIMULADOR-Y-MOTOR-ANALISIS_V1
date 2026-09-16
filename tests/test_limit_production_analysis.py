@@ -9,6 +9,7 @@ from unittest.mock import patch
 import app
 from analysis_engine import TradeProposal
 from limit_production_analysis import (
+    ENGINE_RELEASE,
     LIMIT_PRODUCTION_ENGINE_VERSION,
     LimitProductionAnalysisError,
     analyze_limit_trade,
@@ -115,7 +116,10 @@ class LimitProductionAnalysisTests(unittest.TestCase):
             result["engine_version"],
             LIMIT_PRODUCTION_ENGINE_VERSION,
         )
-        self.assertIn("v0.10 empírico condicional", result["confidence"])
+        self.assertIn(
+            f"{ENGINE_RELEASE} empírico condicional",
+            result["confidence"],
+        )
         self.assertEqual(result["engine_family"], "pending_limit_two_stage")
         self.assertEqual(result["tp_probability"], 0.55)
         tree = result["limit_analysis"]["probability_tree"]

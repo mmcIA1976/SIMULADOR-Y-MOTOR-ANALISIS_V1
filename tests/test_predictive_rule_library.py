@@ -34,10 +34,20 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
         governed = set(
             self.catalog["governance"]["current_active_predictive_rule_ids"]
         )
+        artifact = load_production_artifact()
+        artifact_feature_names = [
+            name
+            for names in artifact["feature_names"].values()
+            for name in names
+        ]
+        for target_profile in artifact[
+            "target_horizon_rule_profiles"
+        ].values():
+            for override in target_profile["overrides"].values():
+                artifact_feature_names.extend(override["feature_names"])
         artifact_rule_ids = {
             parts[1]
-            for names in load_production_artifact()["feature_names"].values()
-            for name in names
+            for name in artifact_feature_names
             if len(parts := name.split("::", 2)) == 3
         }
         self.assertEqual(active, governed)
@@ -50,6 +60,7 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
                 "M4-RULE-VOLATILITY-RANK-001",
                 "LIB-CAND-COMPRESSION-001",
                 "LIB-CAND-EMA-TREND-001",
+                "LIB-CAND-RELATIVE-VOLUME-001",
             },
         )
 
@@ -128,6 +139,19 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
             },
         )
 
+    def test_relative_volume_is_active_only_for_the_medium_target(self) -> None:
+        volume = rule_metadata("LIB-CAND-RELATIVE-VOLUME-001")
+        self.assertEqual(volume["lifecycle_status"], "active_provisional")
+        self.assertEqual(
+            volume["active_formula_outputs"],
+            ["log_relative_horizon_volume"],
+        )
+        self.assertEqual(volume["active_horizons"], ["intraday_wide"])
+        self.assertEqual(
+            volume["historical_evidence"]["excluded_horizons"],
+            ["intraday_short", "short_swing"],
+        )
+
     def test_heatmap_historical_evidence_is_preserved(self) -> None:
         heatmap = rule_metadata("LIB-CAND-LIQUIDATION-ZONE-001")
         evidence = heatmap["historical_evidence"]
@@ -146,7 +170,6 @@ class PredictiveRuleLibraryTests(unittest.TestCase):
         expected = {
             "LIB-CAND-RSI-WILDER-001",
             "LIB-CAND-ATR-EXTENSION-001",
-            "LIB-CAND-RELATIVE-VOLUME-001",
             "LIB-CAND-CVD-SLOPE-001",
             "LIB-CAND-ORDERBOOK-IMBALANCE-001",
             "LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001",

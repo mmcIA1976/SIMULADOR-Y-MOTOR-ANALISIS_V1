@@ -14,7 +14,9 @@ from multiscale_feature_runtime import (
 from empirical_temporal_engine import (
     ENGINE_VERSION,
     empirical_probabilities,
+    load_production_artifact,
     selected_stage_order,
+    target_context_active_outputs,
 )
 from versioning import PROSPECTIVE_RUNTIME_VERSION
 
@@ -155,6 +157,45 @@ def _stage_plan(plan: dict, horizon: str) -> dict:
     }
 
 
+def apply_target_rule_trace_scope(
+    stage_contexts: dict[str, dict], target_horizon: str, artifact: dict
+) -> None:
+    """Mark exactly the formulas used by the requested horizon profile."""
+
+    for context_stage, context in stage_contexts.items():
+        active = target_context_active_outputs(
+            artifact, target_horizon, context_stage
+        )
+        for trace in context.get("rule_traces") or []:
+            rule_id = str(trace.get("rule_id") or "")
+            outputs = trace.get("outputs")
+            if not isinstance(outputs, dict):
+                outputs = {}
+            active_outputs = sorted(
+                output_name
+                for output_name in active.get(rule_id, [])
+                if output_name in outputs
+            )
+            observational_outputs = sorted(
+                output_name
+                for output_name in outputs
+                if output_name not in active_outputs
+            )
+            if active_outputs:
+                trace["status"] = "evaluated"
+                trace["probability_effect"] = (
+                    "analog_distance_input"
+                    if len(active_outputs) == len(outputs)
+                    else "analog_distance_input_partial_formula"
+                )
+            else:
+                trace["status"] = "evaluated_shadow"
+                trace["probability_effect"] = "none_observation_only"
+            trace["active_probability_outputs"] = active_outputs
+            trace["observational_outputs"] = observational_outputs
+            trace["active_for_target_horizon"] = target_horizon
+
+
 def build_production_probability_run(
     proposal: Any,
     snapshot: dict,
@@ -196,6 +237,10 @@ def build_production_probability_run(
             stage_contexts[horizon] = build_stage_context(
                 _stage_plan(plan, horizon), candles
             )
+        artifact = load_production_artifact()
+        apply_target_rule_trace_scope(
+            stage_contexts, plan["time_horizon"], artifact
+        )
         probability_result = empirical_probabilities(
             symbol=plan["symbol"],
             side=plan["side"],
@@ -205,6 +250,7 @@ def build_production_probability_run(
             time_horizon=plan["time_horizon"],
             stage_contexts=stage_contexts,
             analysis_at=plan["analysis_at"],
+            artifact=artifact,
         )
     except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
         details = {
@@ -268,6 +314,7 @@ def build_production_probability_run(
 
 
 __all__ = (
+    "apply_target_rule_trace_scope",
     "build_plan",
     "build_production_probability_run",
     "fetch_klines_range",

@@ -111,7 +111,10 @@ class LearningFinalizationTests(unittest.TestCase):
             plan_result="plan_success",
         )
 
-        self.assertEqual(result["trace_contract"], "empirical_multiscale_v0.10")
+        self.assertEqual(
+            result["trace_contract"],
+            "empirical_multiscale_v0.11_target_horizon",
+        )
         self.assertEqual(result["active_rule_count"], 2)
         self.assertIn("M4-RULE-PATH-STRUCTURE-001", result["rules"])
         self.assertIn("LIB-CAND-COMPRESSION-001", result["rules"])

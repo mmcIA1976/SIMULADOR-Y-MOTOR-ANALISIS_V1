@@ -149,10 +149,19 @@ def validate_catalog(payload: dict) -> dict:
     from empirical_temporal_engine import ENGINE_VERSION, load_production_artifact
 
     artifact = load_production_artifact()
-    artifact_active = {
-        parts[1]
+    artifact_feature_names = [
+        name
         for names in artifact["feature_names"].values()
         for name in names
+    ]
+    for target_profile in artifact.get(
+        "target_horizon_rule_profiles", {}
+    ).values():
+        for override in target_profile.get("overrides", {}).values():
+            artifact_feature_names.extend(override.get("feature_names", []))
+    artifact_active = {
+        parts[1]
+        for name in artifact_feature_names
         if len(parts := str(name).split("::", 2)) == 3
     }
     governance = payload.get("governance", {})

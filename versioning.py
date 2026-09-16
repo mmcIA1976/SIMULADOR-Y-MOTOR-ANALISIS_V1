@@ -3,21 +3,21 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.40.5-compact-observation-summary"
-APP_SEMVER = "0.40.5"
-ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.10"
-SCORING_VERSION = "historical-analog-first-touch-v0.10"
-LEARNING_EVALUATOR_VERSION = "learning-v0.16-v10-formula-attribution"
-LEARNING_SCHEMA_VERSION = "learning-schema-v0.21-formula-attribution"
+APP_VERSION = "app-v0.40.6-target-horizon-rule-profiles"
+APP_SEMVER = "0.40.6"
+ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.11"
+SCORING_VERSION = "historical-analog-first-touch-v0.11"
+LEARNING_EVALUATOR_VERSION = "learning-v0.17-v11-target-horizon-attribution"
+LEARNING_SCHEMA_VERSION = "learning-schema-v0.22-target-horizon-attribution"
 DATA_SOURCE_VERSION = "data-sources-v0.28-worker-order-book-dynamics"
-DATA_CONTRACT_VERSION = "data-contract-v0.31-formula-attribution"
+DATA_CONTRACT_VERSION = "data-contract-v0.32-target-horizon-attribution"
 EVIDENCE_RECONSTRUCTION_VERSION = "evidence-v0.3-terminal-confirmed-boundaries"
 ECONOMIC_NORMALIZATION_VERSION = "economics-v0.1-risk-normalized"
 LEGACY_REEVALUATION_VERSION = "legacy-review-v0.1-modern-taxonomy"
 # Retained only so historical offline audit modules remain readable. It is not
 # exported by current_version_contract and is not imported by the application.
 CHALLENGER_RUNTIME_VERSION = "retired-offline-only-v0.7"
-PROSPECTIVE_RUNTIME_VERSION = "empirical-analog-runtime-v0.10"
+PROSPECTIVE_RUNTIME_VERSION = "empirical-analog-runtime-v0.11"
 
 
 def current_version_contract() -> dict:
@@ -61,6 +61,8 @@ def scoring_version_for_legacy_engine(engine_version: str | None) -> str | None:
         return None
     if engine_version == ENGINE_VERSION:
         return SCORING_VERSION
+    if engine_version == "TP-SL-EMPIRICAL-ANALOG-v0.10":
+        return "historical-analog-first-touch-v0.10"
     if engine_version == "TP-SL-EMPIRICAL-ANALOG-v0.9":
         return "historical-analog-first-touch-v0.9"
     if engine_version.startswith("rules-v0.12") or engine_version.startswith("rules-v0.11"):

@@ -1,0 +1,115 @@
+{
+  "check_id": "target-horizon-scoped-relative-volume-check",
+  "purpose": "Verify the agreed target-horizon contract: cumulative temporal data with independently validated rules and weights per requested operational horizon.",
+  "production_changed": false,
+  "supabase_reads": 0,
+  "supabase_writes": 0,
+  "source_check": {
+    "path": "outputs\\volume_relative_4_24h_integration_check.json",
+    "canonical_payload_sha256": "1f6934824ae3cf01910702cfa2b01f8fb9f1a356c649faac62ec7ec5c80bc65d"
+  },
+  "target_profiles": {
+    "intraday_short": {
+      "engine": "TP-SL-EMPIRICAL-ANALOG-v0.10",
+      "relative_volume": false
+    },
+    "intraday_wide": {
+      "engine": "TP-SL-EMPIRICAL-ANALOG-v0.10",
+      "relative_volume": true,
+      "relative_volume_scope": "4_24h_stage_for_medium_target_only",
+      "context_weight": 1.0
+    },
+    "short_swing": {
+      "engine": "TP-SL-EMPIRICAL-ANALOG-v0.10",
+      "relative_volume": false,
+      "atr_extension": false
+    }
+  },
+  "comparisons": {
+    "final_test": {
+      "intraday_short": {
+        "long": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact"
+        },
+        "short": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact"
+        }
+      },
+      "intraday_wide": {
+        "long": {
+          "log_loss_improvement": 0.004817409686921681,
+          "brier_improvement": 0.0019840974760807484,
+          "configuration": "v0_10_then_relative_volume_4_24h"
+        },
+        "short": {
+          "log_loss_improvement": 0.004669379084280112,
+          "brier_improvement": 0.001702236197216045,
+          "configuration": "v0_10_then_relative_volume_4_24h"
+        }
+      },
+      "short_swing": {
+        "long": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact_full_swing_analysis"
+        },
+        "short": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact_full_swing_analysis"
+        }
+      }
+    },
+    "fresh_post_v0_10": {
+      "intraday_short": {
+        "long": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact"
+        },
+        "short": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact"
+        }
+      },
+      "intraday_wide": {
+        "long": {
+          "log_loss_improvement": 0.00476976534164586,
+          "brier_improvement": 0.002775877417419248,
+          "configuration": "v0_10_then_relative_volume_4_24h"
+        },
+        "short": {
+          "log_loss_improvement": 0.003904006542759131,
+          "brier_improvement": 0.0024034553609658116,
+          "configuration": "v0_10_then_relative_volume_4_24h"
+        }
+      },
+      "short_swing": {
+        "long": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact_full_swing_analysis"
+        },
+        "short": {
+          "log_loss_improvement": 0.0,
+          "brier_improvement": 0.0,
+          "configuration": "v0_10_exact_full_swing_analysis"
+        }
+      }
+    }
+  },
+  "acceptance_gate": {
+    "passed": true,
+    "production_replacement_authorized": true,
+    "requirements": {
+      "unmodified_target_horizons_remain_exact_v0_10": true,
+      "relative_volume_improves_medium_target_in_every_partition_direction_and_metric": true
+    }
+  },
+  "canonical_payload_sha256": "2a457a65c014635a540b090aceb5ac0ad637effef94913f1a3fb64628c1ac5c5"
+}

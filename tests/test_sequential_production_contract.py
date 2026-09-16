@@ -15,8 +15,11 @@ from multiscale_feature_runtime import (
     build_stage_context,
     required_candle_count,
 )
-from sequential_production_runtime import build_production_probability_run
-from empirical_temporal_engine import ENGINE_VERSION
+from sequential_production_runtime import (
+    apply_target_rule_trace_scope,
+    build_production_probability_run,
+)
+from empirical_temporal_engine import ENGINE_VERSION, load_production_artifact
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +64,61 @@ def synthetic_candles(horizon: str) -> tuple[list[dict], datetime]:
 
 
 class SequentialProductionContractTests(unittest.TestCase):
+    def test_relative_volume_is_active_only_for_medium_target_profile(self):
+        rule_id = "LIB-CAND-RELATIVE-VOLUME-001"
+        path_id = "M4-RULE-PATH-STRUCTURE-001"
+
+        def contexts():
+            return {
+                stage: {
+                    "rule_traces": [
+                        {
+                            "rule_id": rule_id,
+                            "outputs": {"log_relative_horizon_volume": 0.1},
+                        },
+                        {
+                            "rule_id": path_id,
+                            "outputs": {"directional_path_efficiency_h": 0.2},
+                        },
+                    ]
+                }
+                for stage in STAGE_PROFILES
+            }
+
+        artifact = load_production_artifact()
+        medium = contexts()
+        apply_target_rule_trace_scope(
+            {stage: medium[stage] for stage in ("intraday_short", "intraday_wide")},
+            "intraday_wide",
+            artifact,
+        )
+        medium_short = {trace["rule_id"]: trace for trace in medium["intraday_short"]["rule_traces"]}
+        medium_wide = {trace["rule_id"]: trace for trace in medium["intraday_wide"]["rule_traces"]}
+        self.assertEqual(
+            medium_short[rule_id]["probability_effect"],
+            "analog_distance_input",
+        )
+        self.assertEqual(
+            medium_wide[rule_id]["probability_effect"],
+            "analog_distance_input",
+        )
+        self.assertEqual(
+            medium_wide[path_id]["probability_effect"],
+            "none_observation_only",
+        )
+
+        swing = contexts()
+        apply_target_rule_trace_scope(swing, "short_swing", artifact)
+        swing_wide = {trace["rule_id"]: trace for trace in swing["intraday_wide"]["rule_traces"]}
+        self.assertEqual(
+            swing_wide[rule_id]["probability_effect"],
+            "none_observation_only",
+        )
+        self.assertEqual(
+            swing_wide[path_id]["probability_effect"],
+            "analog_distance_input",
+        )
+
     def test_public_copy_uses_current_engine_release_without_v09_literals(self):
         source = (ROOT / "sequential_production_analysis.py").read_text(
             encoding="utf-8"

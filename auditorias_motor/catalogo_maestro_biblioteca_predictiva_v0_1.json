@@ -3,7 +3,7 @@
   "status": "master_contract_v0_1",
   "purpose": "Auditable rule library for Phase 1 TP/SL/expiry probability.",
   "governance": {
-    "probability_production_changes": "v0_10_single_validated_short_ema_context_promotion",
+    "probability_production_changes": "v0_11_target_horizon_scoped_relative_volume_promotion",
     "new_candidate_weights_authorized": false,
     "learning_may_self_modify_production": false,
     "current_active_predictive_rule_ids": [
@@ -11,11 +11,12 @@
       "M4-RULE-MTF-HIERARCHY-001",
       "M4-RULE-VOLATILITY-RANK-001",
       "LIB-CAND-COMPRESSION-001",
-      "LIB-CAND-EMA-TREND-001"
+      "LIB-CAND-EMA-TREND-001",
+      "LIB-CAND-RELATIVE-VOLUME-001"
     ],
-    "current_probability_engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.10",
-    "current_probability_artifact_id": "TP-SL-EMPIRICAL-ANALOG-v0.10-frozen-001",
-    "current_probability_artifact_sha256": "423d68dc1f059ed5ba252f39df49421ff4ddcd267dae7a05f4f66469309e4405",
+    "current_probability_engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.11",
+    "current_probability_artifact_id": "TP-SL-EMPIRICAL-ANALOG-v0.11-frozen-001",
+    "current_probability_artifact_sha256": "f75b0764d45d59929588bf93f405fa6bc32aa03e0e367f15a417ee3f8127b2f8",
     "baseline_rule_ids": [
       "M4-RULE-HORIZON-SAMPLING-001",
       "M4-RULE-PLAN-GEOMETRY-001",
@@ -2961,8 +2962,8 @@
       "name": "Exact-horizon relative volume",
       "family_id": "FAMILY-VOLUME",
       "role": "standalone",
-      "lifecycle_status": "implemented_shadow",
-      "origin": "2026-07-29_external_rule_review_and_86_crosswalk",
+      "lifecycle_status": "active_provisional",
+      "origin": "current_probability_engine:TP-SL-EMPIRICAL-ANALOG-v0.11",
       "objective": "Volume relative to 60 preceding comparable horizons may condition movement intensity and first-barrier timing.",
       "applicable_pairs": [
         "all_application_pairs"
@@ -2992,7 +2993,7 @@
         "relative_volume_H=V_H/median(previous_60_non_overlapping_V_H)",
         "volume_midrank_60=(count(V_j<V_H)+0.5*count(V_j=V_H))/60"
       ],
-      "probability_integration_formula": "none_until_implemented_and_approved",
+      "probability_integration_formula": "for an intraday_wide target only, standardized log-relative-volume from the 0-4h and 4-24h contexts joins their log-context-sigma values in the historical-analogue distance used by the 4-24h conditional stage; it is not active for intraday_short or short_swing targets",
       "normalization": "Rolling empirical percentile or robust z-score computed only from observations available at analysis_at; MAD=0 blocks robust z.",
       "activation_conditions": [
         "all declared inputs complete, fresh and pre-trade",
@@ -3012,10 +3013,10 @@
         "project_hypothesis": "Volume relative to 60 preceding comparable horizons may condition movement intensity and first-barrier timing."
       },
       "expected_probability_effect": {
-        "mode": "hypothesis_not_active",
-        "tp": "to_be_estimated",
-        "sl": "to_be_estimated",
-        "expiry": "to_be_estimated"
+        "mode": "empirical_analog_distance_input_target_horizon_scoped",
+        "tp": "implicit_through_neighbor_selection_for_intraday_wide",
+        "sl": "implicit_through_neighbor_selection_for_intraday_wide",
+        "expiry": "implicit_through_neighbor_selection_for_intraday_wide"
       },
       "interactions": {
         "parent_rule_ids": [],
@@ -3024,9 +3025,10 @@
       },
       "parameters": [
         {
-          "name": "all_thresholds_and_effect_sizes",
-          "origin": "not_assigned",
-          "status": "must_be_preregistered_then_estimated"
+          "name": "target_horizon_profile",
+          "origin": "target-horizon-scoped-relative-volume-check",
+          "status": "active_frozen_production",
+          "value": "intraday_wide_only"
         }
       ],
       "trace_contract": {
@@ -3055,9 +3057,28 @@
         "may_self_modify_production": false
       },
       "historical_evidence": {
-        "status": "not_evaluated"
+        "status": "validated_target_horizon_only",
+        "evidence_id": "target-horizon-scoped-relative-volume-check",
+        "evidence_sha256": "2a457a65c014635a540b090aceb5ac0ad637effef94913f1a3fb64628c1ac5c5",
+        "validated_horizons": [
+          "intraday_wide"
+        ],
+        "excluded_horizons": [
+          "intraday_short",
+          "short_swing"
+        ]
       },
-      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value."
+      "refutation_or_retirement": "Retire, restrict or reformulate when independent temporal evidence shows no stable incremental value.",
+      "active_formula_outputs": [
+        "log_relative_horizon_volume"
+      ],
+      "active_horizons": [
+        "intraday_wide"
+      ],
+      "observational_formula_outputs": [
+        "relative_horizon_volume",
+        "volume_midrank_60"
+      ]
     },
     {
       "rule_id": "LIB-CAND-ORDERBOOK-IMBALANCE-001",
@@ -4774,11 +4795,11 @@
   "summary": {
     "rules": 38,
     "active_baseline": 5,
-    "active_predictive": 5,
+    "active_predictive": 6,
     "active_data_quality_gates": 2,
     "active_economic": 2,
-    "implemented_observational": 22,
+    "implemented_observational": 21,
     "data_blocked": 2
   },
-  "catalog_sha256": "7c4e618334fdd851ce3d1da57123ea1f99f5277dce5a29e23d7234ce08b7b494"
+  "catalog_sha256": "1d294a98b1b2d7a2cc6eb3a9b2b151107008c8e936637f6a309eb482e4d9ab22"
 }

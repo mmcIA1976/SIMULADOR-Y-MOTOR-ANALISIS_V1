@@ -51,6 +51,7 @@ def artifact() -> dict:
                 "up_frontier": [[0.005, 12], [0.04, 120]],
                 "down_frontier": [[0.03, 10]],
                 "feature_vectors": feature_vectors,
+                "target_profile_feature_vectors": {},
             }
         )
     payload = {
@@ -85,9 +86,42 @@ def artifact() -> dict:
         },
         "historical_source": "synthetic",
         "historical_coverage": {"records": len(analogs)},
+        "target_horizon_rule_profiles": {
+            horizon: {"profile": "synthetic_default", "overrides": {}}
+            for horizon in STAGE_ORDER
+        },
+        "active_rule_ids_by_target_horizon": {
+            horizon: [] for horizon in STAGE_ORDER
+        },
         "analogs": analogs,
     }
     payload["artifact_sha256"] = canonical_sha256(payload)
+    return payload
+
+
+def artifact_with_medium_target_override() -> dict:
+    payload = artifact()
+    profile_id = "synthetic-medium-profile"
+    names = [f"intraday_short::{FEATURE}"]
+    payload["target_horizon_rule_profiles"]["intraday_wide"] = {
+        "profile": "synthetic_medium_override",
+        "overrides": {
+            "intraday_wide": {
+                "profile_id": profile_id,
+                "distance_method": "coordinate_equal",
+                "feature_names": names,
+                "feature_scaling": [[0.0, 1.0]],
+                "maximum_nearest_context_distance": 10.0,
+            }
+        },
+    }
+    for analog in payload["analogs"]:
+        analog["target_profile_feature_vectors"] = {
+            profile_id: [[0.0], [5.0]]
+        }
+    payload["artifact_sha256"] = canonical_sha256(
+        {key: value for key, value in payload.items() if key != "artifact_sha256"}
+    )
     return payload
 
 
@@ -153,6 +187,44 @@ class EmpiricalTemporalEngineTests(unittest.TestCase):
         self.assertEqual(
             first["probability_curve"]["intraday_wide"],
             second["probability_curve"]["intraday_wide"],
+        )
+
+    def test_medium_override_is_scoped_to_medium_target(self) -> None:
+        contexts = {stage: context(stage) for stage in STAGE_ORDER}
+        medium = empirical_probabilities(
+            symbol="BTCUSDT",
+            side="long",
+            entry=100.0,
+            take_profit=101.0,
+            stop_loss=98.0,
+            time_horizon="intraday_wide",
+            stage_contexts={
+                stage: contexts[stage] for stage in STAGE_ORDER[:2]
+            },
+            analysis_at="2026-01-01T00:00:00+00:00",
+            artifact=artifact_with_medium_target_override(),
+        )
+        swing = empirical_probabilities(
+            symbol="BTCUSDT",
+            side="long",
+            entry=100.0,
+            take_profit=101.0,
+            stop_loss=98.0,
+            time_horizon="short_swing",
+            stage_contexts=contexts,
+            analysis_at="2026-01-01T00:00:00+00:00",
+            artifact=artifact_with_medium_target_override(),
+        )
+
+        self.assertTrue(
+            medium["stage_traces"][1]["target_horizon_specific_override"]
+        )
+        self.assertEqual(
+            medium["stage_traces"][1]["selection_profile_id"],
+            "synthetic-medium-profile",
+        )
+        self.assertFalse(
+            swing["stage_traces"][1]["target_horizon_specific_override"]
         )
 
     def test_uncertainty_is_not_a_fake_point_range(self) -> None:

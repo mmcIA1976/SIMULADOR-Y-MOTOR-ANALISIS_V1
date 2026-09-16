@@ -447,6 +447,93 @@ class OperationObservationLearningTests(unittest.TestCase):
             "historical-analog-first-touch-v0.10",
         )
 
+    def test_v011_terminal_payload_merges_all_executed_stage_inputs(self) -> None:
+        short_path = (
+            "intraday_short::M4-RULE-PATH-STRUCTURE-001::"
+            "directional_path_efficiency_h"
+        )
+        short_volume = (
+            "intraday_short::LIB-CAND-RELATIVE-VOLUME-001::"
+            "log_relative_horizon_volume"
+        )
+        wide_volume = (
+            "intraday_wide::LIB-CAND-RELATIVE-VOLUME-001::"
+            "log_relative_horizon_volume"
+        )
+        snapshot = {
+            "analysis_at": "2026-09-15T10:00:00+00:00",
+            "data_cutoff_at": "2026-09-15T09:59:59+00:00",
+            "evaluation_horizon_seconds": 86400,
+            "symbol": "ETHUSDT",
+            "side": "long",
+            "time_horizon": "intraday_wide",
+            "entry": 100.0,
+            "take_profit": 102.0,
+            "stop_loss": 99.0,
+            "probability_trace": {
+                "stage_traces": [
+                    {
+                        "time_horizon": "intraday_short",
+                        "interval": "5m",
+                        "current_feature_values": {short_path: 0.2},
+                    },
+                    {
+                        "time_horizon": "intraday_wide",
+                        "interval": "1h",
+                        "current_feature_values": {
+                            "intraday_short::log_context_sigma": -4.0,
+                            short_volume: 0.3,
+                            "intraday_wide::log_context_sigma": -3.2,
+                            wide_volume: 0.4,
+                        },
+                    },
+                ]
+            },
+            "version_contract": {
+                "engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.11",
+                "scoring_version": "historical-analog-first-touch-v0.11",
+            },
+        }
+        payload = build_observation_terminal_counterfactual_payload(
+            operation={
+                "id": 701,
+                "user_id": 2,
+                "symbol": "ETHUSDT",
+                "side": "long",
+                "time_horizon": "intraday_wide",
+                "take_profit": 102.0,
+                "stop_loss": 99.0,
+                "close_reason": "take_profit",
+                "close_price": 102.0,
+                "closed_at": "2026-09-15T12:00:00+00:00",
+            },
+            checkpoint={
+                "recommendation_id": 1701,
+                "observed_at": "2026-09-15T10:00:00+00:00",
+                "market_price": 100.0,
+                "tp_probability": 0.55,
+                "sl_probability": 0.30,
+                "range_probability": 0.15,
+                "engine_version": "TP-SL-EMPIRICAL-ANALOG-v0.11",
+            },
+            snapshot=snapshot,
+        )
+        features = json.loads(payload["feature_values_json"])
+        self.assertEqual(
+            features,
+            {
+                short_path: 0.2,
+                "intraday_short::log_context_sigma": -4.0,
+                short_volume: 0.3,
+                "intraday_wide::log_context_sigma": -3.2,
+                wide_volume: 0.4,
+            },
+        )
+        self.assertEqual(
+            payload["source_scoring_version"],
+            "historical-analog-first-touch-v0.11",
+        )
+
     def test_side_adjusted_primary_path_is_not_inverted_twice_for_short(self) -> None:
         signals = observation_rule_signals(
             {

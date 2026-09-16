@@ -297,6 +297,14 @@ class VersionedDataContractTests(unittest.TestCase):
             SCORING_VERSION,
         )
 
+    def test_v010_rows_keep_their_real_scoring_identity_after_v011(self):
+        self.assertEqual(
+            scoring_version_for_legacy_engine(
+                "TP-SL-EMPIRICAL-ANALOG-v0.10"
+            ),
+            "historical-analog-first-touch-v0.10",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

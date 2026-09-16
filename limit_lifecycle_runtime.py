@@ -14,7 +14,7 @@ from limit_order_contract import (
 from sequential_production_analysis import NewEngineAnalysisError, analyze_trade
 
 
-LIMIT_LIFECYCLE_RUNTIME_VERSION = "limit-lifecycle-runtime-v0.4-empirical-v0.10"
+LIMIT_LIFECYCLE_RUNTIME_VERSION = "limit-lifecycle-runtime-v0.5-empirical-v0.11"
 
 
 def parse_utc(value: Any) -> datetime:

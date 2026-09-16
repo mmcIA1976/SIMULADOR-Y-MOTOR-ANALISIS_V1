@@ -519,10 +519,10 @@ def build_stage_context(plan: dict, candles: list[dict]) -> dict:
         "target_extreme_between_entry_and_tp": 1.0 if target_between else 0.0
     }
     features.update(_structural_features(plan, material))
-    # Keep a complete per-stage trace for every deterministic feature stored in
-    # the v0.10 snapshot.  Four rules contribute all their outputs to analog
-    # distance.  The audited EMA rule contributes only its EMA50/EMA200 cross
-    # and only in the short stage; its remaining outputs stay observational.
+    # Keep a complete per-stage trace for every deterministic feature.  This
+    # marks the common v0.10-compatible baseline; the production runtime then
+    # applies the requested target-horizon profile.  In v0.11 that final scope
+    # additionally activates relative volume only for an intraday-wide target.
     active_analog_rules = {
         "M4-RULE-PATH-STRUCTURE-001",
         "M4-RULE-MTF-HIERARCHY-001",

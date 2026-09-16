@@ -1425,23 +1425,46 @@ def _selected_observation_feature_source(
     snapshot: dict,
     time_horizon: str,
 ) -> tuple[dict, str | None, str]:
-    """Read the selected stage from either full or compact v0.9 evidence.
+    """Read every active stage input used by the selected target horizon.
 
     Early compact observation rows retained ``stage_contexts`` but did not
     always retain ``probability_trace.stage_traces``.  Both locations contain
-    the same pre-analysis feature vector; preferring the probability trace and
-    falling back to the stage context preserves old evidence without fetching
-    or reconstructing market data.
+    pre-analysis feature vectors.  v0.10 repeated inherited inputs in the final
+    trace, while v0.11 target-specific profiles may distribute them across
+    several traces.  Merging the executed traces preserves the exact active
+    input set without fetching or reconstructing market data.
     """
-    probability_stage = _selected_probability_stage(snapshot, time_horizon)
-    probability_features = _compact_scalar_tree(
-        probability_stage.get("current_feature_values")
+    probability_trace = snapshot.get("probability_trace")
+    stages = (
+        probability_trace.get("stage_traces")
+        if isinstance(probability_trace, dict)
+        else None
     )
-    if isinstance(probability_features, dict) and probability_features:
+    usable_stages = [stage for stage in stages or [] if isinstance(stage, dict)]
+    selected_indexes = [
+        index
+        for index, stage in enumerate(usable_stages)
+        if str(stage.get("time_horizon") or "") == time_horizon
+    ]
+    if selected_indexes:
+        usable_stages = usable_stages[: selected_indexes[-1] + 1]
+    merged_features: dict = {}
+    for stage in usable_stages:
+        stage_features = _compact_scalar_tree(stage.get("current_feature_values"))
+        if not isinstance(stage_features, dict):
+            continue
+        for name, value in stage_features.items():
+            if name in merged_features and merged_features[name] != value:
+                raise ValueError(
+                    f"observation_predictive_feature_conflict:{name}"
+                )
+            merged_features[name] = value
+    probability_stage = _selected_probability_stage(snapshot, time_horizon)
+    if merged_features:
         return (
-            probability_features,
+            merged_features,
             probability_stage.get("interval"),
-            "snapshot.probability_trace.stage_traces.current_feature_values",
+            "snapshot.probability_trace.executed_stage_feature_union",
         )
 
     contexts = snapshot.get("stage_contexts")

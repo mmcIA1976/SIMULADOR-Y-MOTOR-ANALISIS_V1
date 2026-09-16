@@ -15,10 +15,10 @@ from multiscale_feature_runtime import STAGE_ORDER, STAGE_PROFILES
 
 
 ROOT = Path(__file__).resolve().parent
-ARTIFACT_PATH = ROOT / "auditorias_motor" / "motor_v0_10_empirical_analog.json.gz"
-ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.10"
-SCORING_VERSION = "historical-analog-first-touch-v0.10"
-RUNTIME_VERSION = "empirical-analog-runtime-v0.10"
+ARTIFACT_PATH = ROOT / "auditorias_motor" / "motor_v0_11_empirical_analog.json.gz"
+ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.11"
+SCORING_VERSION = "historical-analog-first-touch-v0.11"
+RUNTIME_VERSION = "empirical-analog-runtime-v0.11"
 
 CONDITIONAL_CLASSES = (
     "tp_first_in_stage",
@@ -108,6 +108,93 @@ def validate_artifact(payload: dict) -> dict:
                 raise EmpiricalTemporalEngineError(f"artifact_scaling_nonfinite:{horizon}")
             if float(item[1]) <= 0.0:
                 raise EmpiricalTemporalEngineError(f"artifact_scaling_nonpositive:{horizon}")
+    profiles = payload.get("target_horizon_rule_profiles")
+    if not isinstance(profiles, dict) or set(profiles) != set(STAGE_ORDER):
+        raise EmpiricalTemporalEngineError("artifact_target_profiles_invalid")
+    declared_profile_ids = {}
+    for target_horizon in STAGE_ORDER:
+        profile = profiles.get(target_horizon)
+        overrides = profile.get("overrides") if isinstance(profile, dict) else None
+        if not isinstance(overrides, dict):
+            raise EmpiricalTemporalEngineError(
+                f"artifact_target_overrides_invalid:{target_horizon}"
+            )
+        allowed_stages = set(selected_stage_order(target_horizon))
+        if not set(overrides) <= allowed_stages:
+            raise EmpiricalTemporalEngineError(
+                f"artifact_target_override_stage_invalid:{target_horizon}"
+            )
+        for stage, override in overrides.items():
+            profile_id = str(override.get("profile_id") or "")
+            names = override.get("feature_names")
+            scaling = override.get("feature_scaling")
+            if not profile_id or profile_id in declared_profile_ids:
+                raise EmpiricalTemporalEngineError(
+                    f"artifact_target_profile_id_invalid:{target_horizon}:{stage}"
+                )
+            if override.get("distance_method") != "coordinate_equal":
+                raise EmpiricalTemporalEngineError(
+                    f"artifact_target_distance_method_invalid:{target_horizon}:{stage}"
+                )
+            if not isinstance(names, list) or not names:
+                raise EmpiricalTemporalEngineError(
+                    f"artifact_target_features_invalid:{target_horizon}:{stage}"
+                )
+            if not isinstance(scaling, list) or len(scaling) != len(names):
+                raise EmpiricalTemporalEngineError(
+                    f"artifact_target_scaling_invalid:{target_horizon}:{stage}"
+                )
+            support_limit = float(
+                override.get("maximum_nearest_context_distance", 0.0)
+            )
+            if not math.isfinite(support_limit) or support_limit <= 0.0:
+                raise EmpiricalTemporalEngineError(
+                    f"artifact_target_support_invalid:{target_horizon}:{stage}"
+                )
+            declared_profile_ids[profile_id] = len(names)
+    for analog in payload["analogs"]:
+        vectors = analog.get("target_profile_feature_vectors")
+        if not isinstance(vectors, dict) or set(vectors) != set(declared_profile_ids):
+            raise EmpiricalTemporalEngineError(
+                f"artifact_target_vectors_invalid:{analog.get('id')}"
+            )
+        for profile_id, width in declared_profile_ids.items():
+            orientations = vectors.get(profile_id)
+            if (
+                not isinstance(orientations, list)
+                or len(orientations) != 2
+                or any(
+                    not isinstance(vector, list) or len(vector) != width
+                    for vector in orientations
+                )
+            ):
+                raise EmpiricalTemporalEngineError(
+                    f"artifact_target_vector_width_invalid:{analog.get('id')}:{profile_id}"
+                )
+    active_by_target = payload.get("active_rule_ids_by_target_horizon")
+    if not isinstance(active_by_target, dict) or set(active_by_target) != set(
+        STAGE_ORDER
+    ):
+        raise EmpiricalTemporalEngineError("artifact_target_active_rules_invalid")
+    for target_horizon in STAGE_ORDER:
+        expected_active = set()
+        profile = profiles[target_horizon]
+        for stage in selected_stage_order(target_horizon):
+            override = profile["overrides"].get(stage)
+            names = (
+                override["feature_names"]
+                if override is not None
+                else payload["feature_names"][stage]
+            )
+            expected_active.update(
+                parts[1]
+                for name in names
+                if len(parts := str(name).split("::", 2)) == 3
+            )
+        if set(active_by_target[target_horizon]) != expected_active:
+            raise EmpiricalTemporalEngineError(
+                f"artifact_target_active_rules_mismatch:{target_horizon}"
+            )
     return payload
 
 
@@ -227,6 +314,7 @@ def _nearest_eligible(
     tp_distance: float,
     sl_distance: float,
     analysis_epoch: float,
+    target_override: dict | None = None,
 ) -> tuple[list[dict], dict]:
     stage_index = STAGE_ORDER.index(horizon)
     start_step, end_step = STAGE_BOUNDS[horizon]
@@ -241,7 +329,13 @@ def _nearest_eligible(
             continue
         same_symbol = str(analog["symbol"]).upper() == symbol.upper()
         for orientation in (0, 1):
-            vector = analog["feature_vectors"][stage_index][orientation]
+            vector = (
+                analog["target_profile_feature_vectors"][
+                    target_override["profile_id"]
+                ][orientation]
+                if target_override is not None
+                else analog["feature_vectors"][stage_index][orientation]
+            )
             distance = _distance(current, vector)
             if not same_symbol:
                 distance += cross_symbol_penalty
@@ -254,10 +348,15 @@ def _nearest_eligible(
     ranked.sort(key=lambda item: (item[0], item[1]["id"], item[2]))
     if not ranked:
         raise EmpiricalTemporalEngineError(f"historical_context_unavailable:{horizon}")
-    support_limits = artifact["selection"].get(
-        "maximum_nearest_context_distance_by_horizon", {}
-    )
-    support_limit = float(support_limits.get(horizon, math.inf))
+    if target_override is not None:
+        support_limit = float(
+            target_override["maximum_nearest_context_distance"]
+        )
+    else:
+        support_limits = artifact["selection"].get(
+            "maximum_nearest_context_distance_by_horizon", {}
+        )
+        support_limit = float(support_limits.get(horizon, math.inf))
     if float(ranked[0][0]) > support_limit:
         raise EmpiricalTemporalEngineError(
             f"context_outside_historical_support:{horizon}:"
@@ -310,6 +409,57 @@ def _nearest_eligible(
         ),
         "conditional_sample_empty": not selected,
         "uncertainty_policy": "empirical_dirichlet_widens_when_survivors_are_sparse",
+        "selection_profile_id": (
+            target_override["profile_id"]
+            if target_override is not None
+            else f"v0_10_exact::{horizon}"
+        ),
+        "target_horizon_specific_override": target_override is not None,
+    }
+
+
+def target_stage_feature_names(
+    artifact: dict, target_horizon: str, stage: str
+) -> list[str]:
+    profile = artifact["target_horizon_rule_profiles"][target_horizon]
+    override = profile["overrides"].get(stage)
+    return list(
+        override["feature_names"]
+        if override is not None
+        else artifact["feature_names"][stage]
+    )
+
+
+def target_stage_active_outputs(
+    artifact: dict, target_horizon: str, stage: str
+) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for name in target_stage_feature_names(artifact, target_horizon, stage):
+        parts = str(name).split("::", 2)
+        if len(parts) != 3:
+            continue
+        _, rule_id, output_name = parts
+        result.setdefault(rule_id, []).append(output_name)
+    return {rule_id: sorted(set(outputs)) for rule_id, outputs in result.items()}
+
+
+def target_context_active_outputs(
+    artifact: dict, target_horizon: str, context_stage: str
+) -> dict[str, list[str]]:
+    """Return outputs from one context used anywhere in the target chain."""
+
+    result: dict[str, set[str]] = {}
+    for selection_stage in selected_stage_order(target_horizon):
+        for name in target_stage_feature_names(
+            artifact, target_horizon, selection_stage
+        ):
+            parts = str(name).split("::", 2)
+            if len(parts) != 3 or parts[0] != context_stage:
+                continue
+            _, rule_id, output_name = parts
+            result.setdefault(rule_id, set()).add(output_name)
+    return {
+        rule_id: sorted(outputs) for rule_id, outputs in result.items()
     }
 
 
@@ -454,9 +604,20 @@ def empirical_probabilities(
     curve: dict[str, dict[str, float]] = {}
     traces = []
     for horizon in horizons:
-        names = model["feature_names"][horizon]
+        target_profile = model["target_horizon_rule_profiles"][time_horizon]
+        target_override = target_profile["overrides"].get(horizon)
+        names = (
+            target_override["feature_names"]
+            if target_override is not None
+            else model["feature_names"][horizon]
+        )
+        scaling = (
+            target_override["feature_scaling"]
+            if target_override is not None
+            else model["feature_scaling"][horizon]
+        )
         current_map = _current_feature_map(horizon, stage_contexts, names)
-        current = _standardize(current_map, names, model["feature_scaling"][horizon])
+        current = _standardize(current_map, names, scaling)
         selected, selection_trace = _nearest_eligible(
             artifact=model,
             horizon=horizon,
@@ -465,6 +626,7 @@ def empirical_probabilities(
             tp_distance=tp_distance,
             sl_distance=sl_distance,
             analysis_epoch=analysis_epoch,
+            target_override=target_override,
         )
         probabilities, estimate_trace = _weighted_probabilities(
             selected,
@@ -495,6 +657,10 @@ def empirical_probabilities(
                 "active_rule_groups": model.get(
                     "active_rule_groups_by_horizon", {}
                 ).get(horizon, model["active_rule_groups"]),
+                "active_probability_outputs": target_stage_active_outputs(
+                    model, time_horizon, horizon
+                ),
+                "target_horizon_rule_profile": target_profile["profile"],
                 "geometry_application": {
                     "method": "exact_barrier_replay_on_historical_future_paths",
                     "tp_log_distance": tp_distance,
@@ -531,6 +697,9 @@ def empirical_probabilities(
         "selected_horizon": time_horizon,
         "executed_stage_count": len(horizons),
         "executed_stages": list(horizons),
+        "target_horizon_rule_profile": model[
+            "target_horizon_rule_profiles"
+        ][time_horizon]["profile"],
         "plan": {
             "symbol": symbol,
             "side": side,
@@ -600,6 +769,9 @@ __all__ = (
     "load_production_artifact",
     "plan_log_distances",
     "selected_stage_order",
+    "target_context_active_outputs",
+    "target_stage_active_outputs",
+    "target_stage_feature_names",
     "validate_artifact",
     "validate_temporal_curve",
 )

@@ -40,13 +40,13 @@ HORIZON_LABELS = {
 }
 HORIZON_VALIDATION_NOTES = {
     "intraday_short": (
-        "Mejora log-loss fuera de muestra; Brier final ligeramente peor que la referencia."
+        "Conserva exactamente el perfil empírico validado de v0.10."
     ),
     "intraday_wide": (
-        "Mejora log-loss y Brier fuera de muestra en rule-test y periodo final."
+        "Volumen relativo validado exclusivamente para el objetivo de hasta 24 horas."
     ),
     "short_swing": (
-        "Validación final prácticamente equivalente a la referencia; use el intervalo del 95%."
+        "Conserva exactamente el perfil swing de v0.10; no hereda el peso de volumen intradía."
     ),
 }
 
@@ -280,6 +280,7 @@ def attach_order_book_observation(
 
 
 def _temporal_profile(time_horizon: str, artifact: dict, stages: list[str]) -> dict:
+    rule_profile = artifact["target_horizon_rule_profiles"][time_horizon]
     return {
         "version": ENGINE_VERSION,
         "role": "only_production_engine",
@@ -292,6 +293,11 @@ def _temporal_profile(time_horizon: str, artifact: dict, stages: list[str]) -> d
         "method": "historical_analog_exact_first_touch",
         "artifact_id": artifact["artifact_id"],
         "artifact_sha256": artifact["artifact_sha256"],
+        "target_horizon_rule_profile": rule_profile["profile"],
+        "target_horizon_rule_overrides": rule_profile["overrides"],
+        "active_rule_ids": artifact["active_rule_ids_by_target_horizon"][
+            time_horizon
+        ],
         "single_engine": True,
         "parallel_probability_engines": 0,
         "executed_stages": stages,
@@ -300,6 +306,7 @@ def _temporal_profile(time_horizon: str, artifact: dict, stages: list[str]) -> d
             for index, horizon in enumerate(stages)
         },
         "later_stages_only_receive_survivors": True,
+        "rules_and_weights_scoped_by_requested_horizon": True,
         "automatic_weight_updates": False,
         "production_effect": "served",
     }

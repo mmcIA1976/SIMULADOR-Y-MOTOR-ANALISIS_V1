@@ -800,7 +800,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                     settings,
                     started_at,
                     "degraded",
-                    result=last_result,
+                    result={**(last_result or {}), "failures": 1},
                     last_error=str(exc),
                 )
             now_monotonic = time.monotonic()
@@ -815,7 +815,6 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                 lifecycle_status = (
                     "degraded"
                     if result["failures"]
-                    or result["observation_scheduler_status"] == "degraded"
                     else "running"
                 )
                 publish_runtime_status(

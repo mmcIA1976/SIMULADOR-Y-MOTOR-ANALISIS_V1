@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 WORKER_NAME = "operation_worker"
 WORKER_LIFECYCLE_STATES = ("starting", "running", "degraded", "stopped")
+OBSERVATION_ERROR_PREFIX = "observation_scheduler:"
 
 
 def ensure_worker_status_table(db) -> None:
@@ -69,9 +70,19 @@ def upsert_worker_status(
         raise ValueError(f"Estado de worker no valido: {lifecycle_status}")
     result = result or {}
     failures = int(result.get("failures") or 0)
+    # The existing bounded error column also identifies the failing component.
+    # Do not infer healthy exits from arbitrary errors or from an old success.
+    if (
+        lifecycle_status == "running"
+        and failures == 0
+        and result.get("observation_scheduler_status") == "degraded"
+    ):
+        last_error = OBSERVATION_ERROR_PREFIX + str(
+            result.get("observation_scheduler_last_error") or "scheduler_failed"
+        )
     last_cycle_at = heartbeat_at if result else None
     last_success_at = heartbeat_at if result and failures == 0 else None
-    last_reconcile_at = heartbeat_at if result.get("reconciled") else None
+    last_reconcile_at = heartbeat_at if result.get("reconciled") and failures == 0 else None
     db.execute(
         """
         INSERT INTO operation_worker_state (
@@ -186,11 +197,17 @@ def summarize_worker_status(row: dict | None, now: datetime | None = None) -> di
     lifecycle_status = str(row.get("lifecycle_status") or "degraded")
     fresh = heartbeat_age_seconds is not None and heartbeat_age_seconds <= stale_after_seconds
     failures = int(row.get("last_cycle_failures") or 0)
+    raw_error = str(row.get("last_error") or "")
+    observation_error = (
+        raw_error[len(OBSERVATION_ERROR_PREFIX):]
+        if raw_error.startswith(OBSERVATION_ERROR_PREFIX) else None
+    )
+    transitions_healthy = fresh and lifecycle_status == "running" and failures == 0
     if lifecycle_status == "stopped":
         signal_state = "stopped"
     elif not fresh:
         signal_state = "stale"
-    elif lifecycle_status == "degraded" or failures:
+    elif lifecycle_status == "degraded" or failures or observation_error:
         signal_state = "degraded"
     elif lifecycle_status == "starting":
         signal_state = "starting"
@@ -218,7 +235,13 @@ def summarize_worker_status(row: dict | None, now: datetime | None = None) -> di
         if row.get("updated_at")
         else None,
         "signal_state": signal_state,
-        "healthy": fresh and lifecycle_status == "running" and failures == 0,
+        "healthy": transitions_healthy and not observation_error,
+        "transitions_healthy": transitions_healthy,
+        "observation_signal_state": (
+            "degraded" if observation_error else "no_error_reported"
+        ) if fresh else "unknown",
+        "observation_last_error": observation_error,
+        "last_error": observation_error or row.get("last_error"),
         "fresh": fresh,
         "heartbeat_age_seconds": heartbeat_age_seconds,
         "stale_after_seconds": stale_after_seconds,
@@ -227,7 +250,9 @@ def summarize_worker_status(row: dict | None, now: datetime | None = None) -> di
 
 
 def add_transition_coverage(status: dict, web_refresh_enabled: bool) -> dict:
-    worker_ready = bool(status.get("healthy")) and not bool(status.get("dry_run"))
+    worker_ready = bool(
+        status.get("transitions_healthy", status.get("healthy"))
+    ) and not bool(status.get("dry_run"))
     if web_refresh_enabled and worker_ready:
         transition_owner = "dual"
         transition_coverage = "warning"

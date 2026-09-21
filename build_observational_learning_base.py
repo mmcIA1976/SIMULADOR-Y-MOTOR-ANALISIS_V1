@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import m8_evaluation as m8
+from observation_snapshot_codec import snapshot_rule_traces
 from audit_final_rule_utility import (
     AUDIT_VERSION,
     MIN_EFFECTIVE_CLASS_MASS,
@@ -140,7 +141,7 @@ def _overlay_recorded_stage_traces(cases: list[dict], snapshots: dict[int, dict]
         if not isinstance(snapshot, dict):
             continue
         horizon = str(case["time_horizon"])
-        stages = snapshot.get("stage_rule_traces")
+        stages = snapshot_rule_traces(snapshot)
         traces = stages.get(horizon) if isinstance(stages, dict) else None
         if not isinstance(traces, list):
             continue

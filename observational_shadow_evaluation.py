@@ -10,6 +10,7 @@ from operation_observation_learning import (
     OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
 )
 from versioning import ENGINE_VERSION, LEARNING_EVALUATOR_VERSION
+from observation_snapshot_codec import snapshot_rule_traces
 
 
 EVALUATOR_VERSION = "observational-shadow-calibration-v0.2-episode-weighted"
@@ -91,7 +92,7 @@ def _observational_rules(row: dict) -> dict:
     if isinstance(rules, dict) and rules:
         return rules
     snapshot = _parse_json_object(row.get("snapshot_json"))
-    stages = snapshot.get("stage_rule_traces")
+    stages = snapshot_rule_traces(snapshot)
     if not isinstance(stages, dict):
         return {}
     normalized: dict[str, dict] = {}

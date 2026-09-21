@@ -5,6 +5,7 @@ import json
 import math
 from datetime import datetime, timezone
 from typing import Any, Iterable
+from observation_snapshot_codec import snapshot_rule_traces
 
 from operation_observation_learning import (
     OBSERVATION_PREDICTIVE_EVALUATOR_VERSION,
@@ -323,7 +324,11 @@ def current_snapshot_rule_values(
     """Extract only frozen comparable variables; never store a raw snapshot."""
     traces_by_rule: dict[str, list[dict]] = {}
     for root_key in ("stage_rule_traces", "feature_snapshot"):
-        for trace_horizon, trace in _iter_traces(snapshot.get(root_key)):
+        root = (
+            snapshot_rule_traces(snapshot)
+            if root_key == "stage_rule_traces" else snapshot.get(root_key)
+        )
+        for trace_horizon, trace in _iter_traces(root):
             if trace_horizon not in {None, time_horizon}:
                 continue
             status = str(trace.get("status") or "")

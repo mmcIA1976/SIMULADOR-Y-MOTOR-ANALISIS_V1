@@ -14,6 +14,7 @@ import market_data
 from analysis_engine import TradeProposal
 from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
 from market_price_state import fresh_market_prices
+from observation_snapshot_codec import snapshot_rule_traces
 from multiscale_feature_runtime import STAGE_PROFILES, _closed_material, required_candle_count
 from order_book_observation_state import (
     get_order_book_observation_row,
@@ -721,7 +722,9 @@ def symmetric_geometry(entry: float, sigma: float, side: str) -> tuple[float, fl
 def _compact_observations(result: dict) -> dict:
     snapshot = result.get("snapshot") if isinstance(result, dict) else {}
     snapshot = snapshot if isinstance(snapshot, dict) else {}
-    traces_by_stage = snapshot.get("stage_rule_traces")
+    # Candidate analyses are normally unencoded; the shared reader also accepts
+    # stored observational evidence without treating its envelope as a stage.
+    traces_by_stage = snapshot_rule_traces(snapshot)
     traces_by_stage = traces_by_stage if isinstance(traces_by_stage, dict) else {}
     items = []
     for horizon, traces in traces_by_stage.items():

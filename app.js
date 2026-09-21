@@ -4304,6 +4304,10 @@ function renderWorkerStatus(status) {
     title = "Revisar doble procesamiento";
     detail = `${ageLabel} · worker y web pueden procesar cierres`;
     className = "worker-warning";
+  } else if (status?.observation_signal_state === "degraded" && transitionOwner === "worker") {
+    title = "TP/SL activo · observación con error";
+    detail = `${ageLabel} · vigilancia de cierres activa; fallan los controles de observación`;
+    className = "worker-warning";
   } else if (signalState === "running") {
     title = transitionOwner === "worker" ? "Vigilancia autónoma activa" : "Worker preparado";
     detail = `${ageLabel} · ${symbolLabel} · cierres: ${transitionOwner === "worker" ? "worker" : "web"}`;

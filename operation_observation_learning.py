@@ -8,11 +8,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from predictive_rule_library import load_rule_library, rule_registry
+from observation_snapshot_codec import pack_rule_traces, snapshot_rule_traces
 
 
 OBSERVATION_ANALYSIS_TYPE = "operation_observation"
 OBSERVATION_CONTRACT_VERSION = "operation-observation-contract-v0.5"
-OBSERVATION_STORAGE_PROFILE = "observation-learning-compact-v0.3"
+OBSERVATION_STORAGE_PROFILE = "observation-learning-compact-v0.4-lossless-traces"
 OBSERVATION_PREDICTIVE_EVALUATOR_VERSION = (
     "recommendation-observation-terminal-evaluator-v0.3-formula-attribution"
 )
@@ -598,6 +599,9 @@ def compact_observation_snapshot(snapshot: dict) -> dict:
     if not isinstance(snapshot, dict):
         raise ValueError("observation_snapshot_invalid")
     if snapshot.get("storage_profile") == OBSERVATION_STORAGE_PROFILE:
+        if len(canonical_json(snapshot).encode("utf-8")) > MAX_COMPACT_SNAPSHOT_BYTES:
+            raise ValueError("observation_compact_snapshot_too_large")
+        snapshot_rule_traces(snapshot)
         return snapshot
     compact = {
         "storage_profile": OBSERVATION_STORAGE_PROFILE,
@@ -627,8 +631,8 @@ def compact_observation_snapshot(snapshot: dict) -> dict:
             snapshot.get("probability_trace")
         ),
         "stage_contexts": _compact_stage_contexts(snapshot.get("stage_contexts")),
-        "stage_rule_traces": _compact_stage_rule_traces(
-            snapshot.get("stage_rule_traces")
+        "stage_rule_traces": pack_rule_traces(
+            _compact_stage_rule_traces(snapshot_rule_traces(snapshot))
         ),
     }
     compact = {key: value for key, value in compact.items() if value is not None}
@@ -2830,7 +2834,7 @@ def _formula_role_trace_views(trace: dict) -> list[dict]:
 
 
 def observation_rule_signals(snapshot: dict) -> list[dict]:
-    stage_traces = snapshot.get("stage_rule_traces")
+    stage_traces = snapshot_rule_traces(snapshot)
     if not isinstance(stage_traces, dict):
         return []
     side = str(snapshot.get("side") or "long")

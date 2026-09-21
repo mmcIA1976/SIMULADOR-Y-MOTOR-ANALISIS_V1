@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 import market_data
 import data_engine
 import liquidation_data
+from observation_snapshot_codec import snapshot_rule_traces
 from analysis_engine import TradeProposal, build_explained_metrics
 from analysis_engine import time_horizon_profile
 from db import (
@@ -3329,7 +3330,7 @@ def empirical_predictive_rule_learning_snapshot(
     those roles separate at formula level prevents a partially promoted rule
     from reporting its observational outputs as probability inputs.
     """
-    stage_rule_payload = snapshot.get("stage_rule_traces")
+    stage_rule_payload = snapshot_rule_traces(snapshot)
     probability_trace = snapshot.get("probability_trace")
     if not isinstance(stage_rule_payload, dict) or not isinstance(
         probability_trace, dict

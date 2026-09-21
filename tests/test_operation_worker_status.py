@@ -68,6 +68,40 @@ def status_payload(db, *, lifecycle_status="running", dry_run=False, heartbeat_a
 
 
 class OperationWorkerStatusTests(unittest.TestCase):
+    def test_observer_failure_does_not_remove_fresh_exit_coverage(self):
+        db = create_status_db()
+        status_payload(db, result={
+            "cycle": 5, "failures": 0,
+            "observation_scheduler_status": "degraded",
+            "observation_scheduler_last_error": "ValueError:observation_compact_snapshot_too_large",
+        })
+        row = get_worker_status_row(db)
+        status = add_transition_coverage(summarize_worker_status(row), False)
+        self.assertFalse(status["healthy"])
+        self.assertTrue(status["transitions_healthy"])
+        self.assertEqual(status["signal_state"], "degraded")
+        self.assertEqual(status["observation_signal_state"], "degraded")
+        self.assertEqual(status["transition_owner"], "worker")
+        self.assertEqual(status["transition_coverage"], "covered")
+        self.assertEqual(status["last_error"], "ValueError:observation_compact_snapshot_too_large")
+        for updates in (
+            {"lifecycle_status": "degraded"},
+            {"last_cycle_failures": 1},
+            {"lifecycle_status": "stopped"},
+            {"dry_run": True},
+            {"last_heartbeat_at": (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()},
+        ):
+            with self.subTest(updates=updates):
+                failed = add_transition_coverage(summarize_worker_status({**row, **updates}), False)
+                self.assertEqual(failed["transition_coverage"], "unprotected")
+        status_payload(db, result={"cycle": 6, "failures": 0, "observation_scheduler_status": "ready"})
+        recovered = summarize_worker_status(get_worker_status_row(db))
+        self.assertTrue(recovered["healthy"])
+        self.assertIsNone(recovered["observation_last_error"])
+        self.assertIsNone(recovered["last_error"])
+        self.assertEqual(db.execute("SELECT COUNT(*) FROM operation_worker_state").fetchone()[0], 1)
+        db.close()
+
     def test_heartbeat_upsert_keeps_exactly_one_row(self):
         db = create_status_db()
         status_payload(db, lifecycle_status="starting", dry_run=True)
@@ -94,6 +128,16 @@ class OperationWorkerStatusTests(unittest.TestCase):
         self.assertEqual(row["cycle_count"], 2)
         self.assertEqual(row["active_symbols"], 3)
         self.assertEqual(row["lifecycle_status"], "running")
+        db.close()
+
+    def test_failed_cycle_does_not_advance_success_or_reconciliation(self):
+        db = create_status_db()
+        success = "2026-09-21T10:00:00+00:00"
+        status_payload(db, heartbeat_at=success, result={"cycle": 1, "failures": 0, "reconciled": True})
+        status_payload(db, lifecycle_status="degraded", heartbeat_at="2026-09-21T10:01:00+00:00", result={"cycle": 2, "failures": 1, "reconciled": True})
+        row = get_worker_status_row(db)
+        self.assertEqual(row["last_success_at"], success)
+        self.assertEqual(row["last_reconcile_at"], success)
         db.close()
 
     def test_status_becomes_stale_after_three_heartbeat_intervals(self):

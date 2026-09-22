@@ -141,7 +141,9 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertEqual((6 + 1 + 1) * 12, 96)
 
     def test_non_panel_candidate_storage_has_one_global_daily_cap(self):
-        policy = autonomous_contest.PARTICIPANT_POLICIES[0]
+        # Medium/swing retain their existing storage policy. Short checkpoints
+        # now use a separate, scalar-only confirmation contract.
+        policy = autonomous_contest.PARTICIPANT_POLICIES[1]
         slot = datetime(2026, 8, 30, 0, 15, tzinfo=timezone.utc)
         winner = candidate(edge=0.15)
         runner_up = candidate(edge=0.09, symbol="ETHUSDT")

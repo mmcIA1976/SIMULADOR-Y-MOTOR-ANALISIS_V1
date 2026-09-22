@@ -180,3 +180,47 @@ Auditoria reproducible de coherencia:
 ## Script legacy
 
 `trading_simulator.py` conserva el simulador de consola inicial. Es util como referencia, pero la aplicacion principal es `app.py`.
+
+## Confirmacion de entradas: solo Bot Intradia Corto
+
+`short-entry-confirmation-v1` mantiene el motor v0.11, sus umbrales, el sizing
+y las cuotas actuales. Solo el bot corto exige cuatro controles consecutivos
+de candidatas elegibles, separados por rondas de 15 minutos, y al menos 45
+minutos reales desde el primero. Si el worker se retrasa, puede necesitar una
+ronda adicional. No se exige liderar todas las rondas: se elige la mejor de
+las candidatas ya confirmadas, revalidando precio y analisis antes de entrar.
+Perder elegibilidad o un control reinicia la confirmacion. Una entrada consume
+solo su propia confirmacion. No se impone un limite de posiciones abiertas.
+Las tres entradas diarias siguen siendo el objetivo/cupo; no se fuerzan si no
+hay confirmaciones validas, ni se reparte automaticamente el dia en franjas.
+
+Antes del despliegue, aplicar
+`supabase/migrations/20260922092403_short_bot_candidate_confirmation.sql`.
+Solo amplia el CHECK de `storage_reason`; no crea tablas ni borra datos.
+Los otros bots conservan su seleccion y almacenamiento anteriores.
+
+Los controles usan `autonomous_candidate_observations`, tipo `confirmation`.
+Cada fila conserva hora, niveles y probabilidades; el JSON adicional contiene
+la referencia al primer scan, progreso, decision y salidas numericas de las
+reglas activas, limitado a 2 KiB. No duplica snapshots ni velas. Se consulta
+solo el scan anterior (maximo 12 estados). Como limite teorico hay 96 rondas
+por dia x 12 propuestas; solo se guardan las elegibles y su descarte terminal,
+y el escaneo se detiene al completar las tres entradas. El presupuesto JSON
+maximo teorico es 2.25 MiB/dia, mas columnas e indices; no es una estimacion
+del consumo real ni un limite de almacenamiento total.
+
+El evaluador existente resuelve solo los extremos inicial/confirmado a cuatro
+horas; los controles intermedios no cuentan como operaciones independientes.
+Los toques ambiguos en velas frontera no se convierten en TP/SL seguros.
+`autonomous_contest.confirmation_trial_report(db, start_at=..., end_at=...)`
+compara episodios en lectura, sin archivos, con consultas de hasta siete dias.
+Muestra mejoras/empeoramientos en R, ganadoras descartadas y perdedoras evitadas.
+Las comisiones solo se descuentan si se facilita `fee_per_side`; no se modelan
+funding ni deslizamiento. Es una comparacion de oportunidades, no una prueba
+causal ni una reproduccion completa del antiguo reparto diario del capital.
+
+Pruebas locales sin servicios externos:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_autonomous_confirmation tests.test_autonomous_contest
+```

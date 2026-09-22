@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterable
 
 import liquidation_data
 import market_data
+import autonomous_confirmation as entry_confirmation
 from analysis_engine import TradeProposal
 from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
 from market_price_state import fresh_market_prices
@@ -141,6 +142,7 @@ class Candidate:
     rejection_code: str | None = None
     analysis_result: dict | None = field(default=None, repr=False)
     observational_json: dict = field(default_factory=dict)
+    confirmation: dict = field(default_factory=dict)
 
     @property
     def eligible_base(self) -> bool:
@@ -532,7 +534,7 @@ def ensure_autonomous_storage(db) -> None:
             analysis_status TEXT NOT NULL CHECK(analysis_status IN ('evaluated', 'blocked', 'failed')),
             rejection_code TEXT,
             selected BOOLEAN NOT NULL DEFAULT FALSE,
-            storage_reason TEXT NOT NULL CHECK(storage_reason IN ('panel', 'selected', 'boundary')),
+            storage_reason TEXT NOT NULL CHECK(storage_reason IN ('panel', 'selected', 'boundary', 'confirmation')),
             observational_json JSONB NOT NULL DEFAULT '{}'::jsonb,
             engine_version TEXT NOT NULL,
             artifact_id TEXT,
@@ -1069,6 +1071,13 @@ def _candidate_storage_selection(
     candidates: list[Candidate],
     selected: Candidate | None,
 ) -> dict[tuple[str, str], str]:
+    if entry_confirmation.enabled(policy):
+        # Eligible checkpoints and one terminal discard only. No rejected
+        # boundary candidates or repeated multi-kilobyte observational traces.
+        return {
+            (candidate.symbol, candidate.side): "confirmation"
+            for candidate in candidates if candidate.confirmation
+        }
     if is_canonical_panel(policy, slot):
         return {(candidate.symbol, candidate.side): "panel" for candidate in candidates}
     result = {}
@@ -1132,6 +1141,16 @@ def _persist_candidate_observations(
         due_at = candidate.analyzed_at + timedelta(
             seconds=int(STAGE_PROFILES[policy.time_horizon]["horizon_seconds"])
         )
+        payload = candidate.observational_json
+        outcome_status = "pending" if candidate.analysis_status == "evaluated" else "excluded"
+        if storage_reason == "confirmation":
+            payload = entry_confirmation.compact_payload(candidate)
+            # Evaluate only the initial opportunity and the actual confirmed
+            # entry. Intermediate controls are evidence, not independent trades.
+            outcome_status = (
+                "pending" if candidate.confirmation.get("counterfactual_role")
+                in {"immediate", "confirmed"} else "excluded"
+            )
         db.execute(
             """
             INSERT INTO autonomous_candidate_observations (
@@ -1171,14 +1190,35 @@ def _persist_candidate_observations(
                 candidate.rejection_code,
                 candidate is selected,
                 storage_reason,
-                _json(candidate.observational_json),
+                _json(payload),
                 EMPIRICAL_ENGINE_VERSION,
                 candidate.artifact_id,
-                "pending" if candidate.analysis_status == "evaluated" else "excluded",
+                outcome_status,
             ),
         )
         persisted += 1
     return persisted
+
+
+def _previous_confirmation_rows(db, participant, season_id, policy, slot, dry_run):
+    """At most twelve small states; never fetch historical analysis snapshots."""
+    if not entry_confirmation.enabled(policy):
+        return []
+    return [dict(row) for row in db.execute(
+        """
+        SELECT c.symbol, c.side, c.analyzed_at, c.engine_version, c.artifact_id,
+               c.observational_json -> 'confirmation' AS confirmation
+        FROM autonomous_scan_runs s
+        JOIN autonomous_candidate_observations c ON c.scan_run_id = s.id
+        WHERE s.participant_id = ? AND s.contest_season_id = ?
+          AND s.scan_slot_at = ? AND s.dry_run = ?
+          AND s.status IN ('no_trade', 'opened', 'would_open', 'no_cash')
+          AND c.storage_reason = 'confirmation'
+        LIMIT 12
+        """,
+        (int(participant["id"]), season_id,
+         (slot - timedelta(minutes=policy.cadence_minutes)).isoformat(), bool(dry_run)),
+    ).fetchall()]
 
 
 def execution_drift_is_acceptable(
@@ -1223,6 +1263,8 @@ def _prepare_selected_analysis(
         ),
         "execution_price_authority": "operation_worker",
     }
+    if candidate.confirmation:
+        entry_context["entry_confirmation"] = dict(candidate.confirmation)
     result["entry_order_context"] = entry_context
     snapshot = result.setdefault("snapshot", {})
     snapshot.update(
@@ -1249,6 +1291,8 @@ def _prepare_selected_analysis(
     version_contract = current_version_contract()
     version_contract["autonomous_policy_version"] = POLICY_VERSION
     version_contract["autonomous_sizing_policy_version"] = SIZING_POLICY_VERSION
+    if candidate.confirmation:
+        version_contract["autonomous_entry_confirmation_version"] = entry_confirmation.CONFIRMATION_VERSION
     result["version_contract"] = version_contract
     snapshot["version_contract"] = version_contract
     result["data_contract"] = build_data_contract(
@@ -1531,7 +1575,16 @@ def run_due_scans(
             order_book_contexts=order_books,
             kline_loader=shared_kline_loader,
         )
-        selected = select_candidate(candidates, policy)
+        if entry_confirmation.enabled(policy):
+            with connect_factory() as db:
+                previous = _previous_confirmation_rows(
+                    db, participant, int(season["id"]), policy, slot, dry_run
+                )
+            entry_confirmation.advance(
+                candidates, policy, previous, slot=slot,
+                scan_run_id=scan_run_id, engine_version=EMPIRICAL_ENGINE_VERSION,
+            )
+        selected = entry_confirmation.select(candidates, policy)
         confirmation_reason = None
         if selected is not None:
             confirmation_at = current if now is not None else utc_now()
@@ -1549,6 +1602,9 @@ def run_due_scans(
             if selected.symbol not in confirmation_prices:
                 confirmation_reason = "selected_confirmation_worker_price_unavailable"
                 selected.rejection_code = confirmation_reason
+                if selected.confirmation:
+                    selected.confirmation.update(state="discarded", end_reason=confirmation_reason,
+                                                 counterfactual_role="none")
                 selected = None
             else:
                 confirmation_liquidations = _load_liquidation_contexts(
@@ -1566,6 +1622,7 @@ def run_due_scans(
                     symbols=(selected.symbol,),
                     sides=(selected.side,),
                 )[0]
+                confirmed.confirmation = dict(selected.confirmation)
                 for index, candidate in enumerate(candidates):
                     if (
                         candidate.symbol == confirmed.symbol
@@ -1574,12 +1631,22 @@ def run_due_scans(
                         candidates[index] = confirmed
                         break
                 if confirmed.eligible_for(policy):
-                    selected = confirmed
+                    # A refreshed score must not silently overrule a better
+                    # mature candidate. Do not open an unrefreshed fallback.
+                    if (entry_confirmation.enabled(policy)
+                            and entry_confirmation.select(candidates, policy) is not confirmed):
+                        confirmation_reason = "confirmed_candidate_no_longer_best_mature"
+                        selected = None
+                    else:
+                        selected = confirmed
                 else:
                     confirmation_reason = (
                         "selected_candidate_failed_final_confirmation:"
                         + str(confirmed.rejection_code or confirmed.analysis_status)
                     )
+                    if confirmed.confirmation:
+                        confirmed.confirmation.update(state="discarded", end_reason=confirmation_reason,
+                                                      counterfactual_role="none")
                     selected = None
         evaluated = sum(candidate.analysis_status == "evaluated" for candidate in candidates)
         blocked = len(candidates) - evaluated
@@ -1590,6 +1657,9 @@ def run_due_scans(
         )
         status = "no_trade"
         reason = confirmation_reason or "no_candidate_passed_horizon_policy"
+        if (entry_confirmation.enabled(policy) and selected is None
+                and confirmation_reason is None and eligible):
+            reason = "awaiting_45m_candidate_confirmation"
         operation_id = recommendation_id = None
         try:
             with connect_factory() as db:
@@ -1651,6 +1721,18 @@ def run_due_scans(
                                 )
                                 status = "opened"
                                 reason = "best_eligible_candidate_opened"
+                if entry_confirmation.enabled(policy):
+                    if selected is not None and status in {"opened", "would_open"}:
+                        # The confirmed endpoint is the executable trade, not
+                        # the earlier quote used to rank candidates.
+                        selected.entry = float(execution_entry)
+                        selected.take_profit, selected.stop_loss = symmetric_geometry(
+                            selected.entry, float(selected.sigma), selected.side,
+                        )
+                        selected.analyzed_at = execution_at
+                    entry_confirmation.finish(
+                        candidates, selected, status=status, reason=reason, operation_id=operation_id,
+                    )
                 _persist_candidate_observations(
                     db,
                     scan_run_id=scan_run_id,
@@ -1805,7 +1887,8 @@ def evaluate_due_candidates(
             dict(row)
             for row in db.execute(
                 """
-                SELECT *
+                SELECT id, symbol, side, analyzed_at, evaluation_due_at,
+                       entry, take_profit, stop_loss, storage_reason
                 FROM autonomous_candidate_observations
                 WHERE outcome_status = 'pending'
                   AND analysis_status = 'evaluated'
@@ -1829,24 +1912,32 @@ def evaluate_due_candidates(
         start_ms = int(_as_utc(analyzed_at).timestamp() * 1000)
         end_ms = int(_as_utc(due_at).timestamp() * 1000)
         try:
+            confirmed_evidence = any(row["storage_reason"] == "confirmation" for row in members)
+            # Boundary candles must be closed before classifying their evidence.
+            if confirmed_evidence and int(current.timestamp() * 1000) < ((end_ms + 59_999) // 60_000) * 60_000:
+                continue
+            fetch_start = start_ms // 60_000 * 60_000 if confirmed_evidence else start_ms
             raw = fetch_klines_range(
                 symbol,
                 "1m",
-                start_ms,
+                fetch_start,
                 end_ms,
                 loader=loader,
             )
             candles = [
                 normalize_kline(row)
                 for row in raw
-                if int(row[0]) >= start_ms and int(row[0]) < end_ms
+                if int(row[0]) >= fetch_start and int(row[0]) < end_ms
             ]
             if not candles:
                 raise ValueError("candidate_future_klines_unavailable")
             with connect_factory() as db:
                 for member in members:
-                    outcome = _evaluate_path(
-                        candles,
+                    evaluator = entry_confirmation.evaluate_endpoint if member["storage_reason"] == "confirmation" else _evaluate_path
+                    bounds = {"start_ms": start_ms, "end_ms": end_ms} if member["storage_reason"] == "confirmation" else {}
+                    outcome = evaluator(
+                        [c for c in candles if member["storage_reason"] == "confirmation" or c["open_time_ms"] >= start_ms],
+                        **bounds,
                         side=str(member["side"]),
                         entry=float(member["entry"]),
                         take_profit=float(member["take_profit"]),
@@ -1886,6 +1977,37 @@ def scanner_enabled_from_env() -> bool:
         "yes",
         "on",
     }
+
+
+def confirmation_trial_report(db, *, start_at: datetime, end_at: datetime, fee_per_side=None) -> dict:
+    """Bounded, read-only evaluation using existing candidate outcome records.
+
+    No snapshots, candle downloads, reports written to disk or production
+    weight changes. Refuse oversized requests rather than silently truncate.
+    """
+    start, end = _as_utc(start_at), _as_utc(end_at)
+    if end <= start or end - start > timedelta(days=7):
+        raise ValueError("confirmation_report_requires_at_most_seven_days")
+    if fee_per_side is not None and not 0 <= fee_per_side < 1:
+        raise ValueError("confirmation_report_invalid_fee")
+    rows = [dict(row) for row in db.execute(
+        """
+        SELECT c.participant_id, c.symbol, c.side, c.analyzed_at,
+               c.entry, c.stop_loss, c.tp_probability, c.terminal_price,
+               c.outcome_status, c.first_touch, c.r_multiple,
+               c.observational_json -> 'confirmation' AS confirmation
+        FROM autonomous_scan_runs s
+        JOIN autonomous_contest_participants p ON p.id = s.participant_id
+        JOIN autonomous_candidate_observations c ON c.scan_run_id = s.id
+        WHERE p.code = 'auto_intraday_short' AND c.storage_reason = 'confirmation'
+          AND s.scan_slot_at >= ? AND s.scan_slot_at < ? AND s.dry_run = FALSE
+        ORDER BY s.scan_slot_at, c.id
+        LIMIT 8065
+        """, (start.isoformat(), end.isoformat()),
+    ).fetchall()]
+    if len(rows) > 8064:
+        raise ValueError("confirmation_report_row_budget_exceeded")
+    return entry_confirmation.summarize_trials(rows, fee_per_side=fee_per_side)
 
 
 __all__ = (

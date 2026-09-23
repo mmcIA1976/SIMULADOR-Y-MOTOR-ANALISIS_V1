@@ -80,6 +80,39 @@ def connect_factory_for(db):
 
 
 class OperationWorkerTests(unittest.TestCase):
+    def test_fresh_price_still_reaches_exit_check_when_candles_fail(self):
+        db = ActiveSymbolsDb([{"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"}])
+        settings = operation_worker.WorkerSettings(reconcile_seconds=60)
+        state = operation_worker.WorkerState()
+        with (
+            patch.object(operation_worker, "refresh_symbol_active_operations", return_value=({}, {})) as refresh,
+            patch.object(operation_worker, "finalize_due_observations", return_value=[]),
+        ):
+            result = operation_worker.run_worker_cycle(
+                state, settings, connect_factory=connect_factory_for(db),
+                price_loader=Mock(return_value=84000.0),
+                kline_loader=Mock(side_effect=RuntimeError("temporary_kline_failure")),
+                now_ms=1_775_383_200_000,
+            )
+        self.assertEqual(refresh.call_count, 1)
+        self.assertEqual(refresh.call_args.kwargs["market_klines"], [])
+        self.assertEqual(result["market_symbols"], 1)
+        self.assertEqual(result["failures"], 1)
+        self.assertFalse(result["reconciled"])
+        self.assertIsNone(state.last_reconcile_ms)
+        self.assertTrue(result["reconciliation_pending"])
+
+        with patch.object(operation_worker, "refresh_symbol_active_operations", return_value=({}, {})) as refresh:
+            kline_loader = Mock(side_effect=AssertionError("retry too early"))
+            next_cycle = operation_worker.run_worker_cycle(
+                state, settings, connect_factory=connect_factory_for(db),
+                price_loader=Mock(return_value=84001.0), kline_loader=kline_loader,
+                now_ms=1_775_383_210_000,
+            )
+        refresh.assert_called_once()
+        kline_loader.assert_not_called()
+        self.assertEqual(next_cycle["market_symbols"], 1)
+
     def test_environment_defaults_worker_to_dry_run(self):
         with patch.dict("os.environ", {}, clear=True):
             settings = operation_worker.WorkerSettings.from_env()

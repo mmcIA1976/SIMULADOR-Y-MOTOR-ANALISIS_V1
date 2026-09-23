@@ -78,24 +78,10 @@ def parse_args() -> tuple[TradeConfig, bool]:
 
 
 def fetch_binance_price(symbol: str) -> float:
-    global _preferred_futures_base_url
-    last_error: Exception | None = None
-    safe_symbol = urllib.parse.quote(symbol)
-    candidate_bases = (_preferred_futures_base_url,) + tuple(
-        base for base in BINANCE_USDM_BASE_URLS if base != _preferred_futures_base_url
-    )
-    for base_url in candidate_bases:
-        url = f"{base_url}/fapi/v1/ticker/price?symbol={safe_symbol}"
-        request = urllib.request.Request(url, headers={"User-Agent": "trading-simulator/1.0"})
-        try:
-            with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            _preferred_futures_base_url = base_url
-            return float(payload["price"])
-        except Exception as exc:
-            last_error = exc
+    # Imported lazily: market_data imports the timeout constant from this CLI.
+    from market_data import get_price
 
-    raise RuntimeError(f"No se pudo consultar precio de {symbol}: {last_error}")
+    return get_price(symbol, force_refresh=True)
 
 
 def calculate_trade_state(config: TradeConfig, current_price: float) -> tuple[float, float, str]:

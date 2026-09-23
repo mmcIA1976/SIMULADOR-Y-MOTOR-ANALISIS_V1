@@ -3,8 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.40.9-observation-numeric-evolution"
-APP_SEMVER = "0.40.9"
+APP_VERSION = "app-v0.40.10-binance-shared-budget"
+APP_SEMVER = "0.40.10"
 ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.11"
 SCORING_VERSION = "historical-analog-first-touch-v0.11"
 LEARNING_EVALUATOR_VERSION = "learning-v0.17-v11-target-horizon-attribution"

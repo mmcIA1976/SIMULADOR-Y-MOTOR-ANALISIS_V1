@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import time
 import urllib.parse
 import urllib.request
@@ -9,6 +8,7 @@ from datetime import datetime, timezone
 from urllib.error import HTTPError
 
 from trading_simulator import BINANCE_MARKET_TIMEOUT_SECONDS
+from binance_request_budget import BinanceDeferred, budget, critical_market_requests
 
 
 BINANCE_USDM_BASE_URLS = (
@@ -62,7 +62,6 @@ ALTERNATIVE_FEAR_GREED_URL = (
     "https://api.alternative.me/fng/?limit={limit}&format=json"
 )
 _preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
-_futures_backoff_until_ms = 0
 _price_cache: dict[str, dict] = {}
 PRICE_CACHE_TTL_SECONDS = 12
 PRICE_STALE_MAX_SECONDS = 300
@@ -88,17 +87,33 @@ def _iso_from_ms(timestamp_ms: int) -> str:
     return datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat()
 
 
-def _parse_binance_ban_until_ms(text: str) -> int | None:
-    match = re.search(r"banned until (\d{12,})", text)
-    return int(match.group(1)) if match else None
-
-
 def _is_binance_futures_url(url: str) -> bool:
     return any(base in url for base in BINANCE_USDM_BASE_URLS)
 
 
 def futures_backoff_until_ms() -> int:
-    return _futures_backoff_until_ms
+    return budget.status()["blocked_until_ms"]
+
+
+def _futures_request(url: str, timeout_seconds: float):
+    """Every attempt, including diagnostics/failover, uses the same budget."""
+    budget.acquire(url)
+    request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
+    try:
+        response = urllib.request.urlopen(request, timeout=timeout_seconds)
+        budget.observe(response.headers)
+        return response
+    except HTTPError as exc:
+        try:
+            body = exc.read(4096).decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        budget.observe(exc.headers, code=exc.code, body=body)
+        if exc.code in (418, 429):
+            raise BinanceDeferred(
+                f"binance_http_{exc.code}:paused_until:{futures_backoff_until_ms()}"
+            ) from exc
+        raise
 
 
 def get_cached_price(symbol: str, max_age_seconds: float | None = PRICE_STALE_MAX_SECONDS) -> dict | None:
@@ -126,29 +141,12 @@ def _remember_price(symbol: str, price: float, source: str = "binance_usdm_futur
 
 
 def get_json(url: str) -> object:
-    global _futures_backoff_until_ms
-    now_ms = _now_ms()
-    if _is_binance_futures_url(url) and _futures_backoff_until_ms and now_ms < _futures_backoff_until_ms:
-        raise RuntimeError(
-            "Binance USD-M Futures temporalmente limitado hasta "
-            f"{_iso_from_ms(_futures_backoff_until_ms)}"
-        )
-    request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
-    try:
-        with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
+    if _is_binance_futures_url(url):
+        with _futures_request(url, BINANCE_MARKET_TIMEOUT_SECONDS) as response:
             return json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        if _is_binance_futures_url(url) and exc.code in (418, 429):
-            try:
-                body = exc.read().decode("utf-8", errors="replace")[:180]
-            except Exception:
-                body = ""
-            ban_until_ms = _parse_binance_ban_until_ms(body)
-            _futures_backoff_until_ms = max(
-                _futures_backoff_until_ms,
-                ban_until_ms or now_ms + 60_000,
-            )
-        raise
+    request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
+    with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 def get_json_optional(url: str) -> object | None:
@@ -164,13 +162,7 @@ def get_futures_json(
     timeout_seconds: float = BINANCE_MARKET_TIMEOUT_SECONDS,
     max_host_attempts: int | None = None,
 ) -> object:
-    global _preferred_futures_base_url, _futures_backoff_until_ms
-    now_ms = _now_ms()
-    if _futures_backoff_until_ms and now_ms < _futures_backoff_until_ms:
-        raise RuntimeError(
-            "Binance USD-M Futures temporalmente limitado hasta "
-            f"{_iso_from_ms(_futures_backoff_until_ms)}"
-        )
+    global _preferred_futures_base_url
     errors: list[str] = []
     candidate_bases = (_preferred_futures_base_url,) + tuple(
         base for base in BINANCE_USDM_BASE_URLS if base != _preferred_futures_base_url
@@ -179,26 +171,21 @@ def get_futures_json(
         candidate_bases = candidate_bases[:max(1, int(max_host_attempts))]
     for base_url in candidate_bases:
         url = f"{base_url}{path}"
-        request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
         raw = ""
         try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            with _futures_request(url, timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
                 payload = json.loads(raw)
             _preferred_futures_base_url = base_url
             return payload
+        except BinanceDeferred:
+            # A rate limit is IP-wide. Other hostnames are not extra capacity.
+            raise
         except HTTPError as exc:
             try:
                 body = exc.read().decode("utf-8", errors="replace")[:180]
             except Exception:
                 body = ""
-            if exc.code in (418, 429):
-                ban_until_ms = _parse_binance_ban_until_ms(body)
-                fallback_backoff_ms = now_ms + 60_000
-                _futures_backoff_until_ms = max(
-                    _futures_backoff_until_ms,
-                    ban_until_ms or fallback_backoff_ms,
-                )
             errors.append(f"{base_url}: HTTP {exc.code} {body}")
         except json.JSONDecodeError as exc:
             errors.append(f"{base_url}: respuesta no JSON {raw[:180]} ({exc})")
@@ -221,7 +208,6 @@ def diagnose_futures_hosts(symbol: str) -> list[dict]:
     results = []
     for base_url in BINANCE_USDM_BASE_URLS:
         url = f"{base_url}{path}"
-        request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
         item = {
             "base_url": base_url,
             "url": url,
@@ -233,7 +219,7 @@ def diagnose_futures_hosts(symbol: str) -> list[dict]:
             "error": None,
         }
         try:
-            with urllib.request.urlopen(request, timeout=BINANCE_MARKET_TIMEOUT_SECONDS) as response:
+            with _futures_request(url, BINANCE_MARKET_TIMEOUT_SECONDS) as response:
                 raw_bytes = response.read()
                 raw = raw_bytes.decode("utf-8", errors="replace")
                 item["status"] = int(response.status)
@@ -245,6 +231,10 @@ def diagnose_futures_hosts(symbol: str) -> list[dict]:
                     item["ok"] = isinstance(parsed, dict) and "price" in parsed
                 except json.JSONDecodeError as exc:
                     item["error"] = f"json_decode_error: {exc}"
+        except BinanceDeferred as exc:
+            item["error"] = str(exc)
+            results.append(item)
+            break
         except HTTPError as exc:
             item["status"] = int(exc.code)
             item["content_type"] = exc.headers.get("Content-Type") if exc.headers else None
@@ -305,12 +295,17 @@ def get_prices(
     if not missing:
         return prices
 
+    deferred = False
     try:
         payload = get_futures_json(
             BINANCE_USDM_ALL_PRICES_PATH,
             timeout_seconds=max(float(timeout_seconds), 0.5),
             max_host_attempts=max(1, int(max_host_attempts)),
         )
+    except BinanceDeferred:
+        # A shared pause/budget cannot be bypassed via individual tickers.
+        payload = []
+        deferred = True
     except Exception:
         payload = []
 
@@ -334,6 +329,8 @@ def get_prices(
     # the former while the latter remains healthy. Do not let that partial
     # provider failure freeze every active operation and every UI price.
     for symbol in missing:
+        if deferred:
+            break
         if symbol in prices:
             continue
         safe_symbol = urllib.parse.quote(symbol)

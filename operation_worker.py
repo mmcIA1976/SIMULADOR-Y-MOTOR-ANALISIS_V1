@@ -148,6 +148,7 @@ class WorkerSettings:
 @dataclass
 class WorkerState:
     last_reconcile_ms: int | None = None
+    reconcile_retry_after_ms: int = 0
     cycles: int = 0
     observation_scheduler_status: str = "pending"
     observation_scheduler_last_run_at: str | None = None
@@ -277,6 +278,7 @@ def load_watched_market_symbols(
         return watched_market_symbols(db)
 
 
+@market_data.critical_market_requests()
 def collect_market_inputs(
     symbol_starts: dict[str, int],
     watched_symbols: set[str],
@@ -287,8 +289,11 @@ def collect_market_inputs(
     kline_loader: KlineLoader = get_operation_klines_1m,
 ) -> tuple[list[SymbolMarketInput], bool, int, dict[str, float]]:
     reconcile_due = (
-        state.last_reconcile_ms is None
-        or now_ms - state.last_reconcile_ms >= int(settings.reconcile_seconds * 1000)
+        now_ms >= state.reconcile_retry_after_ms
+        and (
+            state.last_reconcile_ms is None
+            or now_ms - state.last_reconcile_ms >= int(settings.reconcile_seconds * 1000)
+        )
     )
     first_reconciliation = state.last_reconcile_ms is None
     inputs: list[SymbolMarketInput] = []
@@ -317,11 +322,6 @@ def collect_market_inputs(
         if symbol not in price_snapshot:
             if price_loader is market_data.get_price:
                 failures += 1
-                log_event(
-                    "worker_market_price_failed",
-                    symbol=symbol,
-                    error="batch_price_missing",
-                )
             continue
         price = float(price_snapshot[symbol])
         earliest_start_ms = symbol_starts.get(symbol)
@@ -346,6 +346,9 @@ def collect_market_inputs(
         except Exception as exc:
             failures += 1
             log_event("worker_market_input_failed", symbol=symbol, error=str(exc))
+            # Historical reconciliation remains pending; a fresh quote must
+            # still reach current-price TP/SL processing this cycle.
+            inputs.append(SymbolMarketInput(symbol=symbol, price=price, klines=[]))
     return inputs, reconcile_due, failures, price_snapshot
 
 
@@ -422,17 +425,6 @@ def run_worker_cycle(
     )
     order_book_observations: dict[str, dict] = {}
     order_book_observation_failures = 0
-    if settings.order_book_observation_enabled and price_snapshot:
-        (
-            order_book_observations,
-            order_book_observation_failures,
-        ) = collect_order_book_observations(
-            state,
-            set(price_snapshot),
-            cycle_started_ms,
-            depth_loader=depth_loader,
-            trade_loader=trade_loader,
-        )
 
     activated: list[dict] = []
     closed: list[dict] = []
@@ -455,35 +447,6 @@ def run_worker_cycle(
             except Exception as exc:
                 failures += 1
                 log_event("worker_market_price_publish_failed", error=str(exc))
-        due_order_book = {
-            symbol: observation
-            for symbol, observation in order_book_observations.items()
-            if (
-                symbol not in state.order_book_last_publish_ms
-                or str(observation.get("status"))
-                != state.order_book_last_published_status.get(symbol)
-                or cycle_started_ms - state.order_book_last_publish_ms[symbol]
-                >= int(settings.order_book_publish_seconds * 1000)
-            )
-        }
-        if due_order_book:
-            try:
-                with connect_factory() as db:
-                    published_order_book_states = publish_order_book_observations(
-                        db,
-                        due_order_book,
-                    )
-                for symbol in due_order_book:
-                    state.order_book_last_publish_ms[symbol] = cycle_started_ms
-                    state.order_book_last_published_status[symbol] = str(
-                        due_order_book[symbol].get("status")
-                    )
-            except Exception as exc:
-                order_book_observation_failures += 1
-                log_event(
-                    "worker_order_book_observation_publish_failed",
-                    error=str(exc),
-                )
         market_symbols = {item.symbol for item in market_inputs}
         for missing_symbol in set(symbol_starts).difference(market_symbols):
             try:
@@ -504,7 +467,7 @@ def run_worker_cycle(
             if market_input.symbol not in symbol_starts:
                 continue
             try:
-                with connect_factory() as db:
+                with market_data.critical_market_requests(), connect_factory() as db:
                     activated_by_id, closed_by_id = refresh_symbol_active_operations(
                         db,
                         market_input.symbol,
@@ -532,10 +495,40 @@ def run_worker_cycle(
             with connect_factory() as db:
                 finalized = finalize_due_observations(db)
 
+    # Optional depth/flow sampling comes AFTER price publication and exits,
+    # never using the reserved critical quota.
+    if settings.order_book_observation_enabled and price_snapshot:
+        order_book_observations, order_book_observation_failures = collect_order_book_observations(
+            state, set(price_snapshot), utc_now_ms(),
+            depth_loader=depth_loader, trade_loader=trade_loader,
+        )
+        due_order_book = {
+            symbol: observation for symbol, observation in order_book_observations.items()
+            if symbol not in state.order_book_last_publish_ms
+            or str(observation.get("status")) != state.order_book_last_published_status.get(symbol)
+            or cycle_started_ms - state.order_book_last_publish_ms[symbol]
+            >= int(settings.order_book_publish_seconds * 1000)
+        }
+        if due_order_book and not settings.dry_run:
+            try:
+                with connect_factory() as db:
+                    published_order_book_states = publish_order_book_observations(db, due_order_book)
+                for symbol in due_order_book:
+                    state.order_book_last_publish_ms[symbol] = cycle_started_ms
+                    state.order_book_last_published_status[symbol] = str(due_order_book[symbol].get("status"))
+            except Exception as exc:
+                order_book_observation_failures += 1
+                log_event("worker_order_book_observation_publish_failed", error=str(exc))
+
     # If any symbol failed, keep the old cursor so the next cycle replays the
     # missed market interval instead of silently skipping it.
     if reconcile_due and failures == 0:
         state.last_reconcile_ms = cycle_started_ms
+        state.reconcile_retry_after_ms = 0
+    elif reconcile_due:
+        # Never advance the unscanned cursor. Let quote checks continue while
+        # a failed historical page waits for the next reconciliation interval.
+        state.reconcile_retry_after_ms = cycle_started_ms + int(settings.reconcile_seconds * 1000)
     state.cycles += 1
     return {
         "cycle": state.cycles,
@@ -547,7 +540,10 @@ def run_worker_cycle(
         "closed": len(closed),
         "finalized_observations": len(finalized),
         "failures": failures,
-        "reconciled": reconcile_due,
+        "reconciled": reconcile_due and failures == 0,
+        "reconciliation_pending": bool(state.reconcile_retry_after_ms),
+        "reconcile_retry_after_ms": state.reconcile_retry_after_ms or None,
+        "binance_request_budget": market_data.budget.status(),
         "persisted_price_samples": 0,
         "published_price_states": published_price_states,
         "order_book_observation_enabled": settings.order_book_observation_enabled,
@@ -721,6 +717,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
         )
     )
     last_heartbeat = 0.0
+    last_failure_signature: tuple | None = None
     started_at = datetime.now(timezone.utc).isoformat()
     last_result: dict | None = None
     autonomous_thread: threading.Thread | None = None
@@ -731,6 +728,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                 ensure_market_price_state_table(db)
                 ensure_worker_status_table(db)
                 ensure_order_book_observation_state_table(db)
+                market_data.ensure_request_budget_table(db)
             else:
                 verify_runtime_schema(
                     db,
@@ -738,6 +736,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                         "market_price_state",
                         "operation_worker_state",
                         "order_book_observation_state",
+                        "binance_request_budget",
                     ),
                 )
     except Exception as exc:
@@ -804,12 +803,16 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                     last_error=str(exc),
                 )
             now_monotonic = time.monotonic()
+            failure_signature = (
+                result["failures"],
+                result["market_symbols"],
+                result["binance_request_budget"]["reason"],
+            ) if result is not None and result["failures"] else None
             if result is not None and (
                 result["activated"]
                 or result["closed"]
                 or result["finalized_observations"]
-                or result["failures"]
-                or result["order_book_observation_failures"]
+                or failure_signature != last_failure_signature
                 or now_monotonic - last_heartbeat >= settings.heartbeat_seconds
             ):
                 lifecycle_status = (
@@ -830,6 +833,7 @@ def run_forever(settings: WorkerSettings | None = None) -> None:
                 )
                 log_event("operation_worker_heartbeat", **result)
                 last_heartbeat = now_monotonic
+                last_failure_signature = failure_signature
             wait_seconds = max(0.0, settings.poll_seconds - (time.monotonic() - cycle_started))
             stop_event.wait(wait_seconds)
     finally:

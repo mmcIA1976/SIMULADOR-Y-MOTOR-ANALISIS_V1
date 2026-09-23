@@ -14,6 +14,7 @@ from operation_worker_status import ensure_worker_status_table
 from operation_observation_learning import ensure_operation_observation_tables
 from observational_learning_base import ensure_observational_learning_base_tables
 from observation_evolution_store import ensure_numeric_evolution_table
+from binance_request_budget import ensure_request_budget_table
 from limit_order_contract import (
     LIMIT_ORDER_MAX_SELECTED_CASES_PER_UTC_DAY,
     LIMIT_ORDER_SNAPSHOT_BYTE_BUDGETS,
@@ -45,6 +46,7 @@ RUNTIME_SCHEMA_TABLES = (
     "observational_rule_baselines",
     "observational_learning_cases",
     "operation_observation_numeric_evaluations",
+    "binance_request_budget",
 )
 
 
@@ -917,6 +919,7 @@ def init_db() -> None:
         ensure_operation_observation_tables(db)
         ensure_observational_learning_base_tables(db)
         ensure_numeric_evolution_table(db)
+        ensure_request_budget_table(db)
         ensure_column(db, "operations", "observation_until", "TEXT")
         ensure_column(db, "operations", "observation_status", "TEXT")
         ensure_column(db, "operations", "observation_result", "TEXT")

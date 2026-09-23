@@ -2342,6 +2342,14 @@ def _finalize_observation_session_learning(
     from observational_learning_base import persist_observation_checkpoint_cases
 
     persist_observation_checkpoint_cases(db, int(operation["id"]))
+    # Reuse the already loaded facts. No additional historical downloads and no
+    # changes to probabilities, closure recommendations or operation state.
+    from observation_evolution_store import persist_evolution
+
+    persist_evolution(
+        db, operation, checkpoint_rows,
+        interval_minutes=int(session.get("planned_interval_minutes") or 20),
+    )
 
 
 def finalize_closed_observation_sessions(

@@ -6149,6 +6149,47 @@ def change_operation_observation_state(
         return observation_session_report(db, operation_id)
 
 
+@app.get("/api/operations/{operation_id}/observation-rule-evolution")
+def get_operation_observation_rule_evolution(
+    operation_id: int,
+    rule_id: str | None = None,
+    stage: str | None = None,
+    metric: str | None = None,
+    compare: bool = False,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    """Explicit owner audit, not a polling endpoint or a new trading engine."""
+    from observation_evolution_store import (
+        stored_report, persisted_status, report_view, historical_comparison,
+        load_episode,
+    )
+    from observation_numeric_evolution import build_evolution
+
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        operation = _observation_operation(db, operation_id, int(user["id"]))
+        report = stored_report(db, operation_id)
+        status = persisted_status(db, operation_id)
+        if report is None:
+            # Live/on-demand reports are ephemeral. They never force a control
+            # or persist predictions using a future outcome.
+            try:
+                source, session, rows = load_episode(db, operation_id)
+                report = build_evolution(
+                    source, rows, interval_minutes=session["planned_interval_minutes"] or 20,
+                    include_points=bool(rule_id),
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+        result = report_view(report, rule_id=rule_id, stage=stage, metric=metric)
+        result["persistence"] = status
+        result["operation_status"] = operation["status"]
+        if compare and report.get("status") != "blocked":
+            result["historical_comparison"] = historical_comparison(db, report)
+        return result
+
+
 @app.get("/api/operations/{operation_id}/observation-monitor")
 def get_operation_observation_monitor(
     operation_id: int,

@@ -224,3 +224,65 @@ Pruebas locales sin servicios externos:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest tests.test_autonomous_confirmation tests.test_autonomous_contest
 ```
+
+## Evolucion numerica del aprendizaje observacional
+
+`observation-numeric-evolution-v1` evalua controles existentes sin cambiar el
+motor v0.11, probabilidades, pesos, bots ni recomendaciones de cierre. Al finalizar
+un episodio reutiliza los controles ya cargados y almacena una sola evaluacion en
+`operation_observation_numeric_evaluations`. Aplicar antes del despliegue
+`supabase/migrations/20260923081443_observation_numeric_evolution.sql`.
+
+Cada salida escalar conserva nivel inicial/final, extremos, cambios, pendiente
+por hora, aceleracion, fuerza relativa a lecturas anteriores y persistencia de
+tres lecturas distintas. Valor positivo no significa automaticamente favorable:
+la extension ATR, por ejemplo, no tiene la interpretacion direccional del CVD.
+Repetir la misma evidencia no suma confirmaciones. Los huecos reinician la
+continuidad. Se distingue cambio numerico de una nueva fuente/vela.
+
+`FORECAST_METRICS` enumera por adelantado los descriptores contrastados con el
+precio posterior: variables normalizadas de EMA, CVD, RSI, ATR, absorcion,
+compresion, Fibonacci, liquidaciones, libro, volumen, estructura y reglas
+principales. Los demas componentes conservan su evolucion pero no generan un
+test predictivo adicional (por ejemplo, umbrales constantes, contadores o
+notionales brutos duplicados). No se seleccionan variables por su resultado.
+Solo se ensayan cuatro combinaciones declaradas: EMA+CVD, EMA+ATR, EMA+RSI y
+CVD+libro, separadas por tramo y contrato de formula.
+
+Los plazos posteriores son 20/60/240 minutos para el tramo corto,
+60/240/1440 para el medio y 240/1440/10080 para el largo. Se usa el precio de
+los controles observados, con tolerancia de reloj del 2% del plazo acotada a
+90-300 segundos. No son maximos/minimos intravela; no se interpola ni se usa
+el TP final como etiqueta de todos los controles. Huecos y plazos incompletos
+quedan excluidos con su causa. Si el seguimiento termina antes de 24 h, no
+se inventa su retorno a 24 h o siete dias. No se solicitan velas a Binance.
+
+Almacenamiento: limite duro de **65.536 bytes de payload por episodio/version**,
+mas columnas e indices. La compresion es sin perdida: cada respuesta posterior
+se guarda una vez y sus agrupaciones referencian a los mismos miembros; no hay
+redondeo ni copia de las velas o snapshots originales. Un informe que no cabe
+queda `blocked` con la causa, sin ampliar el limite ni detener la vigilancia
+por un error de datos del evaluador. Se conservan firma de entrada y version;
+un reintento no duplica registros y una entrada cambiada exige revision.
+
+Consulta explicita, sin archivos ni escrituras por defecto:
+
+```powershell
+.\.venv\Scripts\python.exe -B evaluate_observation_evolution.py --operation 529 --rule LIB-CAND-CVD-SLOPE-001 --stage intraday_wide --metric side_adjusted_normalized_cvd_slope
+```
+
+`--apply` registra un episodio cerrado; `--compare` consulta como maximo diez
+evaluaciones anteriores almacenadas (no sus snapshots). Compara mismo par,
+lado, horizonte, tramo, variable y contrato de formula/rol; excluye episodios
+futuros o solapados. Cada episodio aporta una media, no tantas muestras de
+confianza como controles. Es evidencia descriptiva, no validacion estadistica
+ni un ajuste automatico de probabilidades. No mezcla este estudio temporal
+con el contador de operaciones independientes del aprendizaje principal.
+
+API de consulta exclusiva del operador propietario:
+`GET /api/operations/{id}/observation-rule-evolution`, con `rule_id`, `stage`,
+`metric` y `compare`. No se conecta al sondeo de la interfaz: solo bajo peticion.
+Reutiliza la evaluacion guardada; si falta, calcula una vista efimera. La lectura
+de fuentes esta limitada a un episodio, 2.000 controles y 8 MB, verificados
+antes de descargar las trazas. La ausencia de una regla (por ejemplo OI) no
+se interpreta como cero y esta funcionalidad no incorpora su recolector.

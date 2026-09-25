@@ -12,6 +12,10 @@ from binance_request_budget import BinanceDeferred, budget, critical_market_requ
 
 
 BINANCE_USDM_BASE_URLS = (
+    # Binance serves the same USD-M Futures REST surface from this official
+    # web edge. Keep it first so a REST ban on the api edge does not freeze
+    # the worker when the alternate edge is healthy.
+    "https://www.binance.com",
     "https://fapi.binance.com",
     "https://fapi1.binance.com",
     "https://fapi2.binance.com",

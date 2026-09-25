@@ -80,6 +80,11 @@ class BinanceRequestBudgetTests(unittest.TestCase):
         self.assertEqual(request_weight("https://fapi.binance.com/fapi/v1/depth?limit=100"), 5)
         self.assertEqual(request_weight("https://fapi.binance.com/fapi/v1/klines?limit=1000"), 5)
 
+    def test_official_web_edge_is_treated_as_futures_market_data(self):
+        self.assertTrue(market_data._is_binance_futures_url(
+            "https://www.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT"
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()

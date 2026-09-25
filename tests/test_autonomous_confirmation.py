@@ -37,34 +37,34 @@ class ConfirmationTests(unittest.TestCase):
 
     def mature(self):
         values = []
-        for minute in (0, 15, 30, 45):
+        for minute in (0, 15, 30):
             values = self.advance(minute, self.rows(values))
         return values
 
-    def test_four_controls_and_45_real_minutes_required(self):
+    def test_three_controls_and_30_real_minutes_required(self):
         values = []
-        for minute in (0, 15, 30):
+        for minute in (0, 15):
             values = self.advance(minute, self.rows(values))
             self.assertIsNone(confirmation.select(values, self.policy))
-        values = self.advance(45, self.rows(values))
+        values = self.advance(30, self.rows(values))
         self.assertIs(confirmation.select(values, self.policy), values[0])
-        self.assertEqual(values[0].confirmation["controls"], 4)
+        self.assertEqual(values[0].confirmation["controls"], 3)
         self.assertEqual(values[0].confirmation["first_scan_run_id"], 1)
 
     def test_ranking_change_does_not_reset_either_eligible_candidate(self):
         values = []
-        for minute in (0, 15, 30, 45):
+        for minute in (0, 15, 30):
             values = self.advance(minute, self.rows(values),
                                   edges=(.15, .16 if minute == 15 else .14),
                                   symbols=("BTCUSDT", "ETHUSDT"))
-        self.assertEqual([c.confirmation["controls"] for c in values], [4, 4])
+        self.assertEqual([c.confirmation["controls"] for c in values], [3, 3])
         self.assertEqual(confirmation.select(values, self.policy).symbol, "BTCUSDT")
 
     def test_new_higher_scoring_candidate_cannot_jump_confirmation(self):
         values = []
-        for minute in (0, 15, 30):
+        for minute in (0, 15):
             values = self.advance(minute, self.rows(values))
-        values = self.advance(45, self.rows(values), edges=(.15, .25), symbols=("BTCUSDT", "ETHUSDT"))
+        values = self.advance(30, self.rows(values), edges=(.15, .25), symbols=("BTCUSDT", "ETHUSDT"))
         self.assertEqual(confirmation.select(values, self.policy).symbol, "BTCUSDT")
         self.assertEqual(values[1].confirmation["controls"], 1)
 
@@ -83,7 +83,7 @@ class ConfirmationTests(unittest.TestCase):
         self.assertEqual(values[0].confirmation["controls"], 1)
         self.assertEqual(values[0].confirmation["first_scan_run_id"], 31)
 
-    def test_gap_and_engine_or_artifact_changes_restart(self):
+    def test_long_gap_and_engine_or_artifact_changes_restart(self):
         for change in ("gap", "engine", "artifact"):
             with self.subTest(change=change):
                 old = self.rows(self.advance(0))
@@ -91,30 +91,41 @@ class ConfirmationTests(unittest.TestCase):
                     old[0]["engine_version"] = "old-engine"
                 elif change == "artifact":
                     old[0]["artifact_id"] = "old-artifact"
-                values = self.advance(30 if change == "gap" else 15, old)
+                values = self.advance(45 if change == "gap" else 15, old)
                 self.assertEqual(values[0].confirmation["controls"], 1)
 
-    def test_late_first_scan_does_not_fake_45_minutes(self):
+    def test_one_missing_scan_retains_two_valid_controls(self):
+        values = self.advance(0)
+        values = self.advance(30, self.rows(values))
+        self.assertEqual(values[0].confirmation["controls"], 2)
+        self.assertIsNone(confirmation.select(values, self.policy))
+        values = self.advance(45, self.rows(values))
+        self.assertEqual(values[0].confirmation["controls"], 3)
+        self.assertIs(confirmation.select(values, self.policy), values[0])
+
+    def test_late_first_scan_does_not_fake_30_minutes(self):
         values = self.advance(0)
         values[0].confirmation["first_analyzed_at"] = (self.start + timedelta(minutes=5)).isoformat()
-        for minute in (15, 30, 45):
+        for minute in (15, 30):
             values = self.advance(minute, self.rows(values))
-        self.assertEqual(values[0].confirmation["controls"], 4)
+        self.assertEqual(values[0].confirmation["controls"], 3)
         self.assertIsNone(confirmation.select(values, self.policy))
+        values = self.advance(45, self.rows(values))
+        self.assertIs(confirmation.select(values, self.policy), values[0])
 
     def test_consumed_confirmation_cannot_open_again_next_round(self):
         values = self.mature()
         confirmation.finish(values, values[0], status="opened", reason="confirmed", operation_id=123)
         self.assertEqual(values[0].confirmation["operation_id"], 123)
         self.assertEqual(values[0].confirmation["counterfactual_role"], "confirmed")
-        values = self.advance(60, self.rows(values))
+        values = self.advance(45, self.rows(values))
         self.assertEqual(values[0].confirmation["controls"], 1)
         self.assertIsNone(confirmation.select(values, self.policy))
 
     def test_failed_execution_does_not_consume_confirmation(self):
         values = self.mature()
         confirmation.finish(values, values[0], status="no_trade", reason="price_drift", operation_id=None)
-        values = self.advance(60, self.rows(values))
+        values = self.advance(45, self.rows(values))
         self.assertIsNotNone(confirmation.select(values, self.policy))
 
     def test_other_bots_do_not_need_confirmation(self):
@@ -131,17 +142,50 @@ class ConfirmationTests(unittest.TestCase):
         self.assertAlmostEqual(values[0].sl_probability, .30)
         self.assertEqual(values[0].edge, .15)
 
-    def test_provider_failure_ends_existing_tracking_without_starting_new_one(self):
-        previous = self.rows(self.advance(0))
+    def test_provider_failure_pauses_and_next_valid_check_resumes(self):
+        previous = self.rows(self.advance(15, self.rows(self.advance(0))))
         value = candidate(edge=.15)
-        value.analyzed_at = self.start + timedelta(minutes=15)
+        value.analyzed_at = self.start + timedelta(minutes=30)
         value.analysis_status = "failed"
         value.artifact_id = None
         value.rejection_code = "provider_failed"
         confirmation.advance([value], self.policy, previous, slot=value.analyzed_at,
-                             scan_run_id=2, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
-        self.assertEqual(value.confirmation["state"], "discarded")
-        self.assertEqual(value.confirmation["end_reason"], "provider_failed")
+                             scan_run_id=3, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
+        self.assertEqual(value.confirmation["state"], "paused")
+        self.assertEqual(value.confirmation["controls"], 2)
+        self.assertEqual(value.confirmation["pause_reason"], "provider_failed")
+        self.assertIsNone(confirmation.select([value], self.policy))
+        resumed = self.advance(45, self.rows([value]))
+        self.assertEqual(resumed[0].confirmation["controls"], 3)
+        self.assertEqual(resumed[0].confirmation["deferred_checks"], 1)
+        self.assertIs(confirmation.select(resumed, self.policy), resumed[0])
+
+    def test_repeated_provider_failures_never_open_on_stale_evidence(self):
+        previous = self.rows(self.advance(0))
+        for minute in (15, 30):
+            value = candidate(edge=.15)
+            value.analyzed_at = self.start + timedelta(minutes=minute)
+            value.analysis_status = "failed"
+            value.rejection_code = "provider_failed"
+            value.artifact_id = None
+            confirmation.advance([value], self.policy, previous, slot=value.analyzed_at,
+                                 scan_run_id=minute + 1,
+                                 engine_version=contest.EMPIRICAL_ENGINE_VERSION)
+            self.assertEqual(value.confirmation["state"], "paused")
+            previous = self.rows([value])
+        resumed = self.advance(45, previous)
+        self.assertEqual(resumed[0].confirmation["controls"], 1)
+        self.assertIsNone(confirmation.select(resumed, self.policy))
+
+    def test_existing_v1_episode_can_finish_under_three_control_policy(self):
+        previous = self.rows(self.advance(15, self.rows(self.advance(0))))
+        previous[0]["confirmation"]["version"] = confirmation.LEGACY_CONFIRMATION_VERSION
+        previous[0]["confirmation"].pop("last_valid_analyzed_at")
+        previous[0]["confirmation"].pop("artifact_id")
+        values = self.advance(30, previous)
+        self.assertEqual(values[0].confirmation["version"], confirmation.CONFIRMATION_VERSION)
+        self.assertEqual(values[0].confirmation["controls"], 3)
+        self.assertIs(confirmation.select(values, self.policy), values[0])
 
     def test_real_active_rule_context_fits_compact_budget(self):
         from tests.test_sequential_production_contract import synthetic_candles
@@ -174,7 +218,7 @@ class ConfirmationTests(unittest.TestCase):
 
     def test_only_endpoints_are_sent_to_counterfactual_evaluator(self):
         values = []
-        for minute in (0, 15, 30, 45):
+        for minute in (0, 15, 30):
             values = self.advance(minute, self.rows(values))
             selected = confirmation.select(values, self.policy)
             confirmation.finish(values, selected, status="opened" if selected else "no_trade",
@@ -185,16 +229,18 @@ class ConfirmationTests(unittest.TestCase):
                 policy=self.policy, slot=self.start + timedelta(minutes=minute),
                 candidates=values, selected=selected)
             params = next(params for query, params in db.calls if "INSERT INTO autonomous_candidate_observations" in query)
-            self.assertEqual(params[-1], "pending" if minute in (0, 45) else "excluded")
+            self.assertEqual(params[-1], "pending" if minute in (0, 30) else "excluded")
             self.assertEqual(params[21], "confirmation")
 
     def test_read_is_bounded_to_previous_scan_season_and_mode(self):
         class Db:
             def execute(inner, query, params):
-                self.assertIn("LIMIT 12", query)
+                self.assertIn("LIMIT 24", query)
                 self.assertIn("s.dry_run = ?", query)
                 self.assertNotIn("SELECT *", query)
-                self.assertEqual(params, (1, 2, self.start.isoformat(), False))
+                self.assertEqual(params, (1, 2,
+                                          (self.start - timedelta(minutes=15)).isoformat(),
+                                          self.start.isoformat(), False))
                 return inner
             def fetchall(inner):
                 return []
@@ -217,11 +263,11 @@ class ConfirmationTests(unittest.TestCase):
         candles[2]["high"] = 102.
         self.assertEqual(confirmation.evaluate_endpoint(candles, **args)["first_touch"], "sl")
 
-    def test_report_counts_episodes_not_four_independent_trades(self):
+    def test_report_counts_episodes_not_three_independent_trades(self):
         rows, values = [], []
-        for minute in (0, 15, 30, 45):
+        for minute in (0, 15, 30):
             values = self.advance(minute, self.rows(values))
-            if minute == 45:
+            if minute == 30:
                 confirmation.finish(values, values[0], status="opened", reason="test", operation_id=123)
             value = values[0]
             rows.append(dict(participant_id=1, symbol=value.symbol, side=value.side,
@@ -282,13 +328,23 @@ class ScannerIntegrationTests(unittest.TestCase):
             connection.rollback()
             raise
 
-    def scan(self, minute, *, bad=False, fail_insert=False):
+    def scan(self, minute, *, bad=False, fail_insert=False,
+             fail_analysis=False, fail_final=False, worker_price_fail=False):
         def analyze(policy, prices, at, **kwargs):
             value = candidate(edge=.09 if bad else .15)
             value.analyzed_at = at
             value.sigma = .01
             value.artifact_id = "frozen-artifact"
+            if fail_analysis or (fail_final and kwargs.get("symbols")):
+                value.analysis_status = "failed"
+                value.rejection_code = "sigma:BinanceDeferred:binance_shared_budget_exhausted"
+                value.artifact_id = None
             return [value]
+
+        def fresh_prices(db, symbols, **kwargs):
+            if worker_price_fail and len(tuple(symbols)) == 1:
+                return {}
+            return {s: 100. for s in contest.SYMBOLS}
 
         def opening(db, **kwargs):
             if fail_insert:
@@ -298,7 +354,7 @@ class ScannerIntegrationTests(unittest.TestCase):
 
         with patch.object(contest, "PARTICIPANT_POLICIES", (contest.PARTICIPANT_POLICIES[0],)), \
              patch.object(contest, "ensure_contest_entries"), \
-             patch.object(contest, "fresh_market_prices", return_value={s: 100. for s in contest.SYMBOLS}), \
+             patch.object(contest, "fresh_market_prices", side_effect=fresh_prices), \
              patch.object(contest, "_load_order_book_contexts", return_value={}), \
              patch.object(contest, "_load_liquidation_contexts", return_value={}), \
              patch.object(contest, "analyze_candidates", side_effect=analyze), \
@@ -309,18 +365,18 @@ class ScannerIntegrationTests(unittest.TestCase):
                                         dry_run=False, bootstrap=False,
                                         now=self.start + timedelta(minutes=minute))
 
-    def test_four_scans_open_once_and_duplicate_scan_does_not_advance(self):
-        for minute in (0, 15, 30):
+    def test_three_scans_open_once_and_duplicate_scan_does_not_advance(self):
+        for minute in (0, 15):
             result = self.scan(minute)
-            self.assertEqual(result["scans"][0]["reason"], "awaiting_45m_candidate_confirmation")
-        self.assertEqual(self.scan(30)["scans"], [])
-        self.assertEqual(self.scan(45)["scans"][0]["status"], "opened")
-        self.assertEqual(self.scan(60)["scans"][0]["status"], "no_trade")
+            self.assertEqual(result["scans"][0]["reason"], "awaiting_30m_candidate_confirmation")
+        self.assertEqual(self.scan(15)["scans"], [])
+        self.assertEqual(self.scan(30)["scans"][0]["status"], "opened")
+        self.assertEqual(self.scan(45)["scans"][0]["status"], "no_trade")
         self.assertEqual(len(self.opened), 1)
         rows = self.connection.execute("SELECT observational_json, outcome_status FROM autonomous_candidate_observations ORDER BY id").fetchall()
-        self.assertEqual(len(rows), 5)
-        self.assertEqual(json.loads(rows[3]["observational_json"])["confirmation"]["state"], "consumed")
-        self.assertEqual([r["outcome_status"] for r in rows], ["pending", "excluded", "excluded", "pending", "pending"])
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(json.loads(rows[2]["observational_json"])["confirmation"]["state"], "consumed")
+        self.assertEqual([r["outcome_status"] for r in rows], ["pending", "excluded", "pending", "pending"])
 
     def test_threshold_failure_prevents_open_and_restarts(self):
         self.scan(0)
@@ -331,16 +387,46 @@ class ScannerIntegrationTests(unittest.TestCase):
         row = self.connection.execute("SELECT observational_json FROM autonomous_candidate_observations ORDER BY id DESC LIMIT 1").fetchone()
         self.assertEqual(json.loads(row[0])["confirmation"]["controls"], 1)
 
-    def test_failed_persistence_rolls_back_checkpoint_and_cannot_confirm_next_scan(self):
-        for minute in (0, 15, 30):
+    def test_provider_failure_during_scan_resumes_without_opening_on_missing_data(self):
+        self.scan(0)
+        self.scan(15)
+        self.assertEqual(self.scan(30, fail_analysis=True)["scans"][0]["status"], "no_trade")
+        row = self.connection.execute("SELECT observational_json FROM autonomous_candidate_observations ORDER BY id DESC LIMIT 1").fetchone()
+        self.assertEqual(json.loads(row[0])["confirmation"]["state"], "paused")
+        self.assertEqual(self.opened, [])
+        self.assertEqual(self.scan(45)["scans"][0]["status"], "opened")
+
+    def test_provider_failure_during_final_reanalysis_preserves_tracking(self):
+        self.scan(0)
+        self.scan(15)
+        result = self.scan(30, fail_final=True)
+        self.assertEqual(result["scans"][0]["status"], "no_trade")
+        row = self.connection.execute("SELECT observational_json FROM autonomous_candidate_observations ORDER BY id DESC LIMIT 1").fetchone()
+        self.assertEqual(json.loads(row[0])["confirmation"]["state"], "paused")
+        self.assertEqual(self.opened, [])
+        self.assertEqual(self.scan(45)["scans"][0]["status"], "opened")
+
+    def test_missing_worker_price_during_final_reanalysis_preserves_tracking(self):
+        self.scan(0)
+        self.scan(15)
+        result = self.scan(30, worker_price_fail=True)
+        self.assertEqual(result["scans"][0]["status"], "no_trade")
+        row = self.connection.execute("SELECT observational_json FROM autonomous_candidate_observations ORDER BY id DESC LIMIT 1").fetchone()
+        self.assertEqual(json.loads(row[0])["confirmation"]["state"], "paused")
+        self.assertEqual(self.opened, [])
+        self.assertEqual(self.scan(45)["scans"][0]["status"], "opened")
+
+    def test_failed_persistence_rolls_back_checkpoint_and_next_valid_scan_can_confirm(self):
+        for minute in (0, 15):
             self.scan(minute)
         with self.assertLogs("autonomous_contest", level="ERROR"):
-            self.assertEqual(self.scan(45, fail_insert=True)["scans"][0]["status"], "failed")
-        self.assertEqual(self.scan(60)["scans"][0]["status"], "no_trade")
+            self.assertEqual(self.scan(30, fail_insert=True)["scans"][0]["status"], "failed")
         self.assertEqual(self.opened, [])
+        self.assertEqual(self.scan(45)["scans"][0]["status"], "opened")
+        self.assertEqual(len(self.opened), 1)
 
     def test_endpoint_evaluator_and_report_use_actual_saved_checkpoints(self):
-        for minute in (0, 15, 30, 45):
+        for minute in (0, 15, 30):
             self.scan(minute)
 
         def loader(symbol, interval, limit, start_time_ms, end_time_ms):

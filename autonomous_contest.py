@@ -36,7 +36,7 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.3"
+POLICY_VERSION = "autonomous-contest-policy-v0.4"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 SYMBOLS = (
@@ -1072,7 +1072,7 @@ def _candidate_storage_selection(
     selected: Candidate | None,
 ) -> dict[tuple[str, str], str]:
     if entry_confirmation.enabled(policy):
-        # Eligible checkpoints and one terminal discard only. No rejected
+        # Eligible, paused and terminal checkpoints only. No rejected
         # boundary candidates or repeated multi-kilobyte observational traces.
         return {
             (candidate.symbol, candidate.side): "confirmation"
@@ -1201,24 +1201,31 @@ def _persist_candidate_observations(
 
 
 def _previous_confirmation_rows(db, participant, season_id, policy, slot, dry_run):
-    """At most twelve small states; never fetch historical analysis snapshots."""
+    """Latest compact state per pair, including one missed scanner slot."""
     if not entry_confirmation.enabled(policy):
         return []
-    return [dict(row) for row in db.execute(
+    rows = db.execute(
         """
         SELECT c.symbol, c.side, c.analyzed_at, c.engine_version, c.artifact_id,
                c.observational_json -> 'confirmation' AS confirmation
         FROM autonomous_scan_runs s
         JOIN autonomous_candidate_observations c ON c.scan_run_id = s.id
         WHERE s.participant_id = ? AND s.contest_season_id = ?
-          AND s.scan_slot_at = ? AND s.dry_run = ?
+          AND s.scan_slot_at BETWEEN ? AND ? AND s.dry_run = ?
           AND s.status IN ('no_trade', 'opened', 'would_open', 'no_cash')
           AND c.storage_reason = 'confirmation'
-        LIMIT 12
+        ORDER BY s.scan_slot_at DESC
+        LIMIT 24
         """,
         (int(participant["id"]), season_id,
+         (slot - timedelta(minutes=2 * policy.cadence_minutes)).isoformat(),
          (slot - timedelta(minutes=policy.cadence_minutes)).isoformat(), bool(dry_run)),
-    ).fetchall()]
+    ).fetchall()
+    latest = {}
+    for row in rows:
+        item = dict(row)
+        latest.setdefault((item["symbol"], item["side"]), item)
+    return list(latest.values())
 
 
 def execution_drift_is_acceptable(
@@ -1603,8 +1610,13 @@ def run_due_scans(
                 confirmation_reason = "selected_confirmation_worker_price_unavailable"
                 selected.rejection_code = confirmation_reason
                 if selected.confirmation:
-                    selected.confirmation.update(state="discarded", end_reason=confirmation_reason,
-                                                 counterfactual_role="none")
+                    entry_confirmation.pause(
+                        selected,
+                        {"confirmation": selected.confirmation,
+                         "analyzed_at": selected.analyzed_at.isoformat(),
+                         "artifact_id": selected.artifact_id},
+                        slot=slot, reason=confirmation_reason,
+                    )
                 selected = None
             else:
                 confirmation_liquidations = _load_liquidation_contexts(
@@ -1645,8 +1657,19 @@ def run_due_scans(
                         + str(confirmed.rejection_code or confirmed.analysis_status)
                     )
                     if confirmed.confirmation:
-                        confirmed.confirmation.update(state="discarded", end_reason=confirmation_reason,
-                                                      counterfactual_role="none")
+                        if entry_confirmation.data_unavailable(confirmed):
+                            entry_confirmation.pause(
+                                confirmed,
+                                {"confirmation": confirmed.confirmation,
+                                 "analyzed_at": selected.analyzed_at.isoformat(),
+                                 "artifact_id": selected.artifact_id},
+                                slot=slot, reason=confirmation_reason,
+                            )
+                        else:
+                            confirmed.confirmation.update(
+                                state="discarded", end_reason=confirmation_reason,
+                                counterfactual_role="none",
+                            )
                     selected = None
         evaluated = sum(candidate.analysis_status == "evaluated" for candidate in candidates)
         blocked = len(candidates) - evaluated
@@ -1659,7 +1682,7 @@ def run_due_scans(
         reason = confirmation_reason or "no_candidate_passed_horizon_policy"
         if (entry_confirmation.enabled(policy) and selected is None
                 and confirmation_reason is None and eligible):
-            reason = "awaiting_45m_candidate_confirmation"
+            reason = "awaiting_30m_candidate_confirmation"
         operation_id = recommendation_id = None
         try:
             with connect_factory() as db:

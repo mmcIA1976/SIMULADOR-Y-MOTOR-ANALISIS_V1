@@ -183,15 +183,17 @@ Auditoria reproducible de coherencia:
 
 ## Confirmacion de entradas: solo Bot Intradia Corto
 
-`short-entry-confirmation-v1` mantiene el motor v0.11, sus umbrales, el sizing
-y las cuotas actuales. Solo el bot corto exige cuatro controles consecutivos
-de candidatas elegibles, separados por rondas de 15 minutos, y al menos 45
-minutos reales desde el primero. Si el worker se retrasa, puede necesitar una
-ronda adicional. No se exige liderar todas las rondas: se elige la mejor de
-las candidatas ya confirmadas, revalidando precio y analisis antes de entrar.
-Perder elegibilidad o un control reinicia la confirmacion. Una entrada consume
-solo su propia confirmacion. No se impone un limite de posiciones abiertas.
-Las tres entradas diarias siguen siendo el objetivo/cupo; no se fuerzan si no
+`short-entry-confirmation-v2` mantiene el motor v0.11, sus umbrales, el sizing
+y las cuotas actuales. Solo el bot corto exige tres controles validos de una
+candidata, separados por rondas de 15 minutos, y al menos 30 minutos reales
+desde el primero. Si falta informacion, el seguimiento queda pausado sin
+contar ese control; se reintenta en la siguiente ronda. Se admite un hueco de
+una ronda, pero controles validos separados por mas de 30 minutos no se
+reutilizan para abrir. No se exige liderar todas las rondas: se elige la mejor
+de las candidatas ya confirmadas, revalidando precio y analisis antes de
+entrar. Perder elegibilidad de verdad reinicia la confirmacion. Una entrada
+consume solo su propia confirmacion. No se impone un limite de posiciones abiertas.
+Las tres entradas diarias siguen siendo el cupo maximo; no se fuerzan si no
 hay confirmaciones validas, ni se reparte automaticamente el dia en franjas.
 
 Antes del despliegue, aplicar

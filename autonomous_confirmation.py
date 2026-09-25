@@ -10,9 +10,12 @@ import math
 from datetime import datetime, timedelta, timezone
 
 
-CONFIRMATION_VERSION = "short-entry-confirmation-v1"
-CONFIRMATION_MINUTES = 45
-CONFIRMATION_CONTROLS = 4
+CONFIRMATION_VERSION = "short-entry-confirmation-v2"
+LEGACY_CONFIRMATION_VERSION = "short-entry-confirmation-v1"
+CONFIRMATION_MINUTES = 30
+CONFIRMATION_CONTROLS = 3
+# One missed 15-minute check may be retried; older valid evidence is stale.
+MAX_VALID_CONTROL_GAP_MINUTES = 30
 CONTROL_JSON_BYTE_BUDGET = 2048
 
 
@@ -36,12 +39,34 @@ def rank_key(candidate) -> tuple:
             float(candidate.unresolved_probability), candidate.symbol, candidate.side)
 
 
-def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_version):
-    """Advance once per consecutive scan, never once per in-scan reanalysis.
+def data_unavailable(candidate) -> bool:
+    """A failed/blocked analysis is not evidence that the trading signal weakened."""
+    return candidate.analysis_status in {"failed", "blocked"}
 
-    Missing/failed scans, lost eligibility, consumed lineages or model changes
-    break confirmation. A ranking change alone does not. Reads are restricted to
-    the immediately preceding scheduled scan in the same season and run mode.
+
+def pause(candidate, previous: dict, *, slot, reason: str) -> None:
+    """Keep an existing episode, without counting a check or allowing entry."""
+    old = as_object(previous.get("confirmation"))
+    candidate.confirmation = {
+        **old,
+        "version": CONFIRMATION_VERSION,
+        "slot": utc(slot).isoformat(),
+        "state": "paused",
+        "last_valid_analyzed_at": old.get("last_valid_analyzed_at") or str(previous["analyzed_at"]),
+        "artifact_id": old.get("artifact_id") or previous.get("artifact_id"),
+        "deferred_checks": int(old.get("deferred_checks") or 0) + 1,
+        "pause_reason": reason,
+        "rank": None,
+        "counterfactual_role": "none",
+    }
+    candidate.confirmation.pop("end_reason", None)
+
+
+def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_version):
+    """Advance once per valid check, never once per in-scan reanalysis.
+
+    One missing/failed check pauses rather than rejects an episode. A genuine
+    rule failure, consumed lineage, model change or stale valid check resets it.
     """
     if not enabled(policy):
         return
@@ -49,21 +74,39 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
     eligible = sorted((c for c in candidates if c.eligible_for(policy)), key=rank_key)
     ranks = {(c.symbol, c.side): index + 1 for index, c in enumerate(eligible)}
     previous_slot = utc(slot) - timedelta(minutes=policy.cadence_minutes)
+    oldest_slot = previous_slot - timedelta(minutes=policy.cadence_minutes)
     for candidate in candidates:
         row = prior.get((candidate.symbol, candidate.side), {})
         old = as_object(row.get("confirmation"))
+        old_slot = utc(old["slot"]) if old.get("slot") else None
         preceding_control = bool(
-            old.get("version") == CONFIRMATION_VERSION
-            and old.get("state") in {"watching", "ready"}
-            and old.get("slot") == previous_slot.isoformat()
+            old.get("version") in {CONFIRMATION_VERSION, LEGACY_CONFIRMATION_VERSION}
+            and old.get("state") in {"watching", "ready", "paused"}
+            and old_slot is not None and oldest_slot <= old_slot <= previous_slot
             and row.get("engine_version") == engine_version
             and candidate.analyzed_at > utc(row["analyzed_at"])
         )
-        continuation = preceding_control and row.get("artifact_id") == candidate.artifact_id
+        if not candidate.eligible_for(policy) and preceding_control and data_unavailable(candidate):
+            pause(candidate, row, slot=slot, reason=candidate.rejection_code or candidate.analysis_status)
+            continue
+        last_valid_at = None
+        if preceding_control:
+            last_valid_at = utc(old.get("last_valid_analyzed_at") or row["analyzed_at"])
+        previous_artifact = (
+            old.get("artifact_id") if old.get("state") == "paused"
+            else row.get("artifact_id")
+        )
+        continuation = bool(
+            preceding_control
+            and previous_artifact == candidate.artifact_id
+            and last_valid_at is not None
+            and candidate.analyzed_at - last_valid_at <= timedelta(minutes=MAX_VALID_CONTROL_GAP_MINUTES)
+        )
         if not candidate.eligible_for(policy):
             if preceding_control:
                 candidate.confirmation = {
-                    **old, "slot": utc(slot).isoformat(), "state": "discarded",
+                    **old, "version": CONFIRMATION_VERSION,
+                    "slot": utc(slot).isoformat(), "state": "discarded",
                     "end_reason": candidate.rejection_code or "eligibility_lost",
                     "rank": None, "counterfactual_role": "none",
                 }
@@ -76,11 +119,14 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
             "version": CONFIRMATION_VERSION,
             "first_scan_run_id": int(old["first_scan_run_id"]) if continuation else scan_run_id,
             "first_analyzed_at": first_at,
+            "last_valid_analyzed_at": candidate.analyzed_at.isoformat(),
+            "artifact_id": candidate.artifact_id,
             "slot": utc(slot).isoformat(),
             "controls": count,
             "elapsed_seconds": round(elapsed, 3),
             "state": "ready" if ready else "watching",
             "rank": ranks[(candidate.symbol, candidate.side)],
+            "deferred_checks": int(old.get("deferred_checks") or 0) if continuation else 0,
             "counterfactual_role": "none" if continuation else "immediate",
         }
 
@@ -178,7 +224,7 @@ def summarize_trials(rows, *, fee_per_side=None):
     groups = {}
     for row in rows:
         meta = as_object(row.get("confirmation"))
-        if meta.get("version") != CONFIRMATION_VERSION:
+        if meta.get("version") not in {CONFIRMATION_VERSION, LEGACY_CONFIRMATION_VERSION}:
             continue
         key = (row["participant_id"], meta["first_scan_run_id"], row["symbol"], row["side"])
         groups.setdefault(key, []).append((row, meta))

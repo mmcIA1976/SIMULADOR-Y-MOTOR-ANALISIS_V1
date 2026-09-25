@@ -157,6 +157,7 @@ class WorkerState:
     order_book_tracker: OrderBookObservationTracker = field(
         default_factory=OrderBookObservationTracker
     )
+    order_book_last_sample_ms: int = 0
     order_book_last_publish_ms: dict[str, int] = field(default_factory=dict)
     order_book_last_published_status: dict[str, str] = field(default_factory=dict)
 
@@ -497,11 +498,24 @@ def run_worker_cycle(
 
     # Optional depth/flow sampling comes AFTER price publication and exits,
     # never using the reserved critical quota.
-    if settings.order_book_observation_enabled and price_snapshot:
+    order_book_sample_due = (
+        settings.order_book_observation_enabled
+        and bool(price_snapshot)
+        and (
+            state.order_book_last_sample_ms <= 0
+            or cycle_started_ms - state.order_book_last_sample_ms
+            >= int(settings.order_book_publish_seconds * 1000)
+        )
+    )
+    if order_book_sample_due:
         order_book_observations, order_book_observation_failures = collect_order_book_observations(
             state, set(price_snapshot), utc_now_ms(),
             depth_loader=depth_loader, trade_loader=trade_loader,
         )
+        # Throttle the expensive depth/flow capture independently from the
+        # 10-second price/exit loop. A failed capture is retried next interval.
+        if order_book_observations or order_book_observation_failures:
+            state.order_book_last_sample_ms = cycle_started_ms
         due_order_book = {
             symbol: observation for symbol, observation in order_book_observations.items()
             if symbol not in state.order_book_last_publish_ms

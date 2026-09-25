@@ -259,7 +259,7 @@ class OperationWorkerTests(unittest.TestCase):
             patch.object(operation_worker, "finalize_due_observations", return_value=[]),
             patch.object(operation_worker, "publish_order_book_observations", return_value=1) as publish,
         ):
-            for offset in (0, 10_000, 20_000):
+            for offset in (0, 10_000, 20_000, 30_000, 40_000, 50_000, 60_000):
                 current_ms["value"] = 1_775_383_200_000 + offset
                 operation_worker.run_worker_cycle(
                     state,
@@ -272,7 +272,7 @@ class OperationWorkerTests(unittest.TestCase):
                     now_ms=current_ms["value"],
                 )
 
-        self.assertEqual(publish.call_count, 2)
+        self.assertEqual(publish.call_count, 3)
         self.assertEqual(
             state.order_book_last_published_status["BTCUSDT"],
             "ready",

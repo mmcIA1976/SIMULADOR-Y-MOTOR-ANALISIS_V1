@@ -569,6 +569,8 @@ def _compact_stage_rule_traces(stage_traces: Any) -> dict:
             compact_trace = {
                 "rule_id": rule_id,
                 "rule_version": trace.get("rule_version"),
+                "measurement_contract_version": trace.get("measurement_contract_version"),
+                "reason_codes": trace.get("reason_codes"),
                 "status": trace.get("status"),
                 "probability_effect": trace.get("probability_effect"),
                 "active_probability_outputs": trace.get(
@@ -2646,8 +2648,8 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         explanation = "Mide si el recorrido reciente avanza de forma eficiente hacia la dirección de la operación."
     elif rule_id == "M4-RULE-MTF-HIERARCHY-001":
         parts = [
-            add("directional_path_efficiency_2h", "Eficiencia 2 h"),
-            add("directional_path_efficiency_4h", "Eficiencia 4 h"),
+            add("directional_path_efficiency_2h", "Eficiencia 2× horizonte"),
+            add("directional_path_efficiency_4h", "Eficiencia 4× horizonte"),
         ]
         usable = [value for value in parts if value is not None]
         score = math.fsum(usable) / len(usable) if usable else None
@@ -2661,6 +2663,20 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         score = side_sign * raw if raw is not None else None
         threshold = 0.03
         explanation = "Compara compras y ventas ejecutadas agresivamente y las orienta al lado de la operación."
+    elif rule_id == "M4-RULE-OPEN-INTEREST-CHANGE-001":
+        add("dOI_H", "Cambio logarítmico OI base")
+        add("oi_previous", "OI inicial")
+        add("oi_current", "OI final")
+        explanation = "Mide cambio de posiciones abiertas, no dirección alcista o bajista por sí solo."
+    elif rule_id == "M4-RULE-PRICE-OI-STATE-001":
+        add("D_H", "Cambio logarítmico de precio")
+        add("dOI_H", "Cambio logarítmico OI base")
+        explanation = "Precio y OI cubren el mismo intervalo exacto; su combinación sigue siendo una hipótesis."
+    elif rule_id == "M4-RULE-FUNDING-STATE-001":
+        add("last_settled_funding_rate", "Financiación liquidada")
+        add("age_seconds", "Antigüedad en segundos")
+        add("observed_interval_hours", "Intervalo observado en horas")
+        explanation = "Último pago de financiación; no es la cotización prospectiva ni determina dirección por sí solo."
     elif rule_id == "LIB-CAND-EMA-TREND-001":
         slope = add("side_adjusted_slope_atr", "Pendiente EMA50 / ATR")
         close = add("side_adjusted_close_vs_ema50_log", "Precio frente EMA50")
@@ -2789,6 +2805,9 @@ def _rule_signal(trace: dict, *, stage: str, side: str) -> dict | None:
         "label": label,
         "formula_role": formula_role,
         "formula_outputs": formula_outputs,
+        "measurement_contract_version": trace.get("measurement_contract_version"),
+        "rule_version": trace.get("rule_version"),
+        "reason_codes": trace.get("reason_codes") or [],
         "category": category,
         "status": str(trace.get("status") or "unknown"),
         "probability_effect": probability_effect or "unknown",

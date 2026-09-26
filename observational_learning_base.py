@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 from observation_snapshot_codec import snapshot_rule_traces
 
@@ -92,6 +92,86 @@ PLAN_RESULT_TO_OUTCOME = {
     "plan_unresolved": OUTCOME_CLASSES[2],
     "contest_expiry_mark_to_market": OUTCOME_CLASSES[2],
 }
+
+
+def _utc_timestamp(value) -> datetime | None:
+    if value is None:
+        return None
+    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def fixed_horizon_outcome_from_evidence(
+    *, recorded_outcome: str | None, plan_result: str | None,
+    analysis_at, evaluation_expires_at, closed_at,
+    exact_outcome: str | None = None, evidence_status: str | None = None,
+    evidence_quality: str | None = None, evidence_coverage_ratio=None,
+    evidence_start_at=None, evidence_end_at=None, first_plan_touch_at=None,
+    reconstructed_plan_result: str | None = None,
+) -> tuple[str | None, str]:
+    """Conservative fixed-horizon label; never equate late final exit with early touch."""
+    if exact_outcome in OUTCOME_CLASSES:
+        return exact_outcome, "verified_exact_counterfactual"
+    analysis = _utc_timestamp(analysis_at)
+    expiry = _utc_timestamp(evaluation_expires_at)
+    close = _utc_timestamp(closed_at)
+    if analysis is None or expiry is None or close is None or expiry <= analysis:
+        return None, "missing_time_contract"
+    if (plan_result in {"plan_success", "plan_failure"}
+            and close <= expiry and recorded_outcome in OUTCOME_CLASSES):
+        return recorded_outcome, "verified_direct_touch"
+    if (evidence_status == "complete"
+            and str(evidence_quality or "").startswith("complete_1m")
+            and finite(evidence_coverage_ratio) is not None
+            and float(evidence_coverage_ratio) >= 0.999):
+        start = _utc_timestamp(evidence_start_at)
+        end = _utc_timestamp(evidence_end_at)
+        first_touch = _utc_timestamp(first_plan_touch_at)
+        if (start is not None and end is not None
+                and start <= analysis + timedelta(seconds=10)
+                and end >= expiry):
+            # A one-minute boundary candle cannot establish which side of the
+            # expiry a near-boundary touch occurred. Leave that case unknown.
+            if first_touch is None or first_touch >= expiry + timedelta(seconds=60):
+                return "neither_barrier_before_expiry", "reconstructed_1m_no_touch"
+            if first_touch <= expiry - timedelta(seconds=60):
+                reconstructed = PLAN_RESULT_TO_OUTCOME.get(str(reconstructed_plan_result or ""))
+                if reconstructed in OUTCOME_CLASSES[:2]:
+                    return reconstructed, "reconstructed_1m_first_touch"
+            return None, "boundary_touch_ambiguous"
+    return None, "late_or_indirect_label_not_verified"
+
+
+def load_closed_operation_label_metadata(
+    db, cohort_id: int, *, include_historical: bool = False,
+) -> dict[int, dict]:
+    """Read bounded scalar evidence for operations already in one compact cohort."""
+    rows = db.execute(
+        """WITH source_ops AS (
+               SELECT DISTINCT split_part(source_reference,':',2)::bigint AS operation_id
+               FROM observational_learning_cases
+               WHERE cohort_id=? AND source_kind='closed_operation'
+                 AND (cohort_partition='prospective' OR ?)
+           )
+           SELECT DISTINCT ON (r.operation_id) r.operation_id,r.engine_version,
+                  o.closed_at,le.plan_result,exact.outcome_label AS exact_outcome_label,
+                  le.evidence_status,le.evidence_quality,le.evidence_coverage_ratio,
+                  le.evidence_start_at,le.evidence_end_at,le.first_plan_touch_at,
+                  le.reconstructed_plan_result
+           FROM source_ops source
+           JOIN operations o ON o.id=source.operation_id
+           JOIN recommendations r ON r.operation_id=o.id AND r.analysis_type='pre_trade'
+           LEFT JOIN learning_evaluations le ON le.operation_id=o.id
+           LEFT JOIN LATERAL (
+               SELECT e.outcome_label FROM recommendation_counterfactual_evaluations e
+               WHERE e.recommendation_id=r.id AND e.contract_quality='exact'
+                 AND e.formal_learning_eligible AND e.evaluation_status='evaluated'
+               ORDER BY e.created_at DESC,e.id DESC LIMIT 1
+           ) exact ON TRUE
+           ORDER BY r.operation_id,r.created_at DESC,r.id DESC""",
+        (int(cohort_id), bool(include_historical)),
+    ).fetchall()
+    return {int(row["operation_id"]): dict(row) for row in rows}
 
 
 def canonical_json(value: Any) -> str:
@@ -267,6 +347,13 @@ def _synthetic_signal(
             else outputs.get("dOI_H_proxy")
         )
         return math.tanh(50.0 * abs(raw)) if raw is not None else None
+    if rule_id == "M4-RULE-PRICE-OI-STATE-001":
+        displacement = finite(outputs.get("D_H"))
+        oi_change = finite(outputs.get("dOI_H"))
+        if displacement is None or oi_change is None:
+            return None
+        price_sign = 1.0 if displacement > 0 else -1.0 if displacement < 0 else 0.0
+        return direction * price_sign * math.tanh(50.0 * oi_change)
     if rule_id == "M4-RULE-FUNDING-STATE-001":
         raw = finite(
             outputs.get("last_funding_rate")
@@ -323,6 +410,7 @@ def current_snapshot_rule_values(
 ) -> tuple[dict, list[str]]:
     """Extract only frozen comparable variables; never store a raw snapshot."""
     traces_by_rule: dict[str, list[dict]] = {}
+    measurement_traces: dict[str, dict] = {}
     for root_key in ("stage_rule_traces", "feature_snapshot"):
         root = (
             snapshot_rule_traces(snapshot)
@@ -331,6 +419,8 @@ def current_snapshot_rule_values(
         for trace_horizon, trace in _iter_traces(root):
             if trace_horizon not in {None, time_horizon}:
                 continue
+            if trace.get("measurement_contract_version") or trace.get("rule_id") == "LIB-CAND-ABSORPTION-001":
+                measurement_traces[str(trace.get("rule_id"))] = trace
             status = str(trace.get("status") or "")
             if status not in {
                 "evaluated",
@@ -344,6 +434,10 @@ def current_snapshot_rule_values(
 
     values: dict[str, dict] = {}
     missing: list[str] = []
+    measurement_rules = {
+        "M4-RULE-OPEN-INTEREST-CHANGE-001", "M4-RULE-PRICE-OI-STATE-001",
+        "M4-RULE-FUNDING-STATE-001", "LIB-CAND-ABSORPTION-001",
+    }
     for spec in baseline_specs:
         rule_id = str(spec["rule_id"])
         variable = str(spec["selected_variable"])
@@ -371,9 +465,12 @@ def current_snapshot_rule_values(
             if candidate is not None:
                 selected_value = float(candidate)
                 source_trace_sha256 = trace.get("trace_sha256")
-        if selected_value is None:
+        measurement_trace = traces[-1] if traces and rule_id in measurement_rules else None
+        if selected_value is None and measurement_trace is None:
             missing.append(rule_id)
             continue
+        if selected_value is None:
+            missing.append(rule_id)
         values[rule_id] = {
             "value": selected_value,
             "variable": variable,
@@ -385,6 +482,33 @@ def current_snapshot_rule_values(
                 if key == variable
             },
         }
+        if measurement_trace is not None:
+            values[rule_id]["measurement"] = {
+                "rule_version": measurement_trace.get("rule_version"),
+                "contract_version": measurement_trace.get("measurement_contract_version"),
+                "status": measurement_trace.get("status"),
+                "numeric_inputs": flatten_numeric(measurement_trace.get("outputs") or {}),
+            }
+    # Preserve new measurements even when the sealed historical baseline has
+    # no equivalent formula. A null legacy value cannot enter its old counters.
+    # No additional table or duplicated market history is needed.
+    for rule_id, trace in measurement_traces.items():
+        item = values.setdefault(rule_id, {
+            "value": None, "variable": "__measurement_only_not_frozen_baseline",
+            "source": "exact_pretrade_trace", "available_variables": {},
+            "trace_sha256": trace.get("trace_sha256"),
+        })
+        item["measurement"] = {
+            "rule_version": trace.get("rule_version"),
+            "contract_version": trace.get("measurement_contract_version") or "absorption-full-vector-v1",
+            "status": trace.get("status"), "reason_codes": trace.get("reason_codes") or [],
+            "numeric_inputs": flatten_numeric(trace.get("outputs") or {}),
+        }
+        # The sealed baseline predates these source/availability contracts.
+        # Retain the measurements but do not silently pool them in its scalar
+        # counters. The versioned offline scorer can use them independently.
+        item["value"] = None
+        item["variable"] = "__measurement_only_not_frozen_baseline"
     return values, sorted(set(missing))
 
 
@@ -658,7 +782,8 @@ def observational_learning_progress(db) -> dict:
         dict(row)
         for row in db.execute(
             """
-            SELECT case_key, cohort_partition, time_horizon, outcome_label,
+            SELECT case_key, cohort_partition, source_kind, source_reference,
+                   analysis_at, evaluation_expires_at, time_horizon, outcome_label,
                    episode_key, signals_json
             FROM observational_learning_cases
             WHERE cohort_id = ?
@@ -667,12 +792,39 @@ def observational_learning_progress(db) -> dict:
             (int(cohort["id"]),),
         ).fetchall()
     ]
+    outcome_metadata = load_closed_operation_label_metadata(db, int(cohort["id"]))
+    prospective_label_quality: dict[str, int] = {}
+    for case in cases:
+        if case["cohort_partition"] != "prospective" or case["source_kind"] != "closed_operation":
+            continue
+        reference = str(case["source_reference"])
+        operation_id = reference.removeprefix("operation:") if reference.startswith("operation:") else ""
+        metadata = outcome_metadata.get(int(operation_id), {}) if operation_id.isdigit() else {}
+        label, status = fixed_horizon_outcome_from_evidence(
+            recorded_outcome=case["outcome_label"],
+            plan_result=metadata.get("plan_result"),
+            analysis_at=case["analysis_at"],
+            evaluation_expires_at=case["evaluation_expires_at"],
+            closed_at=metadata.get("closed_at"),
+            exact_outcome=metadata.get("exact_outcome_label"),
+            evidence_status=metadata.get("evidence_status"),
+            evidence_quality=metadata.get("evidence_quality"),
+            evidence_coverage_ratio=metadata.get("evidence_coverage_ratio"),
+            evidence_start_at=metadata.get("evidence_start_at"),
+            evidence_end_at=metadata.get("evidence_end_at"),
+            first_plan_touch_at=metadata.get("first_plan_touch_at"),
+            reconstructed_plan_result=metadata.get("reconstructed_plan_result"),
+        )
+        case["effective_outcome_label"] = label
+        prospective_label_quality[status] = prospective_label_quality.get(status, 0) + 1
     progress = []
     for baseline in baselines:
         signal_rows = []
         missing_episode_keys = 0
         for case in cases:
             if case["time_horizon"] != baseline["time_horizon"]:
+                continue
+            if "effective_outcome_label" in case and case["effective_outcome_label"] is None:
                 continue
             signals = parse_json_object(case.get("signals_json"))
             signal = signals.get(baseline["rule_id"])
@@ -687,7 +839,7 @@ def observational_learning_progress(db) -> dict:
                     "episode_key": (
                         f"{case['cohort_partition']}:{case['episode_key']}"
                     ),
-                    "outcome_label": case["outcome_label"],
+                    "outcome_label": case.get("effective_outcome_label", case["outcome_label"]),
                     "value": float(signal["value"]),
                 }
             )
@@ -744,6 +896,7 @@ def observational_learning_progress(db) -> dict:
         "compact_dataset_sha256": cohort["compact_dataset_sha256"],
         "historical_cases": int(cohort["historical_case_count"]),
         "historical_episodes": int(cohort["historical_episode_count"]),
+        "prospective_fixed_horizon_label_quality": prospective_label_quality,
         "rules": progress,
         "automatic_probability_changes": False,
         "legacy_history_read": False,
@@ -766,10 +919,12 @@ def persist_closed_observational_case(db, operation_id: int) -> bool:
     row = db.execute(
         """
         SELECT
-            o.id AS operation_id, o.symbol, o.side, o.time_horizon,
+            o.id AS operation_id, o.symbol, o.side, o.time_horizon, o.closed_at,
             r.id AS recommendation_id, r.snapshot_json,
             le.plan_result, le.tp_probability, le.sl_probability,
-            le.range_probability
+            le.range_probability,le.evidence_status,le.evidence_quality,
+            le.evidence_coverage_ratio,le.evidence_start_at,le.evidence_end_at,
+            le.first_plan_touch_at,le.reconstructed_plan_result
         FROM operations o
         JOIN learning_evaluations le ON le.operation_id = o.id
         JOIN recommendations r ON r.id = (
@@ -786,9 +941,7 @@ def persist_closed_observational_case(db, operation_id: int) -> bool:
     if row is None:
         return False
     row = dict(row)
-    outcome = PLAN_RESULT_TO_OUTCOME.get(str(row.get("plan_result") or ""))
-    if outcome is None:
-        return False
+    plan_result = str(row.get("plan_result") or "")
     snapshot = parse_json_object(row.get("snapshot_json"))
     analysis_at = snapshot.get("analysis_at")
     expires_at = snapshot.get("evaluation_expires_at")
@@ -801,6 +954,44 @@ def persist_closed_observational_case(db, operation_id: int) -> bool:
     if parsed_analysis.tzinfo is None:
         parsed_analysis = parsed_analysis.replace(tzinfo=timezone.utc)
     if parsed_analysis <= cutoff:
+        return False
+    outcome, _ = fixed_horizon_outcome_from_evidence(
+        recorded_outcome=PLAN_RESULT_TO_OUTCOME.get(plan_result),
+        plan_result=plan_result, analysis_at=analysis_at,
+        evaluation_expires_at=expires_at, closed_at=row.get("closed_at"),
+        evidence_status=row.get("evidence_status"),
+        evidence_quality=row.get("evidence_quality"),
+        evidence_coverage_ratio=row.get("evidence_coverage_ratio"),
+        evidence_start_at=row.get("evidence_start_at"),
+        evidence_end_at=row.get("evidence_end_at"),
+        first_plan_touch_at=row.get("first_plan_touch_at"),
+        reconstructed_plan_result=row.get("reconstructed_plan_result"),
+    )
+    if outcome is None:
+        exact = db.execute(
+            """SELECT outcome_label
+               FROM recommendation_counterfactual_evaluations
+               WHERE recommendation_id=? AND contract_quality='exact'
+                 AND formal_learning_eligible AND evaluation_status='evaluated'
+               ORDER BY created_at DESC,id DESC LIMIT 1""",
+            (int(row["recommendation_id"]),),
+        ).fetchone()
+        if exact is not None:
+            outcome, _ = fixed_horizon_outcome_from_evidence(
+                recorded_outcome=PLAN_RESULT_TO_OUTCOME.get(plan_result),
+                plan_result=plan_result, analysis_at=analysis_at,
+                evaluation_expires_at=expires_at, closed_at=row.get("closed_at"),
+                exact_outcome=exact["outcome_label"],
+            )
+    if outcome is None:
+        return False
+    existing = db.execute(
+        """SELECT 1 FROM observational_learning_cases
+           WHERE cohort_id=? AND source_kind='closed_operation'
+             AND source_reference=? LIMIT 1""",
+        (int(cohort["id"]), f"operation:{int(row['operation_id'])}"),
+    ).fetchone()
+    if existing is not None:
         return False
     specs = [
         spec

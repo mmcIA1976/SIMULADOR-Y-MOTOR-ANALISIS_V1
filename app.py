@@ -5799,6 +5799,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 price_loader=worker_market_price_loader,
                 context_loader=liquidation_data.get_liquidation_context,
                 order_book_observation_loader=worker_order_book_observation_snapshot,
+                positioning_observation_loader=market_data.collect_positioning_observation,
             )
             if entry_type == "pending"
             else analyze_trade(
@@ -5806,6 +5807,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 context_loader=liquidation_data.get_liquidation_context,
                 context_market_price=float(proposal.entry),
                 order_book_observation_loader=worker_order_book_observation_snapshot,
+                positioning_observation_loader=market_data.collect_positioning_observation,
             )
         )
     except LimitProductionAnalysisError as exc:
@@ -6285,6 +6287,7 @@ def record_operation_observation_checkpoint(
             context_loader=liquidation_data.get_liquidation_context,
             context_market_price=market_price,
             order_book_observation_loader=worker_order_book_observation_snapshot,
+            positioning_observation_loader=market_data.collect_positioning_observation,
         )
     except NewEngineAnalysisError as exc:
         record_failed_analysis_attempt(

@@ -1905,6 +1905,9 @@ function renderExplainedMetrics(metrics, analysis = {}) {
 }
 
 const OBSERVATIONAL_RULE_ORDER = [
+  "M4-RULE-OPEN-INTEREST-CHANGE-001",
+  "M4-RULE-PRICE-OI-STATE-001",
+  "M4-RULE-FUNDING-STATE-001",
   "M4-RULE-AGGRESSOR-IMBALANCE-001",
   "LIB-CAND-EMA-TREND-001",
   "LIB-CAND-RSI-WILDER-001",
@@ -1920,6 +1923,9 @@ const OBSERVATIONAL_RULE_ORDER = [
 ];
 
 const OBSERVATIONAL_RULE_TITLES = {
+  "M4-RULE-OPEN-INTEREST-CHANGE-001": "Cambio de interés abierto (OI base)",
+  "M4-RULE-PRICE-OI-STATE-001": "Precio y OI en el mismo intervalo",
+  "M4-RULE-FUNDING-STATE-001": "Financiación liquidada observada",
   "M4-RULE-AGGRESSOR-IMBALANCE-001": "Desequilibrio de flujo agresor",
   "LIB-CAND-EMA-TREND-001": "Tendencia y alineación EMA",
   "LIB-CAND-RSI-WILDER-001": "RSI de Wilder",
@@ -1957,8 +1963,17 @@ const OBSERVATIONAL_TECHNICAL_LABELS = {
 };
 
 function observationNumber(value) {
+  if (value === null || value === undefined || typeof value === "boolean"
+      || (typeof value === "string" && value.trim() === "")) {
+    return null;
+  }
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function observationTimestamp(value) {
+  const number = observationNumber(value);
+  return number !== null && number > 0 ? new Date(number).toLocaleString("es-ES") : "--";
 }
 
 function observationMetric(label, value) {
@@ -2070,6 +2085,58 @@ function observationRuleView(trace, analysis) {
     };
   }
 
+  if (ruleId === "M4-RULE-OPEN-INTEREST-CHANGE-001") {
+    const change = observationNumber(outputs.dOI_H);
+    const quantity = (value) => observationNumber(value) === null ? "--"
+      : Number(value).toLocaleString("es-ES", { maximumFractionDigits: 3 });
+    return {
+      title, tone: "contexto",
+      verdict: "Mide aumento o reducción de posiciones abiertas, no dirección alcista o bajista por sí solo.",
+      metrics: [
+        observationMetric("Cambio OI", change === null ? "--" : observationSignedPercent(Math.expm1(change), 3)),
+        observationMetric("OI base inicial", quantity(outputs.oi_previous ?? outputs.previous_open_interest)),
+        observationMetric("OI base final", quantity(outputs.oi_current ?? outputs.current_open_interest)),
+        observationMetric("Corte del intervalo", observationTimestamp(outputs.end_ms ?? outputs.current_timestamp_ms)),
+      ],
+    };
+  }
+
+  if (ruleId === "M4-RULE-PRICE-OI-STATE-001") {
+    const displacement = observationNumber(outputs.D_H);
+    const oi = observationNumber(outputs.dOI_H);
+    return {
+      title, tone: "contexto",
+      verdict: "Compara precio y OI entre las mismas dos fechas. La combinación es una hipótesis, no una probabilidad de acierto.",
+      metrics: [
+        observationMetric("Cambio de precio", displacement === null ? "--" : observationSignedPercent(Math.expm1(displacement), 3)),
+        observationMetric("Cambio OI", oi === null ? "--" : observationSignedPercent(Math.expm1(oi), 3)),
+        observationMetric("Precio inicial", priceText(Number(outputs.price_previous))),
+        observationMetric("Precio final", priceText(Number(outputs.price_current))),
+      ],
+    };
+  }
+
+  if (ruleId === "M4-RULE-FUNDING-STATE-001") {
+    if (!Object.hasOwn(outputs, "last_settled_funding_rate")) {
+      return {
+        title: "Financiación · contrato anterior", tone: "contexto",
+        verdict: "Registro de una fórmula anterior; no se mezcla con la medición de pagos liquidados.",
+        metrics: [observationMetric("Tasa original", observationSignedPercent(outputs.last_funding_rate, 5)),
+          observationMetric("Intervalo original", `${observationSignedNumber(outputs.interval_hours, 2)} h`)],
+      };
+    }
+    return {
+      title, tone: "contexto",
+      verdict: "Último pago liquidado; no es la próxima tasa prevista. El valor por hora usa el intervalo entre pagos observado.",
+      metrics: [
+        observationMetric("Tasa liquidada", observationSignedPercent(outputs.last_settled_funding_rate, 5)),
+        observationMetric("Tasa por hora", observationSignedPercent(outputs.settled_funding_rate_per_hour, 6)),
+        observationMetric("Intervalo observado", `${observationSignedNumber(outputs.observed_interval_hours, 2)} h`),
+        observationMetric("Fecha del pago", observationTimestamp(outputs.funding_time_ms)),
+      ],
+    };
+  }
+
   if (ruleId === "LIB-CAND-EMA-TREND-001") {
     const closeVs = observationNumber(outputs.side_adjusted_close_vs_ema50_log);
     const alignment = observationNumber(outputs.side_adjusted_ema50_vs_ema200_log);
@@ -2161,11 +2228,10 @@ function observationRuleView(trace, analysis) {
   if (ruleId === "LIB-CAND-ABSORPTION-001") {
     const flow = observationNumber(outputs.side_adjusted_ATI_H);
     const displacement = observationNumber(outputs.side_adjusted_horizon_displacement_atr);
-    const tone = observationDirectionTone([flow, displacement], 0.05);
     return {
       title,
-      tone,
-      verdict: `${observationVerdictFromTone(tone, "Flujo y desplazamiento")} La mecha opuesta cuantifica posible rechazo o absorción.`,
+      tone: "contexto",
+      verdict: "Vector de flujo, volumen, desplazamiento y mecha. No prueba absorción por sí solo; su puntuación experimental se evalúa aparte.",
       metrics: [
         observationMetric("Flujo ajustado", observationSignedPercent(flow)),
         observationMetric("Desplazamiento", `${observationSignedNumber(displacement, 2)} ATR`),
@@ -3028,6 +3094,9 @@ function resolveDataAvailability(analysis) {
     multiscale_6h: stages.includes("short_swing"),
     fibonacci: ruleAvailableInEveryStage("LIB-CAND-FIBONACCI-DISTANCE-001"),
     structural_levels: ruleAvailableInEveryStage("LIB-CAND-STRUCTURAL-LEVEL-DISTANCE-001"),
+    open_interest: ruleAvailableInEveryStage("M4-RULE-OPEN-INTEREST-CHANGE-001"),
+    price_oi: ruleAvailableInEveryStage("M4-RULE-PRICE-OI-STATE-001"),
+    funding: ruleAvailableInEveryStage("M4-RULE-FUNDING-STATE-001"),
   };
 }
 
@@ -3044,8 +3113,9 @@ function renderDataSources(availability, sources) {
     futures_trade_flow: "CVD/delta futuros",
     ticker_24h: "Ticker 24h",
     fibonacci: "Fibonacci",
-    funding: "Funding",
-    open_interest: "Open interest",
+    funding: "Financiación liquidada",
+    open_interest: "OI · todos los tramos",
+    price_oi: "Precio/OI · todos los tramos",
     long_short_ratio: "Long/short",
     taker_futures_ratio: "Taker futuros",
     liquidation_heatmap: "Liquidaciones Hyperliquid",
@@ -3060,6 +3130,7 @@ function renderDataSources(availability, sources) {
     fibonacci_observation: "Fibonacci",
     liquidation_observation: "Liquidaciones",
     order_book_observation: "Libro",
+    positioning_observation: "OI y financiación",
   };
   const sourceText = Object.entries(sources)
     .filter(([, value]) => value !== null && value !== undefined && value !== "")

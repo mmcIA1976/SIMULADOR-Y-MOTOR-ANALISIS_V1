@@ -62,7 +62,12 @@ FORECAST_METRICS = {
     "M4-RULE-PATH-STRUCTURE-001": {"directional_path_efficiency_h"},
     "M4-RULE-PRIOR-EXTREMA-001": {"target_extreme_between_entry_and_tp"},
     "M4-RULE-VOLATILITY-RANK-001": {"volatility_percentile_60"},
+    "M4-RULE-OPEN-INTEREST-CHANGE-001": {"dOI_H"},
+    "M4-RULE-PRICE-OI-STATE-001": {"D_H", "dOI_H"},
+    "M4-RULE-FUNDING-STATE-001": {"settled_funding_rate_per_hour"},
 }
+MEASUREMENT_METADATA = {"observed_at_ms", "age_seconds", "start_ms", "end_ms",
+                        "funding_time_ms", "horizon_seconds"}
 
 
 def canonical(value):
@@ -219,11 +224,16 @@ def build_evolution(operation, checkpoints, *, interval_minutes=20, include_poin
                 availability[f"{stage}:{rule}"][str(trace.get("status") or "unknown")] += 1
                 if trace.get("status") not in VALID_STATUSES:
                     continue
-                contract = digest({"catalog": snapshot.get("rule_catalog"), "rule": rule,
+                contract_fields = {"catalog": snapshot.get("rule_catalog"), "rule": rule,
                                    "version": trace.get("rule_version"),
                                    "formula_ids": trace.get("formula_ids"),
-                                   "runtime_version": trace.get("runtime_version")})
+                                   "runtime_version": trace.get("runtime_version")}
+                if trace.get("measurement_contract_version"):
+                    contract_fields["measurement_contract"] = trace["measurement_contract_version"]
+                contract = digest(contract_fields)
                 values = scalars(trace.get("outputs") or {})
+                if trace.get("measurement_contract_version"):
+                    values = {k:v for k,v in values.items() if k not in MEASUREMENT_METADATA}
                 source = trace.get("source_data_sha256") or (snapshot.get("stage_contexts", {}).get(stage) or {}).get("source_data_sha256")
                 # Values depending on the proposed entry may change on the same
                 # candle: count numerical updates separately from source updates.

@@ -11,6 +11,8 @@ from observational_learning_base import (
     observation_checkpoint_partition,
     payload_sha256,
     prospective_episode_key,
+    persist_closed_observational_case,
+    fixed_horizon_outcome_from_evidence,
 )
 from audit_final_rule_utility import stored_counterfactual_outcome
 
@@ -19,6 +21,63 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ObservationalLearningBaseTests(unittest.TestCase):
+    def test_reconstructs_no_touch_only_from_complete_1m_horizon_evidence(self):
+        base = dict(
+            recorded_outcome="tp_first_within_horizon", plan_result="plan_success",
+            analysis_at="2026-09-10T00:00:00+00:00",
+            evaluation_expires_at="2026-09-10T04:00:00+00:00",
+            closed_at="2026-09-10T07:00:00+00:00",
+            evidence_status="complete", evidence_quality="complete_1m_with_boundary_approximation",
+            evidence_coverage_ratio=1.0,
+            evidence_start_at="2026-09-10T00:00:08+00:00",
+            evidence_end_at="2026-09-10T07:00:00+00:00",
+            first_plan_touch_at="2026-09-10T04:01:30+00:00",
+            reconstructed_plan_result="plan_success",
+        )
+        self.assertEqual(fixed_horizon_outcome_from_evidence(**base),
+                         ("neither_barrier_before_expiry", "reconstructed_1m_no_touch"))
+        self.assertEqual(fixed_horizon_outcome_from_evidence(
+            **{**base, "first_plan_touch_at": "2026-09-10T04:00:30+00:00"}),
+            (None, "boundary_touch_ambiguous"))
+        self.assertEqual(fixed_horizon_outcome_from_evidence(
+            **{**base, "evidence_start_at": "2026-09-10T00:01:00+00:00"}),
+            (None, "late_or_indirect_label_not_verified"))
+
+    def test_late_tp_without_exact_horizon_evidence_is_not_persisted(self):
+        class Cursor:
+            def __init__(self, row):
+                self.row = row
+
+            def fetchone(self):
+                return self.row
+
+        class FakeDb:
+            def __init__(self):
+                self.inserted = False
+
+            def execute(self, sql, _params=()):
+                if "SELECT id, historical_cutoff_at" in sql:
+                    return Cursor({"id": 1, "historical_cutoff_at": "2026-09-09T00:00:00+00:00"})
+                if "SELECT\n            o.id AS operation_id" in sql:
+                    return Cursor({
+                        "operation_id": 700, "symbol": "BTCUSDT", "side": "long",
+                        "time_horizon": "intraday_short", "closed_at": "2026-09-10T07:00:00+00:00",
+                        "recommendation_id": 10,
+                        "snapshot_json": ('{"analysis_at":"2026-09-10T00:00:00+00:00",'
+                                          '"evaluation_expires_at":"2026-09-10T04:00:00+00:00"}'),
+                        "plan_result": "plan_success", "tp_probability": 0.4,
+                        "sl_probability": 0.4, "range_probability": 0.2,
+                    })
+                if "FROM recommendation_counterfactual_evaluations" in sql:
+                    return Cursor(None)
+                if "INSERT INTO observational_learning_cases" in sql:
+                    self.inserted = True
+                raise AssertionError(f"unexpected query: {sql[:80]}")
+
+        db = FakeDb()
+        self.assertFalse(persist_closed_observational_case(db, 700))
+        self.assertFalse(db.inserted)
+
     def test_retained_decision_is_fourteen_rules_and_seventeen_horizon_contracts(self):
         self.assertEqual(len(RETAINED_RULE_HORIZONS), 14)
         self.assertEqual(sum(map(len, RETAINED_RULE_HORIZONS.values())), 17)

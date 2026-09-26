@@ -904,6 +904,7 @@ def analyze_candidates(
                 }
                 if analysis_runner is analyze_trade:
                     analysis_kwargs["loader"] = shared_kline_loader
+                    analysis_kwargs["positioning_observation_loader"] = market_data.collect_positioning_observation
                 result = analysis_runner(proposal, **analysis_kwargs)
                 selected_analogs, distance_ratio, artifact_id = _support_from_result(result)
                 tp_probability = float(result["tp_probability"])

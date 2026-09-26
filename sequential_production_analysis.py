@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 import market_data
+from positioning_observation import attach_positioning_observation
 from liquidation_rule_runtime import (
     RULE_ID as LIQUIDATION_RULE_ID,
     evaluate_liquidation_rule_family,
@@ -407,6 +408,9 @@ def _analysis_availability(
         ),
         "liquidation_heatmap": bool(liquidation_available),
         "order_book_dynamics": bool(order_book_available),
+        "open_interest": _rule_available_in_all_stages(stage_rule_traces,stages,"M4-RULE-OPEN-INTEREST-CHANGE-001"),
+        "price_oi": _rule_available_in_all_stages(stage_rule_traces,stages,"M4-RULE-PRICE-OI-STATE-001"),
+        "funding": _rule_available_in_all_stages(stage_rule_traces,stages,"M4-RULE-FUNDING-STATE-001"),
     }
 
 
@@ -442,6 +446,7 @@ def analyze_trade(
     context_loader: Callable[..., dict] | None = None,
     context_market_price: float | None = None,
     order_book_observation_loader: Callable[[str], dict | None] | None = None,
+    positioning_observation_loader: Callable[..., dict] | None = None,
     include_internal_runtime: bool = False,
     effective_analysis_at: datetime | None = None,
 ) -> dict:
@@ -503,6 +508,10 @@ def analyze_trade(
         analysis_at=snapshot["analysis_at"],
     )
     live_context = {**liquidation_live_context, **order_book_live_context}
+    positioning_observation = attach_positioning_observation(
+        run, proposal, observation_loader=positioning_observation_loader,
+        analysis_at=snapshot["analysis_at"],
+    )
     probability_result = run["probability_result"]
     classes = probability_result["probabilities"]
     probabilities = {
@@ -550,6 +559,7 @@ def analyze_trade(
                     or order_book_observation.get("provider_reason")
                     or "unavailable"
                 ),
+                "positioning_observation": "OI base y precio alineados; financiación liquidada; sólo observación",
             },
             "new_engine_only": True,
             "legacy_engine_executed": False,
@@ -559,6 +569,7 @@ def analyze_trade(
             "stage_rule_traces": run["stage_rule_traces"],
             "liquidation_observation": liquidation_observation,
             "order_book_observation": order_book_observation,
+            "positioning_observation": positioning_observation,
             "probability_trace": probability_result,
             "temporal_profile": temporal_profile,
             "decision_probabilities": decision_probabilities,
@@ -608,7 +619,7 @@ def analyze_trade(
         "alerts": [
             "La estimación expresa frecuencia histórica condicionada, no certeza futura.",
             HORIZON_VALIDATION_NOTES[time_horizon],
-            "Mapas de liquidaciones y dinámica del libro se registran como observación y no alteran las probabilidades del motor; Fibonacci y niveles estructurales tampoco puntúan.",
+            "Liquidaciones, libro, OI y financiación se registran como observación sin alterar probabilidades; Fibonacci y niveles estructurales tampoco puntúan.",
             "La probabilidad no incorpora costes ni garantiza rentabilidad.",
         ],
         "plain_summary": (

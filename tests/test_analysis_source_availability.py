@@ -32,6 +32,22 @@ def evaluated_run() -> dict:
 
 
 class AnalysisSourceAvailabilityTests(unittest.TestCase):
+    def test_positioning_is_available_only_with_successful_stage_traces(self):
+        run = evaluated_run()
+        rules = ["M4-RULE-OPEN-INTEREST-CHANGE-001","M4-RULE-PRICE-OI-STATE-001","M4-RULE-FUNDING-STATE-001"]
+        for stage in STAGES:
+            run["stage_rule_traces"][stage].extend(rule_trace(rule) for rule in rules)
+        availability = _analysis_availability(run,SimpleNamespace(entry=2000),STAGES,
+            liquidation_available=False,order_book_available=False)
+        self.assertTrue(availability["open_interest"])
+        self.assertTrue(availability["price_oi"])
+        self.assertTrue(availability["funding"])
+        run["stage_rule_traces"][STAGES[-1]][-3]["status"] = "blocked"
+        availability = _analysis_availability(run,SimpleNamespace(entry=2000),STAGES,
+            liquidation_available=False,order_book_available=False)
+        self.assertFalse(availability["open_interest"])
+        self.assertTrue(availability["funding"])
+
     def test_summary_is_derived_from_successful_stage_evidence(self):
         availability = _analysis_availability(
             evaluated_run(),

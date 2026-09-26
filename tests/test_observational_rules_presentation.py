@@ -31,7 +31,7 @@ class ObservationalRulesPresentationTests(unittest.TestCase):
 
     def test_static_assets_are_cache_busted(self):
         self.assertIn(
-            "/static/app.js?v=20260914-engine-version-v1",
+            "/static/app.js?v=20260926-positioning-observation-v1",
             self.html,
         )
         self.assertIn(

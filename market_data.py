@@ -478,6 +478,12 @@ def get_open_interest(symbol: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def collect_positioning_observation(symbol: str, contexts: dict, analysis_at: str) -> dict:
+    # Lazy import avoids a module cycle and retains existing shared API budget.
+    from positioning_observation import collect_positioning_observation as collect
+    return collect(symbol, contexts, analysis_at)
+
+
 def get_open_interest_history(
     symbol: str,
     period: str = "5m",

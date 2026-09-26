@@ -595,6 +595,14 @@ def build_stage_context(plan: dict, candles: list[dict]) -> dict:
         "data_cutoff_at_ms": int(material["data_cutoff_at_ms"]),
         "source_data_sha256": material["data_sha256"],
         "data_quality": material["data_quality"],
+        # One extra closed-bar lag permits exact causal OI/price alignment.
+        # These four scalars are observational only, never analog features.
+        "positioning_price_pair": {
+            "end_ms": int(material["selected"][-2]["close_time_ms"]) + 1,
+            "start_ms": int(material["selected"][-2-material["return_count"]]["close_time_ms"]) + 1,
+            "price_current": float(material["selected"][-2]["close"]),
+            "price_previous": float(material["selected"][-2-material["return_count"]]["close"]),
+        },
         "rule_traces": traces,
     }
 

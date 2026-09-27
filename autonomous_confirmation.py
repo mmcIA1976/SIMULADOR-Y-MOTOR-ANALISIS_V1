@@ -10,10 +10,10 @@ import math
 from datetime import datetime, timedelta, timezone
 
 
-CONFIRMATION_VERSION = "short-entry-confirmation-v3"
+CONFIRMATION_VERSION = "short-entry-confirmation-v4-structural-plan"
 LEGACY_CONFIRMATION_VERSION = "short-entry-confirmation-v1"
 COMPATIBLE_CONFIRMATION_VERSIONS = {
-    CONFIRMATION_VERSION, "short-entry-confirmation-v2", LEGACY_CONFIRMATION_VERSION,
+    CONFIRMATION_VERSION, "short-entry-confirmation-v3", "short-entry-confirmation-v2", LEGACY_CONFIRMATION_VERSION,
 }
 CONFIRMATION_MINUTES = 30
 CONFIRMATION_CONTROLS = 3
@@ -36,13 +36,17 @@ def as_object(value) -> dict:
 
 
 def rank_key(candidate) -> tuple:
+    if getattr(candidate, "trade_plan", None):
+        return (-float(candidate.tp_probability), -float(candidate.edge),
+                float(candidate.unresolved_probability), candidate.symbol, candidate.side)
     return (-float(candidate.edge), -float(candidate.tp_probability),
             float(candidate.unresolved_probability), candidate.symbol, candidate.side)
 
 
 def data_unavailable(candidate) -> bool:
     """A failed/blocked analysis is not evidence that the trading signal weakened."""
-    return candidate.analysis_status in {"failed", "blocked"}
+    return (candidate.analysis_status in {"failed", "blocked"}
+            and not str(candidate.rejection_code or "").startswith("short_plan_"))
 
 
 def pause(candidate, previous: dict, *, slot, reason: str) -> None:
@@ -101,6 +105,7 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
             preceding_control
             and previous_artifact == candidate.artifact_id
             and last_valid_at is not None
+            and old.get("plan_key") == (getattr(candidate, "trade_plan", {}) or {}).get("lineage_key")
         )
         if not candidate.eligible_for(policy):
             if preceding_control:
@@ -121,6 +126,7 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
             "first_analyzed_at": first_at,
             "last_valid_analyzed_at": candidate.analyzed_at.isoformat(),
             "artifact_id": candidate.artifact_id,
+            "plan_key": (getattr(candidate, "trade_plan", {}) or {}).get("lineage_key"),
             "slot": utc(slot).isoformat(),
             "controls": count,
             "elapsed_seconds": round(elapsed, 3),
@@ -177,6 +183,13 @@ def compact_payload(candidate) -> dict:
         "data_cutoff_at": snapshot.get("data_cutoff_at"),
         "raw_market_payloads_stored": False,
     }
+    if getattr(candidate, "trade_plan", None):
+        plan = candidate.trade_plan
+        payload["proposal_plan"] = {
+            name: plan[name] for name in (
+                "version", "anchor_at_ms", "anchor_price", "four_hour_reach", "target_fraction",
+            )
+        }
     size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode())
     if size > CONTROL_JSON_BYTE_BUDGET:
         raise ValueError("short_confirmation_control_exceeds_byte_budget")

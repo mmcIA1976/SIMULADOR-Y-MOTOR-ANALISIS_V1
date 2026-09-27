@@ -5,13 +5,14 @@ import logging
 import math
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
 
 import liquidation_data
 import market_data
 import autonomous_confirmation as entry_confirmation
+import short_trade_planner as short_planner
 from analysis_engine import TradeProposal
 from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
 from market_price_state import fresh_market_prices
@@ -36,7 +37,7 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.4"
+POLICY_VERSION = "autonomous-contest-policy-v0.5-short-feasible-plans"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 SYMBOLS = (
@@ -143,6 +144,7 @@ class Candidate:
     analysis_result: dict | None = field(default=None, repr=False)
     observational_json: dict = field(default_factory=dict)
     confirmation: dict = field(default_factory=dict)
+    trade_plan: dict = field(default_factory=dict)
 
     @property
     def eligible_base(self) -> bool:
@@ -159,7 +161,8 @@ class Candidate:
         )
 
     def eligible_for(self, policy: ParticipantPolicy) -> bool:
-        return self.eligible_base and float(self.edge) >= policy.edge_threshold
+        return (self.eligible_base and float(self.edge) >= policy.edge_threshold
+                and (policy.code != "auto_intraday_short" or short_planner.passes_forecast(self)))
 
 
 @dataclass(frozen=True)
@@ -649,8 +652,8 @@ def ensure_participants(db) -> list[dict]:
                 policy.daily_operation_limit,
                 policy.max_open_positions,
                 policy.edge_threshold,
-                MIN_TP_PROBABILITY,
-                MAX_UNRESOLVED_PROBABILITY,
+                short_planner.MIN_TP_PROBABILITY if policy.code == "auto_intraday_short" else MIN_TP_PROBABILITY,
+                short_planner.MAX_UNRESOLVED_PROBABILITY if policy.code == "auto_intraday_short" else MAX_UNRESOLVED_PROBABILITY,
                 MIN_ANALOGS_PER_STAGE,
                 policy.analysis_reference_margin,
                 policy.analysis_reference_leverage,
@@ -694,13 +697,13 @@ def ensure_contest_entries(db, participants: Iterable[dict], season: dict) -> No
             )
 
 
-def load_horizon_sigma(
+def load_horizon_material(
     symbol: str,
     time_horizon: str,
     analysis_at: datetime,
     *,
     loader: KlineLoader = market_data.get_klines,
-) -> float:
+) -> dict:
     profile = STAGE_PROFILES[time_horizon]
     count = required_candle_count(time_horizon)
     analysis = _as_utc(analysis_at)
@@ -718,6 +721,11 @@ def load_horizon_sigma(
         "analysis_at": analysis.isoformat(),
     }
     material = _closed_material(plan, [normalize_kline(row) for row in raw])
+    return material
+
+
+def load_horizon_sigma(symbol, time_horizon, analysis_at, *, loader=market_data.get_klines) -> float:
+    material = load_horizon_material(symbol, time_horizon, analysis_at, loader=loader)
     sigma = math.sqrt(float(material["current_variance"]))
     if not math.isfinite(sigma) or sigma <= 0.0 or sigma >= 0.50:
         raise ValueError(f"invalid_horizon_sigma:{sigma}")
@@ -819,6 +827,13 @@ def rejection_code(candidate: Candidate, policy: ParticipantPolicy) -> str | Non
     edge = candidate.edge if candidate.edge is not None else -2.0
     if float(edge) < policy.edge_threshold:
         return "edge_below_horizon_gate"
+    if policy.code == "auto_intraday_short" and candidate.trade_plan:
+        if float(tp_probability) < short_planner.MIN_TP_PROBABILITY:
+            return "short_plan_tp_probability_below_gate"
+        if float(candidate.unresolved_probability) > short_planner.MAX_UNRESOLVED_PROBABILITY:
+            return "short_plan_unresolved_probability_above_gate"
+        if not short_planner.passes_forecast(candidate):
+            return "short_plan_reward_risk_lost"
     return None
 
 
@@ -834,11 +849,13 @@ def analyze_candidates(
     kline_loader: KlineLoader | None = None,
     symbols: Iterable[str] | None = None,
     sides: Iterable[str] = ("long", "short"),
+    fixed_candidate: Candidate | None = None,
 ) -> list[Candidate]:
     analyzed_at = _as_utc(analysis_at)
     liquidation_contexts = liquidation_contexts or {}
     order_book_contexts = order_book_contexts or {}
-    shared_kline_loader = kline_loader or MemoizedKlineLoader()
+    shared_kline_loader = (kline_loader if isinstance(kline_loader, MemoizedKlineLoader)
+                           else MemoizedKlineLoader(kline_loader or market_data.get_klines))
     candidates: list[Candidate] = []
     requested_symbols = tuple(symbols) if symbols is not None else policy.symbols
     requested_sides = tuple(str(side).lower() for side in sides)
@@ -860,13 +877,17 @@ def analyze_candidates(
                 )
             continue
         try:
+            material = None
             if sigma_loader is load_horizon_sigma:
-                sigma = load_horizon_sigma(
+                material = load_horizon_material(
                     symbol,
                     policy.time_horizon,
                     analyzed_at,
                     loader=shared_kline_loader,
                 )
+                sigma = math.sqrt(float(material["current_variance"]))
+                if not math.isfinite(sigma) or not 0 < sigma < .50:
+                    raise ValueError("invalid_horizon_sigma")
             else:
                 sigma = sigma_loader(symbol, policy.time_horizon, analyzed_at)
         except Exception as exc:
@@ -884,94 +905,107 @@ def analyze_candidates(
                 )
             continue
         for side in requested_sides:
-            take_profit, stop_loss = symmetric_geometry(float(entry), sigma, side)
-            proposal = TradeProposal(
-                symbol=symbol,
-                side=side,
-                time_horizon=policy.time_horizon,
-                entry=float(entry),
-                margin=policy.analysis_reference_margin,
-                leverage=policy.analysis_reference_leverage,
-                stop_loss=stop_loss,
-                take_profit=take_profit,
-                entry_type="market",
-            )
-            try:
-                analysis_kwargs = {
-                    "context_loader": (
-                        (lambda _symbol, _price, value=liquidation_contexts.get(symbol): value)
-                        if symbol in liquidation_contexts
-                        else None
-                    ),
-                    "context_market_price": float(entry),
-                    "order_book_observation_loader": (
-                        (lambda _symbol, value=order_book_contexts.get(symbol): value)
-                        if symbol in order_book_contexts
-                        else None
-                    ),
-                    "effective_analysis_at": analyzed_at,
-                }
-                if analysis_runner is analyze_trade:
-                    analysis_kwargs["loader"] = shared_kline_loader
-                    analysis_kwargs["positioning_observation_loader"] = market_data.collect_positioning_observation
-                result = analysis_runner(proposal, **analysis_kwargs)
-                selected_analogs, distance_ratio, artifact_id = _support_from_result(result)
-                tp_probability = float(result["tp_probability"])
-                sl_probability = float(result["sl_probability"])
-                unresolved = float(result["range_probability"])
-                candidate = Candidate(
-                    symbol=symbol,
-                    side=side,
-                    time_horizon=policy.time_horizon,
-                    analyzed_at=analyzed_at,
-                    entry=float(entry),
-                    take_profit=take_profit,
-                    stop_loss=stop_loss,
-                    sigma=sigma,
-                    tp_probability=tp_probability,
-                    sl_probability=sl_probability,
-                    unresolved_probability=unresolved,
-                    edge=tp_probability - sl_probability,
-                    selected_analogs_min=selected_analogs,
-                    max_context_distance_ratio=distance_ratio,
-                    artifact_id=artifact_id,
-                    analysis_status="evaluated",
-                    analysis_result=result,
-                    observational_json=_compact_observations(result),
-                )
-                candidate.rejection_code = rejection_code(candidate, policy)
-                candidates.append(candidate)
-            except NewEngineAnalysisError as exc:
-                candidates.append(
-                    Candidate(
-                        symbol=symbol,
-                        side=side,
-                        time_horizon=policy.time_horizon,
-                        analyzed_at=analyzed_at,
-                        entry=float(entry),
-                        take_profit=take_profit,
-                        stop_loss=stop_loss,
-                        sigma=sigma,
-                        analysis_status="blocked",
-                        rejection_code=str(exc.code or "analysis_blocked"),
-                    )
-                )
-            except Exception as exc:
-                candidates.append(
-                    Candidate(
-                        symbol=symbol,
-                        side=side,
-                        time_horizon=policy.time_horizon,
-                        analyzed_at=analyzed_at,
-                        entry=float(entry),
-                        take_profit=take_profit,
-                        stop_loss=stop_loss,
-                        sigma=sigma,
-                        analysis_status="failed",
-                        rejection_code=f"{type(exc).__name__}:{exc}",
-                    )
-                )
+            plans = [{}]
+            if policy.code == "auto_intraday_short":
+                try:
+                    if material is None:
+                        material = load_horizon_material(symbol, policy.time_horizon, analyzed_at, loader=shared_kline_loader)
+                    if fixed_candidate is not None and fixed_candidate.trade_plan:
+                        plans = [short_planner.validate_requote(
+                            fixed_candidate.trade_plan, material, side=side, entry=float(entry),
+                        )]
+                    else:
+                        plans = short_planner.proposals(material, side=side, entry=float(entry))
+                except short_planner.PlanRejected as exc:
+                    candidates.append(Candidate(
+                        symbol=symbol, side=side, time_horizon=policy.time_horizon,
+                        analyzed_at=analyzed_at, entry=float(entry), sigma=sigma,
+                        analysis_status="blocked", rejection_code=str(exc),
+                    ))
+                    continue
+                except Exception as exc:
+                    candidates.append(Candidate(
+                        symbol=symbol, side=side, time_horizon=policy.time_horizon,
+                        analyzed_at=analyzed_at, entry=float(entry), sigma=sigma,
+                        analysis_status="failed", rejection_code=f"plan_data:{type(exc).__name__}:{exc}",
+                    ))
+                    continue
+            alternatives = []
+            for trade_plan in plans:
+                alternatives.append(_analyze_candidate_plan(
+                    policy, symbol, side, float(entry), sigma, analyzed_at, trade_plan,
+                    analysis_runner, shared_kline_loader, liquidation_contexts, order_book_contexts,
+                ))
+            passing = [c for c in alternatives if c.eligible_for(policy)]
+            measured = [c for c in alternatives if c.analysis_status == "evaluated"]
+            choice = min(passing or measured, key=entry_confirmation.rank_key) if (passing or measured) else alternatives[0]
+            if choice.trade_plan:
+                choice.trade_plan = {**choice.trade_plan, "alternatives_evaluated": len(alternatives)}
+            candidates.append(choice)
     return candidates
+
+
+def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, trade_plan,
+                            analysis_runner, shared_kline_loader, liquidation_contexts, order_book_contexts):
+    take_profit, stop_loss = (
+        (trade_plan["take_profit"], trade_plan["stop_loss"]) if trade_plan
+        else symmetric_geometry(entry, sigma, side)
+    )
+    proposal = TradeProposal(
+        symbol=symbol, side=side, time_horizon=policy.time_horizon,
+        entry=float(entry), margin=policy.analysis_reference_margin,
+        leverage=policy.analysis_reference_leverage,
+        stop_loss=stop_loss, take_profit=take_profit, entry_type="market",
+    )
+    try:
+        analysis_kwargs = {
+            "context_loader": (
+                (lambda _symbol, _price, value=liquidation_contexts.get(symbol): value)
+                if symbol in liquidation_contexts else None
+            ),
+            "context_market_price": float(entry),
+            "order_book_observation_loader": (
+                (lambda _symbol, value=order_book_contexts.get(symbol): value)
+                if symbol in order_book_contexts else None
+            ),
+            "effective_analysis_at": analyzed_at,
+        }
+        if analysis_runner is analyze_trade:
+            analysis_kwargs["loader"] = shared_kline_loader
+            analysis_kwargs["positioning_observation_loader"] = market_data.collect_positioning_observation
+        result = analysis_runner(proposal, **analysis_kwargs)
+        selected_analogs, distance_ratio, artifact_id = _support_from_result(result)
+        tp_probability = float(result["tp_probability"])
+        sl_probability = float(result["sl_probability"])
+        unresolved = float(result["range_probability"])
+        candidate = Candidate(
+            symbol=symbol, side=side, time_horizon=policy.time_horizon,
+            analyzed_at=analyzed_at, entry=float(entry),
+            take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
+            tp_probability=tp_probability, sl_probability=sl_probability,
+            unresolved_probability=unresolved, edge=tp_probability - sl_probability,
+            selected_analogs_min=selected_analogs, max_context_distance_ratio=distance_ratio,
+            artifact_id=artifact_id, analysis_status="evaluated", analysis_result=result,
+            observational_json=_compact_observations(result), trade_plan=dict(trade_plan),
+        )
+        candidate.rejection_code = rejection_code(candidate, policy)
+        return candidate
+    except NewEngineAnalysisError as exc:
+        return Candidate(
+            symbol=symbol, side=side, time_horizon=policy.time_horizon,
+            analyzed_at=analyzed_at, entry=float(entry),
+            take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
+            analysis_status="blocked", rejection_code=str(exc.code or "analysis_blocked"),
+            trade_plan=dict(trade_plan),
+        )
+    except Exception as exc:
+        return Candidate(
+            symbol=symbol, side=side, time_horizon=policy.time_horizon,
+            analyzed_at=analyzed_at, entry=float(entry),
+            take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
+            analysis_status="failed", rejection_code=f"{type(exc).__name__}:{exc}",
+            trade_plan=dict(trade_plan),
+        )
 
 
 def select_candidate(
@@ -980,6 +1014,8 @@ def select_candidate(
     eligible = [candidate for candidate in candidates if candidate.eligible_for(policy)]
     if not eligible:
         return None
+    if policy.code == "auto_intraday_short":
+        return min(eligible, key=entry_confirmation.rank_key)
     return sorted(
         eligible,
         key=lambda candidate: (
@@ -1259,7 +1295,19 @@ def execution_drift_is_acceptable(
         MAX_EXECUTION_DRIFT_FLOOR,
         float(candidate.sigma) * MAX_EXECUTION_DRIFT_SIGMA_FRACTION,
     )
+    if candidate.trade_plan:
+        sign = 1 if candidate.side == "long" else -1
+        reward = sign * (float(candidate.take_profit) - execution_entry)
+        risk = sign * (execution_entry - float(candidate.stop_loss))
+        if risk <= 0 or reward <= 0 or reward / risk < short_planner.MIN_REWARD_RISK:
+            return False
     return drift <= maximum
+
+
+def execution_geometry(candidate: Candidate, execution_entry: float) -> tuple[float, float]:
+    if candidate.trade_plan:
+        return float(candidate.take_profit), float(candidate.stop_loss)
+    return symmetric_geometry(execution_entry, float(candidate.sigma), candidate.side)
 
 
 def _prepare_selected_analysis(
@@ -1292,6 +1340,10 @@ def _prepare_selected_analysis(
     }
     if candidate.confirmation:
         entry_context["entry_confirmation"] = dict(candidate.confirmation)
+    if candidate.trade_plan:
+        result["autonomous_trade_plan"] = dict(candidate.trade_plan)
+        entry_context["proposal_plan_version"] = short_planner.PLAN_VERSION
+        entry_context["proposal_plan_key"] = candidate.trade_plan["lineage_key"]
     result["entry_order_context"] = entry_context
     snapshot = result.setdefault("snapshot", {})
     snapshot.update(
@@ -1320,6 +1372,8 @@ def _prepare_selected_analysis(
     version_contract["autonomous_sizing_policy_version"] = SIZING_POLICY_VERSION
     if candidate.confirmation:
         version_contract["autonomous_entry_confirmation_version"] = entry_confirmation.CONFIRMATION_VERSION
+    if candidate.trade_plan:
+        version_contract["autonomous_trade_plan_version"] = short_planner.PLAN_VERSION
     result["version_contract"] = version_contract
     snapshot["version_contract"] = version_contract
     result["data_contract"] = build_data_contract(
@@ -1350,11 +1404,10 @@ def _open_selected_operation(
     ) >= policy.daily_operation_limit:
         raise ValueError("autonomous_daily_quota_reached")
     cash = _available_contest_cash(db, user_id, season_id)
-    sizing = determine_position_sizing(candidate, cash)
-    execution_take_profit, execution_stop_loss = symmetric_geometry(
-        execution_entry,
-        float(candidate.sigma),
-        candidate.side,
+    execution_take_profit, execution_stop_loss = execution_geometry(candidate, execution_entry)
+    sizing = determine_position_sizing(
+        replace(candidate, entry=execution_entry, take_profit=execution_take_profit,
+                stop_loss=execution_stop_loss) if candidate.trade_plan else candidate, cash,
     )
     result = _prepare_selected_analysis(
         candidate,
@@ -1653,6 +1706,7 @@ def run_due_scans(
                     kline_loader=shared_kline_loader,
                     symbols=(selected.symbol,),
                     sides=(selected.side,),
+                    fixed_candidate=selected,
                 )[0]
                 confirmed.confirmation = dict(selected.confirmation)
                 for index, candidate in enumerate(candidates):
@@ -1700,11 +1754,15 @@ def run_due_scans(
         )
         status = "no_trade"
         reason = confirmation_reason or "no_candidate_passed_horizon_policy"
-        if confirmation_reason is None and not eligible and blocked:
+        missing_data = sum(entry_confirmation.data_unavailable(c) for c in candidates)
+        if confirmation_reason is None and not eligible and missing_data:
             reason = (
-                "candidate_market_data_unavailable" if not evaluated
+                "candidate_market_data_unavailable" if missing_data == len(candidates)
                 else "candidate_panel_incomplete_no_eligible_trade"
             )
+        elif (confirmation_reason is None and not eligible and not evaluated
+              and policy.code == "auto_intraday_short"):
+            reason = "no_viable_short_trade_plan"
         if (entry_confirmation.enabled(policy) and selected is None
                 and confirmation_reason is None and eligible):
             reason = "awaiting_30m_candidate_confirmation"
@@ -1774,9 +1832,7 @@ def run_due_scans(
                         # The confirmed endpoint is the executable trade, not
                         # the earlier quote used to rank candidates.
                         selected.entry = float(execution_entry)
-                        selected.take_profit, selected.stop_loss = symmetric_geometry(
-                            selected.entry, float(selected.sigma), selected.side,
-                        )
+                        selected.take_profit, selected.stop_loss = execution_geometry(selected, selected.entry)
                         selected.analyzed_at = execution_at
                     entry_confirmation.finish(
                         candidates, selected, status=status, reason=reason, operation_id=operation_id,
@@ -1857,6 +1913,10 @@ def run_due_scans(
                 "blocked": blocked,
                 "eligible": eligible,
                 "operation_id": operation_id,
+                "daily_target": policy.daily_operation_limit,
+                "daily_opened": daily_count + int(status in {"opened", "would_open"}),
+                "daily_remaining": max(0, policy.daily_operation_limit - daily_count
+                                       - int(status in {"opened", "would_open"})),
             }
         )
     return {

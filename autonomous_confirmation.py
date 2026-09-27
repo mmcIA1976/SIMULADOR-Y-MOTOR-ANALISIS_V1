@@ -10,10 +10,10 @@ import math
 from datetime import datetime, timedelta, timezone
 
 
-CONFIRMATION_VERSION = "short-entry-confirmation-v4-structural-plan"
+CONFIRMATION_VERSION = "short-entry-confirmation-v5-horizon-plan"
 LEGACY_CONFIRMATION_VERSION = "short-entry-confirmation-v1"
 COMPATIBLE_CONFIRMATION_VERSIONS = {
-    CONFIRMATION_VERSION, "short-entry-confirmation-v3", "short-entry-confirmation-v2", LEGACY_CONFIRMATION_VERSION,
+    CONFIRMATION_VERSION, "short-entry-confirmation-v4-structural-plan", "short-entry-confirmation-v3", "short-entry-confirmation-v2", LEGACY_CONFIRMATION_VERSION,
 }
 CONFIRMATION_MINUTES = 30
 CONFIRMATION_CONTROLS = 3
@@ -49,9 +49,30 @@ def data_unavailable(candidate) -> bool:
             and not str(candidate.rejection_code or "").startswith("short_plan_"))
 
 
+def frozen_plan(previous: dict, *, plan_version: str) -> dict | None:
+    """Resume exact stored levels, never resurrect terminal/old-model plans."""
+    old = as_object(previous.get("confirmation"))
+    plan = as_object(previous.get("proposal_plan"))
+    if (old.get("version") != CONFIRMATION_VERSION
+            or old.get("state") not in {"watching", "ready", "paused"}
+            or plan.get("version") != plan_version or not old.get("plan_key")):
+        return None
+    target, stop = previous.get("take_profit"), previous.get("stop_loss")
+    if not all(isinstance(v, (int, float)) and math.isfinite(v) and v > 0 for v in (target, stop)):
+        return None
+    return {**plan, "take_profit": target, "stop_loss": stop,
+            "lineage_key": old["plan_key"]}
+
+
 def pause(candidate, previous: dict, *, slot, reason: str) -> None:
     """Keep an existing episode, without counting a check or allowing entry."""
     old = as_object(previous.get("confirmation"))
+    # A missing-data control must not erase the monitored geometry in storage.
+    plan = as_object(previous.get("proposal_plan"))
+    frozen = frozen_plan(previous, plan_version=plan.get("version")) if plan else None
+    if frozen and not getattr(candidate, "trade_plan", None):
+        candidate.trade_plan = frozen
+        candidate.take_profit, candidate.stop_loss = frozen["take_profit"], frozen["stop_loss"]
     candidate.confirmation = {
         **old,
         "version": CONFIRMATION_VERSION,
@@ -187,8 +208,9 @@ def compact_payload(candidate) -> dict:
         plan = candidate.trade_plan
         payload["proposal_plan"] = {
             name: plan[name] for name in (
-                "version", "anchor_at_ms", "anchor_price", "four_hour_reach", "target_fraction",
-            )
+                "version", "horizon_seconds", "four_hour_reach", "four_hour_adverse_reach",
+                "excursion_quantile", "reference_windows", "data_cutoff_at_ms",
+            ) if name in plan
         }
     size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode())
     if size > CONTROL_JSON_BYTE_BUDGET:

@@ -30,7 +30,7 @@ def material(side="long", *, flat=False):
 
 
 class PlannerTests(unittest.TestCase):
-    def test_long_and_short_have_structural_stops_and_bounded_reachable_targets(self):
+    def test_long_and_short_use_observed_four_hour_excursions_for_both_levels(self):
         for side in ("long", "short"):
             data, at = material(side)
             entry = data["selected"][-1]["close"]
@@ -41,18 +41,20 @@ class PlannerTests(unittest.TestCase):
             for plan in proposals:
                 self.assertGreater(sign * (entry - plan["stop_loss"]), 0)
                 self.assertGreater(sign * (plan["take_profit"] - entry), 0)
-                self.assertGreater(sign * (plan["anchor_price"] - plan["stop_loss"]), 0)
                 self.assertLessEqual(abs(plan["take_profit"] - entry), plan["four_hour_reach"])
-                self.assertGreaterEqual(plan["reward_risk_ratio"], 1.)
-                self.assertLessEqual(plan["anchor_at_ms"], data["data_cutoff_at_ms"])
+                self.assertLessEqual(abs(plan["stop_loss"] - entry), plan["four_hour_adverse_reach"] + 1e-12)
+                self.assertGreater(plan["reward_risk_ratio"], 0.)
+                self.assertIn(plan["excursion_quantile"], (.25, .50))
+                self.assertLessEqual(plan["data_cutoff_at_ms"], data["data_cutoff_at_ms"])
                 self.assertEqual(plan["reference_windows"], 59)
                 self.assertEqual(plan["horizon_seconds"], 14400)
                 self.assertNotIn("candles", plan)
 
-    def test_opposite_direction_and_flat_market_are_not_forced_into_a_trade(self):
+    def test_opposite_direction_and_flat_market_are_analyzed_not_pre_vetoed(self):
         for data, side in ((material()[0], "short"), (material(flat=True)[0], "long")):
-            with self.assertRaisesRegex(planner.PlanRejected, "trend_not_aligned"):
-                planner.proposals(data, side=side, entry=data["selected"][-1]["close"])
+            plans = planner.proposals(data, side=side, entry=data["selected"][-1]["close"])
+            self.assertTrue(plans)
+            self.assertLessEqual(len(plans), 2)
 
     def test_current_four_hour_excursions_are_not_in_reference_windows(self):
         data, _ = material()
@@ -76,11 +78,10 @@ class PlannerTests(unittest.TestCase):
         with self.assertRaises(planner.PlanRejected):
             planner.validate_requote(plan, data, side="long", entry=plan["take_profit"])
 
-    def test_support_too_far_is_rejected_not_moved_toward_entry(self):
+    def test_entry_is_not_vetoed_by_distance_to_an_arbitrary_pivot(self):
         data, _ = material()
         entry = data["selected"][-1]["close"] + 10
-        with self.assertRaisesRegex(planner.PlanRejected, "no_feasible_reward_risk"):
-            planner.proposals(data, side="long", entry=entry)
+        self.assertTrue(planner.proposals(data, side="long", entry=entry))
 
     def test_forecast_filters_preserve_edge_and_add_resolution_requirements(self):
         policy = contest.PARTICIPANT_POLICIES[0]
@@ -151,10 +152,11 @@ class PlannerTests(unittest.TestCase):
             rows = contest.analyze_candidates(contest.PARTICIPANT_POLICIES[0],
                 {"BTCUSDT": data["selected"][-1]["close"]}, at,
                 analysis_runner=analyze, symbols=("BTCUSDT",))
-        self.assertLessEqual(len(calls), 2)
+        self.assertLessEqual(len(calls), 4)
         self.assertEqual(len(rows), 2)
         self.assertTrue(rows[0].eligible_for(contest.PARTICIPANT_POLICIES[0]))
-        self.assertEqual(rows[1].rejection_code, "short_plan_trend_not_aligned")
+        self.assertEqual(rows[1].analysis_status, "evaluated")
+        self.assertEqual({p.side for p in calls}, {"long", "short"})
 
     def test_future_candles_do_not_change_the_plan(self):
         data, at = material()
@@ -231,7 +233,7 @@ class PlannerTests(unittest.TestCase):
                 artifact_id=item.artifact_id, engine_version=contest.EMPIRICAL_ENGINE_VERSION,
                 confirmation=dict(item.confirmation))]
         for reason, expected in (("plan_data:provider_failed", "paused"),
-                                 ("short_plan_trend_not_aligned", "discarded")):
+                                 ("short_plan_barrier_already_crossed", "discarded")):
             failed = candidate(edge=.35, tp=.60, unresolved=.15)
             failed.analysis_status, failed.rejection_code = "blocked", reason
             failed.analyzed_at = at + timedelta(minutes=30)
@@ -239,6 +241,76 @@ class PlannerTests(unittest.TestCase):
                 slot=failed.analyzed_at, scan_run_id=3, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
             self.assertEqual(failed.confirmation["state"], expected)
             self.assertEqual(failed.confirmation["controls"], 2)
+
+    def test_rr_below_one_is_allowed_only_with_positive_forecast_payoff(self):
+        item = candidate(edge=.40, tp=.65, unresolved=.10)
+        item.trade_plan = {"version": planner.PLAN_VERSION}
+        item.take_profit = 100.5
+        self.assertTrue(item.eligible_for(contest.PARTICIPANT_POLICIES[0]))
+        item.sigma = .02
+        self.assertTrue(contest.execution_drift_is_acceptable(item, 100.))
+        item.take_profit = 100.1
+        self.assertFalse(item.eligible_for(contest.PARTICIPANT_POLICIES[0]))
+        item.take_profit = 99.5
+        self.assertFalse(planner.passes_forecast(item))
+
+    def test_followup_preserves_levels_key_and_count_across_new_market_cutoffs(self):
+        data, at = material()
+        entry = data["selected"][-1]["close"]
+        previous, levels, calls = [], None, []
+        def analyze(proposal, **kwargs):
+            calls.append(proposal)
+            return dict(tp_probability=.60, sl_probability=.25, range_probability=.15,
+                        snapshot={}, model_trace={"artifact_id": "same-engine",
+                        "stage_traces": [{"selected_analogs": 100}]})
+        for index in range(3):
+            changed = {**data, "data_cutoff_at_ms": data["data_cutoff_at_ms"] + index * 900000,
+                       "data_sha256": str(index)}
+            with patch.object(contest, "load_horizon_material", return_value=changed):
+                rows = contest.analyze_candidates(contest.PARTICIPANT_POLICIES[0],
+                    {"BTCUSDT": entry + index * .001}, at + timedelta(minutes=index*15),
+                    analysis_runner=analyze, symbols=("BTCUSDT",), sides=("long",),
+                    previous_confirmations=previous)
+            item = rows[0]
+            confirmation.advance(rows, contest.PARTICIPANT_POLICIES[0], previous,
+                slot=item.analyzed_at, scan_run_id=index+1, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
+            current = (item.take_profit, item.stop_loss, item.trade_plan["lineage_key"])
+            if levels is None:
+                levels = current
+            self.assertEqual(current, levels)
+            payload = confirmation.compact_payload(item)
+            previous = [dict(symbol=item.symbol, side=item.side, analyzed_at=item.analyzed_at,
+                artifact_id=item.artifact_id, engine_version=contest.EMPIRICAL_ENGINE_VERSION,
+                take_profit=item.take_profit, stop_loss=item.stop_loss, **payload)]
+        self.assertEqual(item.confirmation["controls"], 3)
+        self.assertEqual(item.confirmation["state"], "ready")
+        self.assertEqual(len(calls), 4)  # Two initial alternatives, then the exact chosen plan twice.
+        for state in ("discarded", "consumed"):
+            previous[0]["confirmation"]["state"] = state
+            self.assertIsNone(confirmation.frozen_plan(previous[0], plan_version=planner.PLAN_VERSION))
+
+    def test_missing_data_preserves_frozen_geometry_in_paused_storage(self):
+        data, at = material()
+        plan = planner.proposals(data, side="long", entry=data["selected"][-1]["close"])[-1]
+        item = candidate(edge=.35, tp=.60, unresolved=.15)
+        item.trade_plan, item.analyzed_at = plan, at
+        item.entry = data["selected"][-1]["close"]
+        item.take_profit, item.stop_loss = plan["take_profit"], plan["stop_loss"]
+        confirmation.advance([item], contest.PARTICIPANT_POLICIES[0], [],
+            slot=at, scan_run_id=1, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
+        previous = dict(symbol=item.symbol, side=item.side, analyzed_at=at,
+            artifact_id=item.artifact_id, engine_version=contest.EMPIRICAL_ENGINE_VERSION,
+            take_profit=item.take_profit, stop_loss=item.stop_loss, **confirmation.compact_payload(item))
+        failed = candidate(edge=.35, tp=.60, unresolved=.15)
+        failed.analysis_status, failed.rejection_code = "failed", "sigma:provider_unavailable"
+        failed.analyzed_at = at + timedelta(minutes=15)
+        failed.take_profit = failed.stop_loss = None
+        confirmation.advance([failed], contest.PARTICIPANT_POLICIES[0], [previous],
+            slot=failed.analyzed_at, scan_run_id=2, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
+        self.assertEqual(failed.confirmation["state"], "paused")
+        self.assertEqual(failed.confirmation["controls"], 1)
+        self.assertEqual((failed.take_profit, failed.stop_loss), (item.take_profit, item.stop_loss))
+        self.assertEqual(confirmation.compact_payload(failed)["proposal_plan"], previous["proposal_plan"])
 
     def test_actual_production_engine_retains_support_guard_without_extra_downloads(self):
         from sequential_production_analysis import analyze_trade

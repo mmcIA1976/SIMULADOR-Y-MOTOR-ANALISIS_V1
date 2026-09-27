@@ -359,8 +359,22 @@ class ScannerIntegrationTests(unittest.TestCase):
             raise
 
     def scan(self, minute, *, bad=False, fail_insert=False,
-             fail_analysis=False, fail_final=False, worker_price_fail=False):
+             fail_analysis=False, fail_final=False, worker_price_fail=False, planned=False):
+        original_analyze = contest.analyze_candidates
         def analyze(policy, prices, at, **kwargs):
+            if planned and not fail_analysis and not fail_final:
+                from tests.test_short_trade_planner import material
+                data, _ = material()
+                data = {**data, "data_cutoff_at_ms": data["data_cutoff_at_ms"] + minute * 60000}
+                def engine(proposal, **ignored):
+                    return dict(tp_probability=.60, sl_probability=.25, range_probability=.15,
+                                snapshot={}, model_trace={"artifact_id": "frozen-artifact",
+                                "stage_traces": [{"selected_analogs": 100}]})
+                with patch.object(contest, "load_horizon_material", return_value=data):
+                    return original_analyze(policy, prices, at, analysis_runner=engine,
+                        liquidation_contexts={}, order_book_contexts={}, symbols=("BTCUSDT",),
+                        sides=("long",), fixed_candidate=kwargs.get("fixed_candidate"),
+                        previous_confirmations=kwargs.get("previous_confirmations", ()))
             value = candidate(edge=.09 if bad else .15)
             value.analyzed_at = at
             value.sigma = .01
@@ -407,6 +421,21 @@ class ScannerIntegrationTests(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         self.assertEqual(json.loads(rows[2]["observational_json"])["confirmation"]["state"], "consumed")
         self.assertEqual([r["outcome_status"] for r in rows], ["pending", "excluded", "pending", "pending"])
+
+    def test_real_plans_resume_from_sql_after_missing_data_without_erasing_levels(self):
+        self.scan(0, planned=True)
+        self.scan(15, planned=True, fail_analysis=True)
+        self.scan(30, planned=True)
+        self.assertEqual(self.scan(45, planned=True)["scans"][0]["status"], "opened")
+        rows = self.connection.execute("""SELECT take_profit, stop_loss, observational_json
+            FROM autonomous_candidate_observations ORDER BY id""").fetchall()
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(len({(r["take_profit"], r["stop_loss"]) for r in rows}), 1)
+        states = [json.loads(r["observational_json"])["confirmation"] for r in rows]
+        self.assertEqual([s["controls"] for s in states], [1, 1, 2, 3])
+        self.assertEqual([s["state"] for s in states], ["watching", "paused", "watching", "consumed"])
+        self.assertEqual(len({s["plan_key"] for s in states}), 1)
+        self.assertTrue(all(len(r["observational_json"].encode()) <= 2048 for r in rows))
 
     def test_threshold_failure_prevents_open_and_restarts(self):
         self.scan(0)

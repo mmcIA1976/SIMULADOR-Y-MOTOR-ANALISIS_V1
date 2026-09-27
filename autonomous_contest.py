@@ -37,7 +37,7 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.5-short-feasible-plans"
+POLICY_VERSION = "autonomous-contest-policy-v0.6-horizon-first-plans"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 SYMBOLS = (
@@ -833,7 +833,7 @@ def rejection_code(candidate: Candidate, policy: ParticipantPolicy) -> str | Non
         if float(candidate.unresolved_probability) > short_planner.MAX_UNRESOLVED_PROBABILITY:
             return "short_plan_unresolved_probability_above_gate"
         if not short_planner.passes_forecast(candidate):
-            return "short_plan_reward_risk_lost"
+            return "short_plan_non_positive_expected_payoff"
     return None
 
 
@@ -850,6 +850,7 @@ def analyze_candidates(
     symbols: Iterable[str] | None = None,
     sides: Iterable[str] = ("long", "short"),
     fixed_candidate: Candidate | None = None,
+    previous_confirmations: Iterable[dict] = (),
 ) -> list[Candidate]:
     analyzed_at = _as_utc(analysis_at)
     liquidation_contexts = liquidation_contexts or {}
@@ -857,6 +858,11 @@ def analyze_candidates(
     shared_kline_loader = (kline_loader if isinstance(kline_loader, MemoizedKlineLoader)
                            else MemoizedKlineLoader(kline_loader or market_data.get_klines))
     candidates: list[Candidate] = []
+    prior_plans = {
+        (row["symbol"], row["side"]): entry_confirmation.frozen_plan(
+            row, plan_version=short_planner.PLAN_VERSION,
+        ) for row in previous_confirmations if row.get("engine_version") == EMPIRICAL_ENGINE_VERSION
+    }
     requested_symbols = tuple(symbols) if symbols is not None else policy.symbols
     requested_sides = tuple(str(side).lower() for side in sides)
     if not requested_sides or any(side not in {"long", "short"} for side in requested_sides):
@@ -910,9 +916,11 @@ def analyze_candidates(
                 try:
                     if material is None:
                         material = load_horizon_material(symbol, policy.time_horizon, analyzed_at, loader=shared_kline_loader)
-                    if fixed_candidate is not None and fixed_candidate.trade_plan:
+                    frozen = (fixed_candidate.trade_plan if fixed_candidate is not None
+                              and fixed_candidate.trade_plan else prior_plans.get((symbol, side)))
+                    if frozen:
                         plans = [short_planner.validate_requote(
-                            fixed_candidate.trade_plan, material, side=side, entry=float(entry),
+                            frozen, material, side=side, entry=float(entry),
                         )]
                     else:
                         plans = short_planner.proposals(material, side=side, entry=float(entry))
@@ -1258,6 +1266,8 @@ def _previous_confirmation_rows(db, participant, season_id, policy, slot, dry_ru
         """
         WITH latest AS (
             SELECT c.symbol, c.side, c.analyzed_at, c.engine_version, c.artifact_id,
+                   c.take_profit, c.stop_loss,
+                   c.observational_json -> 'proposal_plan' AS proposal_plan,
                    c.observational_json -> 'confirmation' AS confirmation,
                    ROW_NUMBER() OVER (
                        PARTITION BY c.symbol, c.side
@@ -1270,7 +1280,8 @@ def _previous_confirmation_rows(db, participant, season_id, policy, slot, dry_ru
               AND s.status IN ('no_trade', 'opened', 'would_open', 'no_cash')
               AND c.storage_reason = 'confirmation'
         )
-        SELECT symbol, side, analyzed_at, engine_version, artifact_id, confirmation
+        SELECT symbol, side, analyzed_at, engine_version, artifact_id, confirmation,
+               take_profit, stop_loss, proposal_plan
         FROM latest WHERE recency = 1
         LIMIT 12
         """,
@@ -1299,7 +1310,7 @@ def execution_drift_is_acceptable(
         sign = 1 if candidate.side == "long" else -1
         reward = sign * (float(candidate.take_profit) - execution_entry)
         risk = sign * (execution_entry - float(candidate.stop_loss))
-        if risk <= 0 or reward <= 0 or reward / risk < short_planner.MIN_REWARD_RISK:
+        if risk <= 0 or reward <= 0:
             return False
     return drift <= maximum
 
@@ -1643,6 +1654,12 @@ def run_due_scans(
             )
         if scan_run_id is None:
             continue
+        previous = []
+        if entry_confirmation.enabled(policy):
+            with connect_factory() as db:
+                previous = _previous_confirmation_rows(
+                    db, participant, int(season["id"]), policy, slot, dry_run
+                )
         liquidations = _load_liquidation_contexts(prices)
         scan_started = time.perf_counter()
         candidates = analyze_candidates(
@@ -1654,12 +1671,9 @@ def run_due_scans(
             liquidation_contexts=liquidations,
             order_book_contexts=order_books,
             kline_loader=shared_kline_loader,
+            previous_confirmations=previous,
         )
         if entry_confirmation.enabled(policy):
-            with connect_factory() as db:
-                previous = _previous_confirmation_rows(
-                    db, participant, int(season["id"]), policy, slot, dry_run
-                )
             entry_confirmation.advance(
                 candidates, policy, previous, slot=slot,
                 scan_run_id=scan_run_id, engine_version=EMPIRICAL_ENGINE_VERSION,

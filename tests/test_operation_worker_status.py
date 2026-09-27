@@ -68,6 +68,23 @@ def status_payload(db, *, lifecycle_status="running", dry_run=False, heartbeat_a
 
 
 class OperationWorkerStatusTests(unittest.TestCase):
+    def test_reconciliation_between_heartbeats_keeps_actual_success_time(self):
+        db = create_status_db()
+        status_payload(db, heartbeat_at="2026-09-27T19:08:00+00:00",
+                       result={"cycle": 1, "failures": 0, "reconciled": True})
+        actual = "2026-09-27T19:08:42+00:00"
+        status_payload(db, heartbeat_at="2026-09-27T19:09:00+00:00",
+                       result={"cycle": 7, "failures": 0, "reconciled": False,
+                               "last_reconcile_at": actual})
+        self.assertEqual(get_worker_status_row(db)["last_reconcile_at"], actual)
+        status_payload(db, lifecycle_status="degraded",
+                       heartbeat_at="2026-09-27T19:10:00+00:00",
+                       result={"cycle": 13, "failures": 1, "reconciled": False,
+                               "last_reconcile_at": actual})
+        self.assertEqual(get_worker_status_row(db)["last_reconcile_at"], actual)
+        self.assertEqual(db.execute("SELECT COUNT(*) FROM operation_worker_state").fetchone()[0], 1)
+        db.close()
+
     def test_pending_history_is_reported_without_hiding_observer_or_exit_health(self):
         db = create_status_db()
         status_payload(db, result={"cycle": 8, "failures": 0,

@@ -87,7 +87,11 @@ def upsert_worker_status(
                                                            separators=(",", ":"))
     last_cycle_at = heartbeat_at if result else None
     last_success_at = heartbeat_at if result and failures == 0 else None
-    last_reconcile_at = heartbeat_at if result.get("reconciled") and failures == 0 else None
+    # A reconciliation can succeed between heartbeat publications. Carry the
+    # actual successful cursor, not only whether this particular cycle replayed.
+    last_reconcile_at = result.get("last_reconcile_at") or (
+        heartbeat_at if result.get("reconciled") and failures == 0 else None
+    )
     db.execute(
         """
         INSERT INTO operation_worker_state (

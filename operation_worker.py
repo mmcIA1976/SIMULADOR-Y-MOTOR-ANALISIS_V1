@@ -569,6 +569,10 @@ def run_worker_cycle(
             f"{symbol}:{error}" for symbol, error in state.reconciliation_errors.items()
         )[:300] or None,
         "reconciled": reconcile_due and failures == 0 and reconciliation_failures == 0,
+        "last_reconcile_at": (
+            datetime.fromtimestamp(state.last_reconcile_ms / 1000, timezone.utc).isoformat()
+            if state.last_reconcile_ms is not None else None
+        ),
         "reconciliation_pending": bool(state.reconcile_retry_after_ms),
         "reconcile_retry_after_ms": state.reconcile_retry_after_ms or None,
         "binance_request_budget": market_data.budget.status(),

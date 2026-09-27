@@ -362,6 +362,7 @@ class MemoizedKlineLoader:
     def __init__(self, loader: KlineLoader = market_data.get_klines):
         self.loader = loader
         self._cache: dict[tuple, tuple[tuple, ...]] = {}
+        self._deferred: dict[tuple, market_data.BinanceDeferred] = {}
         self.requests = 0
         self.hits = 0
 
@@ -382,13 +383,21 @@ class MemoizedKlineLoader:
         )
         cached = self._cache.get(key)
         if cached is None:
-            rows = self.loader(
-                key[0],
-                key[1],
-                key[2],
-                start_time_ms=key[3],
-                end_time_ms=key[4],
-            )
+            if key in self._deferred:
+                raise self._deferred[key]
+            try:
+                rows = self.loader(
+                    key[0],
+                    key[1],
+                    key[2],
+                    start_time_ms=key[3],
+                    end_time_ms=key[4],
+                )
+            except market_data.BinanceDeferred as exc:
+                # Do not retry an identical blocked request for every side or
+                # horizon. A new scanner cycle gets a new cache and can retry.
+                self._deferred[key] = exc
+                raise
             cached = tuple(tuple(row) for row in rows)
             self._cache[key] = cached
             self.requests += 1
@@ -1202,24 +1211,34 @@ def _persist_candidate_observations(
 
 
 def _previous_confirmation_rows(db, participant, season_id, policy, slot, dry_run):
-    """Latest compact state per pair, including one missed scanner slot."""
+    """One latest compact state per pair in this season, even after outages.
+
+    Terminal states are included: filtering them out could resurrect a consumed
+    or discarded episode. Only twelve compact rows cross the database boundary.
+    """
     if not entry_confirmation.enabled(policy):
         return []
     rows = db.execute(
         """
-        SELECT c.symbol, c.side, c.analyzed_at, c.engine_version, c.artifact_id,
-               c.observational_json -> 'confirmation' AS confirmation
-        FROM autonomous_scan_runs s
-        JOIN autonomous_candidate_observations c ON c.scan_run_id = s.id
-        WHERE s.participant_id = ? AND s.contest_season_id = ?
-          AND s.scan_slot_at BETWEEN ? AND ? AND s.dry_run = ?
-          AND s.status IN ('no_trade', 'opened', 'would_open', 'no_cash')
-          AND c.storage_reason = 'confirmation'
-        ORDER BY s.scan_slot_at DESC
-        LIMIT 24
+        WITH latest AS (
+            SELECT c.symbol, c.side, c.analyzed_at, c.engine_version, c.artifact_id,
+                   c.observational_json -> 'confirmation' AS confirmation,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY c.symbol, c.side
+                       ORDER BY s.scan_slot_at DESC, c.id DESC
+                   ) AS recency
+            FROM autonomous_scan_runs s
+            JOIN autonomous_candidate_observations c ON c.scan_run_id = s.id
+            WHERE s.participant_id = ? AND s.contest_season_id = ?
+              AND s.scan_slot_at <= ? AND s.dry_run = ?
+              AND s.status IN ('no_trade', 'opened', 'would_open', 'no_cash')
+              AND c.storage_reason = 'confirmation'
+        )
+        SELECT symbol, side, analyzed_at, engine_version, artifact_id, confirmation
+        FROM latest WHERE recency = 1
+        LIMIT 12
         """,
         (int(participant["id"]), season_id,
-         (slot - timedelta(minutes=2 * policy.cadence_minutes)).isoformat(),
          (slot - timedelta(minutes=policy.cadence_minutes)).isoformat(), bool(dry_run)),
     ).fetchall()
     latest = {}
@@ -1681,6 +1700,11 @@ def run_due_scans(
         )
         status = "no_trade"
         reason = confirmation_reason or "no_candidate_passed_horizon_policy"
+        if confirmation_reason is None and not eligible and blocked:
+            reason = (
+                "candidate_market_data_unavailable" if not evaluated
+                else "candidate_panel_incomplete_no_eligible_trade"
+            )
         if (entry_confirmation.enabled(policy) and selected is None
                 and confirmation_reason is None and eligible):
             reason = "awaiting_30m_candidate_confirmation"

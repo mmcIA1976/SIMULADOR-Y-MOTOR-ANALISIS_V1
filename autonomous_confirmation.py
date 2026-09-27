@@ -10,12 +10,13 @@ import math
 from datetime import datetime, timedelta, timezone
 
 
-CONFIRMATION_VERSION = "short-entry-confirmation-v2"
+CONFIRMATION_VERSION = "short-entry-confirmation-v3"
 LEGACY_CONFIRMATION_VERSION = "short-entry-confirmation-v1"
+COMPATIBLE_CONFIRMATION_VERSIONS = {
+    CONFIRMATION_VERSION, "short-entry-confirmation-v2", LEGACY_CONFIRMATION_VERSION,
+}
 CONFIRMATION_MINUTES = 30
 CONFIRMATION_CONTROLS = 3
-# One missed 15-minute check may be retried; older valid evidence is stale.
-MAX_VALID_CONTROL_GAP_MINUTES = 30
 CONTROL_JSON_BYTE_BUDGET = 2048
 
 
@@ -65,8 +66,9 @@ def pause(candidate, previous: dict, *, slot, reason: str) -> None:
 def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_version):
     """Advance once per valid check, never once per in-scan reanalysis.
 
-    One missing/failed check pauses rather than rejects an episode. A genuine
-    rule failure, consumed lineage, model change or stale valid check resets it.
+    Missing data never counts as a valid check and never ends an episode.
+    Resume only with a new eligible analysis under the same model/artifact.
+    A genuine rule failure, consumed lineage or model change resets it.
     """
     if not enabled(policy):
         return
@@ -74,15 +76,14 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
     eligible = sorted((c for c in candidates if c.eligible_for(policy)), key=rank_key)
     ranks = {(c.symbol, c.side): index + 1 for index, c in enumerate(eligible)}
     previous_slot = utc(slot) - timedelta(minutes=policy.cadence_minutes)
-    oldest_slot = previous_slot - timedelta(minutes=policy.cadence_minutes)
     for candidate in candidates:
         row = prior.get((candidate.symbol, candidate.side), {})
         old = as_object(row.get("confirmation"))
         old_slot = utc(old["slot"]) if old.get("slot") else None
         preceding_control = bool(
-            old.get("version") in {CONFIRMATION_VERSION, LEGACY_CONFIRMATION_VERSION}
+            old.get("version") in COMPATIBLE_CONFIRMATION_VERSIONS
             and old.get("state") in {"watching", "ready", "paused"}
-            and old_slot is not None and oldest_slot <= old_slot <= previous_slot
+            and old_slot is not None and old_slot <= previous_slot
             and row.get("engine_version") == engine_version
             and candidate.analyzed_at > utc(row["analyzed_at"])
         )
@@ -100,7 +101,6 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
             preceding_control
             and previous_artifact == candidate.artifact_id
             and last_valid_at is not None
-            and candidate.analyzed_at - last_valid_at <= timedelta(minutes=MAX_VALID_CONTROL_GAP_MINUTES)
         )
         if not candidate.eligible_for(policy):
             if preceding_control:
@@ -127,6 +127,10 @@ def advance(candidates, policy, previous_rows, *, slot, scan_run_id, engine_vers
             "state": "ready" if ready else "watching",
             "rank": ranks[(candidate.symbol, candidate.side)],
             "deferred_checks": int(old.get("deferred_checks") or 0) if continuation else 0,
+            # Expose the gap, rather than claiming continuously observed data.
+            "last_valid_gap_seconds": round(
+                (candidate.analyzed_at - last_valid_at).total_seconds(), 3
+            ) if continuation else None,
             "counterfactual_role": "none" if continuation else "immediate",
         }
 
@@ -224,7 +228,7 @@ def summarize_trials(rows, *, fee_per_side=None):
     groups = {}
     for row in rows:
         meta = as_object(row.get("confirmation"))
-        if meta.get("version") not in {CONFIRMATION_VERSION, LEGACY_CONFIRMATION_VERSION}:
+        if meta.get("version") not in COMPATIBLE_CONFIRMATION_VERSIONS:
             continue
         key = (row["participant_id"], meta["first_scan_run_id"], row["symbol"], row["side"])
         groups.setdefault(key, []).append((row, meta))

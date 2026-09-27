@@ -62,6 +62,22 @@ def candidate(*, edge, tp=0.45, unresolved=0.30, symbol="BTCUSDT"):
 
 
 class AutonomousContestPolicyTests(unittest.TestCase):
+    def test_deferred_identical_page_is_not_retried_until_next_cycle(self):
+        calls = []
+
+        def loader(*args, **kwargs):
+            calls.append(args)
+            raise autonomous_contest.market_data.BinanceDeferred("shared_budget_exhausted")
+
+        cached = autonomous_contest.MemoizedKlineLoader(loader)
+        for _ in range(3):
+            with self.assertRaises(autonomous_contest.market_data.BinanceDeferred):
+                cached("BTCUSDT", "5m", 1500, 1000, 2000)
+        self.assertEqual(len(calls), 1)
+        with self.assertRaises(autonomous_contest.market_data.BinanceDeferred):
+            autonomous_contest.MemoizedKlineLoader(loader)("BTCUSDT", "5m", 1500, 1000, 2000)
+        self.assertEqual(len(calls), 2)
+
     def test_scanner_kline_cache_reuses_exact_pages_without_shared_mutation(self):
         calls = []
 

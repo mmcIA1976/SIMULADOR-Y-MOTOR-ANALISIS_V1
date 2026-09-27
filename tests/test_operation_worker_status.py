@@ -68,6 +68,27 @@ def status_payload(db, *, lifecycle_status="running", dry_run=False, heartbeat_a
 
 
 class OperationWorkerStatusTests(unittest.TestCase):
+    def test_pending_history_is_reported_without_hiding_observer_or_exit_health(self):
+        db = create_status_db()
+        status_payload(db, result={"cycle": 8, "failures": 0,
+            "reconciliation_pending": True, "reconciliation_last_error": "kline_budget",
+            "observation_scheduler_status": "degraded",
+            "observation_scheduler_last_error": "observer_budget"})
+        status = add_transition_coverage(summarize_worker_status(get_worker_status_row(db)), False)
+        self.assertTrue(status["transitions_healthy"])
+        self.assertEqual(status["transition_coverage"], "covered")
+        self.assertFalse(status["healthy"])
+        self.assertEqual(status["reconciliation_signal_state"], "pending")
+        self.assertEqual(status["reconciliation_last_error"], "kline_budget")
+        self.assertEqual(status["observation_last_error"], "observer_budget")
+        status_payload(db, result={"cycle": 9, "failures": 0, "reconciled": True})
+        recovered = summarize_worker_status(get_worker_status_row(db))
+        self.assertTrue(recovered["healthy"])
+        self.assertEqual(recovered["reconciliation_signal_state"], "ready")
+        self.assertIsNone(recovered["last_error"])
+        self.assertEqual(db.execute("SELECT COUNT(*) FROM operation_worker_state").fetchone()[0], 1)
+        db.close()
+
     def test_observer_failure_does_not_remove_fresh_exit_coverage(self):
         db = create_status_db()
         status_payload(db, result={

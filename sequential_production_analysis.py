@@ -481,9 +481,13 @@ def analyze_trade(
             analysis_id=analysis_id,
         )
     except Exception as exc:
+        details = {"exception_type": type(exc).__name__}
+        if isinstance(exc, market_data.BinanceDeferred):
+            details.update(provider_deferred=True, provider_reason=str(exc)[:160],
+                           retry_after_seconds=exc.retry_after_seconds)
         raise NewEngineAnalysisError(
             "sequential_data_or_calculation_error",
-            {"exception_type": type(exc).__name__},
+            details,
         ) from exc
     if run.get("status") != "evaluated":
         raise NewEngineAnalysisError(

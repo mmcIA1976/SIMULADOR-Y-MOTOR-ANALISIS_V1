@@ -11,6 +11,65 @@ from binance_request_budget import (
 
 
 class BinanceRequestBudgetTests(unittest.TestCase):
+    def setUp(self):
+        market_data._endpoint_host_retry_at.clear()
+        market_data._endpoint_preferred_bases.clear()
+        market_data._kline_page_cache.clear()
+
+    def tearDown(self):
+        self.setUp()
+
+    def test_deferred_window_is_bounded_and_telemetry_attributes_the_header(self):
+        now = [120.0]
+        guard = RequestBudget(MemoryBudgetStore(), clock=lambda: now[0])
+        url = "https://fapi.binance.com/fapi/v1/depth?limit=20"
+        guard.acquire(url)
+        guard.observe({"X-MBX-USED-WEIGHT-1M": "2300"}, url=url)
+        with self.assertRaises(BinanceDeferred) as blocked:
+            guard.acquire(url)
+        self.assertEqual(blocked.exception.retry_after_seconds, 62)
+        self.assertEqual(guard.status()["endpoint_counts"]["depth"], {"requests": 1, "weight": 2})
+        self.assertEqual(guard.status()["last_observed_endpoint"], "/fapi/v1/depth")
+        now[0] = 182.0
+        guard.acquire(url)
+        self.assertEqual(guard.status()["endpoint_counts"]["depth"]["requests"], 1)
+
+    def test_closed_complete_pages_are_reused_without_mutating_cached_rows(self):
+        rows = [[index * 60_000, "100", "101", "99", "100", "1", (index + 1) * 60_000 - 1]
+                for index in range(3)]
+        with patch.object(market_data, "_now_ms", return_value=300_000), patch.object(
+            market_data, "get_futures_json", return_value=rows) as loader:
+            first = market_data.get_klines("BTCUSDT", "1m", 3, 0, 200_000)
+            second = market_data.get_klines("BTCUSDT", "1m", 3, 0, 250_000)
+            second[0][4] = "poisoned"
+            third = market_data.get_klines("BTCUSDT", "1m", 3, 0, 250_000)
+        self.assertEqual(loader.call_count, 1)
+        self.assertEqual(first[0][4], "100")
+        self.assertEqual(third[0][4], "100")
+
+    def test_open_partial_or_gapped_pages_are_never_cached(self):
+        rows = [[index * 60_000, "100", "101", "99", "100", "1", (index + 1) * 60_000 - 1]
+                for index in range(3)]
+        for payload, now, end in ((rows, 150_000, 200_000), (rows[:2], 300_000, 200_000),
+                                  ([rows[0], rows[2], rows[2]], 300_000, 200_000),
+                                  (rows, 300_000, 100_000)):
+            with self.subTest(now=now, end=end, count=len(payload)), patch.object(
+                market_data, "_now_ms", return_value=now), patch.object(
+                market_data, "get_futures_json", return_value=payload) as loader:
+                market_data.get_klines("BTCUSDT", "1m", 3, 0, end)
+                market_data.get_klines("BTCUSDT", "1m", 3, 0, end)
+                self.assertEqual(loader.call_count, 2)
+
+    def test_endpoint_failure_cooldown_does_not_block_prices(self):
+        response = io.BytesIO(b'{"price":"100"}')
+        response.headers = {}
+        with patch.object(market_data, "_futures_request", side_effect=RuntimeError("unavailable")) as loader:
+            self.assertIsNone(market_data.get_futures_json_optional("/fapi/v1/depth?symbol=BTCUSDT"))
+            self.assertIsNone(market_data.get_futures_json_optional("/fapi/v1/depth?symbol=ETHUSDT"))
+            self.assertEqual(loader.call_count, 4)  # Each failed host is skipped on the second pair.
+        with patch.object(market_data, "_futures_request", return_value=response):
+            self.assertEqual(market_data.get_futures_json("/fapi/v1/ticker/price?symbol=BTCUSDT"), {"price": "100"})
+
     def test_429_stops_host_failover_and_survives_new_process(self):
         now = [1_790_182_000.0]
         shared = MemoryBudgetStore()

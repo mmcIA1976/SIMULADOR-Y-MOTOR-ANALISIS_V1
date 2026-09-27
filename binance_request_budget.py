@@ -25,10 +25,24 @@ _critical = ContextVar("binance_critical", default=False)
 class BinanceDeferred(RuntimeError):
     """No upstream request was sent; quota/circuit needs time to recover."""
 
+    def __init__(self, message, *, retry_after_seconds=None):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
 
 @contextmanager
 def critical_market_requests():
     token = _critical.set(True)
+    try:
+        yield
+    finally:
+        _critical.reset(token)
+
+
+@contextmanager
+def normal_market_requests():
+    """Historical/optional work must not inherit an exit's critical reserve."""
+    token = _critical.set(False)
     try:
         yield
     finally:
@@ -149,6 +163,9 @@ class RequestBudget:
         self.deferred = 0
         self.sent = 0
         self.sync_error = ""
+        self.endpoint_counts = {}
+        self.last_observed_endpoint = None
+        self.last_observed_delta = 0
 
     def _store(self):
         if self.store is None:
@@ -182,6 +199,9 @@ class RequestBudget:
             if minute != self.minute:
                 self.minute, self.observed = minute, 0
                 self.leases.clear()
+                self.endpoint_counts.clear()
+                self.last_observed_endpoint = None
+                self.last_observed_delta = 0
                 self.next_sync = 0
             try:
                 if now < self.blocked_until:
@@ -208,11 +228,24 @@ class RequestBudget:
                     remaining_r += requests
                 self.leases[critical] = remaining_w - cost, remaining_r - 1
                 self.sent += 1
-            except BinanceDeferred:
+                endpoint = urlsplit(url).path.rsplit("/", 1)[-1]
+                category = endpoint if endpoint in {
+                    "price", "klines", "depth", "aggTrades", "premiumIndex",
+                    "openInterest", "openInterestHist", "fundingRate", "24hr",
+                    "bookTicker", "globalLongShortAccountRatio", "takerlongshortRatio",
+                } else "other"
+                bucket = self.endpoint_counts.setdefault(category, {"requests": 0, "weight": 0})
+                bucket["requests"] += 1
+                bucket["weight"] += cost
+            except BinanceDeferred as exc:
                 self.deferred += 1
+                if exc.retry_after_seconds is None:
+                    deadline = (now + SHARED_SYNC_SECONDS if self.sync_error else
+                                max(self.blocked_until, (int(now // 60) + 1) * 60 + 2))
+                    exc.retry_after_seconds = max(1.0, deadline - now)
                 raise
 
-    def observe(self, headers, *, code=200, body=""):
+    def observe(self, headers, *, code=200, body="", url=None):
         with self.lock:
             now = self.clock()
             minute = int(now // 60)
@@ -220,10 +253,15 @@ class RequestBudget:
                 self.minute, self.observed = minute, 0
                 self.leases.clear()
                 self.next_sync = 0
+                self.endpoint_counts.clear()
             try:
                 used = int((headers or {}).get("X-MBX-USED-WEIGHT-1M", 0))
             except (ValueError, TypeError):
                 used = 0
+            delta = max(0, used - self.observed)
+            if delta:
+                self.last_observed_endpoint = urlsplit(url).path if url else None
+                self.last_observed_delta = delta
             self.observed = max(self.observed, used)
             if code in (418, 429):
                 self.blocked_until = max(self.blocked_until, retry_deadline(headers, body, code, now))
@@ -242,7 +280,10 @@ class RequestBudget:
                         requests_deferred=self.deferred, reason=self.reason,
                         coordination_error=self.sync_error,
                         normal_weight_limit=NORMAL_WEIGHT,
-                        critical_weight_limit=CRITICAL_WEIGHT)
+                        critical_weight_limit=CRITICAL_WEIGHT,
+                        endpoint_counts={key: dict(value) for key, value in self.endpoint_counts.items()},
+                        last_observed_endpoint=self.last_observed_endpoint,
+                        last_observed_delta=self.last_observed_delta)
 
 
 budget = RequestBudget()

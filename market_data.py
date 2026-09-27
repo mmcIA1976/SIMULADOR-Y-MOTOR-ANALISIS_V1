@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import math
+import threading
 import time
+from collections import OrderedDict
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from urllib.error import HTTPError
 
 from trading_simulator import BINANCE_MARKET_TIMEOUT_SECONDS
-from binance_request_budget import BinanceDeferred, budget, critical_market_requests
+from binance_request_budget import BinanceDeferred, budget, critical_market_requests, normal_market_requests
 
 
 BINANCE_USDM_BASE_URLS = (
@@ -66,6 +69,12 @@ ALTERNATIVE_FEAR_GREED_URL = (
     "https://api.alternative.me/fng/?limit={limit}&format=json"
 )
 _preferred_futures_base_url = BINANCE_USDM_BASE_URLS[0]
+_endpoint_preferred_bases: dict[str, str] = {}
+_endpoint_host_retry_at: dict[tuple[str, str], float] = {}
+_kline_page_cache = OrderedDict()
+_kline_page_lock = threading.Lock()
+KLINE_CACHE_MAX_PAGES = 24
+HOST_FAILURE_COOLDOWN_SECONDS = 60
 _price_cache: dict[str, dict] = {}
 PRICE_CACHE_TTL_SECONDS = 12
 PRICE_STALE_MAX_SECONDS = 300
@@ -105,17 +114,18 @@ def _futures_request(url: str, timeout_seconds: float):
     request = urllib.request.Request(url, headers=BINANCE_API_HEADERS)
     try:
         response = urllib.request.urlopen(request, timeout=timeout_seconds)
-        budget.observe(response.headers)
+        budget.observe(response.headers, url=url)
         return response
     except HTTPError as exc:
         try:
             body = exc.read(4096).decode("utf-8", errors="replace")
         except Exception:
             body = ""
-        budget.observe(exc.headers, code=exc.code, body=body)
+        budget.observe(exc.headers, code=exc.code, body=body, url=url)
         if exc.code in (418, 429):
             raise BinanceDeferred(
-                f"binance_http_{exc.code}:paused_until:{futures_backoff_until_ms()}"
+                f"binance_http_{exc.code}:paused_until:{futures_backoff_until_ms()}",
+                retry_after_seconds=max(1, futures_backoff_until_ms() / 1000 - time.time()),
             ) from exc
         raise
 
@@ -168,9 +178,14 @@ def get_futures_json(
 ) -> object:
     global _preferred_futures_base_url
     errors: list[str] = []
-    candidate_bases = (_preferred_futures_base_url,) + tuple(
-        base for base in BINANCE_USDM_BASE_URLS if base != _preferred_futures_base_url
+    endpoint = urllib.parse.urlsplit(path).path
+    preferred = _endpoint_preferred_bases.get(endpoint, _preferred_futures_base_url)
+    candidate_bases = (preferred,) + tuple(
+        base for base in BINANCE_USDM_BASE_URLS if base != preferred
     )
+    now = time.monotonic()
+    candidate_bases = tuple(base for base in candidate_bases
+                            if _endpoint_host_retry_at.get((endpoint, base), 0) <= now)
     if max_host_attempts is not None:
         candidate_bases = candidate_bases[:max(1, int(max_host_attempts))]
     for base_url in candidate_bases:
@@ -181,6 +196,8 @@ def get_futures_json(
                 raw = response.read().decode("utf-8")
                 payload = json.loads(raw)
             _preferred_futures_base_url = base_url
+            _endpoint_preferred_bases[endpoint] = base_url
+            _endpoint_host_retry_at.pop((endpoint, base_url), None)
             return payload
         except BinanceDeferred:
             # A rate limit is IP-wide. Other hostnames are not extra capacity.
@@ -195,13 +212,23 @@ def get_futures_json(
             errors.append(f"{base_url}: respuesta no JSON {raw[:180]} ({exc})")
         except Exception as exc:
             errors.append(f"{base_url}: {exc}")
+        # An unavailable depth host must not be retried for every pair, nor
+        # change the healthy price host. This cache is RAM-only and bounded.
+        if len(_endpoint_host_retry_at) >= 96:
+            _endpoint_host_retry_at.clear()
+        _endpoint_host_retry_at[(endpoint, base_url)] = now + HOST_FAILURE_COOLDOWN_SECONDS
+    if not candidate_bases:
+        deadline = min((_endpoint_host_retry_at.get((endpoint, base), now + 60)
+                        for base in BINANCE_USDM_BASE_URLS), default=now + 60)
+        raise BinanceDeferred("binance_endpoint_hosts_cooling_down",
+                              retry_after_seconds=max(1, deadline - now))
     error_text = " | ".join(errors) if errors else "sin detalle de error"
     raise RuntimeError(f"No se pudo consultar Binance USD-M Futures para {path}: {error_text}")
 
 
 def get_futures_json_optional(path: str) -> object | None:
     try:
-        return get_futures_json(path)
+        return get_futures_json(path, max_host_attempts=2)
     except Exception:
         return None
 
@@ -376,6 +403,24 @@ def get_klines(
     start_time_ms: int | None = None,
     end_time_ms: int | None = None,
 ) -> list[list]:
+    # Reuse only COMPLETE, contiguous, already-closed pages. Never cache an
+    # unfinished candle or hide missing coverage. At most 24 pages in RAM;
+    # no candles or request history are added to Supabase.
+    interval_ms = {"1m": 60_000, "5m": 300_000, "1h": 3_600_000,
+                   "6h": 21_600_000}.get(interval)
+    first_open = (math.ceil(int(start_time_ms) / interval_ms) * interval_ms
+                  if interval_ms and start_time_ms is not None else None)
+    last_close = (first_open + int(limit) * interval_ms - 1
+                  if first_open is not None else None)
+    cache_key = (symbol.upper(), interval, int(limit), first_open)
+    cacheable = (last_close is not None and last_close < _now_ms()
+                 and end_time_ms is not None and last_close <= int(end_time_ms))
+    if cacheable:
+        with _kline_page_lock:
+            cached = _kline_page_cache.get(cache_key)
+            if cached is not None:
+                _kline_page_cache.move_to_end(cache_key)
+                return [list(row) for row in cached]
     safe_symbol = urllib.parse.quote(symbol.upper())
     path = BINANCE_USDM_KLINES_PATH.format(symbol=safe_symbol, interval=interval, limit=limit)
     if start_time_ms is not None:
@@ -383,7 +428,18 @@ def get_klines(
     if end_time_ms is not None:
         path = f"{path}&endTime={end_time_ms}"
     payload = get_futures_json(path)
-    return payload if isinstance(payload, list) else []
+    rows = payload if isinstance(payload, list) else []
+    if (cacheable and len(rows) == int(limit)
+            and all(isinstance(row, (list, tuple)) and len(row) >= 7
+                    and int(row[0]) == first_open + index * interval_ms
+                    and int(row[6]) == first_open + (index + 1) * interval_ms - 1
+                    for index, row in enumerate(rows))):
+        with _kline_page_lock:
+            _kline_page_cache[cache_key] = tuple(tuple(row) for row in rows)
+            _kline_page_cache.move_to_end(cache_key)
+            while len(_kline_page_cache) > KLINE_CACHE_MAX_PAGES:
+                _kline_page_cache.popitem(last=False)
+    return rows
 
 
 def get_depth(symbol: str, limit: int = 20) -> dict:

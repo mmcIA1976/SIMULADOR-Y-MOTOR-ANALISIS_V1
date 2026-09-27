@@ -80,6 +80,37 @@ def connect_factory_for(db):
 
 
 class OperationWorkerTests(unittest.TestCase):
+    def test_only_price_collection_inherits_critical_reserve(self):
+        from binance_request_budget import _critical
+        observed = []
+        def price(_symbol):
+            observed.append(("price", _critical.get()))
+            return 100.0
+        def candles(*_args, **_kwargs):
+            observed.append(("candles", _critical.get()))
+            return []
+        operation_worker.collect_market_inputs(
+            {"BTCUSDT": 0}, set(), operation_worker.WorkerState(),
+            operation_worker.WorkerSettings(), 1_775_383_200_000,
+            price_loader=price, kline_loader=candles,
+        )
+        self.assertEqual(observed, [("price", True), ("candles", False)])
+
+    def test_deferred_observer_retries_after_provider_window(self):
+        from fastapi import HTTPException
+        from binance_request_budget import BinanceDeferred
+        self.assertEqual(operation_worker.observation_retry_seconds(
+            BinanceDeferred("budget", retry_after_seconds=42), 20), 42)
+        self.assertEqual(operation_worker.observation_retry_seconds(
+            HTTPException(503, {"details": {"exception_type": "BinanceDeferred",
+                                            "retry_after_seconds": 34}}), 20), 34)
+        self.assertEqual(operation_worker.observation_retry_seconds(
+            HTTPException(503, "quote temporarily unavailable"), 20), 120)
+        self.assertEqual(operation_worker.observation_retry_seconds(
+            ValueError("invalid calculation"), 20), 1200)
+        self.assertEqual(operation_worker.observation_retry_seconds(
+            BinanceDeferred("ban", retry_after_seconds=3600), 20), 3600)
+
     def test_fresh_price_still_reaches_exit_check_when_candles_fail(self):
         db = ActiveSymbolsDb([{"symbol": "BTCUSDT", "scan_start": "2026-08-03T10:00:00+00:00"}])
         settings = operation_worker.WorkerSettings(reconcile_seconds=60)
@@ -97,7 +128,8 @@ class OperationWorkerTests(unittest.TestCase):
         self.assertEqual(refresh.call_count, 1)
         self.assertEqual(refresh.call_args.kwargs["market_klines"], [])
         self.assertEqual(result["market_symbols"], 1)
-        self.assertEqual(result["failures"], 1)
+        self.assertEqual(result["failures"], 0)
+        self.assertEqual(result["reconciliation_failures"], 1)
         self.assertFalse(result["reconciled"])
         self.assertIsNone(state.last_reconcile_ms)
         self.assertTrue(result["reconciliation_pending"])

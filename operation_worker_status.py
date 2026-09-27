@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 
 WORKER_NAME = "operation_worker"
 WORKER_LIFECYCLE_STATES = ("starting", "running", "degraded", "stopped")
 OBSERVATION_ERROR_PREFIX = "observation_scheduler:"
+AUXILIARY_ERROR_PREFIX = "worker_aux:"
 
 
 def ensure_worker_status_table(db) -> None:
@@ -72,14 +74,17 @@ def upsert_worker_status(
     failures = int(result.get("failures") or 0)
     # The existing bounded error column also identifies the failing component.
     # Do not infer healthy exits from arbitrary errors or from an old success.
-    if (
-        lifecycle_status == "running"
-        and failures == 0
-        and result.get("observation_scheduler_status") == "degraded"
-    ):
-        last_error = OBSERVATION_ERROR_PREFIX + str(
-            result.get("observation_scheduler_last_error") or "scheduler_failed"
-        )
+    if lifecycle_status == "running" and failures == 0:
+        auxiliary = {}
+        if result.get("observation_scheduler_status") == "degraded":
+            auxiliary["observation"] = str(result.get("observation_scheduler_last_error")
+                                            or "scheduler_failed")[:400]
+        if result.get("reconciliation_pending"):
+            auxiliary["reconciliation"] = str(result.get("reconciliation_last_error")
+                                               or "historical_reconciliation_pending")[:300]
+        if auxiliary:
+            last_error = AUXILIARY_ERROR_PREFIX + json.dumps(auxiliary, ensure_ascii=False,
+                                                           separators=(",", ":"))
     last_cycle_at = heartbeat_at if result else None
     last_success_at = heartbeat_at if result and failures == 0 else None
     last_reconcile_at = heartbeat_at if result.get("reconciled") and failures == 0 else None
@@ -198,16 +203,23 @@ def summarize_worker_status(row: dict | None, now: datetime | None = None) -> di
     fresh = heartbeat_age_seconds is not None and heartbeat_age_seconds <= stale_after_seconds
     failures = int(row.get("last_cycle_failures") or 0)
     raw_error = str(row.get("last_error") or "")
+    auxiliary = {}
+    if raw_error.startswith(AUXILIARY_ERROR_PREFIX):
+        try:
+            auxiliary = json.loads(raw_error[len(AUXILIARY_ERROR_PREFIX):])
+        except (ValueError, TypeError):
+            auxiliary = {"reconciliation": "invalid_auxiliary_status"}
     observation_error = (
         raw_error[len(OBSERVATION_ERROR_PREFIX):]
-        if raw_error.startswith(OBSERVATION_ERROR_PREFIX) else None
+        if raw_error.startswith(OBSERVATION_ERROR_PREFIX) else auxiliary.get("observation")
     )
+    reconciliation_error = auxiliary.get("reconciliation")
     transitions_healthy = fresh and lifecycle_status == "running" and failures == 0
     if lifecycle_status == "stopped":
         signal_state = "stopped"
     elif not fresh:
         signal_state = "stale"
-    elif lifecycle_status == "degraded" or failures or observation_error:
+    elif lifecycle_status == "degraded" or failures or observation_error or reconciliation_error:
         signal_state = "degraded"
     elif lifecycle_status == "starting":
         signal_state = "starting"
@@ -235,13 +247,15 @@ def summarize_worker_status(row: dict | None, now: datetime | None = None) -> di
         if row.get("updated_at")
         else None,
         "signal_state": signal_state,
-        "healthy": transitions_healthy and not observation_error,
+        "healthy": transitions_healthy and not observation_error and not reconciliation_error,
         "transitions_healthy": transitions_healthy,
         "observation_signal_state": (
             "degraded" if observation_error else "no_error_reported"
         ) if fresh else "unknown",
         "observation_last_error": observation_error,
-        "last_error": observation_error or row.get("last_error"),
+        "reconciliation_signal_state": ("pending" if reconciliation_error else "ready") if fresh else "unknown",
+        "reconciliation_last_error": reconciliation_error,
+        "last_error": observation_error or reconciliation_error or row.get("last_error"),
         "fresh": fresh,
         "heartbeat_age_seconds": heartbeat_age_seconds,
         "stale_after_seconds": stale_after_seconds,

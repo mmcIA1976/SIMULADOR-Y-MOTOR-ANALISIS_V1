@@ -149,6 +149,7 @@ class WorkerSettings:
 class WorkerState:
     last_reconcile_ms: int | None = None
     reconcile_retry_after_ms: int = 0
+    reconciliation_errors: dict[str, str] = field(default_factory=dict)
     cycles: int = 0
     observation_scheduler_status: str = "pending"
     observation_scheduler_last_run_at: str | None = None
@@ -167,6 +168,7 @@ class SymbolMarketInput:
     symbol: str
     price: float
     klines: list[list]
+    reconciliation_error: str | None = None
 
 
 ConnectFactory = Callable[[], AbstractContextManager]
@@ -279,7 +281,6 @@ def load_watched_market_symbols(
         return watched_market_symbols(db)
 
 
-@market_data.critical_market_requests()
 def collect_market_inputs(
     symbol_starts: dict[str, int],
     watched_symbols: set[str],
@@ -301,17 +302,19 @@ def collect_market_inputs(
     failures = 0
     requested_symbols = sorted(set(symbol_starts).union(watched_symbols))
     if price_loader is market_data.get_price:
-        price_snapshot = market_data.get_prices(
-            requested_symbols,
-            allow_stale=False,
-            timeout_seconds=WORKER_PRICE_TIMEOUT_SECONDS,
-            max_host_attempts=WORKER_PRICE_MAX_HOST_ATTEMPTS,
-        )
+        with market_data.critical_market_requests():
+            price_snapshot = market_data.get_prices(
+                requested_symbols,
+                allow_stale=False,
+                timeout_seconds=WORKER_PRICE_TIMEOUT_SECONDS,
+                max_host_attempts=WORKER_PRICE_MAX_HOST_ATTEMPTS,
+            )
     else:
         price_snapshot = {}
         for symbol in requested_symbols:
             try:
-                price_snapshot[symbol] = float(price_loader(symbol))
+                with market_data.critical_market_requests():
+                    price_snapshot[symbol] = float(price_loader(symbol))
             except Exception as exc:
                 failures += 1
                 log_event(
@@ -337,19 +340,20 @@ def collect_market_inputs(
                     overlap_ms = settings.reconcile_overlap_minutes * ONE_MINUTE_MS
                     scan_start_ms = max(earliest_start_ms, int(state.last_reconcile_ms) - overlap_ms)
                     max_pages = settings.recent_max_kline_pages
-                klines = kline_loader(
-                    symbol,
-                    scan_start_ms,
-                    now_ms,
-                    max_pages=max_pages,
-                )
+                with market_data.normal_market_requests():
+                    klines = kline_loader(
+                        symbol,
+                        scan_start_ms,
+                        now_ms,
+                        max_pages=max_pages,
+                    )
             inputs.append(SymbolMarketInput(symbol=symbol, price=price, klines=klines))
         except Exception as exc:
-            failures += 1
             log_event("worker_market_input_failed", symbol=symbol, error=str(exc))
             # Historical reconciliation remains pending; a fresh quote must
             # still reach current-price TP/SL processing this cycle.
-            inputs.append(SymbolMarketInput(symbol=symbol, price=price, klines=[]))
+            inputs.append(SymbolMarketInput(symbol=symbol, price=price, klines=[],
+                                           reconciliation_error=str(exc)[:200]))
     return inputs, reconcile_due, failures, price_snapshot
 
 
@@ -426,6 +430,12 @@ def run_worker_cycle(
     )
     order_book_observations: dict[str, dict] = {}
     order_book_observation_failures = 0
+    reconciliation_failures = sum(bool(item.reconciliation_error) for item in market_inputs)
+    if reconcile_due:
+        state.reconciliation_errors = {
+            item.symbol: item.reconciliation_error for item in market_inputs
+            if item.reconciliation_error
+        }
 
     activated: list[dict] = []
     closed: list[dict] = []
@@ -536,7 +546,7 @@ def run_worker_cycle(
 
     # If any symbol failed, keep the old cursor so the next cycle replays the
     # missed market interval instead of silently skipping it.
-    if reconcile_due and failures == 0:
+    if reconcile_due and failures == 0 and reconciliation_failures == 0:
         state.last_reconcile_ms = cycle_started_ms
         state.reconcile_retry_after_ms = 0
     elif reconcile_due:
@@ -554,7 +564,11 @@ def run_worker_cycle(
         "closed": len(closed),
         "finalized_observations": len(finalized),
         "failures": failures,
-        "reconciled": reconcile_due and failures == 0,
+        "reconciliation_failures": reconciliation_failures,
+        "reconciliation_last_error": "; ".join(
+            f"{symbol}:{error}" for symbol, error in state.reconciliation_errors.items()
+        )[:300] or None,
+        "reconciled": reconcile_due and failures == 0 and reconciliation_failures == 0,
         "reconciliation_pending": bool(state.reconcile_retry_after_ms),
         "reconcile_retry_after_ms": state.reconcile_retry_after_ms or None,
         "binance_request_budget": market_data.budget.status(),
@@ -627,6 +641,25 @@ def run_autonomous_scanner_loop(
         stop_event.wait(wait_seconds)
 
 
+def observation_retry_seconds(exc: Exception, interval_minutes: int) -> float:
+    """Retry a deferred control after the provider recovers, not a new interval."""
+    detail = getattr(exc, "detail", None)
+    details = detail.get("details", {}) if isinstance(detail, dict) else {}
+    current = exc
+    for _ in range(5):
+        if isinstance(current, market_data.BinanceDeferred):
+            return max(10.0, float(current.retry_after_seconds or 65))
+        current = getattr(current, "__cause__", None)
+        if current is None:
+            break
+    if details.get("provider_deferred") or details.get("exception_type") == "BinanceDeferred":
+        return max(10.0, float(details.get("retry_after_seconds") or 65))
+    if getattr(exc, "status_code", None) == 503:
+        # Unavailable worker quote / network: capped retry, never fabricate a control.
+        return min(max(int(interval_minutes) * 60, 60), 120)
+    return max(int(interval_minutes) * 60, 60)
+
+
 def run_observation_scheduler_loop(
     stop_event: threading.Event,
     settings: WorkerSettings,
@@ -679,17 +712,15 @@ def run_observation_scheduler_loop(
                     state.observation_scheduler_last_error = (
                         f"{type(exc).__name__}:{exc}"
                     )[:500]
-                    retry_after[session_id] = time.monotonic() + max(
-                        int(session["planned_interval_minutes"]) * 60,
-                        60,
+                    retry_seconds = observation_retry_seconds(
+                        exc, int(session["planned_interval_minutes"])
                     )
+                    retry_after[session_id] = time.monotonic() + retry_seconds
                     log_event(
                         "operation_observation_checkpoint_failed",
                         operation_id=operation_id,
                         error=f"{type(exc).__name__}:{exc}",
-                        retry_minutes=int(
-                            session["planned_interval_minutes"]
-                        ),
+                        retry_seconds=round(retry_seconds, 1),
                     )
             state.observation_scheduler_status = (
                 "degraded" if retry_after else "ready"

@@ -4379,6 +4379,10 @@ function renderWorkerStatus(status) {
     title = "TP/SL activo · observación con error";
     detail = `${ageLabel} · vigilancia de cierres activa; fallan los controles de observación`;
     className = "worker-warning";
+  } else if (status?.reconciliation_signal_state === "pending" && transitionOwner === "worker") {
+    title = "TP/SL activo · histórico pendiente";
+    detail = `${ageLabel} · cierres al precio actual activos; revisión de intervalos pasados pendiente`;
+    className = "worker-warning";
   } else if (signalState === "running") {
     title = transitionOwner === "worker" ? "Vigilancia autónoma activa" : "Worker preparado";
     detail = `${ageLabel} · ${symbolLabel} · cierres: ${transitionOwner === "worker" ? "worker" : "web"}`;

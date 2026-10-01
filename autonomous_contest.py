@@ -37,9 +37,12 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.6-horizon-first-plans"
+POLICY_VERSION = "autonomous-contest-policy-v0.7-wide-neutral-reach"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
+WIDE_GEOMETRY_VERSION = "wide-24h-neutral-reach-v1"
+WIDE_REACH_QUANTILE = 0.25
+WIDE_MAX_UNRESOLVED_PROBABILITY = 0.35
 SYMBOLS = (
     "BTCUSDT",
     "ETHUSDT",
@@ -145,6 +148,7 @@ class Candidate:
     observational_json: dict = field(default_factory=dict)
     confirmation: dict = field(default_factory=dict)
     trade_plan: dict = field(default_factory=dict)
+    horizon_geometry: dict = field(default_factory=dict)
 
     @property
     def eligible_base(self) -> bool:
@@ -162,6 +166,8 @@ class Candidate:
 
     def eligible_for(self, policy: ParticipantPolicy) -> bool:
         return (self.eligible_base and float(self.edge) >= policy.edge_threshold
+                and (policy.code != "auto_intraday_wide"
+                     or float(self.unresolved_probability) <= WIDE_MAX_UNRESOLVED_PROBABILITY)
                 and (policy.code != "auto_intraday_short" or short_planner.passes_forecast(self)))
 
 
@@ -653,7 +659,9 @@ def ensure_participants(db) -> list[dict]:
                 policy.max_open_positions,
                 policy.edge_threshold,
                 short_planner.MIN_TP_PROBABILITY if policy.code == "auto_intraday_short" else MIN_TP_PROBABILITY,
-                short_planner.MAX_UNRESOLVED_PROBABILITY if policy.code == "auto_intraday_short" else MAX_UNRESOLVED_PROBABILITY,
+                (short_planner.MAX_UNRESOLVED_PROBABILITY if policy.code == "auto_intraday_short"
+                 else WIDE_MAX_UNRESOLVED_PROBABILITY if policy.code == "auto_intraday_wide"
+                 else MAX_UNRESOLVED_PROBABILITY),
                 MIN_ANALOGS_PER_STAGE,
                 policy.analysis_reference_margin,
                 policy.analysis_reference_leverage,
@@ -736,6 +744,64 @@ def symmetric_geometry(entry: float, sigma: float, side: str) -> tuple[float, fl
     lower = float(entry) * (1.0 - float(sigma))
     upper = float(entry) * (1.0 + float(sigma))
     return (upper, lower) if side == "long" else (lower, upper)
+
+
+def wide_horizon_geometry(material: dict, current_sigma: float) -> dict:
+    """Calibrate one direction-neutral radius from completed 24-hour paths.
+
+    The 25th percentile of past *either-side* reach targets roughly 75% barrier
+    reachability. Each historical reach is divided by volatility known before
+    its window; the resulting multiple is applied to today's known volatility.
+    Neither the winning side nor the analysis engine's probabilities are used.
+    """
+    if int(material["return_count"]) != 24 or int(material["interval_seconds"]) != 3600:
+        raise ValueError("wide_geometry_requires_closed_hourly_24h_material")
+    if not math.isfinite(current_sigma) or current_sigma <= 0:
+        raise ValueError("wide_geometry_invalid_current_sigma")
+    rows = material["selected"]
+    reaches = []
+    for start in range(24, len(rows) - 24, 24):
+        baseline = float(rows[start]["close"])
+        prior_closes = [float(row["close"]) for row in rows[start - 24:start + 1]]
+        future = rows[start + 1:start + 25]
+        if baseline <= 0 or len(prior_closes) != 25 or len(future) != 24:
+            continue
+        if any(not math.isfinite(value) or value <= 0 for value in prior_closes):
+            continue
+        known_sigma = math.sqrt(math.fsum(
+            math.log(right / left) ** 2
+            for left, right in zip(prior_closes, prior_closes[1:])
+        ))
+        if known_sigma <= 0 or not math.isfinite(known_sigma):
+            continue
+        upper_reach = max(float(row["high"]) for row in future) / baseline - 1.0
+        lower_reach = 1.0 - min(float(row["low"]) for row in future) / baseline
+        normalized_reach = max(upper_reach, lower_reach, 0.0) / known_sigma
+        if math.isfinite(normalized_reach):
+            reaches.append(normalized_reach)
+    if len(reaches) < 30:
+        raise ValueError("wide_geometry_insufficient_complete_reference_windows")
+    ordered = sorted(reaches)
+    position = (len(ordered) - 1) * WIDE_REACH_QUANTILE
+    lower, upper = math.floor(position), math.ceil(position)
+    reach_multiple = ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+    radius_fraction = reach_multiple * current_sigma
+    if not math.isfinite(radius_fraction) or not 0 < radius_fraction < 0.5:
+        raise ValueError("wide_geometry_invalid_radius")
+    return {
+        "version": WIDE_GEOMETRY_VERSION,
+        "horizon_seconds": 24 * 60 * 60,
+        "radius_fraction": radius_fraction,
+        "reach_quantile": WIDE_REACH_QUANTILE,
+        "reference_windows": len(reaches),
+        "historical_either_side_reach_rate": sum(
+            value >= reach_multiple for value in reaches
+        ) / len(reaches),
+        "neutral_conditional_tp_reference": 0.5,
+        "source_sha256": material["data_sha256"],
+        "data_cutoff_at_ms": material["data_cutoff_at_ms"],
+        "probability_effect": "none_proposal_construction_only",
+    }
 
 
 def _compact_observations(result: dict) -> dict:
@@ -824,6 +890,9 @@ def rejection_code(candidate: Candidate, policy: ParticipantPolicy) -> str | Non
         else 1.0
     ) > MAX_UNRESOLVED_PROBABILITY:
         return "unresolved_probability_above_gate"
+    if (policy.code == "auto_intraday_wide"
+            and float(candidate.unresolved_probability) > WIDE_MAX_UNRESOLVED_PROBABILITY):
+        return "wide_unresolved_probability_above_reachability_gate"
     edge = candidate.edge if candidate.edge is not None else -2.0
     if float(edge) < policy.edge_threshold:
         return "edge_below_horizon_gate"
@@ -910,6 +979,24 @@ def analyze_candidates(
                     )
                 )
             continue
+        horizon_geometry = {}
+        if policy.code == "auto_intraday_wide":
+            try:
+                if material is None:
+                    material = load_horizon_material(
+                        symbol, policy.time_horizon, analyzed_at,
+                        loader=shared_kline_loader,
+                    )
+                horizon_geometry = wide_horizon_geometry(material, sigma)
+            except Exception as exc:
+                for side in requested_sides:
+                    candidates.append(Candidate(
+                        symbol=symbol, side=side, time_horizon=policy.time_horizon,
+                        analyzed_at=analyzed_at, entry=float(entry), sigma=sigma,
+                        analysis_status="blocked",
+                        rejection_code=f"wide_geometry:{type(exc).__name__}:{exc}",
+                    ))
+                continue
         for side in requested_sides:
             plans = [{}]
             if policy.code == "auto_intraday_short":
@@ -943,6 +1030,7 @@ def analyze_candidates(
                 alternatives.append(_analyze_candidate_plan(
                     policy, symbol, side, float(entry), sigma, analyzed_at, trade_plan,
                     analysis_runner, shared_kline_loader, liquidation_contexts, order_book_contexts,
+                    horizon_geometry=horizon_geometry,
                 ))
             passing = [c for c in alternatives if c.eligible_for(policy)]
             measured = [c for c in alternatives if c.analysis_status == "evaluated"]
@@ -954,10 +1042,12 @@ def analyze_candidates(
 
 
 def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, trade_plan,
-                            analysis_runner, shared_kline_loader, liquidation_contexts, order_book_contexts):
+                            analysis_runner, shared_kline_loader, liquidation_contexts, order_book_contexts,
+                            *, horizon_geometry=None):
+    horizon_geometry = horizon_geometry or {}
     take_profit, stop_loss = (
         (trade_plan["take_profit"], trade_plan["stop_loss"]) if trade_plan
-        else symmetric_geometry(entry, sigma, side)
+        else symmetric_geometry(entry, horizon_geometry.get("radius_fraction", sigma), side)
     )
     proposal = TradeProposal(
         symbol=symbol, side=side, time_horizon=policy.time_horizon,
@@ -995,6 +1085,7 @@ def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, tra
             selected_analogs_min=selected_analogs, max_context_distance_ratio=distance_ratio,
             artifact_id=artifact_id, analysis_status="evaluated", analysis_result=result,
             observational_json=_compact_observations(result), trade_plan=dict(trade_plan),
+            horizon_geometry=dict(horizon_geometry),
         )
         candidate.rejection_code = rejection_code(candidate, policy)
         return candidate
@@ -1004,7 +1095,7 @@ def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, tra
             analyzed_at=analyzed_at, entry=float(entry),
             take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
             analysis_status="blocked", rejection_code=str(exc.code or "analysis_blocked"),
-            trade_plan=dict(trade_plan),
+            trade_plan=dict(trade_plan), horizon_geometry=dict(horizon_geometry),
         )
     except Exception as exc:
         return Candidate(
@@ -1012,7 +1103,7 @@ def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, tra
             analyzed_at=analyzed_at, entry=float(entry),
             take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
             analysis_status="failed", rejection_code=f"{type(exc).__name__}:{exc}",
-            trade_plan=dict(trade_plan),
+            trade_plan=dict(trade_plan), horizon_geometry=dict(horizon_geometry),
         )
 
 
@@ -1318,6 +1409,12 @@ def execution_drift_is_acceptable(
 def execution_geometry(candidate: Candidate, execution_entry: float) -> tuple[float, float]:
     if candidate.trade_plan:
         return float(candidate.take_profit), float(candidate.stop_loss)
+    if candidate.horizon_geometry:
+        return symmetric_geometry(
+            execution_entry,
+            float(candidate.horizon_geometry["radius_fraction"]),
+            candidate.side,
+        )
     return symmetric_geometry(execution_entry, float(candidate.sigma), candidate.side)
 
 
@@ -1355,6 +1452,21 @@ def _prepare_selected_analysis(
         result["autonomous_trade_plan"] = dict(candidate.trade_plan)
         entry_context["proposal_plan_version"] = short_planner.PLAN_VERSION
         entry_context["proposal_plan_key"] = candidate.trade_plan["lineage_key"]
+    if candidate.horizon_geometry:
+        result["autonomous_horizon_geometry"] = dict(candidate.horizon_geometry)
+        entry_context["proposal_plan_version"] = WIDE_GEOMETRY_VERSION
+        entry_context["neutral_conditional_tp_reference"] = 0.5
+        entry_context["proposal_radius_fraction"] = candidate.horizon_geometry["radius_fraction"]
+        resolved = float(candidate.tp_probability) + float(candidate.sl_probability)
+        conditional_tp = float(candidate.tp_probability) / resolved if resolved > 0 else None
+        result["autonomous_directional_diagnostic"] = {
+            "neutral_conditional_tp_reference": 0.5,
+            "estimated_conditional_tp_given_touch": conditional_tp,
+            "estimated_lift_vs_neutral": (
+                conditional_tp - 0.5 if conditional_tp is not None else None
+            ),
+            "probability_effect": "none_diagnostic_only",
+        }
     result["entry_order_context"] = entry_context
     snapshot = result.setdefault("snapshot", {})
     snapshot.update(
@@ -1385,6 +1497,8 @@ def _prepare_selected_analysis(
         version_contract["autonomous_entry_confirmation_version"] = entry_confirmation.CONFIRMATION_VERSION
     if candidate.trade_plan:
         version_contract["autonomous_trade_plan_version"] = short_planner.PLAN_VERSION
+    if candidate.horizon_geometry:
+        version_contract["autonomous_horizon_geometry_version"] = WIDE_GEOMETRY_VERSION
     result["version_contract"] = version_contract
     snapshot["version_contract"] = version_contract
     result["data_contract"] = build_data_contract(
@@ -1418,7 +1532,9 @@ def _open_selected_operation(
     execution_take_profit, execution_stop_loss = execution_geometry(candidate, execution_entry)
     sizing = determine_position_sizing(
         replace(candidate, entry=execution_entry, take_profit=execution_take_profit,
-                stop_loss=execution_stop_loss) if candidate.trade_plan else candidate, cash,
+                stop_loss=execution_stop_loss)
+        if candidate.trade_plan or candidate.horizon_geometry else candidate,
+        cash,
     )
     result = _prepare_selected_analysis(
         candidate,

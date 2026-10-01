@@ -1,6 +1,8 @@
 import json
+import math
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import autonomous_contest
 
@@ -288,6 +290,122 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertEqual(
             autonomous_contest.symmetric_geometry(100.0, 0.02, "short"),
             (98.0, 102.0),
+        )
+
+    def test_wide_geometry_uses_completed_24h_reach_without_direction(self):
+        rows = []
+        for index in range(61 * 24 + 1):
+            close = 100.0 + (0.1 if index % 2 else 0.0)
+            amplitude = 0.4 + 0.01 * (index // 24)
+            rows.append({"close": close, "high": close + amplitude,
+                         "low": close - amplitude})
+        material = {
+            "return_count": 24,
+            "interval_seconds": 3600,
+            "selected": rows,
+            "data_sha256": "known-closed-hourly-candles",
+            "data_cutoff_at_ms": 123456789,
+        }
+        sigma = math.sqrt(sum(
+            math.log(rows[right]["close"] / rows[right - 1]["close"]) ** 2
+            for right in range(len(rows) - 24, len(rows))
+        ))
+
+        plan = autonomous_contest.wide_horizon_geometry(material, sigma)
+        radius = plan["radius_fraction"]
+
+        self.assertEqual(plan["reference_windows"], 60)
+        self.assertGreaterEqual(plan["historical_either_side_reach_rate"], 0.75)
+        self.assertEqual(plan["neutral_conditional_tp_reference"], 0.5)
+        self.assertEqual(plan["probability_effect"], "none_proposal_construction_only")
+        self.assertGreater(radius, 0)
+        long_tp, long_sl = autonomous_contest.symmetric_geometry(100, radius, "long")
+        short_tp, short_sl = autonomous_contest.symmetric_geometry(100, radius, "short")
+        self.assertAlmostEqual(long_tp - 100, 100 - long_sl)
+        self.assertEqual((short_tp, short_sl), (long_sl, long_tp))
+
+    def test_medium_bot_analyzes_symmetric_reachable_levels_without_extra_candles(self):
+        policy = autonomous_contest.PARTICIPANT_POLICIES[1]
+        material = {
+            "return_count": 24, "interval_seconds": 3600,
+            "selected": [
+                {"close": 100.0 + (0.1 if index % 2 else 0.0),
+                 "high": 100.8, "low": 99.2}
+                for index in range(61 * 24 + 1)
+            ],
+            "current_variance": 0.000024,
+            "data_sha256": "closed-hourly-sample",
+            "data_cutoff_at_ms": 123456789,
+        }
+        proposals = []
+
+        def analyze(proposal, **_kwargs):
+            proposals.append(proposal)
+            return {
+                "tp_probability": 0.55, "sl_probability": 0.20,
+                "range_probability": 0.25,
+                "model_trace": {"artifact_id": "test", "stage_traces": [
+                    {"selected_analogs": 240}
+                ]},
+                "snapshot": {},
+            }
+
+        with patch.object(autonomous_contest, "load_horizon_material", return_value=material) as load:
+            candidates = autonomous_contest.analyze_candidates(
+                policy, {"BTCUSDT": 100.0},
+                datetime(2026, 10, 1, tzinfo=timezone.utc),
+                analysis_runner=analyze,
+                symbols=("BTCUSDT",),
+            )
+
+        load.assert_called_once()
+        self.assertEqual(len(proposals), 2)
+        self.assertEqual(len(candidates), 2)
+        self.assertTrue(all(item.eligible_for(policy) for item in candidates))
+        self.assertAlmostEqual(proposals[0].take_profit - 100,
+                               100 - proposals[0].stop_loss)
+        self.assertAlmostEqual(proposals[1].stop_loss - 100,
+                               100 - proposals[1].take_profit)
+        self.assertEqual(candidates[0].horizon_geometry["version"],
+                         autonomous_contest.WIDE_GEOMETRY_VERSION)
+        self.assertNotEqual(
+            candidates[0].horizon_geometry["radius_fraction"],
+            candidates[0].sigma,
+        )
+
+    def test_medium_rejects_high_unresolved_and_reanchors_equal_levels_at_execution(self):
+        policy = autonomous_contest.PARTICIPANT_POLICIES[1]
+        selected = candidate(edge=0.20, tp=0.50, unresolved=0.36)
+        selected.time_horizon = "intraday_wide"
+        self.assertEqual(
+            autonomous_contest.rejection_code(selected, policy),
+            "wide_unresolved_probability_above_reachability_gate",
+        )
+        self.assertFalse(selected.eligible_for(policy))
+
+        selected.unresolved_probability = 0.25
+        selected.horizon_geometry = {
+            "version": autonomous_contest.WIDE_GEOMETRY_VERSION,
+            "radius_fraction": 0.006,
+        }
+        selected.sigma = 0.01
+        selected.analysis_result = {"snapshot": {}}
+        entry = 100.05
+        tp, sl = autonomous_contest.execution_geometry(selected, entry)
+        self.assertAlmostEqual(tp - entry, entry - sl)
+        result = autonomous_contest._prepare_selected_analysis(
+            selected,
+            execution_entry=entry,
+            execution_take_profit=tp,
+            execution_stop_loss=sl,
+            executed_at=selected.analyzed_at,
+        )
+        self.assertEqual(result["entry_order_context"]["neutral_conditional_tp_reference"], 0.5)
+        self.assertEqual(result["version_contract"]["autonomous_horizon_geometry_version"],
+                         autonomous_contest.WIDE_GEOMETRY_VERSION)
+        self.assertAlmostEqual(
+            result["autonomous_directional_diagnostic"]["estimated_conditional_tp_given_touch"],
+            selected.tp_probability / (selected.tp_probability + selected.sl_probability),
         )
 
     def test_execution_rejects_a_stale_analysis_price_after_material_drift(self):

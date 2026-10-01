@@ -6576,6 +6576,36 @@ def predictive_learning_inventory(
         return unified_predictive_inventory(db)
 
 
+@app.get("/api/bots/scan-audit")
+def bot_scan_audit(
+    start_at: datetime,
+    end_at: datetime,
+    participant: str = "auto_intraday_wide",
+    before_id: int | None = None,
+    limit: int = 6,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> Response:
+    user = current_user(session_token)
+    require_observation_operator(user)
+    from autonomous_contest import POLICY_BY_CODE
+    from autonomous_scan_audit import scan_audit_report
+    if participant not in POLICY_BY_CODE:
+        raise HTTPException(status_code=400, detail="Bot no valido")
+    try:
+        with connect() as db:
+            report = scan_audit_report(
+                db, participant_code=participant, start_at=start_at, end_at=end_at,
+                before_id=before_id, limit=limit,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(
+        content=json.dumps(report, default=str, ensure_ascii=False, allow_nan=False),
+        media_type="application/json",
+        headers={"Cache-Control": "private, no-store"},
+    )
+
+
 @app.post("/api/operations")
 def create_operation(payload: CreateOperationPayload, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict:
     user = current_user(session_token)

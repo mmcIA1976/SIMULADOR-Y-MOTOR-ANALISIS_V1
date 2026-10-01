@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterable
 import liquidation_data
 import market_data
 import autonomous_confirmation as entry_confirmation
+import autonomous_scan_audit as scan_audit
 import short_trade_planner as short_planner
 from analysis_engine import TradeProposal
 from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
@@ -56,6 +57,8 @@ MAX_UNRESOLVED_PROBABILITY = 0.55
 MIN_ANALOGS_PER_STAGE = 80
 SCAN_RELEASE_DELAY_SECONDS = 75
 NON_PANEL_STORAGE_CAP_PER_UTC_DAY = 12
+# This cap applies only to detailed counterfactual learning samples below.
+# Every scan's scalar audit is complete and is not subject to a daily cap.
 OBSERVATIONAL_JSON_BYTE_BUDGET = 12_000
 MAX_EXECUTION_DRIFT_SIGMA_FRACTION = 0.10
 MAX_EXECUTION_DRIFT_FLOOR = 0.0002
@@ -520,6 +523,7 @@ def ensure_autonomous_storage(db) -> None:
             artifact_id TEXT,
             policy_version TEXT NOT NULL,
             dry_run BOOLEAN NOT NULL,
+            candidate_audit_json JSONB,
             duration_ms INTEGER,
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -920,6 +924,8 @@ def analyze_candidates(
     sides: Iterable[str] = ("long", "short"),
     fixed_candidate: Candidate | None = None,
     previous_confirmations: Iterable[dict] = (),
+    audit_records: list[dict] | None = None,
+    audit_phase: str = "panel",
 ) -> list[Candidate]:
     analyzed_at = _as_utc(analysis_at)
     liquidation_contexts = liquidation_contexts or {}
@@ -927,6 +933,7 @@ def analyze_candidates(
     shared_kline_loader = (kline_loader if isinstance(kline_loader, MemoizedKlineLoader)
                            else MemoizedKlineLoader(kline_loader or market_data.get_klines))
     candidates: list[Candidate] = []
+    audit_start = len(audit_records) if audit_records is not None else 0
     prior_plans = {
         (row["symbol"], row["side"]): entry_confirmation.frozen_plan(
             row, plan_version=short_planner.PLAN_VERSION,
@@ -1032,12 +1039,20 @@ def analyze_candidates(
                     analysis_runner, shared_kline_loader, liquidation_contexts, order_book_contexts,
                     horizon_geometry=horizon_geometry,
                 ))
+                if audit_records is not None:
+                    audit_records.append(scan_audit.candidate_record(
+                        alternatives[-1], policy, phase=audit_phase,
+                    ))
             passing = [c for c in alternatives if c.eligible_for(policy)]
             measured = [c for c in alternatives if c.analysis_status == "evaluated"]
             choice = min(passing or measured, key=entry_confirmation.rank_key) if (passing or measured) else alternatives[0]
             if choice.trade_plan:
                 choice.trade_plan = {**choice.trade_plan, "alternatives_evaluated": len(alternatives)}
             candidates.append(choice)
+    if audit_records is not None:
+        scan_audit.ensure_candidate_records(
+            audit_records, candidates, policy, phase=audit_phase, start=audit_start,
+        )
     return candidates
 
 
@@ -1216,6 +1231,7 @@ def _candidate_storage_selection(
     candidates: list[Candidate],
     selected: Candidate | None,
 ) -> dict[tuple[str, str], str]:
+    """Choose detailed learning samples; never filter the complete scan audit."""
     if entry_confirmation.enabled(policy):
         # Eligible, paused and terminal checkpoints only. No rejected
         # boundary candidates or repeated multi-kilobyte observational traces.
@@ -1778,6 +1794,7 @@ def run_due_scans(
                 )
         liquidations = _load_liquidation_contexts(prices)
         scan_started = time.perf_counter()
+        audit_records = []
         candidates = analyze_candidates(
             policy,
             prices,
@@ -1788,7 +1805,9 @@ def run_due_scans(
             order_book_contexts=order_books,
             kline_loader=shared_kline_loader,
             previous_confirmations=previous,
+            audit_records=audit_records,
         )
+        scan_audit.ensure_candidate_records(audit_records, candidates, policy)
         if entry_confirmation.enabled(policy):
             entry_confirmation.advance(
                 candidates, policy, previous, slot=slot,
@@ -1837,7 +1856,12 @@ def run_due_scans(
                     symbols=(selected.symbol,),
                     sides=(selected.side,),
                     fixed_candidate=selected,
+                    audit_records=audit_records,
+                    audit_phase="confirmation",
                 )[0]
+                scan_audit.ensure_candidate_records(
+                    audit_records, [confirmed], policy, phase="confirmation",
+                )
                 confirmed.confirmation = dict(selected.confirmation)
                 for index, candidate in enumerate(candidates):
                     if (
@@ -1987,6 +2011,7 @@ def run_due_scans(
                         selected_sl_probability = ?,
                         selected_unresolved_probability = ?, selected_edge = ?,
                         recommendation_id = ?, operation_id = ?, artifact_id = ?,
+                        candidate_audit_json = ?::jsonb,
                         duration_ms = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ? AND status = 'running'
                     """,
@@ -2006,6 +2031,18 @@ def run_due_scans(
                         recommendation_id,
                         operation_id,
                         selected.artifact_id if selected else None,
+                        scan_audit.encode_audit(
+                            audit_records, policy, selected=selected,
+                            gates={
+                                "edge_threshold": policy.edge_threshold,
+                                "min_tp_probability": (short_planner.MIN_TP_PROBABILITY
+                                    if policy.code == "auto_intraday_short" else MIN_TP_PROBABILITY),
+                                "max_unresolved_probability": (short_planner.MAX_UNRESOLVED_PROBABILITY
+                                    if policy.code == "auto_intraday_short" else WIDE_MAX_UNRESOLVED_PROBABILITY
+                                    if policy.code == "auto_intraday_wide" else MAX_UNRESOLVED_PROBABILITY),
+                                "min_analogs_per_stage": MIN_ANALOGS_PER_STAGE,
+                            },
+                        ),
                         round((time.perf_counter() - scan_started) * 1000),
                         scan_run_id,
                     ),
@@ -2019,12 +2056,20 @@ def run_due_scans(
                 db.execute(
                     """
                     UPDATE autonomous_scan_runs
-                    SET status = 'failed', reason_code = ?, duration_ms = ?,
+                    SET status = 'failed', reason_code = ?, analyzed_at = ?,
+                        candidates_evaluated = ?, candidates_blocked = ?, candidates_eligible = ?,
+                        candidate_audit_json = ?::jsonb,
+                        duration_ms = ?,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = ? AND status = 'running'
                     """,
                     (
                         f"{type(exc).__name__}:{exc}",
+                        decision_analyzed_at.isoformat(),
+                        evaluated,
+                        blocked,
+                        eligible,
+                        scan_audit.encode_audit(audit_records, policy),
                         round((time.perf_counter() - scan_started) * 1000),
                         scan_run_id,
                     ),

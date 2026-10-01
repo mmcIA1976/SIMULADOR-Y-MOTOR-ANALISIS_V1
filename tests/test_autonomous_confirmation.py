@@ -547,6 +547,33 @@ class ScannerIntegrationTests(unittest.TestCase):
         self.assertEqual(len(self.opened), 3)
         self.assertEqual(self.scan(240)["scans"], [])
 
+    def test_discarded_candidate_has_complete_audit_without_learning_sample(self):
+        result = self.scan(0, bad=True)
+        row = self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()
+        audit = contest.scan_audit.decode_audit(row[0])
+        self.assertEqual(result["scans"][0]["status"], "no_trade")
+        self.assertEqual(audit["coverage"], "complete")
+        self.assertEqual(len(audit["analyses"]), 1)
+        self.assertFalse(audit["analyses"][0]["eligible"])
+        self.assertEqual(self.connection.execute("SELECT COUNT(*) FROM autonomous_candidate_observations").fetchone()[0], 0)
+
+    def test_confirmation_is_a_separate_analysis_in_complete_audit(self):
+        for minute in (0, 15, 30):
+            self.scan(minute)
+        row = self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs ORDER BY id DESC LIMIT 1").fetchone()
+        audit = contest.scan_audit.decode_audit(row[0])
+        self.assertEqual([r["phase"] for r in audit["analyses"]], ["panel", "confirmation"])
+        self.assertEqual(audit["selected_index"], 1)
+
+    def test_failed_trade_insert_preserves_analysis_audit_after_rollback(self):
+        for minute in (0, 15):
+            self.scan(minute)
+        with self.assertLogs("autonomous_contest", level="ERROR"):
+            self.scan(30, fail_insert=True)
+        row = self.connection.execute("SELECT status,candidate_audit_json FROM autonomous_scan_runs ORDER BY id DESC LIMIT 1").fetchone()
+        self.assertEqual(row["status"], "failed")
+        self.assertEqual(len(contest.scan_audit.decode_audit(row["candidate_audit_json"])["analyses"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

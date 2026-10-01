@@ -110,3 +110,22 @@ conserva la sesion; finalizarla detiene definitivamente nuevos controles sin
 cerrar la operacion. Cada cambio queda registrado de forma append-only en
 `operation_observation_session_events`. El monitor es informativo: no cierra
 operaciones ni modifica la probabilidad calculada por el motor.
+
+## Auditoria compacta de escaneos de bots
+
+`autonomous_scan_runs.candidate_audit_json` guarda todos los resultados escalares
+del escaneo en su misma fila: alternativas, confirmacion final e intentos sin
+datos. El contrato `autonomous-scan-audit-v1` incluye niveles y probabilidades sin
+redondear, soporte historico, elegibilidad, motivo de descarte y los umbrales
+vigentes. Los nombres de campos se guardan una sola vez; no incluye velas,
+snapshots ni trazas de reglas. Este registro no tiene limite diario de analisis.
+El muestreo detallado de `autonomous_candidate_observations` sigue independiente,
+sin multiplicar los trabajos de evaluacion ni sus descargas historicas.
+
+`GET /api/bots/scan-audit` permite a MauricioMC consultar manualmente un bot,
+`start_at` y `end_at` con zona horaria, y paginas de 6 escaneos (maximo 12).
+`before_id` recibe el `next_cursor` de la pagina anterior. La consulta no lee
+snapshots, no hace analisis nuevos ni se incorpora al refresco periodico de la
+app. Los escaneos anteriores a la migracion muestran `coverage=legacy_sample`
+y el numero de propuestas cuyo resultado no fue conservado; no se reconstruyen
+como si fueran resultados originales.

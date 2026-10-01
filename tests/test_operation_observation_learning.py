@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import unittest
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -364,6 +365,118 @@ class OperationObservationLearningTests(unittest.TestCase):
                 for item in stage
             )
         )
+
+    def test_long_episode_summary_references_evidence_instead_of_failing_close(self) -> None:
+        signals = [
+            {
+                "stage": stage,
+                "rule_id": f"TEST-RULE-{index:03d}",
+                "formula_role": "observation_only_subset",
+                "formula_outputs": [f"metric_{index}_{part}" for part in range(8)],
+                "category": "observational",
+                "tone": "adverse",
+            }
+            for stage in ("intraday_short", "intraday_wide", "short_swing")
+            for index in range(100)
+        ]
+        checkpoint = {
+            "id": 1,
+            "checkpoint_number": 1,
+            "checkpoint_code": "541o1",
+            "observed_at": "2026-09-27T12:00:00+00:00",
+            "market_price": 100.0,
+            "unrealized_pnl": -1.0,
+            "remaining_seconds": 86_400,
+            "tp_probability": 0.4,
+            "sl_probability": 0.5,
+            "range_probability": 0.1,
+            "decision": "watch",
+            "decision_candidate": False,
+            "contract_quality": "exact",
+            "formal_learning_eligible": True,
+            "recommendation_id": 10,
+            "engine_version": "v0.11",
+            "snapshot_json": "{}",
+            "context_json": json.dumps({"monitor_rule_signals": signals}),
+        }
+        summary = build_observation_episode_summary(
+            session={"id": 1},
+            operation={
+                "id": 541,
+                "user_id": 1,
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "time_horizon": "short_swing",
+                "entry": 100.0,
+                "take_profit": 104.0,
+                "stop_loss": 98.0,
+                "margin": 100.0,
+                "leverage": 2.0,
+                "close_reason": "manual",
+                "final_pnl": -1.0,
+                "closed_at": "2026-10-01T10:00:00+00:00",
+            },
+            checkpoints=[checkpoint],
+            storage={"profile": OBSERVATION_STORAGE_PROFILE},
+            opening_learning=None,
+        )
+        self.assertEqual(summary["counts"]["rule_series"], 300)
+        self.assertLessEqual(
+            len(canonical_json(summary).encode("utf-8")),
+            MAX_SESSION_SUMMARY_BYTES,
+        )
+        self.assertEqual(
+            summary["rule_evolution"]["representation"],
+            "checkpoint_reference",
+        )
+        self.assertEqual(
+            summary["rule_evolution"]["stage_rule_counts"]["short_swing"],
+            100,
+        )
+
+    def test_manual_close_does_not_run_observational_finalizer_in_transaction(self) -> None:
+        from app import CloseOperationPayload, close_operation
+        from app import __dict__ as app_namespace
+
+        class Cursor:
+            rowcount = 1
+
+            def fetchone(self):
+                return {
+                    "id": 541,
+                    "user_id": 3,
+                    "status": "OPEN",
+                    "mode": "contest",
+                    "contest_season_id": 1,
+                }
+
+        class Database:
+            def execute(self, query, params=()):
+                return Cursor()
+
+        @contextmanager
+        def fake_connect():
+            yield Database()
+
+        with (
+            patch.dict(app_namespace, {"connect": fake_connect}),
+            patch("app.current_user", return_value={"id": 3}),
+            patch("app.load_limit_operation_context", return_value={}),
+            patch("app.operation_evaluation_expires_at", return_value=datetime.now(timezone.utc)),
+            patch("app.approximate_pnl", return_value=1.25),
+            patch("app.persist_limit_closure_event"),
+            patch("app.sync_user_cash_balance", return_value={"contest": {"cash_balance": 1001.25}}),
+            patch("app.record_wallet_event"),
+            patch("app.finalize_closed_observation_sessions", side_effect=ValueError("observation_episode_summary_too_large")) as finalizer,
+        ):
+            result = close_operation(
+                541,
+                CloseOperationPayload(close_price=100.0, close_reason="manual"),
+                session_token="test",
+            )
+
+        self.assertEqual(result["status"], "CLOSED")
+        finalizer.assert_not_called()
 
     def test_terminal_payload_uses_only_active_ema_formula_as_predictor(self) -> None:
         cross = "intraday_short::LIB-CAND-EMA-TREND-001::side_adjusted_ema50_vs_ema200_log"

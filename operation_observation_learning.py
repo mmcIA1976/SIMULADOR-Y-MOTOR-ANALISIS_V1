@@ -1846,6 +1846,67 @@ def _compact_rule_evolution_summary(rules: list[dict]) -> dict:
     }
 
 
+def _bound_episode_summary(summary: dict) -> dict:
+    """Fit the session row without discarding its checkpoint-level evidence.
+
+    Long observations can contain more rule/role series than the ordinary
+    episode summary fits. The detailed signals remain in the checkpoint rows;
+    this aggregate first switches to a columnar representation, then to an
+    explicit reference if even that exceeds the database's 16 KiB limit.
+    """
+    def size() -> int:
+        return len(canonical_json(summary).encode("utf-8"))
+
+    if size() <= MAX_SESSION_SUMMARY_BYTES:
+        return summary
+
+    evolution = summary["rule_evolution"]
+    stages = evolution["stages"]
+    full_hash = payload_sha256(evolution)
+    columns = [
+        "rule_id", "formula_role", "category", "tone_counts",
+        "directional", "first_adverse_checkpoint", "last_tone",
+        "adverse_streak", "formula_outputs_or_reference",
+    ]
+    summary["rule_evolution"] = {
+        "schema_version": RULE_EVOLUTION_SUMMARY_SCHEMA_VERSION,
+        "representation": "matrix",
+        "columns": columns,
+        "tone_count_order": evolution["tone_count_order"],
+        "directional_order": evolution["directional_order"],
+        "adverse_streak_order": evolution["adverse_streak_order"],
+        "detail_source": evolution["detail_source"],
+        "full_summary_sha256": full_hash,
+        "stages": {
+            stage: [
+                [
+                    item["rule_id"], item["formula_role"], item["category"],
+                    item["tone_counts"], item["directional"],
+                    item["first_adverse_checkpoint"], item["last_tone"],
+                    item["adverse_streak"],
+                    item.get("formula_outputs", item.get("formula_outputs_reference")),
+                ]
+                for item in items
+            ]
+            for stage, items in stages.items()
+        },
+    }
+    if size() <= MAX_SESSION_SUMMARY_BYTES:
+        return summary
+
+    summary["rule_evolution"] = {
+        "schema_version": RULE_EVOLUTION_SUMMARY_SCHEMA_VERSION,
+        "representation": "checkpoint_reference",
+        "detail_source": evolution["detail_source"],
+        "full_summary_sha256": full_hash,
+        "stage_rule_counts": {
+            stage: len(items) for stage, items in stages.items()
+        },
+        "reason": "aggregate_exceeds_session_storage_limit",
+    }
+    return summary
+
+
 def build_observation_episode_summary(
     *,
     session: dict,
@@ -2061,7 +2122,7 @@ def build_observation_episode_summary(
                 "scope_limit": "single_dependent_episode_not_global_weight_evidence",
             }
         )
-    return {
+    summary = {
         "learning_status": "complete",
         "episode_evaluator_version": OBSERVATION_EPISODE_EVALUATOR_VERSION,
         "contract_version": OBSERVATION_CONTRACT_VERSION,
@@ -2119,6 +2180,7 @@ def build_observation_episode_summary(
             "episode_weighting_required_for_global_inference": True,
         },
     }
+    return _bound_episode_summary(summary)
 
 
 def _finalize_observation_session_learning(

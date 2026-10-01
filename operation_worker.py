@@ -499,7 +499,6 @@ def run_worker_cycle(
 
         if closed:
             with connect_factory() as db:
-                finalize_closed_observation_sessions(db)
                 refresh_learning_conclusions(db)
                 refresh_learning_evaluations(db)
         if reconcile_due:

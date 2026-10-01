@@ -6110,7 +6110,6 @@ def get_operation_observation_session(
     require_observation_operator(user)
     with connect() as db:
         _observation_operation(db, operation_id, int(user["id"]))
-        finalize_closed_observation_sessions(db)
         report = observation_session_report(db, operation_id)
     return {"operation_id": operation_id, "session": report}
 
@@ -6131,7 +6130,6 @@ def change_operation_observation_state(
         )
     with connect() as db:
         _observation_operation(db, operation_id, int(user["id"]))
-        finalize_closed_observation_sessions(db)
         try:
             transition_observation_session(
                 db,
@@ -6204,7 +6202,6 @@ def get_operation_observation_monitor(
     require_observation_operator(user)
     with connect() as db:
         _observation_operation(db, operation_id, int(user["id"]))
-        finalize_closed_observation_sessions(db)
         report = observation_monitor_report(
             db,
             operation_id,
@@ -7220,7 +7217,6 @@ def close_operation(
             contest_season_id=operation.get("contest_season_id"),
             note=payload.close_reason,
         )
-        finalize_closed_observation_sessions(db)
     return {
         "id": operation_id,
         "status": "CLOSED",

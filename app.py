@@ -419,6 +419,7 @@ def load_limit_operation_context(db, operation: dict) -> dict | None:
             SELECT id, analysis_json::jsonb -> 'limit_analysis' AS limit_analysis
             FROM recommendations
             WHERE operation_id = ?
+              AND analysis_type IN ('pre_trade', 'pre_trade_limit')
             ORDER BY created_at DESC
             LIMIT 1
         """
@@ -427,6 +428,7 @@ def load_limit_operation_context(db, operation: dict) -> dict | None:
             SELECT id, analysis_json
             FROM recommendations
             WHERE operation_id = ?
+              AND analysis_type IN ('pre_trade', 'pre_trade_limit')
             ORDER BY created_at DESC
             LIMIT 1
         """
@@ -1946,7 +1948,7 @@ def refresh_learning_conclusions_with_db(db) -> list[dict]:
             SELECT r2.id
             FROM recommendations r2
             WHERE r2.operation_id = o.id
-              AND r2.analysis_type = 'pre_trade'
+              AND r2.analysis_type IN ('pre_trade', 'pre_trade_limit')
             ORDER BY r2.created_at DESC, r2.id DESC
             LIMIT 1
         )
@@ -5969,7 +5971,7 @@ def _opening_recommendation_id(db, operation_id: int) -> int | None:
         """
         SELECT id
         FROM recommendations
-        WHERE operation_id = ? AND analysis_type = 'pre_trade'
+        WHERE operation_id = ? AND analysis_type IN ('pre_trade', 'pre_trade_limit')
         ORDER BY created_at ASC, id ASC
         LIMIT 1
         """,
@@ -6656,6 +6658,9 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
         if payload.margin > cash_balance:
             raise HTTPException(status_code=400, detail="Saldo ficticio insuficiente para bloquear ese margen")
         if payload.recommendation_id is not None:
+            # LIMIT previews have their own two-stage contract and analysis type.
+            # Do not accept an observation or a market preview for a pending order.
+            expected_analysis_type = "pre_trade_limit" if entry_type == "pending" else "pre_trade"
             recommendation = row_to_dict(db.execute(
                 """
                 SELECT id, symbol, side, time_horizon, analysis_json
@@ -6663,9 +6668,9 @@ def create_operation(payload: CreateOperationPayload, session_token: str | None 
                 WHERE id = ?
                   AND user_id = ?
                   AND operation_id IS NULL
-                  AND analysis_type = 'pre_trade'
+                  AND analysis_type = ?
                 """,
-                (payload.recommendation_id, user["id"]),
+                (payload.recommendation_id, user["id"], expected_analysis_type),
             ).fetchone())
             if recommendation is None:
                 raise HTTPException(status_code=400, detail="Analisis previo no valido para esta operacion")

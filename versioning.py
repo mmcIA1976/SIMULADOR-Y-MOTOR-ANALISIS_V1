@@ -3,8 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 
-APP_VERSION = "app-v0.40.17-short-horizon-configurator"
-APP_SEMVER = "0.40.17"
+APP_VERSION = "app-v0.40.18-limit-analysis-link"
+APP_SEMVER = "0.40.18"
 ENGINE_VERSION = "TP-SL-EMPIRICAL-ANALOG-v0.11"
 SCORING_VERSION = "historical-analog-first-touch-v0.11"
 LEARNING_EVALUATOR_VERSION = "learning-v0.17-v11-target-horizon-attribution"

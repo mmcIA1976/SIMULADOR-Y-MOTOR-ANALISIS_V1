@@ -255,7 +255,7 @@ class LimitLifecycleRuntimeTests(unittest.TestCase):
             );
             CREATE TABLE recommendations (
                 id INTEGER PRIMARY KEY, operation_id INTEGER, analysis_json TEXT,
-                created_at TEXT
+                created_at TEXT, analysis_type TEXT DEFAULT 'pre_trade_limit'
             );
             CREATE TABLE price_ticks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, operation_id INTEGER,

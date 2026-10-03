@@ -982,10 +982,11 @@ class OperationObservationLearningTests(unittest.TestCase):
     def test_application_keeps_observations_out_of_trade_creation(self) -> None:
         source = (ROOT / "app.py").read_text(encoding="utf-8")
         self.assertIn(
-            'WHERE operation_id = ? AND analysis_type = \'pre_trade\'',
+            "WHERE operation_id = ? AND analysis_type IN ('pre_trade', 'pre_trade_limit')",
             source,
         )
-        self.assertIn("AND analysis_type = 'pre_trade'", source)
+        self.assertIn("AND analysis_type = ?", source)
+        self.assertIn('expected_analysis_type = "pre_trade_limit" if entry_type == "pending" else "pre_trade"', source)
         self.assertIn(
             "AND analysis_type <> 'operation_observation'",
             source,

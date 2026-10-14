@@ -407,12 +407,18 @@ def _expand_report(report):
 
 
 def pack(report):
+    from observation_numeric_codec import factor_numbers, compact_forecasts
     raw = canonical(report).encode()
     if len(raw) > MAX_EXPANDED_BYTES:
         raise ValueError("numeric_evolution_expanded_budget_exceeded")
-    interned = canonical(_storage_report(report)).encode()
-    result = canonical({"encoding":"lzma-base64-factored-json-v1", "sha256":hashlib.sha256(raw).hexdigest(),
-                        "bytes":len(raw),"data":base64.b64encode(lzma.compress(interned,preset=6)).decode()})
+    def encode(value):
+        value_raw = canonical(value).encode()
+        interned = canonical(factor_numbers(_storage_report(value))).encode()
+        return canonical({"encoding":"lzma-base64-columnar-json-v2", "sha256":hashlib.sha256(value_raw).hexdigest(),
+                          "bytes":len(value_raw),"data":base64.b64encode(lzma.compress(interned,preset=6)).decode()})
+    result = encode(report)
+    if len(result.encode()) > MAX_PAYLOAD_BYTES:
+        result = encode(compact_forecasts(report, hashlib.sha256(raw).hexdigest()))
     if len(result.encode()) > MAX_PAYLOAD_BYTES:
         raise ValueError("numeric_evolution_storage_budget_exceeded")
     return result
@@ -420,13 +426,19 @@ def pack(report):
 
 def unpack(payload):
     envelope = obj(payload)
-    if len(canonical(envelope).encode()) > MAX_PAYLOAD_BYTES or envelope.get("encoding") != "lzma-base64-factored-json-v1" or not 0 < envelope.get("bytes",0) <= MAX_EXPANDED_BYTES:
+    encoding = envelope.get('encoding')
+    if len(canonical(envelope).encode()) > MAX_PAYLOAD_BYTES or encoding not in {"lzma-base64-factored-json-v1", "lzma-base64-columnar-json-v2"} or not 0 < envelope.get("bytes",0) <= MAX_EXPANDED_BYTES:
         raise ValueError("numeric_evolution_invalid_payload")
     decoder = lzma.LZMADecompressor(memlimit=32*1024*1024)
-    data = decoder.decompress(base64.b64decode(envelope["data"],validate=True),max_length=MAX_EXPANDED_BYTES+1)
-    if len(data) > MAX_EXPANDED_BYTES or not decoder.eof or decoder.unused_data:
+    encoded_limit = MAX_EXPANDED_BYTES * (2 if encoding.endswith('v2') else 1)
+    data = decoder.decompress(base64.b64decode(envelope["data"],validate=True),max_length=encoded_limit+1)
+    if len(data) > encoded_limit or not decoder.eof or decoder.unused_data:
         raise ValueError("numeric_evolution_corrupt_payload")
-    report = _expand_report(json.loads(data))
+    document = json.loads(data)
+    if encoding.endswith('v2'):
+        from observation_numeric_codec import expand_numbers
+        document = expand_numbers(document)
+    report = _expand_report(document)
     raw = canonical(report).encode()
     if len(raw)!=envelope["bytes"] or hashlib.sha256(raw).hexdigest()!=envelope["sha256"]:
         raise ValueError("numeric_evolution_corrupt_payload")

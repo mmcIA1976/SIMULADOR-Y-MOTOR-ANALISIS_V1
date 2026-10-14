@@ -182,6 +182,43 @@ class NumericEvolutionTests(unittest.TestCase):
         self.assertEqual(canonical(restored),canonical(report))
         self.assertEqual(restored["series"][0]["last"],values[-1])
 
+    def test_legacy_storage_remains_readable(self):
+        import base64, hashlib, lzma
+        from observation_numeric_evolution import _storage_report
+        report = build_evolution(OP, checkpoints([.123456789, .2, .3]))
+        raw = canonical(report).encode()
+        legacy = canonical({'encoding':'lzma-base64-factored-json-v1',
+            'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+            'data':base64.b64encode(lzma.compress(canonical(_storage_report(report)).encode())).decode()})
+        self.assertEqual(unpack(legacy), report)
+
+    def test_codec_preserves_signed_zero_and_small_numbers(self):
+        import math
+        from observation_numeric_codec import factor_numbers, expand_numbers
+        value = {'rows': [[-0.0, 0.0, 1e-12, .12345678901234567], [True, None, 2**60]]}
+        restored = expand_numbers(factor_numbers(value))
+        self.assertEqual(canonical(value), canonical(restored))
+        self.assertEqual(math.copysign(1, restored['rows'][0][0]), -1)
+
+    def test_codec_rejects_bad_references(self):
+        from observation_numeric_codec import expand_numbers
+        with self.assertRaisesRegex(ValueError, 'invalid_reference'):
+            expand_numbers({'floats':'','texts':[],'shapes':[],'root':[-3, 0]})
+
+    def test_compact_profile_preserves_every_predictor_and_inventories_context(self):
+        from observation_numeric_codec import compact_forecasts
+        report = build_evolution(OP, checkpoints([.1234567890123456,.2,.3]))
+        context = copy.deepcopy(report['series'][0])
+        context.update(key='raw-context',metric='sample_counter',forecast_status='evolution_only_not_a_predeclared_forecast_variable',forward={})
+        report['series'].append(context)
+        original = copy.deepcopy(report)
+        compact = compact_forecasts(report, 'f'*64)
+        self.assertEqual(report, original)
+        self.assertEqual(compact['series'], original['series'][:1])
+        self.assertEqual(compact['joint_patterns'], original['joint_patterns'])
+        self.assertEqual(compact['storage_profile']['original_series'], 2)
+        self.assertEqual(compact['storage_profile']['omitted_context_series']['intraday_short'][RULE], ['sample_counter'])
+
 
 class StoreTests(unittest.TestCase):
     class FakeDb:
@@ -224,6 +261,17 @@ class StoreTests(unittest.TestCase):
         with patch("observation_evolution_store.pack",side_effect=ValueError("too_large")):
             self.assertEqual(persist_evolution(db,op,rows)["status"],"blocked")
 
+    def test_legacy_failure_recovers_without_rewriting_completed_or_source_rows(self):
+        from observation_evolution_store import VERSION, STORE_VERSION
+        db = self.FakeDb(); op, rows = self.source()
+        db.row = {'status':'blocked','checkpoint_count':len(rows),'payload_bytes':145,
+                  'input_sha256':source_identity(op,rows,20),'evaluator_version':VERSION}
+        result = persist_evolution(db,op,rows)
+        self.assertEqual(result['status'], 'complete')
+        self.assertTrue(result['recovered_legacy_failure'])
+        self.assertEqual(result['storage_version'], STORE_VERSION)
+        self.assertEqual(db.writes, 1)
+
     def test_hash_ignores_unconsumed_snapshot_fields_but_not_eligibility(self):
         op,rows=self.source()
         before=source_identity(op,rows,20)
@@ -246,6 +294,47 @@ class StoreTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
+    def test_explicit_repair_preserves_controls(self):
+        from contextlib import nullcontext
+        from unittest.mock import patch, MagicMock
+        from app import repair_operation_observation_rule_evolution
+        rows = checkpoints([.1,.2,.3])
+        with patch('app.current_user',return_value={'id':1,'username':'mauriciomc'}), \
+             patch('app.connect',return_value=nullcontext(MagicMock())), \
+             patch('app._observation_operation',return_value={'status':'CLOSED'}), \
+             patch('observation_evolution_store.persisted_status',return_value={'status':'blocked'}), \
+             patch('observation_evolution_store.load_episode',return_value=({**OP,'status':'CLOSED'},{'planned_interval_minutes':20},rows)), \
+             patch('observation_evolution_store.persist_evolution',return_value={'status':'complete','payload_bytes':1000}) as persist:
+            result = repair_operation_observation_rule_evolution(1,session_token='test')
+        self.assertEqual(result['checkpoint_writes'],0)
+        self.assertEqual(result['status'],'complete')
+        persist.assert_called_once()
+
+    def test_repair_does_not_reload_completed_evaluation(self):
+        from contextlib import nullcontext
+        from unittest.mock import patch, MagicMock
+        from app import repair_operation_observation_rule_evolution
+        with patch('app.current_user',return_value={'id':1,'username':'mauriciomc'}), \
+             patch('app.connect',return_value=nullcontext(MagicMock())), \
+             patch('app._observation_operation',return_value={'status':'CLOSED'}), \
+             patch('observation_evolution_store.persisted_status',return_value={'status':'complete'}), \
+             patch('observation_evolution_store.load_episode') as load:
+            result = repair_operation_observation_rule_evolution(1,session_token='test')
+        self.assertTrue(result['reused'])
+        load.assert_not_called()
+
+    def test_repair_rejects_open_operation(self):
+        from contextlib import nullcontext
+        from unittest.mock import patch, MagicMock
+        from fastapi import HTTPException
+        from app import repair_operation_observation_rule_evolution
+        with patch('app.current_user',return_value={'id':1,'username':'mauriciomc'}), \
+             patch('app.connect',return_value=nullcontext(MagicMock())), \
+             patch('app._observation_operation',return_value={'status':'OPEN'}):
+            with self.assertRaises(HTTPException) as err:
+                repair_operation_observation_rule_evolution(1,session_token='test')
+        self.assertEqual(err.exception.status_code,409)
+
     def test_stored_report_does_not_reload_source_snapshots(self):
         from contextlib import nullcontext
         from unittest.mock import patch, MagicMock

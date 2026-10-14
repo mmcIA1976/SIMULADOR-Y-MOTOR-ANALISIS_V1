@@ -6192,6 +6192,31 @@ def get_operation_observation_rule_evolution(
         return result
 
 
+@app.post("/api/operations/{operation_id}/observation-rule-evolution/repair")
+def repair_operation_observation_rule_evolution(
+    operation_id: int,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    """Explicit owner repair of a derived result; checkpoint facts stay immutable."""
+    from observation_evolution_store import persisted_status, load_episode, persist_evolution
+    user = current_user(session_token)
+    require_observation_operator(user)
+    with connect() as db:
+        operation = _observation_operation(db, operation_id, int(user['id']))
+        if operation['status'] != 'CLOSED':
+            raise HTTPException(status_code=409, detail='numeric_evolution_closed_operation_required')
+        status = persisted_status(db, operation_id)
+        if status.get('status') == 'complete':
+            return {**status, 'reused':True, 'production_effect':'none'}
+        try:
+            source, session, rows = load_episode(db, operation_id)
+            result = persist_evolution(db, source, rows,
+                interval_minutes=session['planned_interval_minutes'] or 20)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {**result, 'operation_id':operation_id, 'checkpoint_writes':0, 'production_effect':'none'}
+
+
 @app.get("/api/operations/{operation_id}/observation-monitor")
 def get_operation_observation_monitor(
     operation_id: int,
@@ -6499,7 +6524,7 @@ def record_operation_observation_checkpoint(
             range_probability=float(result["range_probability"]),
             decision=checkpoint_decision,
             decision_candidate=(
-                closure_advisory.get("level") == "close_candidate"
+                closure_advisory.get("level") in {"close_candidate", "protect_candidate"}
             ),
             contract_quality="exact",
             evidence_source="application_live_observation",

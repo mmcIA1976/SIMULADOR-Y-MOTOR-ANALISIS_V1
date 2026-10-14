@@ -7,6 +7,16 @@ from observation_numeric_evolution import (
 )
 
 MAX_SOURCE_BYTES = 8_000_000
+# Storage profile is independent of the unchanged numerical formula version.
+# Failed legacy rows remain immutable; recovery adds at most one bounded result.
+STORE_VERSION = VERSION + ':lossless-v2'
+
+
+def _stored_row(db, operation_id, columns):
+    return db.execute(f"""SELECT {columns} FROM operation_observation_numeric_evaluations
+        WHERE operation_id=? AND evaluator_version IN (?,?)
+        ORDER BY CASE WHEN evaluator_version=? THEN 0 ELSE 1 END LIMIT 1""",
+        (int(operation_id), STORE_VERSION, VERSION, STORE_VERSION)).fetchone()
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS public.operation_observation_numeric_evaluations (
@@ -86,12 +96,8 @@ def load_episode(db, operation_id):
 
 
 def persisted_status(db, operation_id):
-    row=db.execute("""
-        SELECT status,checkpoint_count,payload_bytes,evaluator_version,created_at
-        FROM operation_observation_numeric_evaluations
-        WHERE operation_id=? AND evaluator_version=?
-    """,(int(operation_id),VERSION)).fetchone()
-    return dict(row) if row else {"status":"not_evaluated","evaluator_version":VERSION}
+    row = _stored_row(db, operation_id, 'status,checkpoint_count,payload_bytes,evaluator_version,created_at')
+    return dict(row) if row else {"status":"not_evaluated","evaluator_version":STORE_VERSION}
 
 
 def persist_evolution(db, operation, checkpoints, *, interval_minutes=20):
@@ -107,16 +113,13 @@ def persist_evolution(db, operation, checkpoints, *, interval_minutes=20):
         identity_error = type(exc).__name__
         identity = digest({"operation_id":int(operation["id"]),
             "unreadable_contract_sha256":hashlib.sha256(str(checkpoints).encode()).hexdigest()})
-    existing=db.execute("""
-        SELECT status,checkpoint_count,payload_bytes,input_sha256
-        FROM operation_observation_numeric_evaluations
-        WHERE operation_id=? AND evaluator_version=?
-    """,(int(operation["id"]),VERSION)).fetchone()
+    existing = _stored_row(db, operation['id'], 'status,checkpoint_count,payload_bytes,input_sha256,evaluator_version')
     # Immutable closed checkpoint facts: finalization retries perform no rewrite.
     if existing:
         if existing["input_sha256"] != identity:
             raise ValueError("numeric_evolution_source_changed_requires_review")
-        return {**dict(existing),"reused":True,"version":VERSION}
+        if existing['status'] == 'complete' or existing.get('evaluator_version', STORE_VERSION) == STORE_VERSION:
+            return {**dict(existing),"reused":True,"version":VERSION}
     try:
         if identity_error:
             raise ValueError("numeric_evolution_unreadable_source:" + identity_error)
@@ -136,9 +139,11 @@ def persist_evolution(db, operation, checkpoints, *, interval_minutes=20):
              checkpoint_count,status,input_sha256,payload_json,payload_bytes)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(operation_id,evaluator_version) DO NOTHING
-    """,(int(operation["id"]),VERSION,operation["symbol"],operation["side"],operation["time_horizon"],
+    """,(int(operation["id"]),STORE_VERSION,operation["symbol"],operation["side"],operation["time_horizon"],
           operation["started_at"],operation["closed_at"],len(checkpoints),status,identity,payload,size))
-    return {"status":status,"version":VERSION,"checkpoint_count":len(checkpoints),"payload_bytes":size,"reused":False}
+    return {"status":status,"version":VERSION,"storage_version":STORE_VERSION,
+            "checkpoint_count":len(checkpoints),"payload_bytes":size,"reused":False,
+            "recovered_legacy_failure":bool(existing)}
 
 
 def source_identity(operation, checkpoints, interval_minutes):
@@ -163,8 +168,7 @@ def _snapshot(value):
 
 
 def stored_report(db, operation_id):
-    row=db.execute("""SELECT status,payload_json FROM operation_observation_numeric_evaluations
-        WHERE operation_id=? AND evaluator_version=?""",(int(operation_id),VERSION)).fetchone()
+    row = _stored_row(db, operation_id, 'status,payload_json')
     if not row:
         return None
     return unpack(row["payload_json"]) if row["status"]=="complete" else _snapshot(row["payload_json"])
@@ -173,12 +177,15 @@ def stored_report(db, operation_id):
 def historical_comparison(db, report, *, limit=10):
     # This is an explicit audit request, never part of a web polling loop.
     rows=db.execute("""
-        SELECT payload_json FROM operation_observation_numeric_evaluations
-        WHERE symbol=? AND side=? AND time_horizon=? AND evaluator_version=?
-          AND status='complete' AND closed_at<=? AND operation_id<>?
-        ORDER BY closed_at DESC LIMIT ?
-    """,(report["symbol"],report["side"],report["time_horizon"],VERSION,
-          report["started_at"],int(report["operation_id"]),max(1,min(20,int(limit))))).fetchall()
+        SELECT payload_json FROM (
+          SELECT DISTINCT ON (operation_id) payload_json,closed_at,operation_id
+          FROM operation_observation_numeric_evaluations
+          WHERE symbol=? AND side=? AND time_horizon=? AND evaluator_version IN (?,?)
+            AND status='complete' AND closed_at<=? AND operation_id<>?
+          ORDER BY operation_id,CASE WHEN evaluator_version=? THEN 0 ELSE 1 END
+        ) episodes ORDER BY closed_at DESC LIMIT ?
+    """,(report["symbol"],report["side"],report["time_horizon"],STORE_VERSION,VERSION,
+          report["started_at"],int(report["operation_id"]),STORE_VERSION,max(1,min(20,int(limit))))).fetchall()
     return compare_episodes(report,[unpack(row["payload_json"]) for row in rows])
 
 
@@ -197,7 +204,8 @@ def report_view(report, *, rule_id=None, stage=None, metric=None):
         "checkpoint_count":report["checkpoint_count"],"variable_series":len(report["series"]),
         "rule_inventory":list(inventory.values()),"series":selected,
         "joint_patterns":[p for p in report["joint_patterns"] if p["left"] in selected_keys or p["right"] in selected_keys],
-        "semantics":report["semantics"],"availability":report["availability"]}
+        "semantics":report["semantics"],"availability":report["availability"],
+        "storage_profile":report.get('storage_profile',{'version':'full-lossless','original_series':len(report['series'])})}
     def public(item):
         if isinstance(item, dict):
             return {k:public(v) for k,v in item.items() if not k.startswith("_")}

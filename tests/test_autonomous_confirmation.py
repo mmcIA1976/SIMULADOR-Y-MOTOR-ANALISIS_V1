@@ -332,6 +332,10 @@ class ScannerIntegrationTests(unittest.TestCase):
                     statement = statement.replace("::jsonb", "").replace("jsonb_typeof", "json_type")
                     self.connection.execute(statement)
         contest.ensure_autonomous_storage(Schema())
+        self.connection.execute("""CREATE TABLE operations (
+            id INTEGER PRIMARY KEY, user_id INTEGER, contest_season_id INTEGER,
+            mode TEXT DEFAULT 'contest', status TEXT DEFAULT 'OPEN',
+            symbol TEXT, side TEXT, entry REAL, margin REAL, leverage REAL)""")
         self.connection.execute("""INSERT INTO autonomous_contest_participants
             (id, code, user_id, display_name, time_horizon, policy_version, cadence_minutes,
              daily_operation_limit, max_open_positions, edge_threshold, min_tp_probability,
@@ -339,6 +343,13 @@ class ScannerIntegrationTests(unittest.TestCase):
             VALUES (1,'auto_intraday_short',27,'Short','intraday_short','v',15,3,3,.1,.3,.55,80,100,1,'[]')""")
         self.connection.commit()
         self.opened = []
+        self.policy = contest.PARTICIPANT_POLICIES[0]
+        self.side = "long"
+        self.candidate_symbol = "BTCUSDT"
+        self.guard_prices = {s: 100. for s in contest.SYMBOLS}
+        self.execution_guard_prices = None
+        self.guard_material_missing = False
+        self.guard_anchor_prices = {}
         self.start = datetime(2026, 9, 22, 0, 2, tzinfo=timezone.utc)
 
     def tearDown(self):
@@ -359,9 +370,14 @@ class ScannerIntegrationTests(unittest.TestCase):
             raise
 
     def scan(self, minute, *, bad=False, fail_insert=False,
-             fail_analysis=False, fail_final=False, worker_price_fail=False, planned=False):
+             fail_analysis=False, fail_final=False, worker_price_fail=False, planned=False,
+             dry_run=False, cash=1000.):
         original_analyze = contest.analyze_candidates
         def analyze(policy, prices, at, **kwargs):
+            if not kwargs.get("symbols") and not self.guard_material_missing:
+                for symbol in contest.SYMBOLS:
+                    kwargs["kline_loader"](symbol, "5m", contest.market_guard.REQUIRED_CANDLES,
+                                           end_time_ms=int(at.timestamp()*1000))
             if planned and not fail_analysis and not fail_final:
                 from tests.test_short_trade_planner import material
                 data, _ = material()
@@ -375,7 +391,13 @@ class ScannerIntegrationTests(unittest.TestCase):
                         liquidation_contexts={}, order_book_contexts={}, symbols=("BTCUSDT",),
                         sides=("long",), fixed_candidate=kwargs.get("fixed_candidate"),
                         previous_confirmations=kwargs.get("previous_confirmations", ()))
-            value = candidate(edge=.09 if bad else .15)
+            value = candidate(edge=.09 if bad else .15, symbol=self.candidate_symbol)
+            value.side = self.side
+            value.time_horizon = policy.time_horizon
+            value.entry = prices[value.symbol]
+            value.take_profit, value.stop_loss = value.entry * 1.01, value.entry * .99
+            if self.side == "short":
+                value.take_profit, value.stop_loss = value.entry * .99, value.entry * 1.01
             value.analyzed_at = at
             value.sigma = .01
             value.artifact_id = "frozen-artifact"
@@ -388,7 +410,9 @@ class ScannerIntegrationTests(unittest.TestCase):
         def fresh_prices(db, symbols, **kwargs):
             if worker_price_fail and len(tuple(symbols)) == 1:
                 return {}
-            return {s: 100. for s in contest.SYMBOLS}
+            if self.execution_guard_prices is not None and len(tuple(symbols)) == 1:
+                self.guard_prices = dict(self.execution_guard_prices)
+            return dict(self.guard_prices)
 
         def opening(db, **kwargs):
             if fail_insert:
@@ -396,18 +420,120 @@ class ScannerIntegrationTests(unittest.TestCase):
             self.opened.append(kwargs["candidate"].analyzed_at)
             return 700 + len(self.opened), 900 + len(self.opened)
 
-        with patch.object(contest, "PARTICIPANT_POLICIES", (contest.PARTICIPANT_POLICIES[0],)), \
+        def klines(symbol, interval, count, start_time_ms=None, end_time_ms=None):
+            self.assertEqual(interval, "5m")
+            step = contest.market_guard.INTERVAL_MS
+            end = end_time_ms // step * step - 1
+            rows = [[end - i*step - step + 1, 100., 110., 90., 100., 1., end - i*step]
+                    for i in range(count - 1, -1, -1)]
+            for name, value in self.guard_anchor_prices.items():
+                rows[-contest.market_guard.WINDOWS[name] - 1][4] = value
+            return rows
+
+        with patch.object(contest, "PARTICIPANT_POLICIES", (self.policy,)), \
              patch.object(contest, "ensure_contest_entries"), \
              patch.object(contest, "fresh_market_prices", side_effect=fresh_prices), \
              patch.object(contest, "_load_order_book_contexts", return_value={}), \
              patch.object(contest, "_load_liquidation_contexts", return_value={}), \
              patch.object(contest, "analyze_candidates", side_effect=analyze), \
              patch.object(contest, "_daily_operation_count", side_effect=lambda *a, **kw: len(self.opened)), \
-             patch.object(contest, "_available_contest_cash", return_value=1000.), \
+             patch.object(contest, "_available_contest_cash", return_value=cash), \
              patch.object(contest, "_open_selected_operation", side_effect=opening):
             return contest.run_due_scans(self.connect, lambda _: {"id": 1},
-                                        dry_run=False, bootstrap=False,
+                                        dry_run=dry_run, bootstrap=False,
+                                        kline_loader=klines,
                                         now=self.start + timedelta(minutes=minute))
+
+    def configure_guard_position(self, policy, side):
+        self.policy, self.side, self.candidate_symbol = policy, side, "ETHUSDT"
+        self.connection.execute("UPDATE autonomous_contest_participants SET code=?,time_horizon=?,last_scan_slot_at=NULL",
+                                (policy.code, policy.time_horizon))
+        self.connection.execute("DELETE FROM operations")
+        self.connection.execute("DELETE FROM autonomous_candidate_observations")
+        self.connection.execute("DELETE FROM autonomous_scan_runs")
+        self.connection.execute("""INSERT INTO operations(user_id,contest_season_id,symbol,side,entry,margin,leverage)
+            VALUES(27,1,'BTCUSDT',?,100,100,10)""", (side,))
+        self.connection.commit()
+        self.guard_prices = {s: (99. if side == "long" else 101.) for s in contest.SYMBOLS}
+
+    def test_all_bots_veto_cross_pair_losing_exposure_in_real_scanner_and_dry_run(self):
+        for policy in contest.PARTICIPANT_POLICIES:
+            for side in ("long", "short"):
+                for dry_run in (False, True):
+                    with self.subTest(bot=policy.code, side=side, dry_run=dry_run):
+                        self.configure_guard_position(policy, side)
+                        outcome = self.scan(0, dry_run=dry_run)["scans"][0]
+                        self.assertEqual(outcome["status"], "no_trade")
+                        self.assertEqual(outcome["reason"], "market_against_losing_" + side + "_exposure")
+                        self.assertEqual(self.opened, [])
+                        raw = self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()[0]
+                        saved = json.loads(raw)
+                        evidence = saved["gates"]["market_exposure_guard"]["panel"]
+                        self.assertEqual(evidence["groups"][0]["symbol"], "BTCUSDT")
+                        self.assertEqual(evidence["decisions"][side]["status"], "blocked")
+                        self.assertEqual(saved["record_count"], 1)
+                        self.assertEqual(self.connection.execute("SELECT COUNT(*) FROM operations WHERE status='OPEN'").fetchone()[0], 1)
+
+    def test_execution_recheck_blocks_market_turn_after_candidate_confirmation(self):
+        self.configure_guard_position(contest.PARTICIPANT_POLICIES[2], "long")
+        self.guard_prices = {s: 100. for s in contest.SYMBOLS}
+        self.execution_guard_prices = {s: 99. for s in contest.SYMBOLS}
+        # Candidate still has a valid price; the rest of the market moves against the BTC book.
+        self.execution_guard_prices["ETHUSDT"] = 100.
+        result = self.scan(0)["scans"][0]
+        self.assertEqual(result["reason"], "market_against_losing_long_exposure")
+        self.assertEqual(result["status"], "no_trade")
+        self.assertEqual(self.opened, [])
+        raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()[0])
+        checks = raw["gates"]["market_exposure_guard"]
+        self.assertEqual(checks["panel"]["decisions"]["long"]["status"], "allowed")
+        self.assertEqual(checks["execution"]["decisions"]["long"]["status"], "blocked")
+
+    def test_all_bots_share_recent_direction_despite_opposite_day_background(self):
+        for side, background in (("long", 90.), ("short", 110.)):
+            market_states = []
+            for policy in contest.PARTICIPANT_POLICIES:
+                self.configure_guard_position(policy, side)
+                self.guard_anchor_prices = {"4h": background, "24h": background}
+                result = self.scan(0)["scans"][0]
+                self.assertEqual(result["reason"], "market_against_losing_" + side + "_exposure")
+                raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()[0])
+                market_states.append(raw["gates"]["market_exposure_guard"]["panel"]["market"])
+            self.assertEqual(market_states[0], market_states[1])
+            self.assertEqual(market_states[1], market_states[2])
+        self.assertEqual(self.opened, [])
+
+    def test_market_conflict_is_persisted_and_does_not_open_even_with_valid_forecast(self):
+        self.configure_guard_position(contest.PARTICIPANT_POLICIES[2], "long")
+        self.guard_anchor_prices = {"15m": 101., "1h": 98.}
+        result = self.scan(0)["scans"][0]
+        self.assertEqual(result["status"], "no_trade")
+        self.assertEqual(result["reason"], "market_recent_conflict_with_losing_exposure")
+        self.assertEqual(self.opened, [])
+
+    def test_guard_missing_data_pauses_short_lineage_and_resumes_without_losing_controls(self):
+        self.configure_guard_position(contest.PARTICIPANT_POLICIES[0], "long")
+        self.guard_prices = {s: 101. for s in contest.SYMBOLS}
+        self.scan(0)
+        self.scan(15)
+        self.guard_material_missing = True
+        self.guard_prices = {s: 99. for s in contest.SYMBOLS}
+        self.assertEqual(self.scan(30)["scans"][0]["reason"], "market_exposure_guard_data_unavailable")
+        raw = json.loads(self.connection.execute("SELECT observational_json FROM autonomous_candidate_observations ORDER BY id DESC LIMIT 1").fetchone()[0])
+        self.assertEqual(raw["confirmation"]["state"], "paused")
+        self.assertEqual(raw["confirmation"]["controls"], 2)
+        self.assertEqual(self.opened, [])
+        self.guard_material_missing = False
+        self.guard_prices = {s: 101. for s in contest.SYMBOLS}
+        self.assertEqual(self.scan(45)["scans"][0]["status"], "opened")
+
+    def test_guard_does_not_mix_other_bots_and_has_no_forced_short_opening(self):
+        self.configure_guard_position(contest.PARTICIPANT_POLICIES[2], "long")
+        self.connection.execute("UPDATE operations SET user_id=99")
+        result = self.scan(0)["scans"][0]
+        self.assertEqual(result["status"], "opened")
+        raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()[0])
+        self.assertEqual(raw["gates"]["market_exposure_guard"]["panel"]["book"]["long"]["open_count"], 0)
 
     def test_three_scans_open_once_and_duplicate_scan_does_not_advance(self):
         for minute in (0, 15):

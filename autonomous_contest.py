@@ -13,6 +13,7 @@ import liquidation_data
 import market_data
 import autonomous_confirmation as entry_confirmation
 import autonomous_scan_audit as scan_audit
+import autonomous_market_guard as market_guard
 import short_trade_planner as short_planner
 from analysis_engine import TradeProposal
 from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
@@ -38,7 +39,7 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.7-wide-neutral-reach"
+POLICY_VERSION = "autonomous-contest-policy-v0.9-common-market-exposure-guard"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 WIDE_GEOMETRY_VERSION = "wide-24h-neutral-reach-v1"
@@ -152,11 +153,15 @@ class Candidate:
     confirmation: dict = field(default_factory=dict)
     trade_plan: dict = field(default_factory=dict)
     horizon_geometry: dict = field(default_factory=dict)
+    entry_guard: dict = field(default_factory=dict)
+    market_guard_context: dict = field(default_factory=dict, repr=False)
+    market_guard_evidence: dict = field(default_factory=dict, repr=False)
 
     @property
     def eligible_base(self) -> bool:
         return (
             self.analysis_status == "evaluated"
+            and self.entry_guard.get("status") not in {"blocked", "deferred"}
             and self.rejection_code is None
             and self.tp_probability is not None
             and self.sl_probability is not None
@@ -423,6 +428,31 @@ class MemoizedKlineLoader:
             "cache_hits": self.hits,
             "cached_pages": len(self._cache),
         }
+
+    def closed_tail(self, symbol: str, interval: str, at_ms: int, count: int) -> list[list]:
+        """Read already loaded closed pages, including nested stages. No I/O.
+
+        Do not substitute a bot's hourly/6h data if 5m history is unavailable.
+        Conflicting closed prices fail closed instead of choosing page order.
+        """
+        if not 1 <= count <= market_guard.REQUIRED_CANDLES:
+            raise ValueError("market_guard_cache_tail_budget_exceeded")
+        by_time, conflicts = {}, set()
+        for key, rows in self._cache.items():
+            if key[:2] != (symbol.upper(), interval):
+                continue
+            for row in rows:
+                if int(row[6]) > at_ms:
+                    continue
+                stamp = int(row[0])
+                existing = by_time.get(stamp)
+                if existing is not None and (int(existing[6]), float(existing[4])) != (int(row[6]), float(row[4])):
+                    conflicts.add(stamp)
+                by_time[stamp] = row
+        times = sorted(by_time)[-count:]
+        if conflicts.intersection(times):
+            raise ValueError("market_guard_conflicting_closed_prices")
+        return [list(by_time[t]) for t in times]
 
 
 def utc_now() -> datetime:
@@ -1443,6 +1473,9 @@ def _prepare_selected_analysis(
     executed_at: datetime,
 ) -> dict:
     result = dict(candidate.analysis_result or {})
+    if candidate.market_guard_evidence:
+        # Selection policy evidence, not a new input to the probability engine.
+        result["autonomous_market_guard"] = candidate.market_guard_evidence
     analysis_entry = float(candidate.entry)
     execution_drift = abs(float(execution_entry) / analysis_entry - 1.0)
     entry_context = {
@@ -1509,6 +1542,7 @@ def _prepare_selected_analysis(
     version_contract = current_version_contract()
     version_contract["autonomous_policy_version"] = POLICY_VERSION
     version_contract["autonomous_sizing_policy_version"] = SIZING_POLICY_VERSION
+    version_contract["autonomous_market_guard_version"] = market_guard.VERSION
     if candidate.confirmation:
         version_contract["autonomous_entry_confirmation_version"] = entry_confirmation.CONFIRMATION_VERSION
     if candidate.trade_plan:
@@ -1536,6 +1570,12 @@ def _open_selected_operation(
     if candidate.analysis_result is None:
         raise ValueError("selected_candidate_analysis_missing")
     user_id = int(participant["user_id"])
+    # Mandatory even for callers other than run_due_scans: no unguarded insert.
+    evidence = _assess_entry_guard(db, participant, season_id,
+                                  candidate.market_guard_context, executed_at)
+    market_guard.apply([candidate], evidence, candidate.market_guard_context)
+    if candidate.entry_guard["status"] != "allowed":
+        raise ValueError(candidate.entry_guard["reason"])
     if _daily_operation_count(
         db,
         participant,
@@ -1695,6 +1735,28 @@ def _load_liquidation_contexts(prices: dict[str, float]) -> dict:
     return liquidations
 
 
+def _assess_entry_guard(db, participant, season_id, context, at):
+    book = market_guard.read_book(db, int(participant["user_id"]), season_id)
+    symbols = set(SYMBOLS) | {row["symbol"] for row in book}
+    marks = fresh_market_prices(db, symbols, now=at)
+    return market_guard.assess(context, book, marks, at)
+
+
+def _common_market_context(kline_loader, at):
+    """Same source/anchors for every bot; the analysis already loads 5m bars."""
+    materials = {}
+    for symbol in SYMBOLS:
+        try:
+            raw = kline_loader.closed_tail(symbol, "5m", int(at.timestamp() * 1000),
+                                           market_guard.REQUIRED_CANDLES)
+            materials[symbol] = {"interval_seconds": 300,
+                                 "selected": [normalize_kline(row) for row in raw]}
+        except (IndexError, TypeError, ValueError):
+            # Missing/inconsistent cache is not a neutral market signal.
+            continue
+    return market_guard.capture_context(materials, SYMBOLS, at)
+
+
 def run_due_scans(
     connect_factory,
     season_loader: Callable[[Any], dict],
@@ -1807,7 +1869,19 @@ def run_due_scans(
             previous_confirmations=previous,
             audit_records=audit_records,
         )
+        guard_context = _common_market_context(shared_kline_loader, analysis_at)
+        guard_at = current if now is not None else utc_now()
+        try:
+            with connect_factory() as db:
+                guard_panel = _assess_entry_guard(db, participant, int(season["id"]),
+                                                guard_context, guard_at)
+        except Exception:
+            logger.exception("autonomous entry guard data unavailable")
+            guard_panel = market_guard.unavailable(guard_at)
+        market_guard.apply(candidates, guard_panel, guard_context)
+        guard_execution = None
         scan_audit.ensure_candidate_records(audit_records, candidates, policy)
+        scan_audit.apply_entry_guard(audit_records, guard_panel, phase="panel")
         if entry_confirmation.enabled(policy):
             entry_confirmation.advance(
                 candidates, policy, previous, slot=slot,
@@ -1863,6 +1937,8 @@ def run_due_scans(
                     audit_records, [confirmed], policy, phase="confirmation",
                 )
                 confirmed.confirmation = dict(selected.confirmation)
+                market_guard.apply([confirmed], guard_panel, guard_context)
+                scan_audit.apply_entry_guard(audit_records, guard_panel, phase="confirmation")
                 for index, candidate in enumerate(candidates):
                     if (
                         candidate.symbol == confirmed.symbol
@@ -1920,6 +1996,14 @@ def run_due_scans(
         if (entry_confirmation.enabled(policy) and selected is None
                 and confirmation_reason is None and eligible):
             reason = "awaiting_30m_candidate_confirmation"
+        if selected is None and confirmation_reason is None:
+            guard_reasons = [c.entry_guard["reason"] for c in candidates
+                             if c.rejection_code == c.entry_guard.get("reason")
+                             and c.entry_guard.get("status") in {"blocked", "deferred"}]
+            if guard_reasons:
+                reason = ("market_exposure_guard_data_unavailable"
+                          if "market_exposure_guard_data_unavailable" in guard_reasons
+                          else guard_reasons[0])
         operation_id = recommendation_id = None
         try:
             with connect_factory() as db:
@@ -1932,7 +2016,13 @@ def run_due_scans(
                         now=execution_at,
                     )
                     execution_entry = execution_prices.get(selected.symbol)
-                    if execution_entry is None:
+                    guard_execution = _assess_entry_guard(
+                        db, participant, season_id, guard_context, execution_at,
+                    )
+                    market_guard.apply([selected], guard_execution, guard_context)
+                    if selected.entry_guard["status"] != "allowed":
+                        status, reason = "no_trade", selected.entry_guard["reason"]
+                    elif execution_entry is None:
                         status = "no_trade"
                         reason = "fresh_worker_execution_price_unavailable"
                     elif not execution_drift_is_acceptable(
@@ -1970,17 +2060,37 @@ def run_due_scans(
                                 status = "no_cash"
                                 reason = str(exc)
                             else:
-                                operation_id, recommendation_id = _open_selected_operation(
-                                    db,
-                                    participant=participant,
-                                    season_id=season_id,
-                                    candidate=selected,
-                                    policy=policy,
-                                    execution_entry=execution_entry,
-                                    executed_at=execution_at,
-                                )
-                                status = "opened"
-                                reason = "best_eligible_candidate_opened"
+                                try:
+                                    operation_id, recommendation_id = _open_selected_operation(
+                                        db,
+                                        participant=participant,
+                                        season_id=season_id,
+                                        candidate=selected,
+                                        policy=policy,
+                                        execution_entry=execution_entry,
+                                        executed_at=execution_at,
+                                    )
+                                except ValueError as exc:
+                                    if not str(exc).startswith(("market_exposure_guard_", "market_against_losing_", "market_recent_conflict_")):
+                                        raise
+                                    status, reason = "no_trade", str(exc)
+                                else:
+                                    status = "opened"
+                                    reason = "best_eligible_candidate_opened"
+                                guard_execution = selected.market_guard_evidence
+                if guard_execution is not None:
+                    scan_audit.apply_entry_guard(audit_records, guard_execution, phase="confirmation")
+                if selected is not None and selected.confirmation and selected.entry_guard.get("status") in {"blocked", "deferred"}:
+                    if selected.entry_guard["status"] == "deferred":
+                        entry_confirmation.pause(selected,
+                            {"confirmation": dict(selected.confirmation),
+                             "analyzed_at": selected.analyzed_at.isoformat(),
+                             "artifact_id": selected.artifact_id},
+                            slot=slot, reason=reason)
+                    else:
+                        selected.confirmation.update(state="discarded", end_reason=reason,
+                                                     counterfactual_role="none")
+                eligible = sum(candidate.eligible_for(policy) for candidate in candidates)
                 if entry_confirmation.enabled(policy):
                     if selected is not None and status in {"opened", "would_open"}:
                         # The confirmed endpoint is the executable trade, not
@@ -2041,6 +2151,8 @@ def run_due_scans(
                                     if policy.code == "auto_intraday_short" else WIDE_MAX_UNRESOLVED_PROBABILITY
                                     if policy.code == "auto_intraday_wide" else MAX_UNRESOLVED_PROBABILITY),
                                 "min_analogs_per_stage": MIN_ANALOGS_PER_STAGE,
+                                "market_exposure_guard": {"panel": guard_panel,
+                                                          "execution": guard_execution},
                             },
                         ),
                         round((time.perf_counter() - scan_started) * 1000),
@@ -2069,7 +2181,9 @@ def run_due_scans(
                         evaluated,
                         blocked,
                         eligible,
-                        scan_audit.encode_audit(audit_records, policy),
+                        scan_audit.encode_audit(audit_records, policy, gates={
+                            "market_exposure_guard": {"panel": guard_panel,
+                                                      "execution": guard_execution}}),
                         round((time.perf_counter() - scan_started) * 1000),
                         scan_run_id,
                     ),

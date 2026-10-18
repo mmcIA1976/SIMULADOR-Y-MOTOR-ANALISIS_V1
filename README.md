@@ -288,3 +288,54 @@ Reutiliza la evaluacion guardada; si falta, calcula una vista efimera. La lectur
 de fuentes esta limitada a un episodio, 2.000 controles y 8 MB, verificados
 antes de descargar las trazas. La ausencia de una regla (por ejemplo OI) no
 se interpreta como cero y esta funcionalidad no incorpora su recolector.
+
+## Protección de nuevas entradas contra mercado y posiciones perdedoras
+
+`autonomous_market_guard.py`, contrato `market-losing-exposure-guard-v2-common-context`, se
+ejecuta para los tres bots antes de seleccionar y de nuevo antes de insertar
+una operación, también en dry-run. No modifica probabilidades, TP/SL, capital,
+cuotas diarias ni cierres. No impone un máximo de posiciones abiertas.
+
+Lectura de mercado común a los tres bots, independiente del horizonte de su
+operación. Se mantienen las escalas de contexto reciente, fijadas en esta política
+sin importar módulos de investigación no publicados:
+15 minutos y 1 hora para movimiento reciente; 4 y 24 horas sólo para explicar
+el fondo. No se ponderan ni promedian para producir una probabilidad.
+
+En cada escala, BTC y al menos cuatro de los seis pares deben moverse en el
+mismo sentido. Una lectura reciente adversa activa la protección aunque el
+balance del día sea favorable. Si 15 m y 1 h apuntan en sentidos opuestos, se
+registra conflicto y se aplaza añadir exposición del lado que ya pierde; no se
+elige la ventana más conveniente para autorizarla. Si ninguna lectura reciente
+muestra dirección compartida, se registra mercado mixto. Es una política de
+seguridad explícita, no una afirmación de precisión predictiva validada.
+
+Todos usan las mismas velas cerradas de 5 m, timestamps y precios del worker.
+`MemoizedKlineLoader.closed_tail` lee las 289 velas recientes ya cargadas por el
+análisis multiescala, sin otra petición ni histórico. No sustituye velas de 1 h
+o 6 h si faltan las comunes. El anclaje se toma antes de la última vela cerrada;
+el tiempo hasta el precio vivo incluye la fracción actual y se registran los
+timestamps reales. Los horizontes de análisis 4 h / 24 h / 7 días no se modifican.
+
+- Mercado bajista + algún LONG abierto en pérdidas del mismo bot/concurso:
+  veto a nuevas entradas LONG, también en otros pares.
+- Mercado alcista + algún SHORT abierto en pérdidas: veto simétrico a SHORT.
+- Se comprueba cada posición mediante extremos de entrada por par/lado:
+  otras posiciones ganadoras no esconden una perdedora en la media.
+- Sin esa combinación no se añade un veto; tampoco se fuerza una entrada del
+  lado contrario ni se mezclan las cuentas de otros bots.
+- Datos desconocidos necesarios para decidir: aplazar, nunca asumir cero
+  pérdidas. El contexto caduca a los 300 s; precios caducados los filtra el
+  lector del worker. En corto, la falta de datos pausa y conserva los controles;
+  un veto confirmado reinicia la elegibilidad. El conflicto reciente también
+  aplaza la entrada y conserva el seguimiento, sin contarlo como control válido.
+
+Sólo se consultan agregados de posiciones `OPEN` por usuario y temporada,
+usando los índices existentes. No se leen snapshots, ticks ni operaciones
+cerradas. Las pérdidas son de precio sobre el nominal, sin incluir financiación
+ni comisiones. La evidencia compacta queda una vez por comprobación en
+`autonomous_scan_runs.candidate_audit_json.gates.market_exposure_guard`, y se
+añade al análisis seleccionado como `autonomous_market_guard` fuera del snapshot
+predictivo. Las filas conservan probabilidades originales y motivo de veto.
+No hay nuevas tablas ni recolectores; las decisiones posteriores permiten auditar
+el filtro sin inventar beneficios evitados ni declarar que mejora la predicción.

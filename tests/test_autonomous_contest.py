@@ -15,6 +15,9 @@ class Cursor:
     def fetchone(self):
         return self._row
 
+    def fetchall(self):
+        return [] if self._row is None else [self._row]
+
 
 class OperationInsertDb:
     def __init__(self):

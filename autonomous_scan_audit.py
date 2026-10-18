@@ -16,6 +16,7 @@ FIELDS = (
     "edge", "selected_analogs_min", "analysis_status", "rejection_code",
     "eligible", "artifact_id", "context_sigma", "proposal_version",
     "reason_truncated", "reason_sha256",
+    "entry_guard_status", "entry_guard_reason",
 )
 
 
@@ -56,7 +57,23 @@ def candidate_record(candidate, policy, *, phase="panel") -> dict:
         "proposal_version": (candidate.trade_plan or candidate.horizon_geometry).get("version"),
         "reason_truncated": truncated,
         "reason_sha256": hashlib.sha256(reason_bytes).hexdigest() if truncated else None,
+        "entry_guard_status": getattr(candidate, "entry_guard", {}).get("status"),
+        "entry_guard_reason": getattr(candidate, "entry_guard", {}).get("reason"),
     }
+
+
+def apply_entry_guard(records, evidence, *, phase):
+    """Annotate policy vetoes without rewriting any forecast or adding analyses."""
+    for row in records:
+        if row["phase"] != phase:
+            continue
+        decision = evidence["decisions"][row["side"]]
+        row["entry_guard_status"] = decision["status"]
+        row["entry_guard_reason"] = decision["reason"]
+        if decision["status"] != "allowed":
+            row["eligible"] = False
+            if row.get("rejection_code") is None:
+                row["rejection_code"] = decision["reason"]
 
 
 def ensure_candidate_records(records, candidates, policy, *, phase="panel", start=0):

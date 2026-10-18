@@ -45,7 +45,8 @@ def rank_key(candidate) -> tuple:
 
 def data_unavailable(candidate) -> bool:
     """A failed/blocked analysis is not evidence that the trading signal weakened."""
-    return (candidate.analysis_status in {"failed", "blocked"}
+    return (getattr(candidate, "entry_guard", {}).get("status") == "deferred" or
+            candidate.analysis_status in {"failed", "blocked"}
             and not str(candidate.rejection_code or "").startswith("short_plan_"))
 
 

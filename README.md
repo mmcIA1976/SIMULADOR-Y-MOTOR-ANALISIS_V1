@@ -339,3 +339,23 @@ añade al análisis seleccionado como `autonomous_market_guard` fuera del snapsh
 predictivo. Las filas conservan probabilidades originales y motivo de veto.
 No hay nuevas tablas ni recolectores; las decisiones posteriores permiten auditar
 el filtro sin inventar beneficios evitados ni declarar que mejora la predicción.
+# Confirmación de bots: reutilización de velas y espera acotada
+
+`autonomous-confirmation-io-v1` normaliza las peticiones acotadas de velas 5m,
+1h y6h al mismo conjunto de velas cerradas. Una confirmación segundos después
+reutiliza esas páginas; al cerrarse otra vela solicita el conjunto nuevo. No
+se cambian probabilidades, umbrales, geometría ni asignación de capital.
+
+Una confirmación aplazada explícitamente por Binance admite hasta dos
+reintentos, respetando `retry_after_seconds`, con máximo130s de espera total
+y180s de antigüedad del panel antes de reintentar. Cada intento vuelve a leer
+precio/libro y analizar; la apertura mantiene sus controles de precio, mercado,
+cuota y capital. No se reintentan rechazos predictivos. Los bloqueos más largos
+quedan sin apertura y con motivo registrado, nunca se ignora el limitador.
+
+La espera ocurre fuera de transacciones y sólo en el hilo del escáner; TP/SL
+sigue en su hilo independiente y apagar el worker interrumpe la espera.
+El registro existente de escaneo añade `gates.confirmation_io` y hasta dos filas
+adicionales de confirmación. No hay tablas nuevas, snapshots ni velas persistidas.
+Pruebas: `tests/test_autonomous_confirmation_io.py`, junto con las de escáner,
+protección de mercado, presupuesto Binance y worker.

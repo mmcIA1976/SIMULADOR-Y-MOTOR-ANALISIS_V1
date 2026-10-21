@@ -614,6 +614,7 @@ def run_autonomous_scanner_loop(
                 ensure_current_contest_season,
                 dry_run=settings.autonomous_contest_dry_run,
                 bootstrap=bootstrap,
+                confirmation_retry_wait=stop_event.wait,
             )
             bootstrap = False
             evaluation_result = evaluate_due_candidates(connect_factory)

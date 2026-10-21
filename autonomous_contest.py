@@ -14,6 +14,7 @@ import market_data
 import autonomous_confirmation as entry_confirmation
 import autonomous_scan_audit as scan_audit
 import autonomous_market_guard as market_guard
+import autonomous_confirmation_io as confirmation_io
 import short_trade_planner as short_planner
 from analysis_engine import TradeProposal
 from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
@@ -156,6 +157,7 @@ class Candidate:
     entry_guard: dict = field(default_factory=dict)
     market_guard_context: dict = field(default_factory=dict, repr=False)
     market_guard_evidence: dict = field(default_factory=dict, repr=False)
+    data_retry_seconds: float | None = None
 
     @property
     def eligible_base(self) -> bool:
@@ -369,11 +371,11 @@ KlineLoader = Callable[..., list[list]]
 
 
 class MemoizedKlineLoader:
-    """Reuse exact closed-candle pages inside one autonomous scanner cycle.
+    """Reuse equivalent closed-candle pages inside one autonomous scanner cycle.
 
     LONG and SHORT candidates, plus the nested horizons, request many of the
-    same pages. Reusing only byte-equivalent requests preserves the timestamp
-    and source contract while preventing a burst of duplicate Binance calls.
+    same pages. Normalizing bounds to closed candles preserves the selected
+    material and avoids reloading it just because confirmation is seconds later.
     """
 
     def __init__(self, loader: KlineLoader = market_data.get_klines):
@@ -391,13 +393,8 @@ class MemoizedKlineLoader:
         start_time_ms: int | None = None,
         end_time_ms: int | None = None,
     ) -> list[list]:
-        key = (
-            str(symbol).upper(),
-            str(interval),
-            int(limit),
-            int(start_time_ms) if start_time_ms is not None else None,
-            int(end_time_ms) if end_time_ms is not None else None,
-        )
+        key = confirmation_io.closed_request_key(
+            symbol, interval, limit, start_time_ms, end_time_ms)
         cached = self._cache.get(key)
         if cached is None:
             if key in self._deferred:
@@ -421,6 +418,9 @@ class MemoizedKlineLoader:
         else:
             self.hits += 1
         return [list(row) for row in cached]
+
+    def resume_deferred(self):
+        self._deferred.clear()
 
     def stats(self) -> dict[str, int]:
         return {
@@ -1013,6 +1013,7 @@ def analyze_candidates(
                         entry=float(entry),
                         analysis_status="failed",
                         rejection_code=f"sigma:{type(exc).__name__}:{exc}",
+                        data_retry_seconds=confirmation_io.deferred_seconds(exc),
                     )
                 )
             continue
@@ -1032,6 +1033,7 @@ def analyze_candidates(
                         analyzed_at=analyzed_at, entry=float(entry), sigma=sigma,
                         analysis_status="blocked",
                         rejection_code=f"wide_geometry:{type(exc).__name__}:{exc}",
+                        data_retry_seconds=confirmation_io.deferred_seconds(exc),
                     ))
                 continue
         for side in requested_sides:
@@ -1060,6 +1062,7 @@ def analyze_candidates(
                         symbol=symbol, side=side, time_horizon=policy.time_horizon,
                         analyzed_at=analyzed_at, entry=float(entry), sigma=sigma,
                         analysis_status="failed", rejection_code=f"plan_data:{type(exc).__name__}:{exc}",
+                        data_retry_seconds=confirmation_io.deferred_seconds(exc),
                     ))
                     continue
             alternatives = []
@@ -1140,6 +1143,7 @@ def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, tra
             analyzed_at=analyzed_at, entry=float(entry),
             take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
             analysis_status="blocked", rejection_code=str(exc.code or "analysis_blocked"),
+            data_retry_seconds=confirmation_io.deferred_seconds(exc),
             trade_plan=dict(trade_plan), horizon_geometry=dict(horizon_geometry),
         )
     except Exception as exc:
@@ -1148,6 +1152,7 @@ def _analyze_candidate_plan(policy, symbol, side, entry, sigma, analyzed_at, tra
             analyzed_at=analyzed_at, entry=float(entry),
             take_profit=take_profit, stop_loss=stop_loss, sigma=sigma,
             analysis_status="failed", rejection_code=f"{type(exc).__name__}:{exc}",
+            data_retry_seconds=confirmation_io.deferred_seconds(exc),
             trade_plan=dict(trade_plan), horizon_geometry=dict(horizon_geometry),
         )
 
@@ -1757,6 +1762,31 @@ def _common_market_context(kline_loader, at):
     return market_guard.capture_context(materials, SYMBOLS, at)
 
 
+def _confirm_selected_candidate(connect_factory, policy, selected, *,
+                                analysis_runner, sigma_loader, kline_loader,
+                                audit_records, clock, retry_wait, panel_at):
+    def attempt(at):
+        with connect_factory() as db:
+            prices = fresh_market_prices(db, (selected.symbol,), now=at)
+            books = _load_order_book_contexts(db, (selected.symbol,), at)
+        if selected.symbol not in prices:
+            result = Candidate(symbol=selected.symbol, side=selected.side,
+                               time_horizon=policy.time_horizon, analyzed_at=at,
+                               rejection_code="selected_confirmation_worker_price_unavailable")
+            audit_records.append(scan_audit.candidate_record(result, policy, phase="confirmation"))
+            return result
+        return analyze_candidates(
+            policy, prices, at, analysis_runner=analysis_runner,
+            sigma_loader=sigma_loader, liquidation_contexts=_load_liquidation_contexts(prices),
+            order_book_contexts=books, kline_loader=kline_loader,
+            symbols=(selected.symbol,), sides=(selected.side,), fixed_candidate=selected,
+            audit_records=audit_records, audit_phase="confirmation",
+        )[0]
+
+    return confirmation_io.confirm_with_retry(
+        attempt, clock=clock, wait=retry_wait, cache=kline_loader, panel_at=panel_at)
+
+
 def run_due_scans(
     connect_factory,
     season_loader: Callable[[Any], dict],
@@ -1767,6 +1797,7 @@ def run_due_scans(
     sigma_loader: SigmaLoader = load_horizon_sigma,
     kline_loader: KlineLoader = market_data.get_klines,
     bootstrap: bool = True,
+    confirmation_retry_wait: Callable[[float], bool] = confirmation_io.wait_for_retry,
 ) -> dict:
     current = _as_utc(now or utc_now())
     started = time.perf_counter()
@@ -1889,20 +1920,16 @@ def run_due_scans(
             )
         selected = entry_confirmation.select(candidates, policy)
         confirmation_reason = None
+        confirmation_io_evidence = None
         if selected is not None:
-            confirmation_at = current if now is not None else utc_now()
-            with connect_factory() as db:
-                confirmation_prices = fresh_market_prices(
-                    db,
-                    (selected.symbol,),
-                    now=confirmation_at,
-                )
-                confirmation_order_books = _load_order_book_contexts(
-                    db,
-                    (selected.symbol,),
-                    confirmation_at,
-                )
-            if selected.symbol not in confirmation_prices:
+            confirmed, confirmation_io_evidence = _confirm_selected_candidate(
+                connect_factory, policy, selected, analysis_runner=analysis_runner,
+                sigma_loader=sigma_loader, kline_loader=shared_kline_loader,
+                audit_records=audit_records,
+                clock=(lambda: current) if now is not None else utc_now,
+                retry_wait=confirmation_retry_wait, panel_at=analysis_at,
+            )
+            if confirmed.rejection_code == "selected_confirmation_worker_price_unavailable":
                 confirmation_reason = "selected_confirmation_worker_price_unavailable"
                 selected.rejection_code = confirmation_reason
                 if selected.confirmation:
@@ -1915,24 +1942,6 @@ def run_due_scans(
                     )
                 selected = None
             else:
-                confirmation_liquidations = _load_liquidation_contexts(
-                    confirmation_prices
-                )
-                confirmed = analyze_candidates(
-                    policy,
-                    confirmation_prices,
-                    confirmation_at,
-                    analysis_runner=analysis_runner,
-                    sigma_loader=sigma_loader,
-                    liquidation_contexts=confirmation_liquidations,
-                    order_book_contexts=confirmation_order_books,
-                    kline_loader=shared_kline_loader,
-                    symbols=(selected.symbol,),
-                    sides=(selected.side,),
-                    fixed_candidate=selected,
-                    audit_records=audit_records,
-                    audit_phase="confirmation",
-                )[0]
                 scan_audit.ensure_candidate_records(
                     audit_records, [confirmed], policy, phase="confirmation",
                 )
@@ -2153,6 +2162,7 @@ def run_due_scans(
                                 "min_analogs_per_stage": MIN_ANALOGS_PER_STAGE,
                                 "market_exposure_guard": {"panel": guard_panel,
                                                           "execution": guard_execution},
+                                "confirmation_io": confirmation_io_evidence,
                             },
                         ),
                         round((time.perf_counter() - scan_started) * 1000),
@@ -2182,6 +2192,7 @@ def run_due_scans(
                         blocked,
                         eligible,
                         scan_audit.encode_audit(audit_records, policy, gates={
+                            "confirmation_io": confirmation_io_evidence,
                             "market_exposure_guard": {"panel": guard_panel,
                                                       "execution": guard_execution}}),
                         round((time.perf_counter() - scan_started) * 1000),

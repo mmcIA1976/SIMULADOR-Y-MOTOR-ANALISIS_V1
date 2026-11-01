@@ -17,6 +17,7 @@ FIELDS = (
     "eligible", "artifact_id", "context_sigma", "proposal_version",
     "reason_truncated", "reason_sha256",
     "entry_guard_status", "entry_guard_reason",
+    "engine_version", "model_sha256", "forecast_input_sha256",
 )
 
 
@@ -35,6 +36,8 @@ def candidate_record(candidate, policy, *, phase="panel") -> dict:
     reason = str(candidate.rejection_code or "")
     reason_bytes = reason.encode("utf-8")
     truncated = len(reason_bytes) > 256
+    result = getattr(candidate, 'analysis_result', None) or {}
+    inference = result.get('engine_inference') or {}
     return {
         "phase": phase,
         "symbol": candidate.symbol,
@@ -59,6 +62,9 @@ def candidate_record(candidate, policy, *, phase="panel") -> dict:
         "reason_sha256": hashlib.sha256(reason_bytes).hexdigest() if truncated else None,
         "entry_guard_status": getattr(candidate, "entry_guard", {}).get("status"),
         "entry_guard_reason": getattr(candidate, "entry_guard", {}).get("reason"),
+        "engine_version": result.get('engine_version'),
+        "model_sha256": result.get('model_sha256'),
+        "forecast_input_sha256": inference.get('prediction_input_sha256'),
     }
 
 

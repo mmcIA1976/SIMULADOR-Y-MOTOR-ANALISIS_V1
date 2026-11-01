@@ -12,13 +12,16 @@ from tests.test_autonomous_contest import candidate, CountDb, OperationInsertDb
 
 class ConfirmationTests(unittest.TestCase):
     def setUp(self):
+        # Replay the retired wait policy for archived-helper compatibility.
+        legacy = patch.object(confirmation, "enabled", side_effect=lambda p: p.code == "auto_intraday_short")
+        legacy.start(); self.addCleanup(legacy.stop)
         self.policy = contest.PARTICIPANT_POLICIES[0]
         self.start = datetime(2026, 9, 22, tzinfo=timezone.utc)
 
     def advance(self, minute, previous=(), edges=(.15,), symbols=("BTCUSDT",), scan_id=None):
         values = []
         for edge, symbol in zip(edges, symbols):
-            item = candidate(edge=edge, symbol=symbol)
+            item = candidate(edge=edge, tp=.55, symbol=symbol)
             item.analyzed_at = self.start + timedelta(minutes=minute)
             item.artifact_id = "frozen-artifact"
             item.sigma = .01
@@ -69,14 +72,14 @@ class ConfirmationTests(unittest.TestCase):
         self.assertEqual(values[1].confirmation["controls"], 1)
 
     def test_ineligible_proposals_have_no_tracking(self):
-        values = self.advance(0, edges=(.09, .02), symbols=("BTCUSDT", "ETHUSDT"))
+        values = self.advance(0, edges=(.07, .02), symbols=("BTCUSDT", "ETHUSDT"))
         self.assertTrue(all(not c.confirmation for c in values))
         stored = contest._candidate_storage_selection(CountDb(0), self.policy, self.start, values, None)
         self.assertEqual(stored, {})
 
     def test_threshold_loss_records_one_terminal_control_then_restarts(self):
         values = self.advance(0)
-        values = self.advance(15, self.rows(values), edges=(.09,))
+        values = self.advance(15, self.rows(values), edges=(.07,))
         self.assertEqual(values[0].confirmation["state"], "discarded")
         self.assertIsNone(confirmation.select(values, self.policy))
         values = self.advance(30, self.rows(values))
@@ -146,8 +149,8 @@ class ConfirmationTests(unittest.TestCase):
 
     def test_initial_and_final_probabilities_are_not_boosted(self):
         values = self.mature()
-        self.assertEqual(values[0].tp_probability, .45)
-        self.assertAlmostEqual(values[0].sl_probability, .30)
+        self.assertEqual(values[0].tp_probability, .55)
+        self.assertAlmostEqual(values[0].sl_probability, .40)
         self.assertEqual(values[0].edge, .15)
 
     def test_provider_failure_pauses_and_next_valid_check_resumes(self):
@@ -320,6 +323,9 @@ class ScannerIntegrationTests(unittest.TestCase):
     No network connection or production database is used.
     """
     def setUp(self):
+        # These existing cases exercise historical wait-state transitions.
+        legacy = patch.object(confirmation, "enabled", side_effect=lambda p: p.code == "auto_intraday_short")
+        legacy.start(); self.addCleanup(legacy.stop)
         self.connection = sqlite3.connect(":memory:")
         self.connection.row_factory = sqlite3.Row
 
@@ -343,6 +349,7 @@ class ScannerIntegrationTests(unittest.TestCase):
             VALUES (1,'auto_intraday_short',27,'Short','intraday_short','v',15,3,3,.1,.3,.55,80,100,1,'[]')""")
         self.connection.commit()
         self.opened = []
+        self.analysis_phases = []
         self.policy = contest.PARTICIPANT_POLICIES[0]
         self.side = "long"
         self.candidate_symbol = "BTCUSDT"
@@ -371,9 +378,10 @@ class ScannerIntegrationTests(unittest.TestCase):
 
     def scan(self, minute, *, bad=False, fail_insert=False,
              fail_analysis=False, fail_final=False, worker_price_fail=False, planned=False,
-             dry_run=False, cash=1000.):
+             dry_run=False, cash=1000., rival_after_refresh=False):
         original_analyze = contest.analyze_candidates
         def analyze(policy, prices, at, **kwargs):
+            self.analysis_phases.append('final' if kwargs.get('symbols') else 'panel')
             if not kwargs.get("symbols") and not self.guard_material_missing:
                 for symbol in contest.SYMBOLS:
                     kwargs["kline_loader"](symbol, "5m", contest.market_guard.REQUIRED_CANDLES,
@@ -391,7 +399,7 @@ class ScannerIntegrationTests(unittest.TestCase):
                         liquidation_contexts={}, order_book_contexts={}, symbols=("BTCUSDT",),
                         sides=("long",), fixed_candidate=kwargs.get("fixed_candidate"),
                         previous_confirmations=kwargs.get("previous_confirmations", ()))
-            value = candidate(edge=.09 if bad else .15, symbol=self.candidate_symbol)
+            value = candidate(edge=.07 if bad else .15, symbol=self.candidate_symbol)
             value.side = self.side
             value.time_horizon = policy.time_horizon
             value.entry = prices[value.symbol]
@@ -405,6 +413,15 @@ class ScannerIntegrationTests(unittest.TestCase):
                 value.analysis_status = "failed"
                 value.rejection_code = "sigma:BinanceDeferred:binance_shared_budget_exhausted"
                 value.artifact_id = None
+            if rival_after_refresh:
+                value.tp_probability = .55 if kwargs.get('symbols') else .65
+                value.sl_probability = .35 if kwargs.get('symbols') else .25
+                value.unresolved_probability = .10
+                value.edge = value.tp_probability - value.sl_probability
+                if not kwargs.get('symbols'):
+                    rival = candidate(edge=.30, tp=.60, unresolved=.10, symbol='ETHUSDT')
+                    rival.analyzed_at = at; rival.sigma = .01; rival.artifact_id = 'frozen-artifact'
+                    return [value, rival]
             return [value]
 
         def fresh_prices(db, symbols, **kwargs):
@@ -455,6 +472,30 @@ class ScannerIntegrationTests(unittest.TestCase):
             VALUES(27,1,'BTCUSDT',?,100,100,10)""", (side,))
         self.connection.commit()
         self.guard_prices = {s: (99. if side == "long" else 101.) for s in contest.SYMBOLS}
+
+    def test_standard_opens_first_short_round_after_final_reanalysis(self):
+        with patch.object(confirmation, "enabled", return_value=False):
+            result = self.scan(0)["scans"][0]
+        self.assertEqual(result["status"], "opened")
+        self.assertEqual(len(self.opened), 1)
+        self.assertEqual(self.analysis_phases, ['panel', 'final'])
+        self.assertEqual(self.connection.execute(
+            "SELECT count(*) FROM autonomous_candidate_observations WHERE storage_reason='confirmation'"
+        ).fetchone()[0], 0)
+
+    def test_standard_keeps_final_analysis_failure_blocking_entry(self):
+        with patch.object(confirmation, "enabled", return_value=False):
+            result = self.scan(0, fail_final=True)["scans"][0]
+        self.assertEqual(result["status"], "no_trade")
+        self.assertTrue(result['reason'].startswith('selected_candidate_failed_final_confirmation:'))
+        self.assertEqual(self.opened, [])
+
+    def test_standard_rejects_refreshed_signal_that_is_no_longer_best(self):
+        with patch.object(confirmation, "enabled", return_value=False):
+            result = self.scan(0, rival_after_refresh=True)["scans"][0]
+        self.assertEqual(result["status"], "no_trade")
+        self.assertEqual(result['reason'], 'selected_candidate_no_longer_best_after_reanalysis')
+        self.assertEqual(self.opened, [])
 
     def test_all_bots_veto_cross_pair_losing_exposure_in_real_scanner_and_dry_run(self):
         for policy in contest.PARTICIPANT_POLICIES:
@@ -534,6 +575,14 @@ class ScannerIntegrationTests(unittest.TestCase):
         self.assertEqual(result["status"], "opened")
         raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()[0])
         self.assertEqual(raw["gates"]["market_exposure_guard"]["panel"]["book"]["long"]["open_count"], 0)
+
+    def test_dry_run_does_not_promise_an_entry_that_cannot_reach_twenty_within_risk(self):
+        for minute in (0, 15):
+            self.scan(minute, dry_run=True, cash=100.)
+        result = self.scan(30, dry_run=True, cash=100.)["scans"][0]
+        self.assertEqual(result["status"], "no_cash")
+        self.assertEqual(result["reason"], "autonomous_minimum_tp_profit_unreachable")
+        self.assertEqual(self.opened, [])
 
     def test_three_scans_open_once_and_duplicate_scan_does_not_advance(self):
         for minute in (0, 15):

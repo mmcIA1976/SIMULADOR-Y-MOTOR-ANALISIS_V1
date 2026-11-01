@@ -79,10 +79,11 @@ from observational_shadow_evaluation import (
     build_observational_shadow_report,
 )
 from observational_learning_base import persist_closed_observational_case
-from sequential_production_analysis import (
+from served_analysis import (
     NewEngineAnalysisError,
     analyze_trade,
 )
+from analysis_engine_selection import result_version_contract
 from empirical_temporal_engine import HORIZON_SECONDS
 from operation_worker_status import (
     add_transition_coverage,
@@ -1055,6 +1056,7 @@ def compact_expired_unselected_analyses(db) -> int:
         WHERE operation_id IS NULL
           AND analysis_type <> 'operation_observation'
           AND app_version = ?
+          AND engine_version NOT IN (?, ?)
           AND analysis_json IS NOT NULL
           AND created_at < CURRENT_TIMESTAMP - INTERVAL '24 hours'
         """,
@@ -1069,6 +1071,8 @@ def compact_expired_unselected_analyses(db) -> int:
                 }
             ),
             APP_VERSION,
+            'TP-SL-EMPIRICAL-ANALOG-v0.11',
+            'TP-SL-EXPERIMENTAL-v0.12-lab.4',
         ),
     )
     return max(int(getattr(cursor, "rowcount", 0) or 0), 0)
@@ -1127,11 +1131,7 @@ def record_failed_analysis_attempt(
                 entry_type=entry_type,
                 outcome=outcome,
                 duration_ms=round((time.perf_counter() - started_at) * 1000),
-                engine_version=(
-                    "PENDING-LIMIT-TWO-STAGE"
-                    if entry_type == "pending"
-                    else ENGINE_VERSION
-                ),
+                engine_version=ENGINE_VERSION,
                 error_code=error_code[:240],
             )
     except Exception:
@@ -3295,7 +3295,11 @@ def recommendation_version_contract(operation: dict, snapshot: dict) -> dict:
             operation.get("recommendation_data_source_version")
             or snapshot_versions.get("data_source_version")
         ),
-        "data_contract_version": DATA_CONTRACT_VERSION,
+        "data_contract_version": (
+            operation.get("recommendation_data_contract_version")
+            or snapshot_versions.get("data_contract_version")
+            or DATA_CONTRACT_VERSION
+        ),
     }
 
 
@@ -5878,7 +5882,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
     }
     result["entry_order_context"] = entry_context
     result.setdefault("snapshot", {})["entry_order_context"] = entry_context
-    version_contract = current_version_contract()
+    version_contract = result_version_contract(result, current_version_contract())
     version_contract["served_engine_family"] = result.get(
         "engine_family",
         "tp_sl_competing_risks",
@@ -5925,7 +5929,7 @@ def analyze(payload: TradePayload, session_token: str | None = Cookie(default=No
                 json.dumps(result),
                 result.get("engine_version", ENGINE_VERSION),
                 APP_VERSION,
-                SCORING_VERSION,
+                result.get("scoring_version", SCORING_VERSION),
                 LEARNING_SCHEMA_VERSION,
                 DATA_SOURCE_VERSION,
                 DATA_CONTRACT_VERSION,
@@ -6371,7 +6375,7 @@ def record_operation_observation_checkpoint(
     result["observation_context"] = observation_context
     result.setdefault("snapshot", {})["entry_order_context"] = entry_context
     result["snapshot"]["observation_context"] = observation_context
-    version_contract = current_version_contract()
+    version_contract = result_version_contract(result, current_version_contract())
     version_contract["served_engine_family"] = result.get(
         "engine_family", "tp_sl_competing_risks"
     )
@@ -6446,7 +6450,7 @@ def record_operation_observation_checkpoint(
                 json.dumps(compact_observation_analysis_payload(result)),
                 result.get("engine_version", ENGINE_VERSION),
                 APP_VERSION,
-                SCORING_VERSION,
+                result.get("scoring_version", SCORING_VERSION),
                 LEARNING_SCHEMA_VERSION,
                 DATA_SOURCE_VERSION,
                 DATA_CONTRACT_VERSION,
@@ -6481,6 +6485,7 @@ def record_operation_observation_checkpoint(
             or HORIZON_SECONDS[proposal.time_horizon]
         )
         current_view = {
+            "engine_version": result.get("engine_version", ENGINE_VERSION),
             "checkpoint_code": f"{operation_id}o{current_checkpoint_number}",
             "tp_probability": float(result["tp_probability"]),
             "sl_probability": float(result["sl_probability"]),
@@ -6535,7 +6540,7 @@ def record_operation_observation_checkpoint(
                     "opening_recommendation_id"
                 ),
                 "engine_version": result.get("engine_version", ENGINE_VERSION),
-                "scoring_version": SCORING_VERSION,
+                "scoring_version": result.get("scoring_version", SCORING_VERSION),
                 "market_price_source": quote.get("source"),
                 "market_price_captured_at": quote.get("captured_at"),
                 "original_plan": {

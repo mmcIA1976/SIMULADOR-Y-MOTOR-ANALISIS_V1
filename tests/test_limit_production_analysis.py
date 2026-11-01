@@ -63,7 +63,7 @@ def conditional_result() -> dict:
     return {
         "analysis_type": "pre_trade",
         "engine_family": "tp_sl_competing_risks",
-        "engine_version": "TP-SL-PROBABILITY-ENGINE-v0.4",
+        "engine_version": LIMIT_PRODUCTION_ENGINE_VERSION,
         "tp_probability": 0.55,
         "sl_probability": 0.35,
         "range_probability": 0.10,

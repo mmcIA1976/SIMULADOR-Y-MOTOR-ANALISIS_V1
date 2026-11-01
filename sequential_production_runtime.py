@@ -202,6 +202,7 @@ def build_production_probability_run(
     *,
     loader: Callable[..., list[list]] = market_data.get_klines,
     analysis_id: str,
+    inputs_only: bool = False,
 ) -> dict:
     plan = build_plan(proposal, snapshot)
     if plan["entry_type"] != "market":
@@ -241,7 +242,7 @@ def build_production_probability_run(
         apply_target_rule_trace_scope(
             stage_contexts, plan["time_horizon"], artifact
         )
-        probability_result = empirical_probabilities(
+        probability_result = None if inputs_only else empirical_probabilities(
             symbol=plan["symbol"],
             side=plan["side"],
             entry=plan["entry"],
@@ -308,8 +309,8 @@ def build_production_probability_run(
             "stage_order": list(stage_contexts),
         },
         "production_effect": "served",
-        "analysis_engine_execution_count": 1,
-        "executed_analysis_engines": [ENGINE_VERSION],
+        "analysis_engine_execution_count": 0 if inputs_only else 1,
+        "executed_analysis_engines": [] if inputs_only else [ENGINE_VERSION],
     }
 
 

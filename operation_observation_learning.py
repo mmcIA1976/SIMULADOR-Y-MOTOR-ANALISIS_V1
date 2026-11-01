@@ -470,6 +470,7 @@ def _compact_probability_trace(trace: Any) -> dict:
             "probabilities",
             "probability_ranges_95pct",
             "result_sha256",
+            "model_sha256",
             "production_effect",
         )
         if trace.get(key) is not None
@@ -508,6 +509,7 @@ def _compact_probability_trace(trace: Any) -> dict:
                 "uncertainty_policy",
                 "kernel",
                 "active_rule_groups",
+                "lab4_correction",
             )
             if stage.get(key) is not None
         }
@@ -577,6 +579,8 @@ def _compact_stage_rule_traces(stage_traces: Any) -> dict:
                     "active_probability_outputs"
                 ),
                 "observational_outputs": trace.get("observational_outputs"),
+                "lab4_correction_input_outputs": trace.get("lab4_correction_input_outputs"),
+                "lab4_model_sha256": trace.get("lab4_model_sha256"),
                 "source_data_sha256": trace.get("source_data_sha256"),
                 "trace_sha256": trace.get("trace_sha256"),
                 "outputs": outputs if isinstance(outputs, dict) else {},
@@ -622,6 +626,9 @@ def compact_observation_snapshot(snapshot: dict) -> dict:
         "take_profit": snapshot.get("take_profit"),
         "stop_loss": snapshot.get("stop_loss"),
         "decision_probabilities": snapshot.get("decision_probabilities"),
+        "model_sha256": snapshot.get("model_sha256"),
+        "engine_transition": snapshot.get("engine_transition"),
+        "engine_inference": snapshot.get("engine_inference"),
         "entry_order_context": _compact_scalar_tree(
             snapshot.get("entry_order_context")
         ),
@@ -2982,7 +2989,7 @@ def observation_checkpoint_view(row: dict) -> dict:
         "contract_quality": str(row.get("contract_quality") or "unknown"),
         "formal_learning_eligible": bool(row.get("formal_learning_eligible")),
         "recommendation_id": row.get("recommendation_id"),
-        "engine_version": row.get("engine_version"),
+        "engine_version": row.get("engine_version") or snapshot.get("engine_version"),
         "stage_count": stage_count,
         "rule_signals": rule_signals,
         "context": {
@@ -2997,6 +3004,16 @@ def observation_closure_advisory(
     *,
     terminal_pnl: dict[str, float] | None = None,
 ) -> dict:
+    # Probability changes across releases are not market deterioration. Preserve
+    # every stored control, but confirmations restart on the latest engine.
+    comparison_engine = checkpoints[-1].get('engine_version') if checkpoints else None
+    excluded_other_engine = 0
+    if comparison_engine:
+        start = len(checkpoints)
+        while start > 0 and checkpoints[start-1].get('engine_version') == comparison_engine:
+            start -= 1
+        excluded_other_engine = start
+        checkpoints = checkpoints[start:]
     usable = [
         item
         for item in checkpoints
@@ -3155,6 +3172,9 @@ def observation_closure_advisory(
     return {
         "policy_version": OBSERVATION_CLOSURE_POLICY_VERSION,
         "level": level,
+        "comparison_engine_version": comparison_engine,
+        "comparison_policy_version": "consecutive_same_engine_controls-v1",
+        "other_engine_controls_excluded": excluded_other_engine,
         "label": label,
         "headline": headline,
         "reasons": reasons,

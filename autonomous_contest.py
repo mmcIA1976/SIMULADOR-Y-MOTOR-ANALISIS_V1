@@ -17,7 +17,8 @@ import autonomous_market_guard as market_guard
 import autonomous_confirmation_io as confirmation_io
 import short_trade_planner as short_planner
 from analysis_engine import TradeProposal
-from empirical_temporal_engine import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
+from analysis_engine_selection import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
+from analysis_engine_selection import result_version_contract
 from market_price_state import fresh_market_prices
 from observation_snapshot_codec import snapshot_rule_traces
 from multiscale_feature_runtime import STAGE_PROFILES, _closed_material, required_candle_count
@@ -25,7 +26,7 @@ from order_book_observation_state import (
     get_order_book_observation_row,
     summarize_order_book_observation,
 )
-from sequential_production_analysis import NewEngineAnalysisError, analyze_trade
+from served_analysis import NewEngineAnalysisError, analyze_trade
 from sequential_production_runtime import fetch_klines_range, normalize_kline
 from versioning import (
     APP_VERSION,
@@ -40,12 +41,13 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.9-common-market-exposure-guard"
-SIZING_POLICY_VERSION = "autonomous-capital-allocation-v1"
+POLICY_VERSION = "autonomous-contest-policy-v0.10-standard-20pct-8pp-immediate"
+SIZING_POLICY_VERSION = "autonomous-capital-allocation-v3-hard-risk-min20-25"
+ENTRY_POLICY_VERSION = "immediate-final-revalidation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 WIDE_GEOMETRY_VERSION = "wide-24h-neutral-reach-v1"
 WIDE_REACH_QUANTILE = 0.25
-WIDE_MAX_UNRESOLVED_PROBABILITY = 0.35
+WIDE_MAX_UNRESOLVED_PROBABILITY = 0.20
 SYMBOLS = (
     "BTCUSDT",
     "ETHUSDT",
@@ -55,7 +57,7 @@ SYMBOLS = (
     "INJUSDT",
 )
 MIN_TP_PROBABILITY = 0.30
-MAX_UNRESOLVED_PROBABILITY = 0.55
+MAX_UNRESOLVED_PROBABILITY = 0.20
 MIN_ANALOGS_PER_STAGE = 80
 SCAN_RELEASE_DELAY_SECONDS = 75
 NON_PANEL_STORAGE_CAP_PER_UTC_DAY = 12
@@ -65,7 +67,11 @@ OBSERVATIONAL_JSON_BYTE_BUDGET = 12_000
 MAX_EXECUTION_DRIFT_SIGMA_FRACTION = 0.10
 MAX_EXECUTION_DRIFT_FLOOR = 0.0002
 MAX_AUTONOMOUS_LEVERAGE = 10
-MIN_TARGET_PROFIT_USDT = 2.0
+# Planned gross payoff at TP, not a net-profit or execution guarantee.
+MIN_TARGET_PROFIT_USDT = 20.0
+MIN_TARGET_PROFIT_BY_HORIZON = {
+    "intraday_short": 20.0, "intraday_wide": 25.0, "short_swing": 25.0,
+}
 MIN_TARGET_MARGIN_FRACTION = 0.20
 BASE_TARGET_SL_RISK_FRACTION = 0.02
 MAX_TARGET_SL_RISK_FRACTION = 0.05
@@ -81,10 +87,8 @@ class ParticipantPolicy:
     time_horizon: str
     cadence_minutes: int
     daily_operation_limit: int
-    # Legacy persistence field kept while the production table still has a
-    # NOT NULL column with this name.  It is deliberately not enforced: the
-    # daily operation target is independent of positions left open from prior
-    # scans or days.
+    # Open positions plus pending entries reserving capital; enforced again
+    # under the per-bot transaction lock immediately before insertion.
     max_open_positions: int
     edge_threshold: float
     # Neutral reference values used only while the analysis engine estimates
@@ -92,6 +96,10 @@ class ParticipantPolicy:
     analysis_reference_margin: float = 100.0
     analysis_reference_leverage: float = 1.0
     symbols: tuple[str, ...] = SYMBOLS
+
+    @property
+    def minimum_target_profit_usdt(self) -> float:
+        return MIN_TARGET_PROFIT_BY_HORIZON[self.time_horizon]
 
 
 PARTICIPANT_POLICIES = (
@@ -102,8 +110,8 @@ PARTICIPANT_POLICIES = (
         time_horizon="intraday_short",
         cadence_minutes=15,
         daily_operation_limit=3,
-        max_open_positions=3,
-        edge_threshold=0.10,
+        max_open_positions=8,
+        edge_threshold=0.08,
     ),
     ParticipantPolicy(
         code="auto_intraday_wide",
@@ -112,8 +120,8 @@ PARTICIPANT_POLICIES = (
         time_horizon="intraday_wide",
         cadence_minutes=60,
         daily_operation_limit=2,
-        max_open_positions=2,
-        edge_threshold=0.10,
+        max_open_positions=8,
+        edge_threshold=0.08,
     ),
     ParticipantPolicy(
         code="auto_short_swing",
@@ -122,8 +130,8 @@ PARTICIPANT_POLICIES = (
         time_horizon="short_swing",
         cadence_minutes=360,
         daily_operation_limit=1,
-        max_open_positions=7,
-        edge_threshold=0.02,
+        max_open_positions=8,
+        edge_threshold=0.08,
     ),
 )
 
@@ -175,10 +183,15 @@ class Candidate:
         )
 
     def eligible_for(self, policy: ParticipantPolicy) -> bool:
-        return (self.eligible_base and float(self.edge) >= policy.edge_threshold
+        return (self.eligible_base and float(self.edge) + 1e-12 >= policy.edge_threshold
+                and float(self.tp_probability) - float(self.sl_probability) + 1e-12 >= policy.edge_threshold
+                and short_planner.symmetric_radius_fraction(
+                    self.entry, self.take_profit, self.stop_loss, self.side) is not None
                 and (policy.code != "auto_intraday_wide"
                      or float(self.unresolved_probability) <= WIDE_MAX_UNRESOLVED_PROBABILITY)
-                and (policy.code != "auto_intraday_short" or short_planner.passes_forecast(self)))
+                and (policy.code != "auto_intraday_short" or (
+                    float(self.tp_probability) >= short_planner.MIN_TP_PROBABILITY
+                    and short_planner.passes_forecast(self))))
 
 
 @dataclass(frozen=True)
@@ -196,9 +209,11 @@ class PositionSizing:
     normalized_advantage: float
     target_margin_fraction: float
     target_sl_risk_fraction: float
+    maximum_sl_loss_usdt: float
     estimated_tp_pnl: float
     estimated_sl_pnl: float
     expected_pnl: float
+    minimum_target_profit_usdt: float
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -220,7 +235,9 @@ class PositionSizing:
             "estimated_tp_pnl": self.estimated_tp_pnl,
             "estimated_sl_pnl": self.estimated_sl_pnl,
             "expected_pnl": self.expected_pnl,
-            "minimum_target_profit_usdt": MIN_TARGET_PROFIT_USDT,
+            "minimum_target_profit_usdt": self.minimum_target_profit_usdt,
+            "profit_basis": "price_gross_excludes_fees_and_funding",
+            "maximum_sl_loss_usdt": self.maximum_sl_loss_usdt,
             "max_leverage": MAX_AUTONOMOUS_LEVERAGE,
         }
 
@@ -241,6 +258,9 @@ def determine_position_sizing(
     reduces the allocation naturally instead of being redistributed as a win.
     """
     cash = float(available_cash)
+    minimum_profit = MIN_TARGET_PROFIT_BY_HORIZON.get(candidate.time_horizon)
+    if minimum_profit is None:
+        raise ValueError("autonomous_sizing_unknown_horizon")
     if not math.isfinite(cash) or cash <= 0:
         raise ValueError("autonomous_contest_cash_insufficient")
     required = (
@@ -265,6 +285,13 @@ def determine_position_sizing(
         for value in (tp_probability, sl_probability, unresolved_probability)
     ):
         raise ValueError("autonomous_sizing_inputs_invalid")
+    if not math.isclose(tp_probability + sl_probability + unresolved_probability,
+                        1., rel_tol=0, abs_tol=1e-6):
+        raise ValueError("autonomous_sizing_invalid_probability_mass")
+    if short_planner.symmetric_radius_fraction(
+        entry, take_profit, stop_loss, candidate.side,
+    ) is None:
+        raise ValueError("autonomous_sizing_requires_symmetric_geometry")
 
     reward_price_fraction = abs(take_profit - entry) / entry
     risk_price_fraction = abs(entry - stop_loss) / entry
@@ -304,43 +331,37 @@ def determine_position_sizing(
     leverage_budget = target_sl_risk_fraction / (
         target_margin_fraction * risk_price_fraction
     )
-    if leverage_budget >= 1.0:
-        leverage = min(
-            MAX_AUTONOMOUS_LEVERAGE,
-            max(1, int(math.floor(leverage_budget))),
-        )
-        margin = target_margin
-    else:
-        leverage = 1
-        margin = min(
-            target_margin,
-            cash * target_sl_risk_fraction / risk_price_fraction,
-        )
-
-    maximum_tp_pnl = cash * MAX_AUTONOMOUS_LEVERAGE * reward_price_fraction
-    if maximum_tp_pnl + 1e-9 < MIN_TARGET_PROFIT_USDT:
+    initial_leverage = min(MAX_AUTONOMOUS_LEVERAGE,
+                           max(1, int(math.floor(leverage_budget))))
+    maximum_sl_loss = cash * target_sl_risk_fraction
+    maximum_notional = min(cash * MAX_AUTONOMOUS_LEVERAGE,
+                           maximum_sl_loss / risk_price_fraction)
+    maximum_tp_pnl = maximum_notional * reward_price_fraction
+    if maximum_tp_pnl + 1e-9 < minimum_profit:
         raise ValueError("autonomous_minimum_tp_profit_unreachable")
-    current_tp_pnl = margin * leverage * reward_price_fraction
-    if current_tp_pnl + 1e-9 < MIN_TARGET_PROFIT_USDT:
-        required_leverage = math.ceil(
-            MIN_TARGET_PROFIT_USDT / (margin * reward_price_fraction)
-        )
-        if required_leverage <= MAX_AUTONOMOUS_LEVERAGE:
-            leverage = max(leverage, required_leverage)
-        else:
-            leverage = MAX_AUTONOMOUS_LEVERAGE
-            margin = max(
-                margin,
-                MIN_TARGET_PROFIT_USDT
-                / (MAX_AUTONOMOUS_LEVERAGE * reward_price_fraction),
-            )
-
-    margin = min(cash, math.ceil(margin * 10_000) / 10_000)
+    # The minimum profit is subordinate to BOTH cash and the original SL
+    # budget. Round the hard cap down, not up; test the actual stored margin.
+    for leverage in range(initial_leverage, MAX_AUTONOMOUS_LEVERAGE + 1):
+        maximum_margin = math.floor(min(cash, maximum_notional / leverage) * 10_000) / 10_000
+        required_margin = math.ceil(
+            minimum_profit / (leverage * reward_price_fraction) * 10_000
+        ) / 10_000
+        if required_margin > maximum_margin:
+            continue
+        margin = min(max(math.floor(target_margin * 10_000) / 10_000,
+                         required_margin), maximum_margin)
+        if (margin * leverage * reward_price_fraction + 1e-9 >= minimum_profit
+                and margin * leverage * risk_price_fraction <= maximum_sl_loss + 1e-9):
+            break
+    else:
+        raise ValueError("autonomous_minimum_tp_profit_unreachable")
     notional = margin * leverage
     estimated_tp_pnl = notional * reward_price_fraction
     estimated_sl_pnl = -notional * risk_price_fraction
-    if estimated_tp_pnl + 1e-9 < MIN_TARGET_PROFIT_USDT:
+    if estimated_tp_pnl + 1e-9 < minimum_profit:
         raise ValueError("autonomous_minimum_tp_profit_unreachable")
+    if abs(estimated_sl_pnl) > maximum_sl_loss + 1e-9:
+        raise ValueError("autonomous_sl_risk_budget_exceeded")
     expected_pnl = notional * (
         tp_probability * reward_price_fraction
         - sl_probability * risk_price_fraction
@@ -359,9 +380,11 @@ def determine_position_sizing(
         normalized_advantage=round(normalized_advantage, 8),
         target_margin_fraction=round(target_margin_fraction, 8),
         target_sl_risk_fraction=round(target_sl_risk_fraction, 8),
+        maximum_sl_loss_usdt=maximum_sl_loss,
         estimated_tp_pnl=round(estimated_tp_pnl, 4),
         estimated_sl_pnl=round(estimated_sl_pnl, 4),
         expected_pnl=round(expected_pnl, 4),
+        minimum_target_profit_usdt=minimum_profit,
     )
 
 
@@ -911,6 +934,9 @@ def _support_from_result(result: dict) -> tuple[int, float, str | None]:
 def rejection_code(candidate: Candidate, policy: ParticipantPolicy) -> str | None:
     if candidate.analysis_status != "evaluated":
         return candidate.rejection_code or candidate.analysis_status
+    if short_planner.symmetric_radius_fraction(candidate.entry, candidate.take_profit,
+                                               candidate.stop_loss, candidate.side) is None:
+        return "asymmetric_trade_geometry"
     if (candidate.selected_analogs_min or 0) < MIN_ANALOGS_PER_STAGE:
         return "insufficient_analog_support"
     tp_probability = (
@@ -928,9 +954,11 @@ def rejection_code(candidate: Candidate, policy: ParticipantPolicy) -> str | Non
             and float(candidate.unresolved_probability) > WIDE_MAX_UNRESOLVED_PROBABILITY):
         return "wide_unresolved_probability_above_reachability_gate"
     edge = candidate.edge if candidate.edge is not None else -2.0
-    if float(edge) < policy.edge_threshold:
+    if candidate.tp_probability is not None and candidate.sl_probability is not None:
+        edge = min(edge, candidate.tp_probability - candidate.sl_probability)
+    if float(edge) + 1e-12 < policy.edge_threshold:
         return "edge_below_horizon_gate"
-    if policy.code == "auto_intraday_short" and candidate.trade_plan:
+    if policy.code == "auto_intraday_short":
         if float(tp_probability) < short_planner.MIN_TP_PROBABILITY:
             return "short_plan_tp_probability_below_gate"
         if float(candidate.unresolved_probability) > short_planner.MAX_UNRESOLVED_PROBABILITY:
@@ -1208,6 +1236,22 @@ def _daily_operation_count(
     return int(row["count"] or 0)
 
 
+def _active_operation_count(db, user_id: int) -> int:
+    row = db.execute(
+        """SELECT COUNT(*) AS count FROM operations
+           WHERE user_id = ? AND mode = 'contest'
+             AND status IN ('OPEN', 'PENDING_ENTRY')""", (user_id,),
+    ).fetchone()
+    return int(row['count'] or 0)
+
+
+def _lock_bot_entries(db, user_id: int) -> None:
+    if getattr(db, 'engine', None) == 'postgres':
+        # Transaction-scoped, including on a transaction pooler. All bot entry
+        # checks, cash allocation and insertion remain in this transaction.
+        db.execute('SELECT pg_advisory_xact_lock(?)', (9_000_000_000_000 + user_id,))
+
+
 def _available_contest_cash(db, user_id: int, season_id: int) -> float:
     entry = db.execute(
         """
@@ -1458,15 +1502,12 @@ def execution_drift_is_acceptable(
 
 
 def execution_geometry(candidate: Candidate, execution_entry: float) -> tuple[float, float]:
-    if candidate.trade_plan:
-        return float(candidate.take_profit), float(candidate.stop_loss)
-    if candidate.horizon_geometry:
-        return symmetric_geometry(
-            execution_entry,
-            float(candidate.horizon_geometry["radius_fraction"]),
-            candidate.side,
-        )
-    return symmetric_geometry(execution_entry, float(candidate.sigma), candidate.side)
+    radius = short_planner.symmetric_radius_fraction(
+        candidate.entry, candidate.take_profit, candidate.stop_loss, candidate.side,
+    )
+    if radius is None:
+        raise ValueError("autonomous_sizing_requires_symmetric_geometry")
+    return symmetric_geometry(execution_entry, radius, candidate.side)
 
 
 def _prepare_selected_analysis(
@@ -1544,9 +1585,12 @@ def _prepare_selected_analysis(
         }
     )
     result["training_decision"] = "seleccion_autonoma"
-    version_contract = current_version_contract()
+    version_contract = result_version_contract(result, current_version_contract())
     version_contract["autonomous_policy_version"] = POLICY_VERSION
     version_contract["autonomous_sizing_policy_version"] = SIZING_POLICY_VERSION
+    version_contract["autonomous_entry_policy_version"] = (
+        entry_confirmation.CONFIRMATION_VERSION if candidate.confirmation else ENTRY_POLICY_VERSION
+    )
     version_contract["autonomous_market_guard_version"] = market_guard.VERSION
     if candidate.confirmation:
         version_contract["autonomous_entry_confirmation_version"] = entry_confirmation.CONFIRMATION_VERSION
@@ -1575,12 +1619,19 @@ def _open_selected_operation(
     if candidate.analysis_result is None:
         raise ValueError("selected_candidate_analysis_missing")
     user_id = int(participant["user_id"])
+    _lock_bot_entries(db, user_id)
+    if _active_operation_count(db, user_id) >= policy.max_open_positions:
+        raise ValueError('autonomous_open_position_limit_reached')
     # Mandatory even for callers other than run_due_scans: no unguarded insert.
     evidence = _assess_entry_guard(db, participant, season_id,
                                   candidate.market_guard_context, executed_at)
     market_guard.apply([candidate], evidence, candidate.market_guard_context)
     if candidate.entry_guard["status"] != "allowed":
         raise ValueError(candidate.entry_guard["reason"])
+    if candidate.time_horizon != policy.time_horizon:
+        raise ValueError("autonomous_candidate_horizon_policy_mismatch")
+    if not candidate.eligible_for(policy):
+        raise ValueError(rejection_code(candidate, policy) or "selected_candidate_not_eligible")
     if _daily_operation_count(
         db,
         participant,
@@ -1593,8 +1644,7 @@ def _open_selected_operation(
     execution_take_profit, execution_stop_loss = execution_geometry(candidate, execution_entry)
     sizing = determine_position_sizing(
         replace(candidate, entry=execution_entry, take_profit=execution_take_profit,
-                stop_loss=execution_stop_loss)
-        if candidate.trade_plan or candidate.horizon_geometry else candidate,
+                stop_loss=execution_stop_loss),
         cash,
     )
     result = _prepare_selected_analysis(
@@ -1664,7 +1714,7 @@ def _open_selected_operation(
             _json(result),
             result.get("engine_version", EMPIRICAL_ENGINE_VERSION),
             APP_VERSION,
-            SCORING_VERSION,
+            result.get("scoring_version", SCORING_VERSION),
             LEARNING_SCHEMA_VERSION,
             DATA_SOURCE_VERSION,
             DATA_CONTRACT_VERSION,
@@ -1956,11 +2006,10 @@ def run_due_scans(
                         candidates[index] = confirmed
                         break
                 if confirmed.eligible_for(policy):
-                    # A refreshed score must not silently overrule a better
-                    # mature candidate. Do not open an unrefreshed fallback.
-                    if (entry_confirmation.enabled(policy)
-                            and entry_confirmation.select(candidates, policy) is not confirmed):
-                        confirmation_reason = "confirmed_candidate_no_longer_best_mature"
+                    # Recheck ranking after refreshing the selected signal,
+                    # including immediate entries. Never open a stale fallback.
+                    if entry_confirmation.select(candidates, policy) is not confirmed:
+                        confirmation_reason = "selected_candidate_no_longer_best_after_reanalysis"
                         selected = None
                     else:
                         selected = confirmed
@@ -2040,9 +2089,21 @@ def run_due_scans(
                     ):
                         status = "no_trade"
                         reason = "execution_price_moved_beyond_analysis_contract"
+                    elif _active_operation_count(db, int(participant['user_id'])) >= policy.max_open_positions:
+                        status, reason = 'no_trade', 'autonomous_open_position_limit_reached'
                     elif dry_run:
-                        status = "would_open"
-                        reason = "dry_run_best_eligible_candidate"
+                        try:
+                            target, stop = execution_geometry(selected, execution_entry)
+                            determine_position_sizing(
+                                replace(selected, entry=execution_entry,
+                                        take_profit=target, stop_loss=stop),
+                                _available_contest_cash(db, int(participant["user_id"]), season_id),
+                            )
+                        except ValueError as exc:
+                            status, reason = "no_cash", str(exc)
+                        else:
+                            status = "would_open"
+                            reason = "dry_run_best_eligible_candidate"
                     else:
                         live_daily_count = _daily_operation_count(
                             db,
@@ -2080,7 +2141,7 @@ def run_due_scans(
                                         executed_at=execution_at,
                                     )
                                 except ValueError as exc:
-                                    if not str(exc).startswith(("market_exposure_guard_", "market_against_losing_", "market_recent_conflict_")):
+                                    if not str(exc).startswith(("market_exposure_guard_", "market_against_losing_", "market_recent_conflict_", "autonomous_open_position_limit_reached")):
                                         raise
                                     status, reason = "no_trade", str(exc)
                                 else:
@@ -2104,8 +2165,8 @@ def run_due_scans(
                     if selected is not None and status in {"opened", "would_open"}:
                         # The confirmed endpoint is the executable trade, not
                         # the earlier quote used to rank candidates.
+                        selected.take_profit, selected.stop_loss = execution_geometry(selected, float(execution_entry))
                         selected.entry = float(execution_entry)
-                        selected.take_profit, selected.stop_loss = execution_geometry(selected, selected.entry)
                         selected.analyzed_at = execution_at
                     entry_confirmation.finish(
                         candidates, selected, status=status, reason=reason, operation_id=operation_id,
@@ -2159,6 +2220,8 @@ def run_due_scans(
                                 "max_unresolved_probability": (short_planner.MAX_UNRESOLVED_PROBABILITY
                                     if policy.code == "auto_intraday_short" else WIDE_MAX_UNRESOLVED_PROBABILITY
                                     if policy.code == "auto_intraday_wide" else MAX_UNRESOLVED_PROBABILITY),
+                                "minimum_target_profit_usdt": policy.minimum_target_profit_usdt,
+                                "entry_wait_required": entry_confirmation.enabled(policy),
                                 "min_analogs_per_stage": MIN_ANALOGS_PER_STAGE,
                                 "market_exposure_guard": {"panel": guard_panel,
                                                           "execution": guard_execution},

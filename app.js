@@ -2459,7 +2459,7 @@ function renderObservationalRuleCard(trace, analysis) {
         </div>
       ` : ""}
       <div class="observational-quality">
-        ${escapeHtml(qualityParts.join(" · ") || String(trace.status || "evaluada"))} · Sin peso probabilístico
+        ${escapeHtml(qualityParts.join(" · ") || String(trace.status || "evaluada"))} · ${trace.lab4_correction_input_outputs?.length ? "Entrada del ajuste probabilístico congelado" : "Sin peso probabilístico"}
       </div>
       ${renderObservationalTechnicalDetails(trace)}
     </article>
@@ -2489,6 +2489,7 @@ function renderObservationalRules(analysis) {
   }
   const selectedHorizon = String(analysis.time_horizon || analysis.snapshot?.time_horizon || "intraday_short");
   const total = groups.reduce((sum, group) => sum + group.traces.length, 0);
+  const weighted = groups.some((group) => group.traces.some((trace) => trace.lab4_correction_input_outputs?.length));
   const evaluated = groups.reduce(
     (sum, group) => sum + group.traces.filter((trace) => Object.keys(trace.outputs || {}).length).length,
     0,
@@ -2497,8 +2498,8 @@ function renderObservationalRules(analysis) {
     <section class="observational-rules-shell">
       <div class="observational-rules-head">
         <span>Reglas observacionales</span>
-        <strong>Qué dicen cuantitativamente las reglas que todavía no puntúan</strong>
-        <p>${evaluated} de ${total} lecturas disponibles. No intervienen en los porcentajes mostrados: se enseñan para entender la operación y acumular evidencia antes de autorizar cualquier peso.</p>
+        <strong>${weighted ? "Lecturas y aportación al pronóstico" : "Qué dicen cuantitativamente las reglas que todavía no puntúan"}</strong>
+        <p>${evaluated} de ${total} lecturas disponibles. ${weighted ? "Las lecturas marcadas participan en el ajuste congelado. Las demás aportan contexto y conservan su estado observacional." : "No intervienen en los porcentajes mostrados: se enseñan para entender la operación y acumular evidencia antes de autorizar cualquier peso."}</p>
       </div>
       ${groups.map((group) => {
         const open = group.stage === selectedHorizon ? " open" : "";

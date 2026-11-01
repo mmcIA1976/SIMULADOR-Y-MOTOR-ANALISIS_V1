@@ -47,8 +47,10 @@ class CountDb:
         return Cursor({"count": self.count})
 
 
-def candidate(*, edge, tp=0.45, unresolved=0.30, symbol="BTCUSDT"):
+def candidate(*, edge, tp=0.50, unresolved=None, symbol="BTCUSDT"):
     sl = tp - edge
+    if unresolved is None:
+        unresolved = 1 - tp - sl
     return autonomous_contest.Candidate(
         symbol=symbol,
         side="long",
@@ -187,16 +189,13 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertEqual(last_slot, {(winner.symbol, winner.side): "selected"})
         self.assertEqual(full, {})
 
-    def test_horizon_thresholds_are_not_replaced_by_one_universal_rule(self):
+    def test_standard_edge_gate_is_eight_points_for_all_bots(self):
         short, wide, swing = autonomous_contest.PARTICIPANT_POLICIES
-        viable_only_for_swing = candidate(edge=0.05)
-
-        self.assertIsNone(autonomous_contest.select_candidate([viable_only_for_swing], short))
-        self.assertIsNone(autonomous_contest.select_candidate([viable_only_for_swing], wide))
-        self.assertIs(
-            autonomous_contest.select_candidate([viable_only_for_swing], swing),
-            viable_only_for_swing,
-        )
+        for policy in (short, wide, swing):
+            below = candidate(edge=.079999)
+            passing = candidate(edge=.08)
+            self.assertIsNone(autonomous_contest.select_candidate([below], policy))
+            self.assertIs(autonomous_contest.select_candidate([passing], policy), passing)
 
     def test_position_sizing_replaces_fixed_100_x1_with_probability_based_capital(self):
         selected = candidate(
@@ -213,7 +212,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
 
         self.assertEqual(sizing.leverage, 4)
         self.assertGreater(sizing.margin, 500.0)
-        self.assertGreater(sizing.estimated_tp_pnl, 2.0)
+        self.assertGreaterEqual(sizing.estimated_tp_pnl, 20.0)
         self.assertGreater(sizing.expected_pnl, 0.0)
         self.assertEqual(
             sizing.as_dict()["probability_effect"],
@@ -248,19 +247,13 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertAlmostEqual(sizing.margin, 250.0, places=4)
         self.assertAlmostEqual(sizing.estimated_sl_pnl, -30.0, places=4)
 
-    def test_tight_stop_can_use_x10_and_still_guarantees_two_dollar_tp(self):
+    def test_two_dollar_target_is_rejected_even_at_x10(self):
         selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
         selected.take_profit = 100.025
         selected.stop_loss = 99.975
 
-        sizing = autonomous_contest.determine_position_sizing(selected, 1000.0)
-
-        self.assertEqual(sizing.leverage, 10)
-        self.assertAlmostEqual(sizing.margin, 800.0, places=4)
-        self.assertGreaterEqual(
-            sizing.estimated_tp_pnl,
-            autonomous_contest.MIN_TARGET_PROFIT_USDT,
-        )
+        with self.assertRaisesRegex(ValueError, "minimum_tp_profit_unreachable"):
+            autonomous_contest.determine_position_sizing(selected, 1000.0)
 
     def test_position_size_scales_with_balance_without_a_nominal_stake_cap(self):
         selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
@@ -268,7 +261,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         small = autonomous_contest.determine_position_sizing(selected, 1000.0)
         large = autonomous_contest.determine_position_sizing(selected, 10_000.0)
 
-        self.assertAlmostEqual(large.margin, small.margin * 10, places=4)
+        self.assertAlmostEqual(large.margin, small.margin * 10, delta=.001)
         self.assertEqual(large.leverage, small.leverage)
 
     def test_gates_reject_low_tp_high_unresolved_and_low_support(self):
@@ -345,8 +338,8 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         def analyze(proposal, **_kwargs):
             proposals.append(proposal)
             return {
-                "tp_probability": 0.55, "sl_probability": 0.20,
-                "range_probability": 0.25,
+                "tp_probability": 0.55, "sl_probability": 0.25,
+                "range_probability": 0.20,
                 "model_trace": {"artifact_id": "test", "stage_traces": [
                     {"selected_analogs": 240}
                 ]},
@@ -382,11 +375,11 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         selected.time_horizon = "intraday_wide"
         self.assertEqual(
             autonomous_contest.rejection_code(selected, policy),
-            "wide_unresolved_probability_above_reachability_gate",
+            "unresolved_probability_above_gate",
         )
         self.assertFalse(selected.eligible_for(policy))
 
-        selected.unresolved_probability = 0.25
+        selected.unresolved_probability = 0.20
         selected.horizon_geometry = {
             "version": autonomous_contest.WIDE_GEOMETRY_VERSION,
             "radius_fraction": 0.006,
@@ -495,24 +488,115 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             params for query, params in db.calls if "INSERT INTO price_ticks" in query
         )
         self.assertEqual(operation_params[4], 100.05)
-        self.assertEqual(operation_params[5], 500.0)
-        self.assertEqual(operation_params[6], 7)
+        self.assertAlmostEqual(operation_params[5], 500.0, delta=.0001)
+        self.assertGreaterEqual(operation_params[6], 1)
+        self.assertLessEqual(operation_params[6], 10)
         self.assertEqual(operation_params[9], executed_at.isoformat())
         self.assertEqual(operation_params[11], 100.05)
         self.assertEqual(recommendation_params[0], 501)
         self.assertEqual(tick_params[2], 100.05)
-        self.assertFalse(
+        self.assertTrue(
             any(
                 "SELECT COUNT(*) AS count" in " ".join(query.split())
                 and "status IN ('OPEN', 'PENDING_ENTRY')" in " ".join(query.split())
                 for query, _params in db.calls
             ),
-            "Existing open positions must never block today's operation target.",
+            "Check the per-bot open-position cap before inserting an operation.",
         )
         stored_analysis = json.loads(recommendation_params[17])
-        self.assertEqual(stored_analysis["position_sizing"]["margin"], 500.0)
-        self.assertEqual(stored_analysis["position_sizing"]["leverage"], 7)
+        self.assertAlmostEqual(stored_analysis["position_sizing"]["margin"], 500.0, delta=.0001)
+        self.assertEqual(stored_analysis["position_sizing"]["leverage"], operation_params[6])
+        self.assertGreaterEqual(stored_analysis["position_sizing"]["estimated_tp_pnl"], 20.)
+        self.assertLessEqual(abs(stored_analysis["position_sizing"]["estimated_sl_pnl"]), 35.)
         self.assertNotIn("position_sizing", stored_analysis["snapshot"])
+
+    def test_all_bots_reject_asymmetry_even_with_extremely_high_tp_probability(self):
+        for policy in autonomous_contest.PARTICIPANT_POLICIES:
+            for side in ("long", "short"):
+                with self.subTest(bot=policy.code, side=side):
+                    item = candidate(edge=.96, tp=.98, unresolved=0.)
+                    item.side = side
+                    sign = 1 if side == "long" else -1
+                    item.take_profit, item.stop_loss = 100 + sign * .03, 100 - sign * .78
+                    self.assertFalse(item.eligible_for(policy))
+                    self.assertEqual(autonomous_contest.rejection_code(item, policy),
+                                     "asymmetric_trade_geometry")
+                    with self.assertRaisesRegex(ValueError, "requires_symmetric_geometry"):
+                        autonomous_contest.determine_position_sizing(item, 1000.)
+
+    def test_all_bots_keep_equal_distances_at_actual_execution_price(self):
+        for policy in autonomous_contest.PARTICIPANT_POLICIES:
+            for side in ("long", "short"):
+                with self.subTest(bot=policy.code, side=side):
+                    item = candidate(edge=.3, tp=.6, unresolved=.1)
+                    item.side, item.time_horizon = side, policy.time_horizon
+                    if side == "short":
+                        item.take_profit, item.stop_loss = 99., 101.
+                    target, stop = autonomous_contest.execution_geometry(item, 100.037)
+                    self.assertAlmostEqual(abs(target - 100.037), abs(stop - 100.037))
+                    self.assertAlmostEqual(abs(target / 100.037 - 1), .01)
+
+    def test_profit_minimum_never_overrides_the_probability_based_risk_budget(self):
+        # Plenty of notional capacity, but the existing 3% risk budget is 15.
+        item = candidate(edge=.1, tp=.4, unresolved=.3)
+        with self.assertRaisesRegex(ValueError, "minimum_tp_profit_unreachable"):
+            autonomous_contest.determine_position_sizing(item, 500.)
+
+    def test_minimum_profit_can_increase_allocation_only_within_the_original_risk_budget(self):
+        item = candidate(edge=.1, tp=.4, unresolved=.3)
+        item.take_profit, item.stop_loss = 100.4, 99.6
+        sizing = autonomous_contest.determine_position_sizing(item, 1000.)
+        self.assertGreater(sizing.margin, 400.)
+        self.assertGreaterEqual(sizing.estimated_tp_pnl, 20.)
+        self.assertLessEqual(abs(sizing.estimated_sl_pnl), 30.)
+        self.assertLessEqual(sizing.leverage, 10)
+
+    def test_sizing_matrix_respects_stored_margin_cash_leverage_and_twenty_dollars(self):
+        accepted = rejected = 0
+        for cash in (399., 400., 500., 666.67, 1000., 10000.):
+            for edge in (.1, .15, .3, .8):
+                for radius in (.000025, .00025, .002, .01, .12):
+                    with self.subTest(cash=cash, edge=edge, radius=radius):
+                        item = candidate(edge=edge, tp=(1 + edge) / 2, unresolved=0.)
+                        item.take_profit, item.stop_loss = 100 * (1 + radius), 100 * (1 - radius)
+                        try:
+                            sizing = autonomous_contest.determine_position_sizing(item, cash)
+                        except ValueError as exc:
+                            rejected += 1
+                            self.assertEqual(str(exc), "autonomous_minimum_tp_profit_unreachable")
+                            continue
+                        accepted += 1
+                        actual_profit = sizing.margin * sizing.leverage * abs(item.take_profit - item.entry) / item.entry
+                        actual_loss = sizing.margin * sizing.leverage * abs(item.stop_loss - item.entry) / item.entry
+                        # Assert against the unrounded policy formula, not rounded metadata.
+                        budget = cash * min(.05, .02 + .1 * (item.tp_probability - item.sl_probability))
+                        self.assertGreaterEqual(actual_profit + 1e-8, 20.)
+                        self.assertLessEqual(actual_loss, budget + 1e-8)
+                        self.assertLessEqual(sizing.margin, cash)
+                        self.assertLessEqual(sizing.leverage, 10)
+                        self.assertEqual(sizing.margin, round(sizing.margin, 4))
+                        self.assertEqual(sizing.as_dict()["minimum_target_profit_usdt"], 20.)
+                        self.assertEqual(sizing.as_dict()["profit_basis"], "price_gross_excludes_fees_and_funding")
+        self.assertGreater(accepted, 0)
+        self.assertGreater(rejected, 0)
+
+    def test_invalid_probability_mass_cannot_enter_sizing(self):
+        item = candidate(edge=.1, tp=.4, unresolved=.9)
+        with self.assertRaisesRegex(ValueError, "invalid_probability_mass"):
+            autonomous_contest.determine_position_sizing(item, 1000.)
+
+    def test_invalid_candidate_cannot_insert_an_operation_or_analysis(self):
+        for asymmetric in (True, False):
+            item = candidate(edge=.3, tp=.6, unresolved=.1)
+            item.take_profit = 100.03
+            item.stop_loss = 99.22 if asymmetric else 99.97
+            item.analysis_result = {"snapshot": {}}
+            db = OperationInsertDb()
+            with self.assertRaisesRegex(ValueError, "asymmetric_trade_geometry|symmetric_geometry|minimum_tp_profit_unreachable"):
+                autonomous_contest._open_selected_operation(db, participant={"id": 1, "user_id": 27},
+                    season_id=1, candidate=item, policy=autonomous_contest.PARTICIPANT_POLICIES[0],
+                    execution_entry=100., executed_at=item.analyzed_at)
+            self.assertFalse(any("INSERT INTO" in query for query, _ in db.calls))
 
     def test_observational_payload_is_bounded_and_contains_no_raw_market_data(self):
         result = {

@@ -1,0 +1,2 @@
+# Frozen inference manifests hash bytes; preserve them on Windows and Linux.
+engine_lab4/** -text whitespace=cr-at-eol

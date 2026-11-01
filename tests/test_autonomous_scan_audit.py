@@ -46,7 +46,7 @@ class AuditContractTests(unittest.TestCase):
         value.entry = 102.
         restored = audit.decode_audit(audit.encode_audit(records, policy, selected=value))
         self.assertEqual(restored["selected_index"], 1)
-        self.assertEqual([r["tp_probability"] for r in restored["analyses"]], [.45, .65])
+        self.assertEqual([r["tp_probability"] for r in restored["analyses"]], [.50, .65])
         self.assertEqual(restored["analyses"][1]["entry"], 101.1234567)
 
     def test_verbose_failure_is_bounded_but_the_attempt_and_fingerprint_remain(self):

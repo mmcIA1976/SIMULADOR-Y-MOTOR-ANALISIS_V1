@@ -197,7 +197,7 @@ class MarketExposureGuardTests(unittest.TestCase):
         result = audit.decode_audit(encoded)
         self.assertEqual(result["evaluated_analyses"], 1)
         self.assertFalse(result["analyses"][0]["eligible"])
-        self.assertEqual(result["analyses"][0]["tp_probability"], .45)
+        self.assertEqual(result["analyses"][0]["tp_probability"], .50)
         self.assertNotIn("candles", encoded)
         self.assertLess(len(json.dumps(state).encode()), 6000)
 

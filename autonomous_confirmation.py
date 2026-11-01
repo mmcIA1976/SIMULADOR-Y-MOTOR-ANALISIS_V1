@@ -1,4 +1,4 @@
-"""Short-bot entry confirmation, independent of the probability engine.
+"""Archived short-bot wait policy and immediate candidate selection.
 
 Only eligible proposals have a lineage. Each checkpoint stores its own geometry
 and numerical context once; no candle history, snapshot or growing JSON arrays.
@@ -21,7 +21,10 @@ CONTROL_JSON_BYTE_BUDGET = 2048
 
 
 def enabled(policy) -> bool:
-    return policy.code == "auto_intraday_short"
+    # The 28-Oct standard retires the fixed three-check / 30-minute gate.
+    # Historical helpers remain available for interpreting archived trials.
+    # The scanner still reanalyses and revalidates the selected trade at once.
+    return False
 
 
 def utc(value) -> datetime:
@@ -210,7 +213,7 @@ def compact_payload(candidate) -> dict:
         payload["proposal_plan"] = {
             name: plan[name] for name in (
                 "version", "horizon_seconds", "four_hour_reach", "four_hour_adverse_reach",
-                "excursion_quantile", "reference_windows", "data_cutoff_at_ms",
+                "excursion_quantile", "reference_windows", "data_cutoff_at_ms", "radius_fraction",
             ) if name in plan
         }
     size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode())

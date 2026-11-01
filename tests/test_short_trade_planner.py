@@ -30,7 +30,22 @@ def material(side="long", *, flat=False):
 
 
 class PlannerTests(unittest.TestCase):
-    def test_long_and_short_use_observed_four_hour_excursions_for_both_levels(self):
+    def setUp(self):
+        # Archived multi-scan tracking remains interpretable after retirement.
+        legacy = patch.object(confirmation, "enabled", side_effect=lambda p: p.code == "auto_intraday_short")
+        legacy.start(); self.addCleanup(legacy.stop)
+
+    def test_proposal_radius_is_identical_for_long_and_short_on_the_same_market(self):
+        data, _ = material()
+        entry = data["selected"][-1]["close"]
+        long = planner.proposals(data, side="long", entry=entry)
+        short = planner.proposals(data, side="short", entry=entry)
+        self.assertEqual([p["radius_fraction"] for p in long], [p["radius_fraction"] for p in short])
+        for left, right in zip(long, short):
+            self.assertEqual(left["take_profit"], right["stop_loss"])
+            self.assertEqual(left["stop_loss"], right["take_profit"])
+
+    def test_long_and_short_use_direction_neutral_symmetric_four_hour_levels(self):
         for side in ("long", "short"):
             data, at = material(side)
             entry = data["selected"][-1]["close"]
@@ -41,9 +56,9 @@ class PlannerTests(unittest.TestCase):
             for plan in proposals:
                 self.assertGreater(sign * (entry - plan["stop_loss"]), 0)
                 self.assertGreater(sign * (plan["take_profit"] - entry), 0)
-                self.assertLessEqual(abs(plan["take_profit"] - entry), plan["four_hour_reach"])
-                self.assertLessEqual(abs(plan["stop_loss"] - entry), plan["four_hour_adverse_reach"] + 1e-12)
-                self.assertGreater(plan["reward_risk_ratio"], 0.)
+                self.assertLessEqual(abs(plan["take_profit"] - entry), plan["four_hour_symmetric_reach"] + 1e-12)
+                self.assertAlmostEqual(abs(plan["take_profit"] - entry), abs(plan["stop_loss"] - entry))
+                self.assertEqual(plan["reward_risk_ratio"], 1.)
                 self.assertIn(plan["excursion_quantile"], (.25, .50))
                 self.assertLessEqual(plan["data_cutoff_at_ms"], data["data_cutoff_at_ms"])
                 self.assertEqual(plan["reference_windows"], 59)
@@ -68,15 +83,21 @@ class PlannerTests(unittest.TestCase):
         self.assertAlmostEqual(before["four_hour_reach"] / before["atr_5m"],
                                after["four_hour_reach"] / after["atr_5m"])
 
-    def test_requote_keeps_absolute_analyzed_barriers(self):
+    def test_requote_keeps_radius_and_lineage_but_recenters_symmetric_levels(self):
         data, _ = material()
         entry = data["selected"][-1]["close"]
         plan = planner.proposals(data, side="long", entry=entry)[-1]
         again = planner.validate_requote(plan, data, side="long", entry=entry)
         self.assertEqual(again["take_profit"], plan["take_profit"])
         self.assertEqual(again["stop_loss"], plan["stop_loss"])
+        moved_entry = entry + .10
+        moved = planner.validate_requote(plan, data, side="long", entry=moved_entry)
+        self.assertEqual(moved["lineage_key"], plan["lineage_key"])
+        self.assertEqual(moved["radius_fraction"], plan["radius_fraction"])
+        self.assertAlmostEqual(moved["take_profit"] - moved_entry, moved_entry - moved["stop_loss"])
         with self.assertRaises(planner.PlanRejected):
-            planner.validate_requote(plan, data, side="long", entry=plan["take_profit"])
+            planner.validate_requote({**plan, "version": "short-horizon-excursion-plan-v2"},
+                                     data, side="long", entry=entry)
 
     def test_entry_is_not_vetoed_by_distance_to_an_arbitrary_pivot(self):
         data, _ = material()
@@ -92,7 +113,7 @@ class PlannerTests(unittest.TestCase):
         self.assertFalse(item.eligible_for(policy))
         item.tp_probability, item.unresolved_probability = .55, .26
         self.assertFalse(item.eligible_for(policy))
-        item.unresolved_probability, item.edge = .20, .09
+        item.unresolved_probability, item.edge = .20, .079999
         self.assertFalse(item.eligible_for(policy))
 
     def test_ranking_prioritizes_tp_among_candidates_that_pass_all_gates(self):
@@ -119,9 +140,9 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(item.confirmation["controls"], 1)
         self.assertIsNone(confirmation.select([item], contest.PARTICIPANT_POLICIES[0]))
 
-    def test_structural_barriers_survive_actual_operation_insert(self):
+    def test_actual_insert_keeps_symmetric_radius_at_worker_price(self):
         item = candidate(edge=.40, tp=.65, unresolved=.10)
-        item.sigma, item.take_profit, item.stop_loss = .02, 102.0, 99.0
+        item.sigma, item.take_profit, item.stop_loss = .02, 102.0, 98.0
         item.trade_plan = {"version": planner.PLAN_VERSION, "lineage_key": "a"}
         item.analysis_result = dict(analysis_type="pre_trade", tp_probability=.65,
                                    sl_probability=.25, range_probability=.10,
@@ -134,11 +155,12 @@ class PlannerTests(unittest.TestCase):
             executed_at=item.analyzed_at,
         )
         params = next(p for q, p in db.calls if "INSERT INTO operations" in q)
-        self.assertEqual(params[7:9], (99., 102.))
+        self.assertAlmostEqual(params[7], 100.02 * .98)
+        self.assertAlmostEqual(params[8], 100.02 * 1.02)
         stored = json.loads(next(p for q, p in db.calls if "INSERT INTO recommendations" in q)[17])
         self.assertEqual(stored["autonomous_trade_plan"]["version"], planner.PLAN_VERSION)
-        self.assertEqual(stored["snapshot"]["take_profit"], 102.)
-        self.assertEqual(stored["snapshot"]["stop_loss"], 99.)
+        self.assertAlmostEqual(stored["snapshot"]["take_profit"], 100.02 * 1.02)
+        self.assertAlmostEqual(stored["snapshot"]["stop_loss"], 100.02 * .98)
 
     def test_scanner_uses_same_engine_with_at_most_two_proposals_per_side(self):
         data, at = material()
@@ -170,7 +192,7 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(planner.proposals(data, side="long", entry=entry),
                          planner.proposals(filtered, side="long", entry=entry))
 
-    def test_final_reanalysis_evaluates_exact_same_absolute_levels(self):
+    def test_final_reanalysis_evaluates_symmetric_levels_at_current_price(self):
         data, at = material()
         entry = data["selected"][-1]["close"]
         plan = planner.proposals(data, side="long", entry=entry)[-1]
@@ -187,8 +209,8 @@ class PlannerTests(unittest.TestCase):
                 {"BTCUSDT": entry + .001}, at, analysis_runner=analyze,
                 symbols=("BTCUSDT",), sides=("long",), fixed_candidate=selected)
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0].take_profit, plan["take_profit"])
-        self.assertEqual(calls[0].stop_loss, plan["stop_loss"])
+        self.assertAlmostEqual(calls[0].take_profit, (entry + .001) * (1 + plan["radius_fraction"]))
+        self.assertAlmostEqual(calls[0].stop_loss, (entry + .001) * (1 - plan["radius_fraction"]))
         self.assertEqual(rows[0].trade_plan["lineage_key"], plan["lineage_key"])
 
     def test_planned_control_with_real_rule_context_fits_existing_byte_budget(self):
@@ -242,11 +264,13 @@ class PlannerTests(unittest.TestCase):
             self.assertEqual(failed.confirmation["state"], expected)
             self.assertEqual(failed.confirmation["controls"], 2)
 
-    def test_rr_below_one_is_allowed_only_with_positive_forecast_payoff(self):
+    def test_asymmetry_is_rejected_despite_positive_forecast_payoff(self):
         item = candidate(edge=.40, tp=.65, unresolved=.10)
         item.trade_plan = {"version": planner.PLAN_VERSION}
         item.take_profit = 100.5
-        self.assertTrue(item.eligible_for(contest.PARTICIPANT_POLICIES[0]))
+        self.assertFalse(item.eligible_for(contest.PARTICIPANT_POLICIES[0]))
+        self.assertEqual(contest.rejection_code(item, contest.PARTICIPANT_POLICIES[0]),
+                         "asymmetric_trade_geometry")
         item.sigma = .02
         self.assertTrue(contest.execution_drift_is_acceptable(item, 100.))
         item.take_profit = 100.1
@@ -254,7 +278,7 @@ class PlannerTests(unittest.TestCase):
         item.take_profit = 99.5
         self.assertFalse(planner.passes_forecast(item))
 
-    def test_followup_preserves_levels_key_and_count_across_new_market_cutoffs(self):
+    def test_followup_preserves_radius_key_and_count_across_new_market_cutoffs(self):
         data, at = material()
         entry = data["selected"][-1]["close"]
         previous, levels, calls = [], None, []
@@ -274,7 +298,8 @@ class PlannerTests(unittest.TestCase):
             item = rows[0]
             confirmation.advance(rows, contest.PARTICIPANT_POLICIES[0], previous,
                 slot=item.analyzed_at, scan_run_id=index+1, engine_version=contest.EMPIRICAL_ENGINE_VERSION)
-            current = (item.take_profit, item.stop_loss, item.trade_plan["lineage_key"])
+            self.assertAlmostEqual(item.take_profit - item.entry, item.entry - item.stop_loss)
+            current = (item.trade_plan["radius_fraction"], item.trade_plan["lineage_key"])
             if levels is None:
                 levels = current
             self.assertEqual(current, levels)

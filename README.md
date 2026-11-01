@@ -1,5 +1,18 @@
 # Trading Trainer Learning Model v1
 
+**Publicación autorizada · 1/11/2026:** [motor lab.4 para toda la app](ENGINE_REPLACEMENT_2026_11.md).
+App 0.40.21 selecciona un único análisis del nuevo motor por consulta en web,
+LIMIT, controles y bots. Conserva los registros originales de v0.11 y permite
+recuperarlo con `ANALYSIS_ENGINE_RELEASE=v0.11` en web y worker.
+La activación efectiva se comprueba en `/api/version` y el heartbeat del worker.
+
+Los [bots del concurso](BOT_ROLLOUT_2026_11.md) usan máximo 8 posiciones activas,
+no resolución ≤20%, ventaja TP−SL ≥8 puntos, TP/SL equidistantes y beneficio bruto
+objetivo mínimo de 20/25/25 USDT. Entrada inmediata con revalidación, sin espera
+fija de tres controles del bot corto. Se conservan cadencias, cuotas y riesgo.
+Las secciones antiguas sobre esa espera describen el mecanismo histórico.
+
+
 Simulador educativo multiusuario para analizar, registrar y auditar operaciones crypto con datos de mercado reales. No ejecuta ordenes reales, no conecta con cuentas de exchange y no solicita claves API privadas.
 
 ## Norte estrategico

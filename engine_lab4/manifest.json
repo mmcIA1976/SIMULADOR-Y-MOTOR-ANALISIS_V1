@@ -1,0 +1,144 @@
+{
+  "base_artifact_sha256": "f75b0764d45d59929588bf93f405fa6bc32aa03e0e367f15a417ee3f8127b2f8",
+  "files": {
+    "__init__.py": "03e12e494b7cb5350ff5e56c148ffb131f0d18be9c5833c90fec46cd14138eee",
+    "actual_close_context.py": "73b282901110385c2997aaf03a3529c8eb5b75653da1fc7a4923373bbc769c3a",
+    "actual_close_side_weights.py": "64f232a3196e2e90b8e34f6f3bcd72b5bae30e25cfcd5e9214073546793e3090",
+    "correction_predictor.py": "36ae830f9cc335d97a391f78fc01c2fbf229cad69c438e9a9bbbe4d49c782e42",
+    "correction_review.py": "92934365630a2e91384f057833b510e5822553cf217777e23a8d30c3dcce5974",
+    "engine_proposal.py": "12e3a69680e97b11dffed39611db2732a940bb1633681ebb9869fab1bea373f9",
+    "long_extension_context.py": "08614d22bad0ff91ad46eff468c8e6f7936eb87609898eac575e829fbb57c06c",
+    "long_rebound_review.py": "2897ebed5e6d77383bbe94bb8c9d13511340727e18a585688e53397d6eddadb5",
+    "model.json": "1061816d0899ab541e61bf6e3b789dcb08d7328091f1a4ce2285bf1e59576a32",
+    "observational_context.py": "21e53291b533b26242ef7b8b15070a4de5debdef40c3abb69625064bc71237c6",
+    "preserved_temporal_engine.py": "8e518dc208ac66e287e29f0435b91d06185708524691824abff42a10a765c666",
+    "short_flow_response.py": "34783f090796d87c9514e97f439bd93e8022545a3fc044f98ea7525c5492a249",
+    "storage.py": "83293fb7599bbf9ea6e989569f87c3714b0323ce5e3ebdd51c4915eb8dd794e9",
+    "temporal_engine.py": "1d7e494a19f46bc5662f5d2c0d3f01186dcfbdaa3da75440739ebce912e0f8fd"
+  },
+  "model_sha256": "1061816d0899ab541e61bf6e3b789dcb08d7328091f1a4ce2285bf1e59576a32",
+  "source_frozen_at": "2026-10-29T12:54:01.392145+00:00",
+  "source_functions": {
+    "actual_close_context": {
+      "constants": [
+        "PRIMARY",
+        "DEFINITION"
+      ],
+      "functions": {},
+      "source_sha256": "71108dc578076ead7b70cb60a7d4a192773a7e2fa0e5d4bece9920d109200999"
+    },
+    "actual_close_side_weights": {
+      "constants": [
+        "PRIMARY",
+        "KEYS",
+        "SPECS"
+      ],
+      "functions": {
+        "eligible": "e3b9ea00e007cdbc6454c08d266a555e3fa804cb7d5fe365e92e0635f6462a45",
+        "key": "0083e7f5b9951381426f834ed9cf6492dd5fdf65a89bbf7d5a0991bb928ce8d5",
+        "predict": "7f226e1497f2887a06a1916fe3c569ad7859266ca614d8b67a57afe26cb9e571"
+      },
+      "source_sha256": "8a2a9adfca2e4591139f61b282042b406caf4741c2b2aaf5752f3762e36ea46c"
+    },
+    "correction_predictor": {
+      "constants": [
+        "VERSION",
+        "ENGINE_VERSION"
+      ],
+      "functions": {
+        "apply_frozen": "53f82c01a369f6e5df7813d8725ce4bef910a74f5ed9ec2f190f54195a0c7176",
+        "archived_row": "9a3a9dda30dca7f9896febadd1246ca947b217c829b77f13291567e312b0905d"
+      },
+      "source_sha256": "7dab980f50a61cd96afab3b6174305e12a1ef56046a250d2d2fffa8919d0f238"
+    },
+    "correction_review": {
+      "constants": [
+        "STAGES"
+      ],
+      "functions": {
+        "gate_key": "a17ea3cac021c693d03f6e2ee41a6db945bb6073a82fb8a19059ed633470780d",
+        "predict": "72c0707c03dd77d5f122169bbb40537865f56c71f82c3e2e699a0e060dfbe14f",
+        "stages": "310d76bd50c6226b8ac444b1af2f8744354769732307bfd16433d035477bc828"
+      },
+      "source_sha256": "0aed8bf5dcf43f0c960a6f181bc0521b2e7f90670712794be29eb2668e95934a"
+    },
+    "engine_proposal": {
+      "constants": [
+        "ENGINE_VERSION",
+        "FIELD_RULES"
+      ],
+      "functions": {
+        "apply_frozen": "081dbfa5fcbdd9d4a4ee0e7aa3797992ad1f049fb3942c826f248b8190304d20",
+        "raw_prediction": "e119bbabef44425dac06fd41f76580a27bc78c06042ecfd827759310758b6c94",
+        "temperature": "09dddebf56525ef5a0caa34572de52bab83493b467b062cdc5be05ab4a0cf9a4"
+      },
+      "source_sha256": "f99a8d7ca29fea971d3c5650d3d707ef873adf7a81984a5d64cecdc61b903b90"
+    },
+    "long_extension_context": {
+      "constants": [],
+      "functions": {
+        "context_key": "e7a3aa782611f2e060f7dd05343b2bd460da31560f3e576111afb60c9aaa8aa4",
+        "eligible": "72e52fd3096e4d66c70bee2066167169bbe1987f21515e6b891b57285ddafe97",
+        "predict": "59c56df9565c87f5d853175ad94b82424650d65853478fe2aecc0f76403bc6d0",
+        "value": "a141f94a90eacebd11f6cd2e7eb9661b1d60ade0bf0923326cd11c613b7b256c"
+      },
+      "source_sha256": "74a81fbd38a13b31d2b2cbb9fdd7a34b9c8a7bd771841d765863b27093945a11"
+    },
+    "long_rebound_review": {
+      "constants": [],
+      "functions": {
+        "predict": "4a3499d0c8fb28bc1211abc6ce7b7c654cbc46654be24c601b54bf9cd9a1111c",
+        "usable": "ed16f807b2fa06b297eea7ebf60c4d5f78cc38b9ba94dfb46d30a967d135d470"
+      },
+      "source_sha256": "a19adba3004f311a0e8bb1ddea9ad31b8b6028c724fc3e7aead7614b320c38a2"
+    },
+    "observational_context": {
+      "constants": [
+        "KEYS",
+        "FIELDS"
+      ],
+      "functions": {
+        "digest": "eb8c3feaa39aa1a2bc8cf7c1279bd6c5c101c494b3d170bf7a1ecc7a9d64e341",
+        "epoch": "73575e8ef76def05ece1b2306878165889542f471317846fb2aab86b02c1a984",
+        "finite": "220c1413535c591f122584ce759178f4201b49f77d9896378763bb431a3e920b",
+        "logit": "08236ba7c1d0ef0a528ee8721383d9c7a7dddeca1cbc132bf98b516e7a96a5c0",
+        "sigmoid": "00a1fec3a52bb662d725df22ceea99c5cc4f2d6e66183794fe690971095b29f8"
+      },
+      "source_sha256": "8a63fa286ae5efa5c74eee6b46cf470ab536041cde28f1a0141fa6b653e21413"
+    },
+    "preserved_temporal_engine": {
+      "constants": [
+        "VERSION",
+        "ENGINE_VERSION",
+        "DEFINITION"
+      ],
+      "functions": {
+        "hazards": "e7b8e1841ead5c6fa154116ac5b36160b1ee0761129dfe77d01f886b9eb4b28e",
+        "predict": "f09b088e8452bca249e99b99245f4852e6069ec8b1d81453daa35d552d9b6f00",
+        "split_mass": "66e0b0d49cf03235579e1fbdbc51b0a1fc6cab7d39533c16bc1f180b191680bf",
+        "validate_q": "5d8ffabf887811106bf3c54c98ceed5f44ca8ae2bfcf6087df5e79f67cbda94f"
+      },
+      "source_sha256": "a208a220a49da7531ce00582dbfe6a044a6da9c6ba92183c08da63100c53537e"
+    },
+    "short_flow_response": {
+      "constants": [],
+      "functions": {
+        "context_key": "5723fbb57ccf27699c156f8c6cd4e99edb460264c05262222542504e9054d94d",
+        "eligible": "8c47391064815683fc56d7c16e263598d8823d337b6ae51067c63f57195ea2ae",
+        "predict": "91a49a776d84b7121ff7a8c429e3f978fbd2ac260638cd99e053e83f125efe39",
+        "response_band": "167dc2bea77a04fa3f92cca58d7a93bdcf579b5fb29ea5ceb4882b22e3eb05ec",
+        "target": "45c43f5f9a44770a9c4b88b67b6ab2c934ce8f3b6e41b851d68291fbf4181b22"
+      },
+      "source_sha256": "504e7e85ffd67582fa000b2de738e4c560ed7714f3f85fce1d445cf60ab76454"
+    },
+    "temporal_engine": {
+      "constants": [],
+      "functions": {
+        "cumulative": "b81f2ff31a488ab9c48e0b2f6b4ca1df8a162788e8ce56486f66df9b53dbbd92",
+        "marginal_reachability": "ab6d49e0972833c77b01c909404c0169e885dc39308ee85c8debf1837caa2eb9",
+        "probability_vector": "0be4dec6c2eefc2450894f755600d60570031b9b97869a4c6398f4f0f39c1a6d"
+      },
+      "source_sha256": "9620ab218f6343cf33d041fbd5c10c8b9029a37ff2cb9f75c36535eb7656c762"
+    }
+  }
+}

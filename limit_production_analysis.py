@@ -20,8 +20,8 @@ from limit_order_contract import (
     build_limit_order_contract,
     compose_limit_probability_tree,
 )
-from sequential_production_analysis import NewEngineAnalysisError, analyze_trade
-from empirical_temporal_engine import ENGINE_VERSION
+from served_analysis import NewEngineAnalysisError, analyze_trade
+from analysis_engine_selection import ENGINE_VERSION
 
 
 # LIMIT is an entry lifecycle around the current TP/SL engine, not a second
@@ -221,7 +221,7 @@ def analyze_limit_trade(
         {
             "analysis_type": "pre_trade_limit",
             "engine_family": LIMIT_ORDER_ANALYSIS_FAMILY,
-            "engine_version": LIMIT_PRODUCTION_ENGINE_VERSION,
+            "engine_version": conditional_result.get("engine_version", LIMIT_PRODUCTION_ENGINE_VERSION),
             "risk_level": (
                 f"{conditional['sl_first_within_outcome_horizon'] * 100:.1f}% "
                 "SL si activa"

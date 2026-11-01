@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from typing import Iterator
 
 import psycopg
+from psycopg.pq import TransactionStatus
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
@@ -171,7 +172,17 @@ class DbSession:
     def __init__(self, connection):
         self.connection = connection
 
+    def _ensure_transaction_schema(self) -> None:
+        # Transaction-pool backends can retain a different session search_path
+        # (e.g. a maintenance client's empty path). Pin the application schema
+        # in EVERY new transaction, including after explicit commit/rollback.
+        # SET LOCAL stays inside this transaction and does not alter other clients.
+        info = getattr(self.connection, 'info', None)
+        if getattr(info, 'transaction_status', None) == TransactionStatus.IDLE:
+            self.connection.execute('SET LOCAL search_path TO public')
+
     def execute(self, query: str, params: tuple | list | None = None):
+        self._ensure_transaction_schema()
         pg_query = self._q(query)
         if self._should_return_id(pg_query):
             pg_query = f"{pg_query.rstrip().rstrip(';')} RETURNING id"
@@ -184,9 +195,11 @@ class DbSession:
         return self.connection.execute(pg_query, self._p(params))
 
     def executemany(self, query: str, seq_of_params):
+        self._ensure_transaction_schema()
         return self.connection.executemany(self._q(query), seq_of_params)
 
     def executescript(self, script: str):
+        self._ensure_transaction_schema()
         for statement in (s.strip() for s in script.split(";") if s.strip()):
             self.connection.execute(statement)
 

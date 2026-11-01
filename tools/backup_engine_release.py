@@ -53,7 +53,7 @@ def main():
     with log.open('w',encoding='utf-8') as errors:
         result = subprocess.run([str(binaries / 'pg_dump.exe'), '--format=custom', '--verbose',
             '--no-owner', '--no-acl', '--no-password', '--schema=public', '--lock-wait-timeout=15000',
-            '--file', str(dump)], env=env, stdout=subprocess.DEVNULL, stderr=errors, timeout=600)
+            '--file', str(dump)], env=env, stdout=subprocess.DEVNULL, stderr=errors, timeout=3600)
     if result.returncode:
         # Do not echo the connection URL, even if a vendor error contains it.
         error = log.read_text(encoding='utf-8').replace(connection, '[REDACTED]')

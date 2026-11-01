@@ -4,8 +4,8 @@ from copy import deepcopy
 from analysis_engine_selection import ENGINE_VERSION, SCORING_VERSION, RUNTIME_VERSION, SCORING_BY_ENGINE, LAB4, LAB4_MODEL_SHA
 
 
-APP_VERSION = "app-v0.40.21-lab4-global-release"
-APP_SEMVER = "0.40.21"
+APP_VERSION = "app-v0.40.22-lab4-pool-schema"
+APP_SEMVER = "0.40.22"
 LEARNING_EVALUATOR_VERSION = "learning-v0.17-v11-target-horizon-attribution"
 LEARNING_SCHEMA_VERSION = "learning-schema-v0.22-target-horizon-attribution"
 DATA_SOURCE_VERSION = "data-sources-v0.28-worker-order-book-dynamics"

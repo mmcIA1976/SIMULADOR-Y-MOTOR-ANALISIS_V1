@@ -378,7 +378,7 @@ class ScannerIntegrationTests(unittest.TestCase):
 
     def scan(self, minute, *, bad=False, fail_insert=False,
              fail_analysis=False, fail_final=False, worker_price_fail=False, planned=False,
-             dry_run=False, cash=1000., rival_after_refresh=False):
+             dry_run=False, cash=1000., rival_after_refresh=False, opening_error=None):
         original_analyze = contest.analyze_candidates
         def analyze(policy, prices, at, **kwargs):
             self.analysis_phases.append('final' if kwargs.get('symbols') else 'panel')
@@ -432,6 +432,8 @@ class ScannerIntegrationTests(unittest.TestCase):
             return dict(self.guard_prices)
 
         def opening(db, **kwargs):
+            if opening_error is not None:
+                raise opening_error
             if fail_insert:
                 raise RuntimeError("injected_insert_failure")
             self.opened.append(kwargs["candidate"].analyzed_at)
@@ -580,9 +582,23 @@ class ScannerIntegrationTests(unittest.TestCase):
         for minute in (0, 15):
             self.scan(minute, dry_run=True, cash=100.)
         result = self.scan(30, dry_run=True, cash=100.)["scans"][0]
-        self.assertEqual(result["status"], "no_cash")
+        self.assertEqual(result["status"], "no_trade")
         self.assertEqual(result["reason"], "autonomous_minimum_tp_profit_unreachable")
         self.assertEqual(self.opened, [])
+        raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs ORDER BY id DESC LIMIT 1").fetchone()[0])
+        self.assertEqual(raw['gates']['position_sizing']['available_cash'],100.)
+        self.assertLessEqual(raw['gates']['position_sizing']['maximum_allowed_sl_loss_usdt'],5.)
+
+    def test_final_transaction_sizing_rejection_has_a_real_reason(self):
+        from autonomous_sizing_diagnostics import SizingLimitError
+        for minute in (0,15):
+            self.scan(minute)
+        error=SizingLimitError(dict(available_cash=100.,minimum_target_profit_usdt=20.,
+            maximum_allowed_sl_loss_usdt=5.))
+        result=self.scan(30,opening_error=error)['scans'][0]
+        self.assertEqual(result['status'],'no_trade')
+        self.assertEqual(result['reason'],'autonomous_minimum_tp_profit_unreachable')
+        self.assertEqual(self.opened,[])
 
     def test_three_scans_open_once_and_duplicate_scan_does_not_advance(self):
         for minute in (0, 15):

@@ -124,6 +124,7 @@ from versioning import (
     build_data_contract,
     current_version_contract,
     scoring_version_for_legacy_engine,
+    learning_evaluator_version_for_engine,
 )
 
 
@@ -3289,7 +3290,7 @@ def recommendation_version_contract(operation: dict, snapshot: dict) -> dict:
         "app_version": operation.get("recommendation_app_version") or snapshot_versions.get("app_version"),
         "engine_version": engine_version,
         "scoring_version": scoring_version,
-        "learning_evaluator_version": LEARNING_EVALUATOR_VERSION,
+        "learning_evaluator_version": learning_evaluator_version_for_engine(engine_version),
         "learning_schema_version": LEARNING_SCHEMA_VERSION,
         "data_source_version": (
             operation.get("recommendation_data_source_version")
@@ -3573,13 +3574,17 @@ def predictive_rule_learning_snapshot(
     snapshot: dict,
     *,
     plan_result: str,
+    operation: dict | None = None,
+    historical_evidence: dict | None = None,
 ) -> dict:
     empirical_snapshot = empirical_predictive_rule_learning_snapshot(
         snapshot,
         plan_result=plan_result,
     )
     if empirical_snapshot is not None:
-        return empirical_snapshot
+        from lab4_learning import enhance_rule_learning
+        return enhance_rule_learning(snapshot, empirical_snapshot, plan_result=plan_result,
+            operation=operation, evidence=historical_evidence)
     feature_snapshot = (
         snapshot.get("feature_snapshot")
         if isinstance(snapshot.get("feature_snapshot"), dict)
@@ -3799,6 +3804,8 @@ def build_structured_learning_evaluation(
     predictive_rules = predictive_rule_learning_snapshot(
         snapshot,
         plan_result=plan_result,
+        operation=operation,
+        historical_evidence=historical_evidence,
     )
     evidence_post_close_touch = (
         historical_evidence.get("first_post_close_plan_touch")
@@ -3990,7 +3997,7 @@ def build_structured_learning_evaluation(
         "primary_lesson": primary_lesson,
         "failure_type": failure_type,
         "learning_signal": learning_signal,
-        "learning_evaluator_version": LEARNING_EVALUATOR_VERSION,
+        "learning_evaluator_version": version_contract["learning_evaluator_version"],
         "signal_diagnostics": signal_diagnostics,
         "user_decision_quality": user_decision_quality,
         "excursion": mfe_mae,

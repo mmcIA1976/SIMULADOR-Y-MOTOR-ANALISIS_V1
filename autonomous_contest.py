@@ -16,6 +16,7 @@ import autonomous_scan_audit as scan_audit
 import autonomous_market_guard as market_guard
 import autonomous_confirmation_io as confirmation_io
 import short_trade_planner as short_planner
+from autonomous_sizing_diagnostics import SizingLimitError, rejection_outcome
 from analysis_engine import TradeProposal
 from analysis_engine_selection import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
 from analysis_engine_selection import result_version_contract
@@ -337,8 +338,18 @@ def determine_position_sizing(
     maximum_notional = min(cash * MAX_AUTONOMOUS_LEVERAGE,
                            maximum_sl_loss / risk_price_fraction)
     maximum_tp_pnl = maximum_notional * reward_price_fraction
+    def minimum_target_error():
+        return SizingLimitError(dict(
+            available_cash=round(cash, 4), minimum_target_profit_usdt=minimum_profit,
+            applied_sl_risk_fraction=target_sl_risk_fraction,
+            maximum_allowed_sl_loss_usdt=maximum_sl_loss,
+            maximum_gross_tp_payoff_usdt=maximum_tp_pnl,
+            maximum_leverage=MAX_AUTONOMOUS_LEVERAGE,
+            limiting_factor=('sl_risk_budget' if maximum_sl_loss/risk_price_fraction
+                             <= cash*MAX_AUTONOMOUS_LEVERAGE else 'cash_and_leverage'),
+            profit_basis='price_gross_excludes_fees_and_funding'))
     if maximum_tp_pnl + 1e-9 < minimum_profit:
-        raise ValueError("autonomous_minimum_tp_profit_unreachable")
+        raise minimum_target_error()
     # The minimum profit is subordinate to BOTH cash and the original SL
     # budget. Round the hard cap down, not up; test the actual stored margin.
     for leverage in range(initial_leverage, MAX_AUTONOMOUS_LEVERAGE + 1):
@@ -354,12 +365,12 @@ def determine_position_sizing(
                 and margin * leverage * risk_price_fraction <= maximum_sl_loss + 1e-9):
             break
     else:
-        raise ValueError("autonomous_minimum_tp_profit_unreachable")
+        raise minimum_target_error()
     notional = margin * leverage
     estimated_tp_pnl = notional * reward_price_fraction
     estimated_sl_pnl = -notional * risk_price_fraction
     if estimated_tp_pnl + 1e-9 < minimum_profit:
-        raise ValueError("autonomous_minimum_tp_profit_unreachable")
+        raise minimum_target_error()
     if abs(estimated_sl_pnl) > maximum_sl_loss + 1e-9:
         raise ValueError("autonomous_sl_risk_budget_exceeded")
     expected_pnl = notional * (
@@ -1938,6 +1949,7 @@ def run_due_scans(
         liquidations = _load_liquidation_contexts(prices)
         scan_started = time.perf_counter()
         audit_records = []
+        sizing_diagnostic = None
         candidates = analyze_candidates(
             policy,
             prices,
@@ -2100,7 +2112,7 @@ def run_due_scans(
                                 _available_contest_cash(db, int(participant["user_id"]), season_id),
                             )
                         except ValueError as exc:
-                            status, reason = "no_cash", str(exc)
+                            status, reason, sizing_diagnostic = rejection_outcome(exc)
                         else:
                             status = "would_open"
                             reason = "dry_run_best_eligible_candidate"
@@ -2127,8 +2139,7 @@ def run_due_scans(
                             try:
                                 determine_position_sizing(selected, live_cash)
                             except ValueError as exc:
-                                status = "no_cash"
-                                reason = str(exc)
+                                status, reason, sizing_diagnostic = rejection_outcome(exc)
                             else:
                                 try:
                                     operation_id, recommendation_id = _open_selected_operation(
@@ -2141,9 +2152,12 @@ def run_due_scans(
                                         executed_at=execution_at,
                                     )
                                 except ValueError as exc:
-                                    if not str(exc).startswith(("market_exposure_guard_", "market_against_losing_", "market_recent_conflict_", "autonomous_open_position_limit_reached")):
+                                    if isinstance(exc, SizingLimitError):
+                                        status, reason, sizing_diagnostic = rejection_outcome(exc)
+                                    elif str(exc).startswith(("market_exposure_guard_", "market_against_losing_", "market_recent_conflict_", "autonomous_open_position_limit_reached")):
+                                        status, reason = "no_trade", str(exc)
+                                    else:
                                         raise
-                                    status, reason = "no_trade", str(exc)
                                 else:
                                     status = "opened"
                                     reason = "best_eligible_candidate_opened"
@@ -2215,6 +2229,7 @@ def run_due_scans(
                             audit_records, policy, selected=selected,
                             gates={
                                 "edge_threshold": policy.edge_threshold,
+                                "position_sizing": sizing_diagnostic,
                                 "min_tp_probability": (short_planner.MIN_TP_PROBABILITY
                                     if policy.code == "auto_intraday_short" else MIN_TP_PROBABILITY),
                                 "max_unresolved_probability": (short_planner.MAX_UNRESOLVED_PROBABILITY

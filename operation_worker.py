@@ -97,11 +97,18 @@ class WorkerSettings:
     persist_exit_window: bool = False
     dry_run: bool = False
     order_book_observation_enabled: bool = False
-    order_book_window_seconds: int = 60
+    order_book_window_seconds: int = 120
     order_book_publish_seconds: int = 30
     autonomous_contest_enabled: bool = False
     autonomous_contest_dry_run: bool = True
     autonomous_scan_poll_seconds: int = 30
+
+    def __post_init__(self):
+        # Three snapshots need two complete capture intervals plus execution
+        # jitter. Keep two extra intervals of slack, without more API calls.
+        # This also repairs an explicit, previously valid WINDOW_SECONDS=60.
+        object.__setattr__(self, 'order_book_window_seconds', max(
+            self.order_book_window_seconds, 4*self.order_book_publish_seconds))
 
     @classmethod
     def from_env(cls) -> "WorkerSettings":
@@ -121,7 +128,7 @@ class WorkerSettings:
             ),
             order_book_window_seconds=env_int(
                 "ORDER_BOOK_OBSERVATION_WINDOW_SECONDS",
-                60,
+                120,
                 20,
             ),
             order_book_publish_seconds=env_int(

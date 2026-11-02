@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from autonomous_sizing_diagnostics import explain_scan
 import json
 import math
 from datetime import datetime, timedelta, timezone
@@ -207,6 +208,7 @@ def scan_audit_report(db, *, participant_code, start_at, end_at, before_id=None,
                                          + int(scan["candidates_blocked"]) - len(analyses)),
             }
         scan["audit"] = audit
+        explain_scan(scan)
     return {
         "participant": participant_code,
         "start_at": start.isoformat(),

@@ -115,7 +115,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertEqual(policies["intraday_short"].daily_operation_limit, 3)
         self.assertEqual(policies["intraday_wide"].cadence_minutes, 60)
         self.assertEqual(policies["intraday_wide"].daily_operation_limit, 2)
-        self.assertEqual(policies["short_swing"].cadence_minutes, 360)
+        self.assertEqual(policies["short_swing"].cadence_minutes, 60)
         self.assertEqual(policies["short_swing"].daily_operation_limit, 1)
         self.assertEqual(
             {symbol for policy in policies.values() for symbol in policy.symbols},
@@ -139,6 +139,14 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         self.assertEqual(at_release.hour, 12)
         self.assertEqual(at_release.minute, 0)
 
+    def test_swing_new_search_is_due_after_one_hour_without_resetting_history(self):
+        policy = autonomous_contest.PARTICIPANT_POLICIES[2]
+        previous = datetime(2026, 11, 3, 12, tzinfo=timezone.utc)
+        before = autonomous_contest.scan_slot(policy, previous.replace(hour=13, minute=1, second=14))
+        after = autonomous_contest.scan_slot(policy, previous.replace(hour=13, minute=1, second=15))
+        self.assertEqual(before, previous)
+        self.assertEqual(after, previous.replace(hour=13))
+
     def test_canonical_storage_panels_match_the_compact_daily_budget(self):
         short, wide, swing = autonomous_contest.PARTICIPANT_POLICIES
         day = datetime(2026, 8, 30, tzinfo=timezone.utc)
@@ -147,7 +155,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             for minute in range(0, 24 * 60, 15)
         ]
         wide_slots = [day.replace(hour=hour) for hour in range(24)]
-        swing_slots = [day.replace(hour=hour) for hour in range(0, 24, 6)]
+        swing_slots = [day.replace(hour=hour) for hour in range(24)]
 
         self.assertEqual(
             sum(autonomous_contest.is_canonical_panel(short, slot) for slot in short_slots),

@@ -43,7 +43,7 @@ from versioning import (
 
 logger = logging.getLogger("autonomous_contest")
 
-POLICY_VERSION = "autonomous-contest-policy-v0.10-standard-20pct-8pp-immediate"
+POLICY_VERSION = "autonomous-contest-policy-v0.11-hourly-swing-20pct-8pp"
 SIZING_POLICY_VERSION = "autonomous-capital-allocation-v3-hard-risk-min20-25"
 ENTRY_POLICY_VERSION = "immediate-final-revalidation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
@@ -130,7 +130,7 @@ PARTICIPANT_POLICIES = (
         username="Bot_Swing_Corto",
         display_name="Bot Swing Corto",
         time_horizon="short_swing",
-        cadence_minutes=360,
+        cadence_minutes=60,
         daily_operation_limit=1,
         max_open_positions=8,
         edge_threshold=0.08,

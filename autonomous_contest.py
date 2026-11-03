@@ -16,6 +16,7 @@ import autonomous_scan_audit as scan_audit
 import autonomous_market_guard as market_guard
 import autonomous_confirmation_io as confirmation_io
 import short_trade_planner as short_planner
+import swing_trade_planner as swing_planner
 from autonomous_sizing_diagnostics import SizingLimitError, rejection_outcome
 from analysis_engine import TradeProposal
 from analysis_engine_selection import ENGINE_VERSION as EMPIRICAL_ENGINE_VERSION
@@ -1077,19 +1078,21 @@ def analyze_candidates(
                 continue
         for side in requested_sides:
             plans = [{}]
-            if policy.code == "auto_intraday_short":
+            if policy.code in {"auto_intraday_short", "auto_short_swing"}:
                 try:
+                    planner = swing_planner if policy.code == "auto_short_swing" else short_planner
                     if material is None:
                         material = load_horizon_material(symbol, policy.time_horizon, analyzed_at, loader=shared_kline_loader)
-                    frozen = (fixed_candidate.trade_plan if fixed_candidate is not None
-                              and fixed_candidate.trade_plan else prior_plans.get((symbol, side)))
+                    frozen = fixed_candidate.trade_plan if fixed_candidate is not None else None
+                    if not frozen and planner is short_planner:
+                        frozen = prior_plans.get((symbol, side))
                     if frozen:
-                        plans = [short_planner.validate_requote(
+                        plans = [planner.validate_requote(
                             frozen, material, side=side, entry=float(entry),
                         )]
                     else:
-                        plans = short_planner.proposals(material, side=side, entry=float(entry))
-                except short_planner.PlanRejected as exc:
+                        plans = planner.proposals(material, side=side, entry=float(entry))
+                except (short_planner.PlanRejected, swing_planner.PlanRejected) as exc:
                     candidates.append(Candidate(
                         symbol=symbol, side=side, time_horizon=policy.time_horizon,
                         analyzed_at=analyzed_at, entry=float(entry), sigma=sigma,
@@ -1117,7 +1120,8 @@ def analyze_candidates(
                     ))
             passing = [c for c in alternatives if c.eligible_for(policy)]
             measured = [c for c in alternatives if c.analysis_status == "evaluated"]
-            choice = min(passing or measured, key=entry_confirmation.rank_key) if (passing or measured) else alternatives[0]
+            choice = (select_candidate(passing, policy) if passing else
+                      min(measured, key=entry_confirmation.rank_key) if measured else alternatives[0])
             if choice.trade_plan:
                 choice.trade_plan = {**choice.trade_plan, "alternatives_evaluated": len(alternatives)}
             candidates.append(choice)
@@ -1556,7 +1560,7 @@ def _prepare_selected_analysis(
         entry_context["entry_confirmation"] = dict(candidate.confirmation)
     if candidate.trade_plan:
         result["autonomous_trade_plan"] = dict(candidate.trade_plan)
-        entry_context["proposal_plan_version"] = short_planner.PLAN_VERSION
+        entry_context["proposal_plan_version"] = candidate.trade_plan.get("version", short_planner.PLAN_VERSION)
         entry_context["proposal_plan_key"] = candidate.trade_plan["lineage_key"]
     if candidate.horizon_geometry:
         result["autonomous_horizon_geometry"] = dict(candidate.horizon_geometry)
@@ -1606,7 +1610,7 @@ def _prepare_selected_analysis(
     if candidate.confirmation:
         version_contract["autonomous_entry_confirmation_version"] = entry_confirmation.CONFIRMATION_VERSION
     if candidate.trade_plan:
-        version_contract["autonomous_trade_plan_version"] = short_planner.PLAN_VERSION
+        version_contract["autonomous_trade_plan_version"] = candidate.trade_plan.get("version", short_planner.PLAN_VERSION)
     if candidate.horizon_geometry:
         version_contract["autonomous_horizon_geometry_version"] = WIDE_GEOMETRY_VERSION
     result["version_contract"] = version_contract

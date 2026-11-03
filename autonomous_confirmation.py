@@ -39,7 +39,7 @@ def as_object(value) -> dict:
 
 
 def rank_key(candidate) -> tuple:
-    if getattr(candidate, "trade_plan", None):
+    if getattr(candidate, "trade_plan", None) and candidate.time_horizon == "intraday_short":
         return (-float(candidate.tp_probability), -float(candidate.edge),
                 float(candidate.unresolved_probability), candidate.symbol, candidate.side)
     return (-float(candidate.edge), -float(candidate.tp_probability),

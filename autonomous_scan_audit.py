@@ -8,7 +8,7 @@ import math
 from datetime import datetime, timedelta, timezone
 
 
-AUDIT_VERSION = "autonomous-scan-audit-v1"
+AUDIT_VERSION = "autonomous-scan-audit-v2-proposal-provenance"
 MAX_REPORT_SCANS = 12
 MAX_REPORT_DATABASE_BYTES = 512 * 1024
 FIELDS = (
@@ -19,6 +19,8 @@ FIELDS = (
     "reason_truncated", "reason_sha256",
     "entry_guard_status", "entry_guard_reason",
     "engine_version", "model_sha256", "forecast_input_sha256",
+    "proposal_hours", "proposal_radius_fraction", "proposal_lineage_key",
+    "proposal_source_sha256", "proposal_data_cutoff_at_ms",
 )
 
 
@@ -39,6 +41,7 @@ def candidate_record(candidate, policy, *, phase="panel") -> dict:
     truncated = len(reason_bytes) > 256
     result = getattr(candidate, 'analysis_result', None) or {}
     inference = result.get('engine_inference') or {}
+    plan = candidate.trade_plan or candidate.horizon_geometry
     return {
         "phase": phase,
         "symbol": candidate.symbol,
@@ -58,7 +61,12 @@ def candidate_record(candidate, policy, *, phase="panel") -> dict:
         "eligible": candidate.eligible_for(policy),
         "artifact_id": candidate.artifact_id,
         "context_sigma": _finite(candidate.sigma),
-        "proposal_version": (candidate.trade_plan or candidate.horizon_geometry).get("version"),
+        "proposal_version": plan.get("version"),
+        "proposal_hours": plan.get("proposal_hours"),
+        "proposal_radius_fraction": _finite(plan.get("radius_fraction")),
+        "proposal_lineage_key": plan.get("lineage_key"),
+        "proposal_source_sha256": plan.get("source_sha256"),
+        "proposal_data_cutoff_at_ms": plan.get("data_cutoff_at_ms"),
         "reason_truncated": truncated,
         "reason_sha256": hashlib.sha256(reason_bytes).hexdigest() if truncated else None,
         "entry_guard_status": getattr(candidate, "entry_guard", {}).get("status"),

@@ -10,6 +10,25 @@ from tests.test_autonomous_contest import candidate
 
 
 class AuditContractTests(unittest.TestCase):
+    def test_previous_contract_preserves_original_fields_and_values(self):
+        historical = {"version": "autonomous-scan-audit-v1", "coverage": "complete",
+                      "fields": ["phase", "symbol", "entry", "tp_probability"],
+                      "rows": [["panel", "BTCUSDT", 78360.6, .5081055250520027]],
+                      "record_count": 1}
+        original = json.dumps(historical)
+        restored = audit.decode_audit(original)
+        self.assertEqual(restored["version"], historical["version"])
+        self.assertEqual(restored["analyses"], [{"phase": "panel", "symbol": "BTCUSDT",
+                         "entry": 78360.6, "tp_probability": .5081055250520027}])
+        self.assertNotIn("proposal_hours", restored["analyses"][0])
+        self.assertEqual(json.dumps(historical), original)
+
+    def test_unknown_versions_and_malformed_historical_rows_still_fail(self):
+        with self.assertRaisesRegex(ValueError, "unknown_contract"):
+            audit.decode_audit({"version": "unrecognized", "fields": [], "rows": []})
+        with self.assertRaisesRegex(ValueError, "invalid_row"):
+            audit.decode_audit({"version": "autonomous-scan-audit-v1", "fields": ["entry"], "rows": [[]]})
+
     def test_all_twelve_results_keep_precision_without_snapshots(self):
         policy = contest.PARTICIPANT_POLICIES[1]
         values = []

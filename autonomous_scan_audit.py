@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 
 AUDIT_VERSION = "autonomous-scan-audit-v2-proposal-provenance"
+READABLE_AUDIT_VERSIONS = {"autonomous-scan-audit-v1", AUDIT_VERSION}
 MAX_REPORT_SCANS = 12
 MAX_REPORT_DATABASE_BYTES = 512 * 1024
 FIELDS = (
@@ -122,7 +123,7 @@ def encode_audit(records, policy, *, selected=None, gates=None) -> str:
 def decode_audit(payload) -> dict:
     if isinstance(payload, str):
         payload = json.loads(payload)
-    if not isinstance(payload, dict) or payload.get("version") != AUDIT_VERSION:
+    if not isinstance(payload, dict) or payload.get("version") not in READABLE_AUDIT_VERSIONS:
         raise ValueError("autonomous_audit_unknown_contract")
     fields = payload.get("fields")
     rows = payload.get("rows")

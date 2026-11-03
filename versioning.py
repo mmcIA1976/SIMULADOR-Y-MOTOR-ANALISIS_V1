@@ -4,8 +4,8 @@ from copy import deepcopy
 from analysis_engine_selection import ENGINE_VERSION, SCORING_VERSION, RUNTIME_VERSION, SCORING_BY_ENGINE, LAB4, LAB4_MODEL_SHA
 
 
-APP_VERSION = "app-v0.40.24-swing-excursion-proposals"
-APP_SEMVER = "0.40.24"
+APP_VERSION = "app-v0.40.25-compatible-scan-audit-history"
+APP_SEMVER = "0.40.25"
 LEGACY_LEARNING_EVALUATOR_VERSION = "learning-v0.17-v11-target-horizon-attribution"
 LAB4_LEARNING_EVALUATOR_VERSION = "learning-v0.18-lab4-attribution-and-time-scope"
 

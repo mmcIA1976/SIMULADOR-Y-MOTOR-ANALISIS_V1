@@ -8,15 +8,17 @@ class SizingRejectionTests(unittest.TestCase):
     def test_positive_cash_is_reported_as_a_sizing_limit(self):
         item=candidate(edge=.15,tp=.57,unresolved=.01)
         item.time_horizon='intraday_wide'
+        item.take_profit,item.stop_loss=100.025,99.975
         with self.assertRaises(SizingLimitError) as caught:
             determine_position_sizing(item,494.586)
         error=caught.exception
         status,reason,details=rejection_outcome(error)
         self.assertEqual(status,'no_trade')
         self.assertEqual(details['available_cash'],494.586)
-        self.assertLessEqual(details['maximum_allowed_sl_loss_usdt'],24.7293)
+        self.assertIsNone(details['maximum_allowed_sl_loss_usdt'])
         self.assertEqual(details['minimum_target_profit_usdt'],25)
-        self.assertEqual(details['limiting_factor'],'sl_risk_budget')
+        self.assertEqual(details['limiting_factor'],'cash_and_leverage')
+        self.assertGreater(details['required_margin_usdt'],494.586)
 
     def test_old_record_keeps_its_recorded_status_in_the_display(self):
         row=explain_scan(dict(status='no_cash',reason_code='autonomous_minimum_tp_profit_unreachable'))

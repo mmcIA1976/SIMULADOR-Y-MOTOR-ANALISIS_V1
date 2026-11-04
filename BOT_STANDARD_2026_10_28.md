@@ -72,8 +72,9 @@ realmente cerrada por TP o SL por una etiqueta de vencimiento.
    sin revalidarla. No se esperan otros dos escaneos para autorizar al corto.
 5. Revalidar precio ejecutable, exposición, cuota y caja disponible. Dimensionar
    sobre el plan simétrico en la entrada efectiva.
-6. Rechazar si el objetivo económico no cabe dentro del capital y presupuesto
-   de pérdida. No ampliar el SL o saltarse el presupuesto para cumplir el mínimo.
+6. Reservar el margen necesario para perseguir el mínimo 20/25/25 usando hasta
+   ×10. Rechazar únicamente si ese margen no cabe en la caja disponible; el SL
+   debe poder financiarse con el margen reservado. No modificar los niveles.
 7. Guardar versión de política, análisis, dimensionamiento y mínimo utilizado.
 
 El campo de ventaja almacenado no puede sustituir a la diferencia real entre
@@ -83,13 +84,21 @@ política coinciden; no pueden tomar el mínimo 20 del corto para un bot de 25.
 
 ## Capital y riesgo: alcance exacto
 
-Se conserva la fórmula existente de presupuesto inicial de pérdida:
+Corrección expresa del usuario, 4/11/2026: se elimina el presupuesto porcentual
+de pérdida dependiente de ventaja. La caja libre financia el **margen reservado**;
+la pérdida prevista al SL se calcula y se registra por separado.
 
-`caja libre × min(0,05; max(0,02; 0,02 + 0,10 × ventaja normalizada))`.
+`nocional necesario = beneficio mínimo / distancia porcentual al TP`.
+`margen necesario = nocional necesario / apalancamiento`.
 
-La asignación local ya preparada tenía comprobación estricta de ese presupuesto;
-se conserva y se adapta a mínimos 20/25/25. Margen y apalancamiento finales deben
-respetarlo después de redondear. El máximo de apalancamiento sigue siendo ×10.
+Se utiliza el mayor apalancamiento entero hasta ×10 que permita financiar la
+pérdida del SL con el margen de la posición. Se reserva el margen mínimo que
+cumple el objetivo, redondeado hacia arriba a cuatro decimales y comprobado
+contra la caja real. La ventaja participa en admisión y clasificación, sin
+imponer porcentajes de margen ni otro umbral de capital. Se registran nocional,
+margen, pérdida al SL y fracción real de la caja que supondría esa pérdida.
+Los campos históricos de presupuesto siguen siendo legibles; la política nueva
+los guarda como nulos e identifica `autonomous-capital-allocation-v4-funded-margin-min20-25`.
 La caja sigue siendo capital inicial más PnL cerrado menos márgenes reservados;
 no es patrimonio marcado a mercado ni un límite de riesgo agregado.
 
@@ -99,8 +108,9 @@ Los objetivos 20/25 son PnL bruto teórico al TP; no incluyen financiación,
 comisiones ni deslizamiento y no garantizan que se alcance el nivel.
 
 Con distancias iguales, el beneficio previsto al TP y la pérdida prevista al SL
-tienen la misma magnitud antes de costes. Cuando el presupuesto disponible no
-admite esos importes, el resultado correcto es no abrir; no es una cuota incumplida.
+tienen la misma magnitud antes de costes. El margen reservado es una cantidad
+distinta, determinada por el apalancamiento. Las posiciones antiguas y sus
+registros de dimensionamiento se conservan con su política original.
 
 ## Pendientes de definición
 
@@ -115,8 +125,15 @@ admite esos importes, el resultado correcto es no abrir; no es una cuota incumpl
 
 ## Versiones, pruebas y recuperación
 
+- Corrección de margen 4/11/2026: app `0.40.27`, dimensionamiento v4.
+  163 pruebas superadas y 173 subpruebas en un paquete limpio de HEAD con solo
+  los ficheros de esta corrección. Las 12 candidatas históricas que fallaban el
+  tope porcentual ahora caben en su caja real; no se ejecutan operaciones de
+  prueba ni se recalculan pronósticos. Los apartados de pruebas siguientes
+  documentan la preparación histórica del 28 de octubre.
 - Política preparada: `autonomous-contest-policy-v0.10-standard-20pct-8pp-immediate`.
-- Dimensionamiento: `autonomous-capital-allocation-v3-hard-risk-min20-25`.
+- Dimensionamiento actual: `autonomous-capital-allocation-v4-funded-margin-min20-25`.
+  Los registros anteriores conservan su versión v3 y su presupuesto original.
 - Entrada: `immediate-final-revalidation-v1`.
 - Se conservan los ayudantes y pruebas del mecanismo histórico de confirmación,
   activado expresamente sólo en sus pruebas sintéticas. El escáner actual no lo exige.

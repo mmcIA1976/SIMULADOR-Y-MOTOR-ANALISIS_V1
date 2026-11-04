@@ -205,7 +205,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             self.assertIsNone(autonomous_contest.select_candidate([below], policy))
             self.assertIs(autonomous_contest.select_candidate([passing], policy), passing)
 
-    def test_position_sizing_replaces_fixed_100_x1_with_probability_based_capital(self):
+    def test_position_sizing_funds_target_without_committing_the_free_balance(self):
         selected = candidate(
             edge=0.495320077120577 - 0.317254342473678,
             tp=0.495320077120577,
@@ -218,8 +218,8 @@ class AutonomousContestPolicyTests(unittest.TestCase):
 
         sizing = autonomous_contest.determine_position_sizing(selected, 1000.0)
 
-        self.assertEqual(sizing.leverage, 4)
-        self.assertGreater(sizing.margin, 500.0)
+        self.assertEqual(sizing.leverage, 10)
+        self.assertLess(sizing.margin, 1000.0)
         self.assertGreaterEqual(sizing.estimated_tp_pnl, 20.0)
         self.assertGreater(sizing.expected_pnl, 0.0)
         self.assertEqual(
@@ -227,15 +227,15 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             "none_post_selection_only",
         )
 
-    def test_stronger_advantage_allocates_more_capital_but_not_blind_leverage(self):
+    def test_probability_edge_does_not_impose_another_capital_budget(self):
         weak = candidate(edge=0.10, tp=0.40, unresolved=0.30)
         strong = candidate(edge=0.25, tp=0.55, unresolved=0.15)
 
         weak_sizing = autonomous_contest.determine_position_sizing(weak, 1000.0)
         strong_sizing = autonomous_contest.determine_position_sizing(strong, 1000.0)
 
-        self.assertGreater(strong_sizing.margin, weak_sizing.margin)
-        self.assertGreater(
+        self.assertEqual(strong_sizing.margin, weak_sizing.margin)
+        self.assertEqual(
             strong_sizing.estimated_tp_pnl,
             weak_sizing.estimated_tp_pnl,
         )
@@ -244,16 +244,16 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             autonomous_contest.MAX_AUTONOMOUS_LEVERAGE,
         )
 
-    def test_wide_stop_reduces_margin_to_respect_the_sl_budget(self):
+    def test_wide_stop_selects_leverage_that_funds_the_planned_sl(self):
         selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
         selected.take_profit = 112.0
         selected.stop_loss = 88.0
 
         sizing = autonomous_contest.determine_position_sizing(selected, 1000.0)
 
-        self.assertEqual(sizing.leverage, 1)
-        self.assertAlmostEqual(sizing.margin, 250.0, places=4)
-        self.assertAlmostEqual(sizing.estimated_sl_pnl, -30.0, places=4)
+        self.assertEqual(sizing.leverage, 8)
+        self.assertGreaterEqual(sizing.estimated_tp_pnl, 20.)
+        self.assertLessEqual(abs(sizing.estimated_sl_pnl), sizing.margin)
 
     def test_two_dollar_target_is_rejected_even_at_x10(self):
         selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
@@ -263,13 +263,13 @@ class AutonomousContestPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "minimum_tp_profit_unreachable"):
             autonomous_contest.determine_position_sizing(selected, 1000.0)
 
-    def test_position_size_scales_with_balance_without_a_nominal_stake_cap(self):
+    def test_more_free_cash_does_not_force_a_larger_bet(self):
         selected = candidate(edge=0.10, tp=0.40, unresolved=0.30)
 
         small = autonomous_contest.determine_position_sizing(selected, 1000.0)
         large = autonomous_contest.determine_position_sizing(selected, 10_000.0)
 
-        self.assertAlmostEqual(large.margin, small.margin * 10, delta=.001)
+        self.assertEqual(large.margin, small.margin)
         self.assertEqual(large.leverage, small.leverage)
 
     def test_gates_reject_low_tp_high_unresolved_and_low_support(self):
@@ -496,7 +496,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             params for query, params in db.calls if "INSERT INTO price_ticks" in query
         )
         self.assertEqual(operation_params[4], 100.05)
-        self.assertAlmostEqual(operation_params[5], 500.0, delta=.0001)
+        self.assertLess(operation_params[5], 1000.)
         self.assertGreaterEqual(operation_params[6], 1)
         self.assertLessEqual(operation_params[6], 10)
         self.assertEqual(operation_params[9], executed_at.isoformat())
@@ -512,7 +512,7 @@ class AutonomousContestPolicyTests(unittest.TestCase):
             "Check the per-bot open-position cap before inserting an operation.",
         )
         stored_analysis = json.loads(recommendation_params[17])
-        self.assertAlmostEqual(stored_analysis["position_sizing"]["margin"], 500.0, delta=.0001)
+        self.assertEqual(stored_analysis["position_sizing"]["margin"], operation_params[5])
         self.assertEqual(stored_analysis["position_sizing"]["leverage"], operation_params[6])
         self.assertGreaterEqual(stored_analysis["position_sizing"]["estimated_tp_pnl"], 20.)
         self.assertLessEqual(abs(stored_analysis["position_sizing"]["estimated_sl_pnl"]), 35.)
@@ -544,19 +544,20 @@ class AutonomousContestPolicyTests(unittest.TestCase):
                     self.assertAlmostEqual(abs(target - 100.037), abs(stop - 100.037))
                     self.assertAlmostEqual(abs(target / 100.037 - 1), .01)
 
-    def test_profit_minimum_never_overrides_the_probability_based_risk_budget(self):
-        # Plenty of notional capacity, but the existing 3% risk budget is 15.
+    def test_profit_minimum_is_not_blocked_by_a_percentage_of_cash(self):
         item = candidate(edge=.1, tp=.4, unresolved=.3)
-        with self.assertRaisesRegex(ValueError, "minimum_tp_profit_unreachable"):
-            autonomous_contest.determine_position_sizing(item, 500.)
+        sizing=autonomous_contest.determine_position_sizing(item, 500.)
+        self.assertGreaterEqual(sizing.estimated_tp_pnl,20.)
+        self.assertLess(sizing.margin,500.)
+        self.assertIsNone(sizing.target_sl_risk_fraction)
 
-    def test_minimum_profit_can_increase_allocation_only_within_the_original_risk_budget(self):
+    def test_minimum_profit_uses_funded_margin_for_a_nearby_target(self):
         item = candidate(edge=.1, tp=.4, unresolved=.3)
         item.take_profit, item.stop_loss = 100.4, 99.6
         sizing = autonomous_contest.determine_position_sizing(item, 1000.)
-        self.assertGreater(sizing.margin, 400.)
+        self.assertAlmostEqual(sizing.margin,500.,delta=.0001)
         self.assertGreaterEqual(sizing.estimated_tp_pnl, 20.)
-        self.assertLessEqual(abs(sizing.estimated_sl_pnl), 30.)
+        self.assertAlmostEqual(abs(sizing.estimated_sl_pnl),20.,delta=.0001)
         self.assertLessEqual(sizing.leverage, 10)
 
     def test_sizing_matrix_respects_stored_margin_cash_leverage_and_twenty_dollars(self):
@@ -576,10 +577,9 @@ class AutonomousContestPolicyTests(unittest.TestCase):
                         accepted += 1
                         actual_profit = sizing.margin * sizing.leverage * abs(item.take_profit - item.entry) / item.entry
                         actual_loss = sizing.margin * sizing.leverage * abs(item.stop_loss - item.entry) / item.entry
-                        # Assert against the unrounded policy formula, not rounded metadata.
-                        budget = cash * min(.05, .02 + .1 * (item.tp_probability - item.sl_probability))
                         self.assertGreaterEqual(actual_profit + 1e-8, 20.)
-                        self.assertLessEqual(actual_loss, budget + 1e-8)
+                        self.assertLessEqual(actual_loss, sizing.margin + 1e-8)
+                        self.assertIsNone(sizing.maximum_sl_loss_usdt)
                         self.assertLessEqual(sizing.margin, cash)
                         self.assertLessEqual(sizing.leverage, 10)
                         self.assertEqual(sizing.margin, round(sizing.margin, 4))

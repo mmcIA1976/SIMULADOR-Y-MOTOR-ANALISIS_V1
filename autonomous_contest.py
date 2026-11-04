@@ -44,7 +44,7 @@ from versioning import (
 logger = logging.getLogger("autonomous_contest")
 
 POLICY_VERSION = "autonomous-contest-policy-v0.11-hourly-swing-20pct-8pp"
-SIZING_POLICY_VERSION = "autonomous-capital-allocation-v3-hard-risk-min20-25"
+SIZING_POLICY_VERSION = "autonomous-capital-allocation-v4-funded-margin-min20-25"
 ENTRY_POLICY_VERSION = "immediate-final-revalidation-v1"
 STORAGE_VERSION = "autonomous-contest-storage-v0.1"
 WIDE_GEOMETRY_VERSION = "wide-24h-neutral-reach-v1"
@@ -74,11 +74,6 @@ MIN_TARGET_PROFIT_USDT = 20.0
 MIN_TARGET_PROFIT_BY_HORIZON = {
     "intraday_short": 20.0, "intraday_wide": 25.0, "short_swing": 25.0,
 }
-MIN_TARGET_MARGIN_FRACTION = 0.20
-BASE_TARGET_SL_RISK_FRACTION = 0.02
-MAX_TARGET_SL_RISK_FRACTION = 0.05
-EDGE_TO_MARGIN_MULTIPLIER = 2.0
-EDGE_TO_RISK_MULTIPLIER = 0.10
 
 
 @dataclass(frozen=True)
@@ -210,8 +205,8 @@ class PositionSizing:
     resolved_probability: float
     normalized_advantage: float
     target_margin_fraction: float
-    target_sl_risk_fraction: float
-    maximum_sl_loss_usdt: float
+    target_sl_risk_fraction: float | None
+    maximum_sl_loss_usdt: float | None
     estimated_tp_pnl: float
     estimated_sl_pnl: float
     expected_pnl: float
@@ -241,11 +236,12 @@ class PositionSizing:
             "profit_basis": "price_gross_excludes_fees_and_funding",
             "maximum_sl_loss_usdt": self.maximum_sl_loss_usdt,
             "max_leverage": MAX_AUTONOMOUS_LEVERAGE,
+            "allocation_method": "minimum_target_funded_margin",
+            "capital_requirement": "reserved_margin_within_available_cash",
+            "loss_budget_policy": "no_probability_based_percentage_cap",
+            "leverage_selection": "highest_allowed_with_planned_sl_funded",
+            "estimated_sl_loss_cash_fraction": abs(self.estimated_sl_pnl) / self.available_cash,
         }
-
-
-def _clamp(value: float, lower: float, upper: float) -> float:
-    return min(upper, max(lower, value))
 
 
 def determine_position_sizing(
@@ -254,10 +250,10 @@ def determine_position_sizing(
 ) -> PositionSizing:
     """Assign capital after analysis without feeding execution into probability.
 
-    The normalized advantage is the expected TP/SL payoff measured in units of
-    initial price risk. With symmetric TP/SL geometry this is exactly
-    ``tp_probability - sl_probability``. Unresolved probability therefore
-    reduces the allocation naturally instead of being redistributed as a win.
+    Cash funds reserved margin. TP/SL distances determine notional and planned
+    payoff/loss. The selected probability edge is recorded, never converted to
+    another percentage-of-cash risk budget. Historical budget fields remain
+    readable and are null for this policy.
     """
     cash = float(available_cash)
     minimum_profit = MIN_TARGET_PROFIT_BY_HORIZON.get(candidate.time_horizon)
@@ -311,59 +307,36 @@ def determine_position_sizing(
     ) / risk_price_fraction
     if normalized_advantage <= 0:
         raise ValueError("autonomous_sizing_non_positive_advantage")
-    sizing_strength = _clamp(normalized_advantage, 0.0, 1.0)
-
-    # There is no fixed USDT stake ceiling: the fraction scales with the edge
-    # and may reach the entire available balance for an exceptionally strong
-    # setup. The separate SL budget prevents leverage from magnifying a normal
-    # stop beyond the evidence-supported risk allocation.
-    target_margin_fraction = _clamp(
-        MIN_TARGET_MARGIN_FRACTION
-        + EDGE_TO_MARGIN_MULTIPLIER * sizing_strength,
-        MIN_TARGET_MARGIN_FRACTION,
-        1.0,
+    # Reserve only the margin required by the target, leaving the remainder
+    # available for other entries. Lower leverage only when a wide planned SL
+    # would otherwise exhaust the posted margin before reaching its level.
+    maximum_leverage = max(
+        leverage for leverage in range(1, MAX_AUTONOMOUS_LEVERAGE + 1)
+        if leverage * risk_price_fraction <= 1.0 + 1e-12
     )
-    target_sl_risk_fraction = _clamp(
-        BASE_TARGET_SL_RISK_FRACTION
-        + EDGE_TO_RISK_MULTIPLIER * sizing_strength,
-        BASE_TARGET_SL_RISK_FRACTION,
-        MAX_TARGET_SL_RISK_FRACTION,
-    )
-    target_margin = cash * target_margin_fraction
-    leverage_budget = target_sl_risk_fraction / (
-        target_margin_fraction * risk_price_fraction
-    )
-    initial_leverage = min(MAX_AUTONOMOUS_LEVERAGE,
-                           max(1, int(math.floor(leverage_budget))))
-    maximum_sl_loss = cash * target_sl_risk_fraction
-    maximum_notional = min(cash * MAX_AUTONOMOUS_LEVERAGE,
-                           maximum_sl_loss / risk_price_fraction)
-    maximum_tp_pnl = maximum_notional * reward_price_fraction
+    maximum_margin = math.floor(cash * 10_000) / 10_000
+    maximum_tp_pnl = maximum_margin * maximum_leverage * reward_price_fraction
     def minimum_target_error():
         return SizingLimitError(dict(
             available_cash=round(cash, 4), minimum_target_profit_usdt=minimum_profit,
-            applied_sl_risk_fraction=target_sl_risk_fraction,
-            maximum_allowed_sl_loss_usdt=maximum_sl_loss,
+            applied_sl_risk_fraction=None,
+            maximum_allowed_sl_loss_usdt=None,
             maximum_gross_tp_payoff_usdt=maximum_tp_pnl,
             maximum_leverage=MAX_AUTONOMOUS_LEVERAGE,
-            limiting_factor=('sl_risk_budget' if maximum_sl_loss/risk_price_fraction
-                             <= cash*MAX_AUTONOMOUS_LEVERAGE else 'cash_and_leverage'),
+            feasible_leverage_for_planned_sl=maximum_leverage,
+            required_margin_usdt=math.ceil(minimum_profit / (maximum_leverage * reward_price_fraction) * 10_000) / 10_000,
+            limiting_factor='cash_and_leverage',
             profit_basis='price_gross_excludes_fees_and_funding'))
     if maximum_tp_pnl + 1e-9 < minimum_profit:
         raise minimum_target_error()
-    # The minimum profit is subordinate to BOTH cash and the original SL
-    # budget. Round the hard cap down, not up; test the actual stored margin.
-    for leverage in range(initial_leverage, MAX_AUTONOMOUS_LEVERAGE + 1):
-        maximum_margin = math.floor(min(cash, maximum_notional / leverage) * 10_000) / 10_000
+    for leverage in range(maximum_leverage, 0, -1):
         required_margin = math.ceil(
             minimum_profit / (leverage * reward_price_fraction) * 10_000
         ) / 10_000
         if required_margin > maximum_margin:
             continue
-        margin = min(max(math.floor(target_margin * 10_000) / 10_000,
-                         required_margin), maximum_margin)
-        if (margin * leverage * reward_price_fraction + 1e-9 >= minimum_profit
-                and margin * leverage * risk_price_fraction <= maximum_sl_loss + 1e-9):
+        margin = required_margin
+        if margin * leverage * reward_price_fraction + 1e-9 >= minimum_profit:
             break
     else:
         raise minimum_target_error()
@@ -372,8 +345,8 @@ def determine_position_sizing(
     estimated_sl_pnl = -notional * risk_price_fraction
     if estimated_tp_pnl + 1e-9 < minimum_profit:
         raise minimum_target_error()
-    if abs(estimated_sl_pnl) > maximum_sl_loss + 1e-9:
-        raise ValueError("autonomous_sl_risk_budget_exceeded")
+    if margin > cash or abs(estimated_sl_pnl) > margin + 1e-9:
+        raise ValueError("autonomous_margin_funding_invalid")
     expected_pnl = notional * (
         tp_probability * reward_price_fraction
         - sl_probability * risk_price_fraction
@@ -390,9 +363,9 @@ def determine_position_sizing(
         conditional_win_probability=round(conditional_win_probability, 8),
         resolved_probability=round(resolved_probability, 8),
         normalized_advantage=round(normalized_advantage, 8),
-        target_margin_fraction=round(target_margin_fraction, 8),
-        target_sl_risk_fraction=round(target_sl_risk_fraction, 8),
-        maximum_sl_loss_usdt=maximum_sl_loss,
+        target_margin_fraction=round(margin / cash, 8),
+        target_sl_risk_fraction=None,
+        maximum_sl_loss_usdt=None,
         estimated_tp_pnl=round(estimated_tp_pnl, 4),
         estimated_sl_pnl=round(estimated_sl_pnl, 4),
         expected_pnl=round(expected_pnl, 4),
@@ -2232,6 +2205,7 @@ def run_due_scans(
                         scan_audit.encode_audit(
                             audit_records, policy, selected=selected,
                             gates={
+                                "sizing_policy_version": SIZING_POLICY_VERSION,
                                 "edge_threshold": policy.edge_threshold,
                                 "position_sizing": sizing_diagnostic,
                                 "min_tp_probability": (short_planner.MIN_TP_PROBABILITY
@@ -2274,6 +2248,7 @@ def run_due_scans(
                         blocked,
                         eligible,
                         scan_audit.encode_audit(audit_records, policy, gates={
+                            "sizing_policy_version": SIZING_POLICY_VERSION,
                             "confirmation_io": confirmation_io_evidence,
                             "market_exposure_guard": {"panel": guard_panel,
                                                       "execution": guard_execution}}),

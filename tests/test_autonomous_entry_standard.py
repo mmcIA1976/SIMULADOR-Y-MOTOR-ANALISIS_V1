@@ -71,13 +71,10 @@ class StandardTests(unittest.TestCase):
         for policy in contest.PARTICIPANT_POLICIES:
             for side in ('long', 'short'):
                 item = proposal(policy, side=side)
-                if policy.code == 'auto_intraday_short':
-                    sizing = contest.determine_position_sizing(item, 760.)
-                    self.assertGreaterEqual(sizing.estimated_tp_pnl, 20.)
-                    self.assertLessEqual(abs(sizing.estimated_sl_pnl), 760.*.028+.000051)
-                else:
-                    with self.assertRaisesRegex(ValueError, 'minimum_tp_profit_unreachable'):
-                        contest.determine_position_sizing(item, 760.)
+                sizing = contest.determine_position_sizing(item, 760.)
+                self.assertGreaterEqual(sizing.estimated_tp_pnl, policy.minimum_target_profit_usdt)
+                self.assertLessEqual(sizing.margin, 760.)
+                self.assertLessEqual(abs(sizing.estimated_sl_pnl), sizing.margin)
 
     def test_each_actual_insert_saves_its_own_minimum_and_immediate_policy(self):
         for policy in contest.PARTICIPANT_POLICIES:
@@ -91,7 +88,9 @@ class StandardTests(unittest.TestCase):
                 sizing = saved['position_sizing']
                 self.assertEqual(sizing['minimum_target_profit_usdt'], policy.minimum_target_profit_usdt)
                 self.assertGreaterEqual(sizing['estimated_tp_pnl'], policy.minimum_target_profit_usdt)
-                self.assertLessEqual(abs(sizing['estimated_sl_pnl']), sizing['maximum_sl_loss_usdt']+.000051)
+                self.assertIsNone(sizing['maximum_sl_loss_usdt'])
+                self.assertLessEqual(abs(sizing['estimated_sl_pnl']), sizing['margin'])
+                self.assertEqual(sizing['loss_budget_policy'],'no_probability_based_percentage_cap')
                 self.assertEqual(saved['snapshot']['version_contract']['autonomous_entry_policy_version'], contest.ENTRY_POLICY_VERSION)
 
     def test_direct_insert_cannot_bypass_resolution_or_edge_gates(self):

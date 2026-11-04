@@ -578,16 +578,17 @@ class ScannerIntegrationTests(unittest.TestCase):
         raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs").fetchone()[0])
         self.assertEqual(raw["gates"]["market_exposure_guard"]["panel"]["book"]["long"]["open_count"], 0)
 
-    def test_dry_run_does_not_promise_an_entry_that_cannot_reach_twenty_within_risk(self):
+    def test_dry_run_does_not_promise_an_entry_without_enough_margin(self):
         for minute in (0, 15):
-            self.scan(minute, dry_run=True, cash=100.)
-        result = self.scan(30, dry_run=True, cash=100.)["scans"][0]
+            self.scan(minute, dry_run=True, cash=10.)
+        result = self.scan(30, dry_run=True, cash=10.)["scans"][0]
         self.assertEqual(result["status"], "no_trade")
         self.assertEqual(result["reason"], "autonomous_minimum_tp_profit_unreachable")
         self.assertEqual(self.opened, [])
         raw = json.loads(self.connection.execute("SELECT candidate_audit_json FROM autonomous_scan_runs ORDER BY id DESC LIMIT 1").fetchone()[0])
-        self.assertEqual(raw['gates']['position_sizing']['available_cash'],100.)
-        self.assertLessEqual(raw['gates']['position_sizing']['maximum_allowed_sl_loss_usdt'],5.)
+        self.assertEqual(raw['gates']['position_sizing']['available_cash'],10.)
+        self.assertIsNone(raw['gates']['position_sizing']['maximum_allowed_sl_loss_usdt'])
+        self.assertEqual(raw['gates']['position_sizing']['limiting_factor'],'cash_and_leverage')
 
     def test_final_transaction_sizing_rejection_has_a_real_reason(self):
         from autonomous_sizing_diagnostics import SizingLimitError
